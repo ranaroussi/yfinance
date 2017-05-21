@@ -44,7 +44,7 @@ setup(
     platforms = ['any'],
     keywords='pandas, yahoo finance, pandas datareader',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
-    install_requires=['pandas', 'numpy', 'selenium', 'pyvirtualdisplay'],
+    install_requires=['pandas', 'pandas_datareader', 'numpy', 'selenium', 'pyvirtualdisplay'],
     entry_points={
         'console_scripts': [
             'sample=sample:main',

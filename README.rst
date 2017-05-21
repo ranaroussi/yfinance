@@ -107,6 +107,7 @@ Requirements
 
 * `Python <https://www.python.org>`_ >=3.4
 * `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.18.1)
+* `pandas_datareader <https://github.com/pydata/pandas-datareader>`_ >= 0.4.0
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `Selenium <http://www.seleniumhq.org>`_ >= 3.0.2
 * `PyVirtualDisplay <https://github.com/ponty/pyvirtualdisplay>`_ >= 0.2.1 (optional, to)
