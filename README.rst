@@ -71,23 +71,23 @@ Below is the full list of acceptable parameters:
                 tickers = ["SPY", "IWM", "..."],
 
                 # start date (YYYY-MM-DD / datetime.datetime object)
-                # defaults to 1950-01-01
+                # (optional, defaults is 1950-01-01)
                 start = "2017-01-01",
 
                 # end date (YYYY-MM-DD / datetime.datetime object)
-                # defaults to Today
+                # (optional, defaults is Today)
                 end = "2017-04-30",
 
                 # return a multi-index dataframe
-                # (default is Panel, which is deprecated)
+                # (optional, default is Panel, which is deprecated)
                 as_panel = False,
 
                 # group by ticker (to access via data['SPY'])
-                # default is 'column'
+                # (optional, default is 'column')
                 group_by = 'ticker',
 
                 # adjust all OHLC automatically
-                # (default is False)
+                # (optional, default is False)
                 auto_adjust = True
             )
 
