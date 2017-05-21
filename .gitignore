@@ -1,0 +1,5 @@
+__pycache__/*
+fix_yahoo_finance/__pycache__/*
+dist
+fix_yahoo_finance.egg-info
+*.pyc

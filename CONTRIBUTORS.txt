@@ -1,0 +1,4 @@
+# This file contains a list of people who have made contributions
+# to the public version of QTPyLib.
+
+Ran Aroussi, Creator <https://github.com/ranaroussi>
