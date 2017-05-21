@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __author__ = "Ran Aroussi"
 __all__ = ['get_data_yahoo']
 
@@ -48,9 +48,6 @@ def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
 
     global CHROMEDRIVER_PATH
     libdir = os.path.dirname(os.path.realpath(__file__))
-
-    print(CHROMEDRIVER_PATH)
-    return
 
     # format start
     if start is None:
