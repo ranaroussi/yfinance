@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __author__ = "Ran Aroussi"
 __all__ = ['get_data_yahoo']
 
@@ -38,10 +38,19 @@ except ImportError:
     virt_display = False
 
 
+CHROMEDRIVER_PATH = None
+def set_chromedriver_path(path_str):
+    global CHROMEDRIVER_PATH
+    CHROMEDRIVER_PATH = path_str
+
 def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
                    group_by='column', auto_adjust=False, *args, **kwargs):
 
+    global CHROMEDRIVER_PATH
     libdir = os.path.dirname(os.path.realpath(__file__))
+
+    print(CHROMEDRIVER_PATH)
+    return
 
     # format start
     if start is None:
@@ -77,7 +86,10 @@ def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
     except:
         pass
 
-    driver = webdriver.Chrome(chrome_options=chromeOptions)
+    if CHROMEDRIVER_PATH:
+        driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chromeOptions)
+    else:
+        driver = webdriver.Chrome(chrome_options=chromeOptions)
 
     dfs = {}
 

@@ -95,11 +95,36 @@ Below is the full list of acceptable parameters:
 Installation
 ------------
 
-Install ``fix_yahoo_finance`` using ``pip``:
+1. Install ``fix_yahoo_finance`` using ``pip``:
 
 .. code:: bash
 
     $ pip install fix_yahoo_finance --upgrade --no-cache-dir
+
+
+2. Install `Chrome Driver <https://sites.google.com/a/chromium.org/chromedriver/downloads>`_
+
+.. code:: bash
+
+    $ wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
+    $ unzip chromedriver_linux64.zip
+    $ mv chromedriver /usr/local/sbin/chromedriver
+
+\* The above code is for Linux 64bit. Other OS version are listed `here <https://sites.google.com/a/chromium.org/chromedriver/downloads>`_.
+
+
+Setting Chrome Driver Location
+------------------------------
+
+If you can't / won't install the Chrome driver in your system's ``$PATH``, you can
+explicitly tell **fix-yahoo-finance** the location of the Chrome driver executable:
+
+.. code:: python
+
+    import fix_yahoo_finance
+    fix_yahoo_finance.set_chromedriver_path('/path/to/chromedriver')
+
+Then, simply continue normally.
 
 
 Requirements
@@ -111,6 +136,7 @@ Requirements
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `Selenium <http://www.seleniumhq.org>`_ >= 3.0.2
 * `PyVirtualDisplay <https://github.com/ponty/pyvirtualdisplay>`_ >= 0.2.1 (optional, to)
+* `Chrome Driver <https://sites.google.com/a/chromium.org/chromedriver/downloads>`_ (installed in your path)
 
 Legal Stuff
 ------------
