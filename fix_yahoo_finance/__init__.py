@@ -48,21 +48,18 @@ def get_yahoo_crumb():
             return (_YAHOO_CRUMB_, _YAHOO_COOKIE_)
 
     res = requests.get('https://finance.yahoo.com/quote/SPY/history')
-    cookie = res.cookies['B']
+    _YAHOO_COOKIE_ = res.cookies['B']
 
-    crumb = ''
     pattern = re.compile('.*"CrumbStore":\{"crumb":"(?P<crumb>[^"]+)"\}')
     for line in res.text.splitlines():
         m = pattern.match(line)
         if m is not None:
-            crumb = m.groupdict()['crumb']
+            _YAHOO_CRUMB_ = m.groupdict()['crumb']
 
     # set global params
-    _YAHOO_COOKIE_ = cookie
-    _YAHOO_CRUMB_ = crumb
     _YAHOO_CHECKED_ = datetime.datetime.now()
 
-    return (crumb, cookie)
+    return (_YAHOO_CRUMB_, _YAHOO_COOKIE_)
 
 
 def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
