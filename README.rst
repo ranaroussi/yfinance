@@ -27,14 +27,12 @@ Yahoo! Finance Fix for Pandas Datareader
 
 \
 
-**fix-yahoo-finance** offers a **temporary fix** to the problem
-by using `Selenium <http://www.seleniumhq.org>`_ to scrape the data
-from Yahoo! finance and return a Pandas DataFrame/Panel in the same
-format as the original ``get_data_yahoo()`` method.
+`Yahoo! finance <https://ichart.finance.yahoo.com>`_ has decommissioned
+their historical data API, causing many programs that relied on it to stop working.
 
-`Yahoo! finance <https://ichart.finance.yahoo.com>`_ has decommissioned their historical data API,
-causing many programs that relied on the ``get_data_yahoo()``
-to stop working.
+**fix-yahoo-finance** offers a **temporary fix** to the problem
+by scraping the data from Yahoo! finance using and return a Pandas
+DataFrame/Panel in the same format as **pandas_datareader**'s ``get_data_yahoo()``.
 
 By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
 **fix-yahoo-finance**'s implantation is easy and only requires to import
@@ -95,36 +93,11 @@ Below is the full list of acceptable parameters:
 Installation
 ------------
 
-1. Install ``fix_yahoo_finance`` using ``pip``:
+Install ``fix_yahoo_finance`` using ``pip``:
 
 .. code:: bash
 
     $ pip install fix_yahoo_finance --upgrade --no-cache-dir
-
-
-2. Install `Chrome Driver <https://sites.google.com/a/chromium.org/chromedriver/downloads>`_
-
-.. code:: bash
-
-    $ wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
-    $ unzip chromedriver_linux64.zip
-    $ mv chromedriver /usr/local/sbin/chromedriver
-
-\* The above code is for Linux 64bit. Other OS version are listed `here <https://sites.google.com/a/chromium.org/chromedriver/downloads>`_.
-
-
-Setting Chrome Driver Location
-------------------------------
-
-If you can't / won't install the Chrome driver in your system's ``$PATH``, you can
-explicitly tell **fix-yahoo-finance** the location of the Chrome driver executable:
-
-.. code:: python
-
-    import fix_yahoo_finance
-    fix_yahoo_finance.set_chromedriver_path('/path/to/chromedriver')
-
-Then, simply continue normally.
 
 
 Requirements
@@ -134,9 +107,7 @@ Requirements
 * `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.18.1)
 * `pandas_datareader <https://github.com/pydata/pandas-datareader>`_ >= 0.4.0
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
-* `Selenium <http://www.seleniumhq.org>`_ >= 3.0.2
-* `PyVirtualDisplay <https://github.com/ponty/pyvirtualdisplay>`_ >= 0.2.1 (optional, to)
-* `Chrome Driver <https://sites.google.com/a/chromium.org/chromedriver/downloads>`_ (installed in your path)
+* `requests <http://docs.python-requests.org/en/master/>`_ >= 2.14.2
 
 Legal Stuff
 ------------

@@ -18,36 +18,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 __author__ = "Ran Aroussi"
-__all__ = ['get_data_yahoo']
+__all__ = ['get_data_yahoo', 'get_yahoo_crumb']
 
 import datetime
 import numpy as np
-import os
 import pandas as pd
+import requests
 import time
+import io
+import re
 import warnings
 
-from selenium import webdriver
-
-try:
-    from pyvirtualdisplay import Display
-    virt_display = True
-except ImportError:
-    virt_display = False
+_YAHOO_COOKIE_ = ''
+_YAHOO_CRUMB_ = ''
+_YAHOO_CHECKED_ = None
+_YAHOO_TTL_ = 300
 
 
-CHROMEDRIVER_PATH = None
-def set_chromedriver_path(path_str):
-    global CHROMEDRIVER_PATH
-    CHROMEDRIVER_PATH = path_str
+def get_yahoo_crumb():
+    global _YAHOO_COOKIE_, _YAHOO_CRUMB_, _YAHOO_CHECKED_, _YAHOO_TTL_
+
+    # use same cookie for 5 min
+    if _YAHOO_CHECKED_:
+        now = datetime.datetime.now()
+        delta = (now - _YAHOO_CHECKED_).total_seconds()
+        if delta < _YAHOO_TTL_:
+            return (_YAHOO_CRUMB_, _YAHOO_COOKIE_)
+
+    res = requests.get('https://finance.yahoo.com/quote/SPY/history')
+    cookie = res.cookies['B']
+
+    crumb = ''
+    pattern = re.compile('.*"CrumbStore":\{"crumb":"(?P<crumb>[^"]+)"\}')
+    for line in res.text.splitlines():
+        m = pattern.match(line)
+        if m is not None:
+            crumb = m.groupdict()['crumb']
+
+    # set global params
+    _YAHOO_COOKIE_ = cookie
+    _YAHOO_CRUMB_ = crumb
+    _YAHOO_CHECKED_ = datetime.datetime.now()
+
+    return (crumb, cookie)
+
 
 def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
                    group_by='column', auto_adjust=False, *args, **kwargs):
-
-    global CHROMEDRIVER_PATH
-    libdir = os.path.dirname(os.path.realpath(__file__))
 
     # format start
     if start is None:
@@ -68,80 +87,39 @@ def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
     # iterval
     interval = kwargs["interval"] if "interval" in kwargs else "1d"
 
-    # start browser
-    if virt_display:
-        display = Display(visible=0, size=(800, 600))
-        display.start()
-
-    chromeOptions = webdriver.ChromeOptions()
-    prefs = {"download.default_directory": "/tmp"}
-    chromeOptions.add_experimental_option("prefs", prefs)
-
-    # add adblock to make page load faster
-    try:
-        chromeOptions.add_extension(libdir + '/Adblock-Plus_v1.11.crx')
-    except:
-        pass
-
-    if CHROMEDRIVER_PATH:
-        driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chromeOptions)
-    else:
-        driver = webdriver.Chrome(chrome_options=chromeOptions)
-
+    # start downloading
     dfs = {}
+    crumb, cookie = get_yahoo_crumb()
 
     # download tickers
     tickers = tickers if isinstance(tickers, list) else [tickers]
     tickers = [x.upper() for x in tickers]
 
     for ticker in tickers:
-        url = "https://finance.yahoo.com/quote/%s/history"
-        url += "?period1=%s&period2=%s&interval=%s&filter=history&frequency=%s"
-        url = url % (ticker, start, end, interval, interval)
+        url = "https://query1.finance.yahoo.com/v7/finance/download/%s"
+        url += "?period1=%s&period2=%s&interval=%s&events=history&crumb=%s"
+        url = url % (ticker, start, end, interval, crumb)
 
-        driver.get(url)
+        hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
+        dfs[ticker] = pd.read_csv(hist, index_col=0
+                                  ).replace('null', np.nan).dropna()
 
-        tries = 0
-        while tries < 3:
-            tries += 1
-            link = driver.find_elements_by_css_selector(
-                'a[download="' + ticker + '.csv"]')
+        dfs[ticker] = dfs[ticker].apply(pd.to_numeric)
+        dfs[ticker]['Volume'] = dfs[ticker]['Volume'].fillna(0).astype(int)
 
-            if len(link) == 0:
-                time.sleep(.1)
-            else:
-                tries = 3
-                hist = link[0].get_attribute('href')
-                driver.get(hist)
-
-                dfs[ticker] = pd.read_csv('/tmp/' + ticker + '.csv', parse_dates=['Date'],
-                                          index_col=['Date']).replace('null', np.nan).dropna()
-                dfs[ticker] = dfs[ticker].apply(pd.to_numeric)
-                dfs[ticker]['Volume'] = dfs[ticker][
-                    'Volume'].fillna(0).astype(int)
-
-                if auto_adjust:
-                    ratio = dfs[ticker]["Close"] / dfs[ticker]["Adj Close"]
-                    dfs[ticker]["Adj Open"] = dfs[ticker]["Open"] / ratio
-                    dfs[ticker]["Adj High"] = dfs[ticker]["High"] / ratio
-                    dfs[ticker]["Adj Low"] = dfs[ticker]["Low"] / ratio
-                    dfs[ticker].drop(
-                        ["Open", "High", "Low", "Close"], axis=1, inplace=True)
-                    dfs[ticker].rename(columns={
-                        "Adj Open": "Open", "Adj High": "High",
-                        "Adj Low": "Low", "Adj Close": "Close"
-                    }, inplace=True)
-                    dfs[ticker] = dfs[ticker][
-                        ['Open', 'High', 'Low', 'Close', 'Volume']]
-
-                os.remove('/tmp/' + ticker + '.csv')
-
-    # close/stop browser
-    driver.close()
-    driver.quit()
-
-    if virt_display:
-        display.stop()
+        if auto_adjust:
+            ratio = dfs[ticker]["Close"] / dfs[ticker]["Adj Close"]
+            dfs[ticker]["Adj Open"] = dfs[ticker]["Open"] / ratio
+            dfs[ticker]["Adj High"] = dfs[ticker]["High"] / ratio
+            dfs[ticker]["Adj Low"] = dfs[ticker]["Low"] / ratio
+            dfs[ticker].drop(
+                ["Open", "High", "Low", "Close"], axis=1, inplace=True)
+            dfs[ticker].rename(columns={
+                "Adj Open": "Open", "Adj High": "High",
+                "Adj Low": "Low", "Adj Close": "Close"
+            }, inplace=True)
+            dfs[ticker] = dfs[ticker][
+                ['Open', 'High', 'Low', 'Close', 'Volume']]
 
     # create pandl (derecated)
     if as_panel:

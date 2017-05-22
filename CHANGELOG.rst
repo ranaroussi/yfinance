@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.5
+-------
+- Works using ``requests`` = no need for Selenium, PyVirtualDisplay, or Chrome Driver
+
 0.0.4
 -------
 - Removed ALL debugging code :)
