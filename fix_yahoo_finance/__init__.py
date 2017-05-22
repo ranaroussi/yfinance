@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 __author__ = "Ran Aroussi"
 __all__ = ['get_data_yahoo']
 
@@ -134,7 +134,7 @@ def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
                     dfs[ticker] = dfs[ticker][
                         ['Open', 'High', 'Low', 'Close', 'Volume']]
 
-                # os.remove('/tmp/' + ticker + '.csv')
+                os.remove('/tmp/' + ticker + '.csv')
 
     # close/stop browser
     driver.close()

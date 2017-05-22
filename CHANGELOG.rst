@@ -1,9 +1,13 @@
 Change Log
 ===========
 
+0.0.4
+-------
+- Removed ALL debugging code :)
+
 0.0.3
 -------
-- Removed debugging code :)
+- Removed debugging code
 
 0.0.2
 -------
