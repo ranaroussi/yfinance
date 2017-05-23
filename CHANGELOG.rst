@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.6
+-------
+- Forcing index to be of datetime type
+
 0.0.5
 -------
 - Works using ``requests`` = no need for Selenium, PyVirtualDisplay, or Chrome Driver

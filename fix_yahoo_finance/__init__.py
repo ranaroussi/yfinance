@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 __author__ = "Ran Aroussi"
 __all__ = ['get_data_yahoo', 'get_yahoo_crumb']
 
@@ -101,6 +101,7 @@ def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
         dfs[ticker] = pd.read_csv(hist, index_col=0
                                   ).replace('null', np.nan).dropna()
 
+        dfs[ticker].index = pd.to_datetime(dfs[ticker].index)
         dfs[ticker] = dfs[ticker].apply(pd.to_numeric)
         dfs[ticker]['Volume'] = dfs[ticker]['Volume'].fillna(0).astype(int)
 
