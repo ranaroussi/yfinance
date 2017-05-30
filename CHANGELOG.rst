@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.0.7
+-------
+- ``pandas_datareader`` is optional (can be called via ``download()`` or via ``pdr.get_data_yahoo()``)
+- Tries to re-fetch Yahoo cookie in case of timeout/error
+
 0.0.6
 -------
 - Forcing index to be of datetime type

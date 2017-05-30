@@ -90,6 +90,14 @@ Below is the full list of acceptable parameters:
             )
 
 
+It can also be used as a stand-alone library (without ``pandas_datareader``) if you want:
+
+.. code:: python
+
+    import fix_yahoo_finance as yf
+    data = yf.download("SPY", start="2017-01-01", end="2017-04-30")
+
+
 Installation
 ------------
 
@@ -105,9 +113,13 @@ Requirements
 
 * `Python <https://www.python.org>`_ >=3.4
 * `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.18.1)
-* `pandas_datareader <https://github.com/pydata/pandas-datareader>`_ >= 0.4.0
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `requests <http://docs.python-requests.org/en/master/>`_ >= 2.14.2
+
+Optional (if you want to use ``pandas_datareader``)
+---------------------------------------------------
+
+* `pandas_datareader <https://github.com/pydata/pandas-datareader>`_ >= 0.4.0
 
 Legal Stuff
 ------------

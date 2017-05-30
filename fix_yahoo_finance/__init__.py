@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Yahoo! Finance Fix for Pandas Datareader
-# https://github.com/ranaroussi/yahoo-finance-fix
+# https://github.com/ranaroussi/fix-yahoo-finance
 #
 # Copyright 2017 Ran Aroussi
 #
@@ -18,16 +18,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 __author__ = "Ran Aroussi"
-__all__ = ['get_data_yahoo', 'get_yahoo_crumb']
+__all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
 import datetime
 import numpy as np
 import pandas as pd
-import requests
 import time
 import io
+import requests
 import re
 import warnings
 
@@ -37,11 +37,12 @@ _YAHOO_CHECKED_ = None
 _YAHOO_TTL_ = 300
 
 
-def get_yahoo_crumb():
+
+def get_yahoo_crumb(force=False):
     global _YAHOO_COOKIE_, _YAHOO_CRUMB_, _YAHOO_CHECKED_, _YAHOO_TTL_
 
     # use same cookie for 5 min
-    if _YAHOO_CHECKED_:
+    if _YAHOO_CHECKED_ and not force:
         now = datetime.datetime.now()
         delta = (now - _YAHOO_CHECKED_).total_seconds()
         if delta < _YAHOO_TTL_:
@@ -62,7 +63,35 @@ def get_yahoo_crumb():
     return (_YAHOO_CRUMB_, _YAHOO_COOKIE_)
 
 
-def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
+def parse_ticker_csv(csv_str, auto_adjust):
+    df = pd.read_csv(csv_str, index_col=0, error_bad_lines=False
+                     ).replace('null', np.nan).dropna()
+
+    df.index = pd.to_datetime(df.index)
+    df = df.apply(pd.to_numeric)
+    df['Volume'] = df['Volume'].fillna(0).astype(int)
+
+    if auto_adjust:
+        ratio = df["Close"] / df["Adj Close"]
+        df["Adj Open"] = df["Open"] / ratio
+        df["Adj High"] = df["High"] / ratio
+        df["Adj Low"] = df["Low"] / ratio
+
+        df.drop(
+            ["Open", "High", "Low", "Close"],
+            axis=1, inplace=True)
+
+        df.rename(columns={
+            "Adj Open": "Open", "Adj High": "High",
+            "Adj Low": "Low", "Adj Close": "Close"
+        }, inplace=True)
+
+        df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+
+    return df
+
+
+def download(tickers, start=None, end=None, as_panel=True,
                    group_by='column', auto_adjust=False, *args, **kwargs):
 
     # format start
@@ -93,31 +122,25 @@ def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
     tickers = [x.upper() for x in tickers]
 
     for ticker in tickers:
-        url = "https://query1.finance.yahoo.com/v7/finance/download/%s"
-        url += "?period1=%s&period2=%s&interval=%s&events=history&crumb=%s"
-        url = url % (ticker, start, end, interval, crumb)
+        url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
+        url_str += "?period1=%s&period2=%s&interval=%s&events=history&crumb=%s"
 
-        hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
-        dfs[ticker] = pd.read_csv(hist, index_col=0
-                                  ).replace('null', np.nan).dropna()
-
-        dfs[ticker].index = pd.to_datetime(dfs[ticker].index)
-        dfs[ticker] = dfs[ticker].apply(pd.to_numeric)
-        dfs[ticker]['Volume'] = dfs[ticker]['Volume'].fillna(0).astype(int)
-
-        if auto_adjust:
-            ratio = dfs[ticker]["Close"] / dfs[ticker]["Adj Close"]
-            dfs[ticker]["Adj Open"] = dfs[ticker]["Open"] / ratio
-            dfs[ticker]["Adj High"] = dfs[ticker]["High"] / ratio
-            dfs[ticker]["Adj Low"] = dfs[ticker]["Low"] / ratio
-            dfs[ticker].drop(
-                ["Open", "High", "Low", "Close"], axis=1, inplace=True)
-            dfs[ticker].rename(columns={
-                "Adj Open": "Open", "Adj High": "High",
-                "Adj Low": "Low", "Adj Close": "Close"
-            }, inplace=True)
-            dfs[ticker] = dfs[ticker][
-                ['Open', 'High', 'Low', 'Close', 'Volume']]
+        tried_once = False
+        try:
+            url = url_str % (ticker, start, end, interval, crumb)
+            print(url)
+            hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
+            dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
+        except:
+            # something went wrong...
+            # try waiting 5 seconds and try one more time using a new cookie/crumb
+            if not tried_once:
+                time.sleep(5)
+                tried_once = True
+                crumb, cookie = get_yahoo_crumb(force=True)
+                url = url_str % (ticker, start, end, interval, crumb)
+                hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
+                dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
 
     # create pandl (derecated)
     if as_panel:
@@ -146,5 +169,10 @@ def get_data_yahoo(tickers, start=None, end=None, as_panel=True,
     return data
 
 
-import pandas_datareader
-pandas_datareader.data.get_data_yahoo = get_data_yahoo
+# make pandas datareader optional
+# otherwise can be called via fix_yahoo_finance.download(...)
+try:
+    import pandas_datareader
+    pandas_datareader.data.get_data_yahoo = download
+except:
+    pass
