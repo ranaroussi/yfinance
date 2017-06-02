@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -30,12 +30,13 @@ import io
 import requests
 import re
 import warnings
+import sys
+
 
 _YAHOO_COOKIE_ = ''
 _YAHOO_CRUMB_ = ''
 _YAHOO_CHECKED_ = None
-_YAHOO_TTL_ = 300
-
+_YAHOO_TTL_ = 180
 
 
 def get_yahoo_crumb(force=False):
@@ -92,7 +93,8 @@ def parse_ticker_csv(csv_str, auto_adjust):
 
 
 def download(tickers, start=None, end=None, as_panel=True,
-                   group_by='column', auto_adjust=False, *args, **kwargs):
+             group_by='column', auto_adjust=False, progress=True,
+             *args, **kwargs):
 
     # format start
     if start is None:
@@ -113,34 +115,74 @@ def download(tickers, start=None, end=None, as_panel=True,
     # iterval
     interval = kwargs["interval"] if "interval" in kwargs else "1d"
 
-    # start downloading
-    dfs = {}
-    crumb, cookie = get_yahoo_crumb()
+    # url template
+    url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
+    url_str += "?period1=%s&period2=%s&interval=%s&events=history&crumb=%s"
 
-    # download tickers
+    # dataframe collector
+    dfs = {}
+
+    # create ticker list
     tickers = tickers if isinstance(tickers, list) else [tickers]
     tickers = [x.upper() for x in tickers]
 
+    # initiate progress bar
+    if progress:
+        pbar = ProgressBar(len(tickers), 'downloaded')
+
+    # failed tickers collectors
+    round1_failed_tickers = []
+    round2_failed_tickers = []
+
+    # start downloading
     for ticker in tickers:
-        url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
-        url_str += "?period1=%s&period2=%s&interval=%s&events=history&crumb=%s"
+
+        # yahoo crumb/cookie
+        crumb, cookie = get_yahoo_crumb()
 
         tried_once = False
         try:
             url = url_str % (ticker, start, end, interval, crumb)
-            print(url)
             hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
             dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
+            if progress:
+                pbar.animate()
         except:
             # something went wrong...
-            # try waiting 5 seconds and try one more time using a new cookie/crumb
+            # try one more time using a new cookie/crumb
             if not tried_once:
-                time.sleep(5)
                 tried_once = True
-                crumb, cookie = get_yahoo_crumb(force=True)
+                try:
+                    crumb, cookie = get_yahoo_crumb(force=True)
+                    url = url_str % (ticker, start, end, interval, crumb)
+                    src = requests.get(url, cookies={'B': cookie})
+                    hist = io.StringIO(src.text)
+                    dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
+                    if progress:
+                        pbar.animate()
+                except:
+                    round1_failed_tickers.append(ticker)
+        time.sleep(0.000001)
+
+    # try failed items again before giving up
+    if len(round1_failed_tickers) > 0:
+        crumb, cookie = get_yahoo_crumb(force=True)
+        for ticker in round1_failed_tickers:
+            try:
                 url = url_str % (ticker, start, end, interval, crumb)
-                hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
+                src = requests.get(url, cookies={'B': cookie})
+                hist = io.StringIO(src.text)
                 dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
+                if progress:
+                    pbar.animate()
+            except:
+                round2_failed_tickers.append(ticker)
+                pass
+            time.sleep(0.000001)
+
+        if len(round2_failed_tickers) > 0:
+            print("\nThe following tickers failed to download:\n",
+                  ', '.join(round2_failed_tickers))
 
     # create pandl (derecated)
     if as_panel:
@@ -167,6 +209,47 @@ def download(tickers, start=None, end=None, as_panel=True,
         data = dfs[tickers[0]]
 
     return data
+
+
+class ProgressBar:
+    def __init__(self, iterations, text='completed'):
+        self.text = text
+        self.iterations = iterations
+        self.prog_bar = '[]'
+        self.fill_char = '*'
+        self.width = 50
+        self.__update_amount(0)
+        self.elapsed = 1
+
+    def animate(self, iteration=None):
+        if iteration is None:
+            self.elapsed += 1
+            iteration = self.elapsed
+        else:
+            self.elapsed += iteration
+
+        print('\r' + str(self), end='')
+        sys.stdout.flush()
+        self.update_iteration()
+
+    def update_iteration(self):
+        self.__update_amount((self.elapsed / float(self.iterations)) * 100.0)
+        self.prog_bar += '  %s of %s %s' % (
+            self.elapsed, self.iterations, self.text)
+
+    def __update_amount(self, new_amount):
+        percent_done = int(round((new_amount / 100.0) * 100.0))
+        all_full = self.width - 2
+        num_hashes = int(round((percent_done / 100.0) * all_full))
+        self.prog_bar = '[' + self.fill_char * \
+            num_hashes + ' ' * (all_full - num_hashes) + ']'
+        pct_place = (len(self.prog_bar) // 2) - len(str(percent_done))
+        pct_string = '%d%%' % percent_done
+        self.prog_bar = self.prog_bar[0:pct_place] + \
+            (pct_string + self.prog_bar[pct_place + len(pct_string):])
+
+    def __str__(self):
+        return str(self.prog_bar)
 
 
 # make pandas datareader optional

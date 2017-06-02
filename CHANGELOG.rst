@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+0.0.8
+-------
+- Removed 5 second wait for every failed fetch
+- Reduced TTL for Yahoo!'s cookie
+- Keeps track of failed downloads and tries to re-download all failed downloads one more time before giving up
+- Added progress bar (can be turned off useing ``progress=False``)
+
 0.0.7
 -------
 - ``pandas_datareader`` is optional (can be called via ``download()`` or via ``pdr.get_data_yahoo()``)
