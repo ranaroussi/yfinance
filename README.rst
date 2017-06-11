@@ -88,6 +88,10 @@ Below is the full list of acceptable parameters:
                 # (optional, default is False)
                 auto_adjust = True,
 
+                # download dividend + stock splits data
+                # (optional, default is False)
+                actions = True,
+
                 # How may threads to use?
                 threads = 10
             )

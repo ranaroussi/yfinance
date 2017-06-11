@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.10
+-------
+- Downloads dividend and stock splits data (use ``actions=True``)
+
 0.0.9
 -------
 - Add ``threads`` parameter to ``download()`` (# of threads to use)
