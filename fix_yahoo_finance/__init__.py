@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.8"
+__version__ = "0.0.9"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -31,7 +31,7 @@ import requests
 import re
 import warnings
 import sys
-
+import multitasking
 
 _YAHOO_COOKIE_ = ''
 _YAHOO_CRUMB_ = ''
@@ -65,7 +65,7 @@ def get_yahoo_crumb(force=False):
 
 
 def parse_ticker_csv(csv_str, auto_adjust):
-    df = pd.read_csv(csv_str, index_col=0, error_bad_lines=False
+    df = pd.read_csv(csv_str, index_col=0, error_bad_lines=False, sep=None
                      ).replace('null', np.nan).dropna()
 
     df.index = pd.to_datetime(df.index)
@@ -92,9 +92,24 @@ def parse_ticker_csv(csv_str, auto_adjust):
     return df
 
 
+_DFS_ = {}
+_COMPLETED_ = 0
+_PROGRESS_BAR_ = False
+_FAILED_ = []
+
+
+def make_chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
 def download(tickers, start=None, end=None, as_panel=True,
              group_by='column', auto_adjust=False, progress=True,
-             *args, **kwargs):
+             threads=1, *args, **kwargs):
+
+    global _DFS_, _COMPLETED_, _PROGRESS_BAR_, _FAILED_
+    _COMPLETED_ = 0
 
     # format start
     if start is None:
@@ -115,86 +130,50 @@ def download(tickers, start=None, end=None, as_panel=True,
     # iterval
     interval = kwargs["interval"] if "interval" in kwargs else "1d"
 
-    # url template
-    url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
-    url_str += "?period1=%s&period2=%s&interval=%s&events=history&crumb=%s"
-
-    # dataframe collector
-    dfs = {}
-
     # create ticker list
     tickers = tickers if isinstance(tickers, list) else [tickers]
     tickers = [x.upper() for x in tickers]
 
     # initiate progress bar
     if progress:
-        pbar = ProgressBar(len(tickers), 'downloaded')
+        _PROGRESS_BAR_ = ProgressBar(len(tickers), 'downloaded')
 
-    # failed tickers collectors
-    round1_failed_tickers = []
-    round2_failed_tickers = []
+    # download using single thread
+    if threads is None or threads < 2:
+        download_chunk(tickers, start=start, end=end, as_panel=as_panel,
+                       group_by=group_by, auto_adjust=auto_adjust, progress=progress,
+                       interval=interval, *args, **kwargs)
+    # threaded download
+    else:
+        threads = min([threads, len(tickers)])
 
-    # start downloading
-    for ticker in tickers:
+        # download in chunks
+        chunks = 0
+        for chunk in make_chunks(tickers, max([1, len(tickers) // threads])):
+            chunks += len(chunk)
+            download_thread(chunk, start=start, end=end, as_panel=as_panel,
+                            group_by=group_by, auto_adjust=auto_adjust, progress=progress,
+                            interval=interval, *args, **kwargs)
+        if len(tickers[-chunks:]) > 0:
+            download_thread(tickers[-chunks:], start=start, end=end, as_panel=as_panel,
+                            group_by=group_by, auto_adjust=auto_adjust, progress=progress,
+                            interval=interval, *args, **kwargs)
 
-        # yahoo crumb/cookie
-        crumb, cookie = get_yahoo_crumb()
+    # wait for completion
+    while _COMPLETED_ < len(tickers):
+        time.sleep(0.1)
 
-        tried_once = False
-        try:
-            url = url_str % (ticker, start, end, interval, crumb)
-            hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
-            dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
-            if progress:
-                pbar.animate()
-        except:
-            # something went wrong...
-            # try one more time using a new cookie/crumb
-            if not tried_once:
-                tried_once = True
-                try:
-                    crumb, cookie = get_yahoo_crumb(force=True)
-                    url = url_str % (ticker, start, end, interval, crumb)
-                    src = requests.get(url, cookies={'B': cookie})
-                    hist = io.StringIO(src.text)
-                    dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
-                    if progress:
-                        pbar.animate()
-                except:
-                    round1_failed_tickers.append(ticker)
-        time.sleep(0.000001)
-
-    # try failed items again before giving up
-    if len(round1_failed_tickers) > 0:
-        crumb, cookie = get_yahoo_crumb(force=True)
-        for ticker in round1_failed_tickers:
-            try:
-                url = url_str % (ticker, start, end, interval, crumb)
-                src = requests.get(url, cookies={'B': cookie})
-                hist = io.StringIO(src.text)
-                dfs[ticker] = parse_ticker_csv(hist, auto_adjust)
-                if progress:
-                    pbar.animate()
-            except:
-                round2_failed_tickers.append(ticker)
-                pass
-            time.sleep(0.000001)
-
-        if len(round2_failed_tickers) > 0:
-            print("\nThe following tickers failed to download:\n",
-                  ', '.join(round2_failed_tickers))
-
-    # create pandl (derecated)
+    # create panel (derecated)
     if as_panel:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
-            data = pd.Panel(dfs)
+            data = pd.Panel(_DFS_)
             if group_by == 'column':
                 data = data.swapaxes(0, 2)
 
     # create multiIndex df
     else:
-        data = pd.concat(dfs.values(), axis=1, keys=dfs.keys())
+        data = pd.concat(_DFS_.values(), axis=1, keys=_DFS_.keys())
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
             data.sort_index(level=0, axis=1, inplace=True)
@@ -206,9 +185,87 @@ def download(tickers, start=None, end=None, as_panel=True,
 
     # return single df if only one ticker
     if len(tickers) == 1:
-        data = dfs[tickers[0]]
+        data = _DFS_[tickers[0]]
+
+    if len(_FAILED_) > 0:
+        print("\nThe following tickers failed to download:\n",
+              ', '.join(_FAILED_))
 
     return data
+
+
+@multitasking.task
+def download_thread(tickers, start=None, end=None, as_panel=True,
+                    group_by='column', auto_adjust=False, progress=True,
+                    *args, **kwargs):
+    download_chunk(tickers, start, end, as_panel,
+                   group_by, auto_adjust, progress,
+                   *args, **kwargs)
+
+
+def download_chunk(tickers, start=None, end=None, as_panel=True,
+                   group_by='column', auto_adjust=False, progress=True,
+                   *args, **kwargs):
+
+    global _DFS_, _COMPLETED_, _PROGRESS_BAR_, _FAILED_
+
+    interval = kwargs["interval"] if "interval" in kwargs else "1d"
+
+    # url template
+    url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
+    url_str += "?period1=%s&period2=%s&interval=%s&events=history&crumb=%s"
+
+    # failed tickers collectors
+    round1_failed_tickers = []
+
+    # start downloading
+    for ticker in tickers:
+
+        # yahoo crumb/cookie
+        crumb, cookie = get_yahoo_crumb()
+
+        tried_once = False
+        try:
+            url = url_str % (ticker, start, end, interval, crumb)
+            hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
+            _DFS_[ticker] = parse_ticker_csv(hist, auto_adjust)
+            if progress:
+                _PROGRESS_BAR_.animate()
+        except:
+            # something went wrong...
+            # try one more time using a new cookie/crumb
+            if not tried_once:
+                tried_once = True
+                try:
+                    crumb, cookie = get_yahoo_crumb(force=True)
+                    url = url_str % (ticker, start, end, interval, crumb)
+                    src = requests.get(url, cookies={'B': cookie})
+                    hist = io.StringIO(src.text)
+                    _DFS_[ticker] = parse_ticker_csv(hist, auto_adjust)
+                    if progress:
+                        _PROGRESS_BAR_.animate()
+                except:
+                    round1_failed_tickers.append(ticker)
+        time.sleep(0.000001)
+
+    # try failed items again before giving up
+    _COMPLETED_ += len(tickers) - len(round1_failed_tickers)
+
+    if len(round1_failed_tickers) > 0:
+        crumb, cookie = get_yahoo_crumb(force=True)
+        for ticker in round1_failed_tickers:
+            try:
+                url = url_str % (ticker, start, end, interval, crumb)
+                src = requests.get(url, cookies={'B': cookie})
+                hist = io.StringIO(src.text)
+                _DFS_[ticker] = parse_ticker_csv(hist, auto_adjust)
+                if progress:
+                    _PROGRESS_BAR_.animate()
+            except:
+                _FAILED_.append(ticker)
+                pass
+            time.sleep(0.000001)
+        _COMPLETED_ += 1
 
 
 class ProgressBar:

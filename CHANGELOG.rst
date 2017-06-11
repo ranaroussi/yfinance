@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.9
+-------
+- Add ``threads`` parameter to ``download()`` (# of threads to use)
+
 0.0.8
 -------
 - Removed 5 second wait for every failed fetch

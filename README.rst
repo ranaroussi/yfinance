@@ -86,7 +86,10 @@ Below is the full list of acceptable parameters:
 
                 # adjust all OHLC automatically
                 # (optional, default is False)
-                auto_adjust = True
+                auto_adjust = True,
+
+                # How may threads to use?
+                threads = 10
             )
 
 
@@ -115,6 +118,8 @@ Requirements
 * `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.18.1)
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `requests <http://docs.python-requests.org/en/master/>`_ >= 2.14.2
+* `multitasking <https://github.com/ranaroussi/multitasking>`_ >= 0.0.3
+
 
 Optional (if you want to use ``pandas_datareader``)
 ---------------------------------------------------
