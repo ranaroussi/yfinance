@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.11
+-------
+- Downloads ONLY dividend and stock splits data using ``actions='only'``)
+
 0.0.10
 -------
 - Downloads dividend and stock splits data (use ``actions=True``)

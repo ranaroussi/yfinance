@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.10"
+__version__ = "0.0.11"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -106,10 +106,33 @@ def make_chunks(l, n):
 
 def download(tickers, start=None, end=None, as_panel=True,
              group_by='column', auto_adjust=False, progress=True,
-             actions=False, threads=1, *args, **kwargs):
+             actions=None, threads=1, *args, **kwargs):
+
+    """Download yahoo tickers
+    :Parameters:
+
+        tickers : str, list
+            List of tickers to download
+        start: str
+            Download start date string (YYYY-MM-DD) or datetime. Default is 1950-01-01
+        end: str
+            Download end date string (YYYY-MM-DD) or datetime. Default is today
+        as_panel : bool
+            Return a multi-index DataFrame or Panel. Default is True (Panel), which is deprecated
+        group_by : str
+            Group by ticker or 'column' (default)
+        auto_adjust: bool
+            Adjust all OHLC automatically? Default is False
+        actions: str
+            Download dividend + stock splits data. Default is None (no actions)
+            Options are 'inline' (returns history + actions) and 'only' (actions only)
+        threads: int
+            How may threads to use? Default is 1 thread
+    """
 
     global _DFS_, _COMPLETED_, _PROGRESS_BAR_, _FAILED_
     _COMPLETED_ = 0
+    _FAILED_ = []
 
     # format start
     if start is None:
@@ -137,8 +160,8 @@ def download(tickers, start=None, end=None, as_panel=True,
 
     # download using single thread
     if threads is None or threads < 2:
-        download_chunk(tickers, start=start, end=end, as_panel=as_panel,
-                       group_by=group_by, auto_adjust=auto_adjust, progress=progress,
+        download_chunk(tickers, start=start, end=end,
+                       auto_adjust=auto_adjust, progress=progress,
                        actions=actions, *args, **kwargs)
     # threaded download
     else:
@@ -148,12 +171,12 @@ def download(tickers, start=None, end=None, as_panel=True,
         chunks = 0
         for chunk in make_chunks(tickers, max([1, len(tickers) // threads])):
             chunks += len(chunk)
-            download_thread(chunk, start=start, end=end, as_panel=as_panel,
-                            group_by=group_by, auto_adjust=auto_adjust, progress=progress,
+            download_thread(chunk, start=start, end=end,
+                            auto_adjust=auto_adjust, progress=progress,
                             actions=actions, *args, **kwargs)
         if len(tickers[-chunks:]) > 0:
-            download_thread(tickers[-chunks:], start=start, end=end, as_panel=as_panel,
-                            group_by=group_by, auto_adjust=auto_adjust, progress=progress,
+            download_thread(tickers[-chunks:], start=start, end=end,
+                            auto_adjust=auto_adjust, progress=progress,
                             actions=actions, *args, **kwargs)
 
     # wait for completion
@@ -191,51 +214,82 @@ def download(tickers, start=None, end=None, as_panel=True,
     return data
 
 
-def download_one(ticker, start, end, interval, auto_adjust=None, actions=False):
+def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
 
     crumb, cookie = get_yahoo_crumb()
 
     url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
     url_str += "?period1=%s&period2=%s&interval=%s&events=%s&crumb=%s"
 
-    url = url_str % (ticker, start, end, interval, 'history', crumb)
-    hist = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
-    hist = parse_ticker_csv(hist, auto_adjust)
+    actions = None if '^' in ticker else actions
 
-    if actions and '^' not in ticker:
+    if actions:
         url = url_str % (ticker, start, end, interval, 'div', crumb)
-        div = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
-        div = pd.read_csv(div, index_col=0, error_bad_lines=False
-                          ).replace('null', np.nan).dropna()
-        div.index = pd.to_datetime(div.index)
-        hist['Dividends'] = div['Dividends'].astype(float)
-        hist['Dividends'].fillna(0, inplace=True)
+        res = requests.get(url, cookies={'B': cookie}).text
+        # print(res)
+        div = pd.DataFrame(columns=['action', 'value'])
+        if "error" not in res:
+            div = pd.read_csv(io.StringIO(res),
+                              index_col=0, error_bad_lines=False
+                              ).replace('null', np.nan).dropna()
+
+            if isinstance(div, pd.DataFrame) and len(div.index) > 0:
+                div.index = pd.to_datetime(div.index)
+                div["action"] = "DIVIDEND"
+                div = div.rename(columns={'Dividends': 'value'})
+                div['value'] = div['value'].astype(float)
 
         # download Stock Splits data
         url = url_str % (ticker, start, end, interval, 'split', crumb)
-        split = io.StringIO(requests.get(url, cookies={'B': cookie}).text)
-        split = pd.read_csv(split, index_col=0, error_bad_lines=False
-                            ).replace('null', np.nan).dropna()
-        split.index = pd.to_datetime(split.index)
+        res = requests.get(url, cookies={'B': cookie}).text
+        split = pd.DataFrame(columns=['action', 'value'])
+        if "error" not in res:
+            split = pd.read_csv(io.StringIO(res),
+                                index_col=0, error_bad_lines=False
+                                ).replace('null', np.nan).dropna()
 
-        hist['Stock Splits'] = split.apply(
-            lambda x: 1 / eval(x['Stock Splits']), axis=1).astype(float)
-        hist['Stock Splits'].fillna(1, inplace=True)
+            if isinstance(split, pd.DataFrame) and len(split.index) > 0:
+                split.index = pd.to_datetime(split.index)
+                split["action"] = "SPLIT"
+                split = split.rename(columns={'Stock Splits': 'value'})
+                split['value'] = split.apply(
+                    lambda x: 1 / eval(x['value']), axis=1).astype(float)
+
+
+        if actions == 'only':
+            return pd.concat([div, split]).sort_index()
+
+    # download history
+    url = url_str % (ticker, start, end, interval, 'history', crumb)
+    res = requests.get(url, cookies={'B': cookie}).text
+    hist = pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
+
+    if "error" not in res:
+        hist = parse_ticker_csv(io.StringIO(res), auto_adjust)
+
+    if actions is None:
+        return hist
+
+    hist['Dividends'] = div['value'] if len(div.index) > 0 else np.nan
+    hist['Dividends'].fillna(0, inplace=True)
+    hist['Stock Splits'] = split['value'] if len(split.index) > 0 else np.nan
+    hist['Stock Splits'].fillna(1, inplace=True)
 
     return hist
 
 
+
 @multitasking.task
-def download_thread(tickers, start=None, end=None, as_panel=True,
-                    group_by='column', auto_adjust=False, progress=True,
+def download_thread(tickers, start=None, end=None,
+                    auto_adjust=False, progress=True,
                     actions=False, *args, **kwargs):
-    download_chunk(tickers, start, end, as_panel,
-                   group_by, auto_adjust, progress,
-                   actions=actions, *args, **kwargs)
+    download_chunk(tickers, start=None, end=None,
+                   auto_adjust=False, progress=progress,
+                   actions=False, *args, **kwargs)
 
 
-def download_chunk(tickers, start=None, end=None, as_panel=True,
-                   group_by='column', auto_adjust=False, progress=True,
+def download_chunk(tickers, start=None, end=None,
+                   auto_adjust=False, progress=True,
                    actions=False, *args, **kwargs):
 
     global _DFS_, _COMPLETED_, _PROGRESS_BAR_, _FAILED_
@@ -256,24 +310,24 @@ def download_chunk(tickers, start=None, end=None, as_panel=True,
         crumb, cookie = get_yahoo_crumb()
 
         tried_once = False
-        try:
-            hist = download_one(ticker, start, end,
-                                interval, auto_adjust, actions)
-            _DFS_[ticker] = hist
-        except:
-            # something went wrong...
-            # try one more time using a new cookie/crumb
-            if not tried_once:
-                tried_once = True
-                try:
-                    get_yahoo_crumb(force=True)
-                    hist = download_one(ticker, start, end,
-                                        interval, auto_adjust, actions)
-                    _DFS_[ticker] = hist
-                    if progress:
-                        _PROGRESS_BAR_.animate()
-                except:
-                    round1_failed_tickers.append(ticker)
+        # try:
+        hist = download_one(ticker, start, end,
+                            interval, auto_adjust, actions)
+        _DFS_[ticker] = hist
+        # except:
+        #     # something went wrong...
+        #     # try one more time using a new cookie/crumb
+        #     if not tried_once:
+        #         tried_once = True
+        #         try:
+        #             get_yahoo_crumb(force=True)
+        #             hist = download_one(ticker, start, end,
+        #                                 interval, auto_adjust, actions)
+        #             _DFS_[ticker] = hist
+        #             if progress:
+        #                 _PROGRESS_BAR_.animate()
+        #         except:
+        #             round1_failed_tickers.append(ticker)
         time.sleep(0.001)
 
     # try failed items again before giving up
