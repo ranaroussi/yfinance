@@ -338,8 +338,8 @@ class ProgressBar:
 
 # make pandas datareader optional
 # otherwise can be called via fix_yahoo_finance.download(...)
-# try:
-#     import pandas_datareader
-#     pandas_datareader.data.get_data_yahoo = download
-# except:
-#     pass
+try:
+    import pandas_datareader
+    pandas_datareader.data.get_data_yahoo = download
+except:
+    pass
