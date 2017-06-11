@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.13
+-------
+- Removed debugging code
+
 0.0.12
 -------
 - Minor bug fix (closing #6)

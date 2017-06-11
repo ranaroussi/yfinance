@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.12"
+__version__ = "0.0.13"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -311,24 +311,24 @@ def download_chunk(tickers, start=None, end=None,
         crumb, cookie = get_yahoo_crumb()
 
         tried_once = False
-        # try:
-        hist = download_one(ticker, start, end,
-                            interval, auto_adjust, actions)
-        _DFS_[ticker] = hist
-        # except:
-        #     # something went wrong...
-        #     # try one more time using a new cookie/crumb
-        #     if not tried_once:
-        #         tried_once = True
-        #         try:
-        #             get_yahoo_crumb(force=True)
-        #             hist = download_one(ticker, start, end,
-        #                                 interval, auto_adjust, actions)
-        #             _DFS_[ticker] = hist
-        #             if progress:
-        #                 _PROGRESS_BAR_.animate()
-        #         except:
-        #             round1_failed_tickers.append(ticker)
+        try:
+            hist = download_one(ticker, start, end,
+                                interval, auto_adjust, actions)
+            _DFS_[ticker] = hist
+        except:
+            # something went wrong...
+            # try one more time using a new cookie/crumb
+            if not tried_once:
+                tried_once = True
+                try:
+                    get_yahoo_crumb(force=True)
+                    hist = download_one(ticker, start, end,
+                                        interval, auto_adjust, actions)
+                    _DFS_[ticker] = hist
+                    if progress:
+                        _PROGRESS_BAR_.animate()
+                except:
+                    round1_failed_tickers.append(ticker)
         time.sleep(0.001)
 
     # try failed items again before giving up
