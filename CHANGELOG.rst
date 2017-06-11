@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.12
+-------
+- Minor bug fix (closing #6)
+
 0.0.11
 -------
 - Downloads ONLY dividend and stock splits data using ``actions='only'``)

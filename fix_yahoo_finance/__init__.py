@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.11"
+__version__ = "0.0.12"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -233,7 +233,7 @@ def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
                               index_col=0, error_bad_lines=False
                               ).replace('null', np.nan).dropna()
 
-            if isinstance(div, pd.DataFrame) and len(div.index) > 0:
+            if isinstance(div, pd.DataFrame):
                 div.index = pd.to_datetime(div.index)
                 div["action"] = "DIVIDEND"
                 div = div.rename(columns={'Dividends': 'value'})
@@ -248,12 +248,13 @@ def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
                                 index_col=0, error_bad_lines=False
                                 ).replace('null', np.nan).dropna()
 
-            if isinstance(split, pd.DataFrame) and len(split.index) > 0:
+            if isinstance(split, pd.DataFrame):
                 split.index = pd.to_datetime(split.index)
                 split["action"] = "SPLIT"
                 split = split.rename(columns={'Stock Splits': 'value'})
-                split['value'] = split.apply(
-                    lambda x: 1 / eval(x['value']), axis=1).astype(float)
+                if len(split.index) > 0:
+                    split['value'] = split.apply(
+                        lambda x: 1 / eval(x['value']), axis=1).astype(float)
 
 
         if actions == 'only':
