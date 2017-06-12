@@ -22,6 +22,8 @@ __version__ = "0.0.13"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
+from __future__ import print_function
+
 import datetime
 import numpy as np
 import pandas as pd
