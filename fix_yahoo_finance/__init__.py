@@ -267,8 +267,10 @@ def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
     res = requests.get(url, cookies={'B': cookie}).text
     hist = pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
 
-    if "error" not in res:
-        hist = parse_ticker_csv(io.StringIO(res), auto_adjust)
+    if "error" in res:
+        return pd.DataFrame()
+
+    hist = parse_ticker_csv(io.StringIO(res), auto_adjust)
 
     if actions is None:
         return hist
@@ -316,7 +318,10 @@ def download_chunk(tickers, start=None, end=None,
         try:
             hist = download_one(ticker, start, end,
                                 interval, auto_adjust, actions)
-            _DFS_[ticker] = hist
+            if isinstance(hist, pd.DataFrame) and len(hist.index) > 0:
+                _DFS_[ticker] = hist
+            else:
+                round1_failed_tickers.append(ticker)
         except:
             # something went wrong...
             # try one more time using a new cookie/crumb
@@ -326,9 +331,12 @@ def download_chunk(tickers, start=None, end=None,
                     get_yahoo_crumb(force=True)
                     hist = download_one(ticker, start, end,
                                         interval, auto_adjust, actions)
-                    _DFS_[ticker] = hist
-                    if progress:
-                        _PROGRESS_BAR_.animate()
+                    if isinstance(hist, pd.DataFrame) and len(hist.index) > 0:
+                        _DFS_[ticker] = hist
+                        if progress:
+                            _PROGRESS_BAR_.animate()
+                    else:
+                        round1_failed_tickers.append(ticker)
                 except:
                     round1_failed_tickers.append(ticker)
         time.sleep(0.001)
@@ -342,9 +350,12 @@ def download_chunk(tickers, start=None, end=None,
             try:
                 hist = download_one(ticker, start, end,
                                     interval, auto_adjust, actions)
-                _DFS_[ticker] = hist
-                if progress:
-                    _PROGRESS_BAR_.animate()
+                if isinstance(hist, pd.DataFrame) and len(hist.index) > 0:
+                    _DFS_[ticker] = hist
+                    if progress:
+                        _PROGRESS_BAR_.animate()
+                else:
+                    _FAILED_.append(ticker)
             except:
                 _FAILED_.append(ticker)
                 pass

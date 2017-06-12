@@ -4,6 +4,7 @@ Change Log
 0.0.14
 -------
 - Added support for Python 2.7
+- Confirming valid data returned before adding it to ``_DFS_``
 
 0.0.13
 -------
