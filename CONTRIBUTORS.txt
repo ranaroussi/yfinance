@@ -2,3 +2,4 @@
 # to the public version of QTPyLib.
 
 Ran Aroussi, Creator <https://github.com/ranaroussi>
+JPN (jonathanng), Contributor <https://github.com/jonathanng>

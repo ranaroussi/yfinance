@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.14
+-------
+- Added support for Python 2.7
+
 0.0.13
 -------
 - Removed debugging code

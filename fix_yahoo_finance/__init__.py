@@ -20,7 +20,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.0.13"
+__version__ = "0.0.14"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
