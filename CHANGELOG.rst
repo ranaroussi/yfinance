@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.15
+-------
+- Bugfix (closing issue #11)
+
 0.0.14
 -------
 - Added support for Python 2.7

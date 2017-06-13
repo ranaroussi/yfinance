@@ -20,7 +20,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.0.14"
+__version__ = "0.0.15"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -318,7 +318,7 @@ def download_chunk(tickers, start=None, end=None,
         try:
             hist = download_one(ticker, start, end,
                                 interval, auto_adjust, actions)
-            if isinstance(hist, pd.DataFrame) and len(hist.index) > 0:
+            if isinstance(hist, pd.DataFrame):
                 _DFS_[ticker] = hist
             else:
                 round1_failed_tickers.append(ticker)
@@ -331,7 +331,7 @@ def download_chunk(tickers, start=None, end=None,
                     get_yahoo_crumb(force=True)
                     hist = download_one(ticker, start, end,
                                         interval, auto_adjust, actions)
-                    if isinstance(hist, pd.DataFrame) and len(hist.index) > 0:
+                    if isinstance(hist, pd.DataFrame):
                         _DFS_[ticker] = hist
                         if progress:
                             _PROGRESS_BAR_.animate()
@@ -350,7 +350,7 @@ def download_chunk(tickers, start=None, end=None,
             try:
                 hist = download_one(ticker, start, end,
                                     interval, auto_adjust, actions)
-                if isinstance(hist, pd.DataFrame) and len(hist.index) > 0:
+                if isinstance(hist, pd.DataFrame):
                     _DFS_[ticker] = hist
                     if progress:
                         _PROGRESS_BAR_.animate()
