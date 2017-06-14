@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.16
+-------
+- Progress bar bugfix
+
 0.0.15
 -------
 - Bugfix (closing issue #11)

@@ -20,7 +20,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.0.15"
+__version__ = "0.0.16"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -185,6 +185,8 @@ def download(tickers, start=None, end=None, as_panel=True,
     while _COMPLETED_ < len(tickers):
         time.sleep(0.1)
 
+    _PROGRESS_BAR_.completed()
+
     # create panel (derecated)
     if as_panel:
         with warnings.catch_warnings():
@@ -320,6 +322,8 @@ def download_chunk(tickers, start=None, end=None,
                                 interval, auto_adjust, actions)
             if isinstance(hist, pd.DataFrame):
                 _DFS_[ticker] = hist
+                if progress:
+                    _PROGRESS_BAR_.animate()
             else:
                 round1_failed_tickers.append(ticker)
         except:
@@ -373,6 +377,13 @@ class ProgressBar:
         self.__update_amount(0)
         self.elapsed = 1
 
+    def completed(self):
+        if self.elapsed > self.iterations:
+            self.elapsed = self.iterations
+        self.update_iteration(1)
+        print('\r' + str(self), end='')
+        sys.stdout.flush()
+
     def animate(self, iteration=None):
         if iteration is None:
             self.elapsed += 1
@@ -384,8 +395,9 @@ class ProgressBar:
         sys.stdout.flush()
         self.update_iteration()
 
-    def update_iteration(self):
-        self.__update_amount((self.elapsed / float(self.iterations)) * 100.0)
+    def update_iteration(self, val=None):
+        val = val if val is not None else self.elapsed / float(self.iterations)
+        self.__update_amount(val * 100.0)
         self.prog_bar += '  %s of %s %s' % (
             self.elapsed, self.iterations, self.text)
 
