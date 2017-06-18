@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.17
+-------
+- Handles duplicate index
+
 0.0.16
 -------
 - Progress bar bugfix

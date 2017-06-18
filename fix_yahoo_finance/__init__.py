@@ -20,7 +20,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.0.16"
+__version__ = "0.0.17"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
 
@@ -91,7 +91,7 @@ def parse_ticker_csv(csv_str, auto_adjust):
 
         df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
 
-    return df
+    return df.groupby(df.index).first()
 
 
 _DFS_ = {}
