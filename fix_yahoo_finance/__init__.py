@@ -20,9 +20,10 @@
 
 from __future__ import print_function
 
-__version__ = "0.0.17"
+__version__ = "0.0.18"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
+
 
 import datetime
 import numpy as np
@@ -34,6 +35,12 @@ import re
 import warnings
 import sys
 import multitasking
+
+warnings.simplefilter("once")
+warnings.warn("""
+    Auto-overriding of pandas_datareader's get_data_yahoo() is deprecated and will be removed in future versions.
+    Use pdr_override() to explicitly override it.""",
+    DeprecationWarning)
 
 _YAHOO_COOKIE_ = ''
 _YAHOO_CRUMB_ = ''
@@ -109,7 +116,6 @@ def make_chunks(l, n):
 def download(tickers, start=None, end=None, as_panel=True,
              group_by='column', auto_adjust=False, progress=True,
              actions=None, threads=1, *args, **kwargs):
-
     """Download yahoo tickers
     :Parameters:
 
@@ -220,6 +226,7 @@ def download(tickers, start=None, end=None, as_panel=True,
 
 def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
 
+    tried_once = False
     crumb, cookie = get_yahoo_crumb()
 
     url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
@@ -260,30 +267,37 @@ def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
                     split['value'] = split.apply(
                         lambda x: 1 / eval(x['value']), axis=1).astype(float)
 
-
         if actions == 'only':
             return pd.concat([div, split]).sort_index()
 
     # download history
     url = url_str % (ticker, start, end, interval, 'history', crumb)
     res = requests.get(url, cookies={'B': cookie}).text
-    hist = pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
+    hist = pd.DataFrame(
+        columns=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
 
     if "error" in res:
         return pd.DataFrame()
 
     hist = parse_ticker_csv(io.StringIO(res), auto_adjust)
 
-    if actions is None:
+    if len(hist.index) > 0:
+        if actions is None:
+            return hist
+
+        hist['Dividends'] = div['value'] if len(div.index) > 0 else np.nan
+        hist['Dividends'].fillna(0, inplace=True)
+        hist['Stock Splits'] = split['value'] if len(
+            split.index) > 0 else np.nan
+        hist['Stock Splits'].fillna(1, inplace=True)
+
         return hist
 
-    hist['Dividends'] = div['value'] if len(div.index) > 0 else np.nan
-    hist['Dividends'].fillna(0, inplace=True)
-    hist['Stock Splits'] = split['value'] if len(split.index) > 0 else np.nan
-    hist['Stock Splits'].fillna(1, inplace=True)
-
-    return hist
-
+    # empty len(hist.index) == 0
+    if not tried_once:
+        tried_once = True
+        get_yahoo_crumb(force=True)
+        return download_one(ticker, start, end, interval, auto_adjust, actions)
 
 
 @multitasking.task
@@ -418,8 +432,11 @@ class ProgressBar:
 
 # make pandas datareader optional
 # otherwise can be called via fix_yahoo_finance.download(...)
-try:
-    import pandas_datareader
-    pandas_datareader.data.get_data_yahoo = download
-except:
-    pass
+def pdr_override():
+    try:
+        import pandas_datareader
+        pandas_datareader.data.get_data_yahoo = download
+    except:
+        pass
+
+pdr_override()

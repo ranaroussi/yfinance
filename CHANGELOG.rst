@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.0.18
+-------
+- Minor Bugfixes
+- Added deprecation warning for future versions regarding auto-overriding pandas_datareader
+
 0.0.17
 -------
 - Handles duplicate index
