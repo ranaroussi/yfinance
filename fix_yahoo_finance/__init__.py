@@ -221,6 +221,7 @@ def download(tickers, start=None, end=None, as_panel=True,
         print("\nThe following tickers failed to download:\n",
               ', '.join(_FAILED_))
 
+    _DFS_ = {}
     return data
 
 
