@@ -22,7 +22,7 @@ from __future__ import print_function
 
 __version__ = "0.0.18"
 __author__ = "Ran Aroussi"
-__all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv']
+__all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv', 'pdr_override']
 
 
 import datetime
