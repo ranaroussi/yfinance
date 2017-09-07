@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.19
+-------
+- Misc bugfixes
+
 0.0.18
 -------
 - Minor Bugfixes
