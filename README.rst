@@ -103,7 +103,7 @@ Below is the full list of acceptable parameters:
                 # modify historical data's interval to fetch
                 # (optional, default is 1d)
                 # Options: 1d (daily), 1w (weekly), 1mo (monthly data)
-                interval = 1d
+                interval = "1d"
             )
 
 
