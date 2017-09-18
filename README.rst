@@ -99,6 +99,11 @@ Below is the full list of acceptable parameters:
 
                 # How may threads to use?
                 threads = 10
+
+                # modify historical data's interval to fetch
+                # (optional, default is 1d)
+                # Options: 1d (daily), 1w (weekly), 1mo (monthly data)
+                interval = 1d
             )
 
 
