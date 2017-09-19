@@ -191,7 +191,8 @@ def download(tickers, start=None, end=None, as_panel=True,
     while _COMPLETED_ < len(tickers):
         time.sleep(0.1)
 
-    _PROGRESS_BAR_.completed()
+    if progress:
+        _PROGRESS_BAR_.completed()
 
     # create panel (derecated)
     if as_panel:
