@@ -79,7 +79,7 @@ def parse_ticker_csv(csv_str, auto_adjust):
 
     df.index = pd.to_datetime(df.index)
     df = df.apply(pd.to_numeric)
-    df['Volume'] = df['Volume'].fillna(0).astype(int)
+    df['Volume'] = df['Volume'].fillna(0).astype(np.int64)
 
     if auto_adjust:
         ratio = df["Close"] / df["Adj Close"]
