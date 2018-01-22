@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.20
+-------
+- Fixed issue with progress bar (issue #42)
+
 0.0.19
 -------
 - Misc bugfixes
