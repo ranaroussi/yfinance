@@ -4,7 +4,7 @@
 # Yahoo! Finance Fix for Pandas Datareader
 # https://github.com/ranaroussi/fix-yahoo-finance
 #
-# Copyright 2017 Ran Aroussi
+# Copyright 2017-2018 Ran Aroussi
 #
 # Licensed under the GNU Lesser General Public License, v3.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,65 +20,66 @@
 
 from __future__ import print_function
 
-__version__ = "0.0.20"
+__version__ = "0.0.21"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv', 'pdr_override']
 
 
-import datetime
-import numpy as np
-import pandas as pd
-import time
-import io
-import requests
-import re
-import warnings
-import sys
-import multitasking
+import datetime as _datetime
+import time as _time
+import io as _io
+import re as _re
+import warnings as _warnings
+import sys as _sys
 
-warnings.simplefilter("once")
-warnings.warn("""
-    Auto-overriding of pandas_datareader's get_data_yahoo() is deprecated and no longer available.
-    Use pdr_override() to explicitly override it.""",
-    DeprecationWarning)
+import numpy as _np
+import pandas as _pd
+import requests as _requests
+import multitasking as _multitasking
 
-_YAHOO_COOKIE_ = ''
-_YAHOO_CRUMB_ = ''
-_YAHOO_CHECKED_ = None
-_YAHOO_TTL_ = 180
+
+_YAHOO_COOKIE = ''
+_YAHOO_CRUMB = ''
+_YAHOO_CHECKED = None
+_YAHOO_TTL = 180
+
+_DFS = {}
+_COMPLETED = 0
+_PROGRESS_BAR = False
+_FAILED = []
 
 
 def get_yahoo_crumb(force=False):
-    global _YAHOO_COOKIE_, _YAHOO_CRUMB_, _YAHOO_CHECKED_, _YAHOO_TTL_
+    global _YAHOO_COOKIE, _YAHOO_CRUMB, _YAHOO_CHECKED, _YAHOO_TTL
 
     # use same cookie for 5 min
-    if _YAHOO_CHECKED_ and not force:
-        now = datetime.datetime.now()
-        delta = (now - _YAHOO_CHECKED_).total_seconds()
-        if delta < _YAHOO_TTL_:
-            return (_YAHOO_CRUMB_, _YAHOO_COOKIE_)
+    if _YAHOO_CHECKED and not force:
+        now = _datetime.datetime.now()
+        delta = (now - _YAHOO_CHECKED).total_seconds()
+        if delta < _YAHOO_TTL:
+            return (_YAHOO_CRUMB, _YAHOO_COOKIE)
 
-    res = requests.get('https://finance.yahoo.com/quote/SPY/history')
-    _YAHOO_COOKIE_ = res.cookies['B']
+    res = _requests.get('https://finance.yahoo.com/quote/SPY/history')
+    _YAHOO_COOKIE = res.cookies['B']
 
-    pattern = re.compile('.*"CrumbStore":\{"crumb":"(?P<crumb>[^"]+)"\}')
+    pattern = _re.compile('.*"CrumbStore":\{"crumb":"(?P<crumb>[^"]+)"\}')
     for line in res.text.splitlines():
         m = pattern.match(line)
         if m is not None:
-            _YAHOO_CRUMB_ = m.groupdict()['crumb']
+            _YAHOO_CRUMB = m.groupdict()['crumb']
 
     # set global params
-    _YAHOO_CHECKED_ = datetime.datetime.now()
+    _YAHOO_CHECKED = _datetime.datetime.now()
 
-    return (_YAHOO_CRUMB_, _YAHOO_COOKIE_)
+    return (_YAHOO_CRUMB, _YAHOO_COOKIE)
 
 
 def parse_ticker_csv(csv_str, auto_adjust):
-    df = pd.read_csv(csv_str, index_col=0, error_bad_lines=False
-                     ).replace('null', np.nan).dropna()
+    df = _pd.read_csv(csv_str, index_col=0, error_bad_lines=False
+                     ).replace('null', _np.nan).dropna()
 
-    df.index = pd.to_datetime(df.index)
-    df = df.apply(pd.to_numeric)
+    df.index = _pd.to_datetime(df.index)
+    df = df.apply(_pd.to_numeric)
     df['Volume'] = df['Volume'].fillna(0).astype(int)
 
     if auto_adjust:
@@ -101,12 +102,6 @@ def parse_ticker_csv(csv_str, auto_adjust):
     return df.groupby(df.index).first()
 
 
-_DFS_ = {}
-_COMPLETED_ = 0
-_PROGRESS_BAR_ = False
-_FAILED_ = []
-
-
 def make_chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
@@ -115,16 +110,16 @@ def make_chunks(l, n):
 
 def download(tickers, start=None, end=None, as_panel=True,
              group_by='column', auto_adjust=False, progress=True,
-             actions=None, threads=1, *args, **kwargs):
+             actions=None, threads=1, **kwargs):
     """Download yahoo tickers
     :Parameters:
 
         tickers : str, list
             List of tickers to download
         start: str
-            Download start date string (YYYY-MM-DD) or datetime. Default is 1950-01-01
+            Download start date string (YYYY-MM-DD) or _datetime. Default is 1950-01-01
         end: str
-            Download end date string (YYYY-MM-DD) or datetime. Default is today
+            Download end date string (YYYY-MM-DD) or _datetime. Default is today
         as_panel : bool
             Return a multi-index DataFrame or Panel. Default is True (Panel), which is deprecated
         group_by : str
@@ -138,25 +133,26 @@ def download(tickers, start=None, end=None, as_panel=True,
             How may threads to use? Default is 1 thread
     """
 
-    global _DFS_, _COMPLETED_, _PROGRESS_BAR_, _FAILED_
-    _COMPLETED_ = 0
-    _FAILED_ = []
+    global _DFS, _COMPLETED, _PROGRESS_BAR, _FAILED
+
+    _COMPLETED = 0
+    _FAILED = []
 
     # format start
     if start is None:
-        start = int(time.mktime(time.strptime('1950-01-01', '%Y-%m-%d')))
-    elif isinstance(start, datetime.datetime):
-        start = int(time.mktime(start.timetuple()))
+        start = int(_time.mktime(_time.strptime('1950-01-01', '%Y-%m-%d')))
+    elif isinstance(start, _datetime.datetime):
+        start = int(_time.mktime(start.timetuple()))
     else:
-        start = int(time.mktime(time.strptime(str(start), '%Y-%m-%d')))
+        start = int(_time.mktime(_time.strptime(str(start), '%Y-%m-%d')))
 
     # format end
     if end is None:
-        end = int(time.mktime(datetime.datetime.now().timetuple()))
-    elif isinstance(end, datetime.datetime):
-        end = int(time.mktime(end.timetuple()))
+        end = int(_time.mktime(_datetime.datetime.now().timetuple()))
+    elif isinstance(end, _datetime.datetime):
+        end = int(_time.mktime(end.timetuple()))
     else:
-        end = int(time.mktime(time.strptime(str(end), '%Y-%m-%d')))
+        end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
 
     # create ticker list
     tickers = tickers if isinstance(tickers, list) else [tickers]
@@ -164,13 +160,13 @@ def download(tickers, start=None, end=None, as_panel=True,
 
     # initiate progress bar
     if progress:
-        _PROGRESS_BAR_ = ProgressBar(len(tickers), 'downloaded')
+        _PROGRESS_BAR = _ProgressBar(len(tickers), 'downloaded')
 
     # download using single thread
     if threads is None or threads < 2:
         download_chunk(tickers, start=start, end=end,
                        auto_adjust=auto_adjust, progress=progress,
-                       actions=actions, *args, **kwargs)
+                       actions=actions, **kwargs)
     # threaded download
     else:
         threads = min([threads, len(tickers)])
@@ -181,30 +177,30 @@ def download(tickers, start=None, end=None, as_panel=True,
             chunks += len(chunk)
             download_thread(chunk, start=start, end=end,
                             auto_adjust=auto_adjust, progress=progress,
-                            actions=actions, *args, **kwargs)
-        if len(tickers[-chunks:]) > 0:
+                            actions=actions, **kwargs)
+        if not tickers[-chunks:].empty:
             download_thread(tickers[-chunks:], start=start, end=end,
                             auto_adjust=auto_adjust, progress=progress,
-                            actions=actions, *args, **kwargs)
+                            actions=actions, **kwargs)
 
     # wait for completion
-    while _COMPLETED_ < len(tickers):
-        time.sleep(0.1)
+    while _COMPLETED < len(tickers):
+        _time.sleep(0.1)
 
     if progress:
-        _PROGRESS_BAR_.completed()
+        _PROGRESS_BAR.completed()
 
     # create panel (derecated)
     if as_panel:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
-            data = pd.Panel(_DFS_)
+        with _warnings.catch_warnings():
+            _warnings.filterwarnings("ignore", category=DeprecationWarning)
+            data = _pd.Panel(_DFS)
             if group_by == 'column':
                 data = data.swapaxes(0, 2)
 
     # create multiIndex df
     else:
-        data = pd.concat(_DFS_.values(), axis=1, keys=_DFS_.keys())
+        data = _pd.concat(_DFS.values(), axis=1, keys=_DFS.keys())
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
             data.sort_index(level=0, axis=1, inplace=True)
@@ -216,13 +212,13 @@ def download(tickers, start=None, end=None, as_panel=True,
 
     # return single df if only one ticker
     if len(tickers) == 1:
-        data = _DFS_[tickers[0]]
+        data = _DFS[tickers[0]]
 
-    if len(_FAILED_) > 0:
+    if _FAILED:
         print("\nThe following tickers failed to download:\n",
-              ', '.join(_FAILED_))
+              ', '.join(_FAILED))
 
-    _DFS_ = {}
+    _DFS = {}
     return data
 
 
@@ -238,59 +234,58 @@ def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
 
     if actions:
         url = url_str % (ticker, start, end, interval, 'div', crumb)
-        res = requests.get(url, cookies={'B': cookie}).text
+        res = _requests.get(url, cookies={'B': cookie}).text
         # print(res)
-        div = pd.DataFrame(columns=['action', 'value'])
+        div = _pd.DataFrame(columns=['action', 'value'])
         if "error" not in res:
-            div = pd.read_csv(io.StringIO(res),
+            div = _pd.read_csv(_io.StringIO(res),
                               index_col=0, error_bad_lines=False
-                              ).replace('null', np.nan).dropna()
+                              ).replace('null', _np.nan).dropna()
 
-            if isinstance(div, pd.DataFrame):
-                div.index = pd.to_datetime(div.index)
+            if isinstance(div, _pd.DataFrame):
+                div.index = _pd.to_datetime(div.index)
                 div["action"] = "DIVIDEND"
                 div = div.rename(columns={'Dividends': 'value'})
                 div['value'] = div['value'].astype(float)
 
         # download Stock Splits data
         url = url_str % (ticker, start, end, interval, 'split', crumb)
-        res = requests.get(url, cookies={'B': cookie}).text
-        split = pd.DataFrame(columns=['action', 'value'])
+        res = _requests.get(url, cookies={'B': cookie}).text
+        split = _pd.DataFrame(columns=['action', 'value'])
         if "error" not in res:
-            split = pd.read_csv(io.StringIO(res),
+            split = _pd.read_csv(_io.StringIO(res),
                                 index_col=0, error_bad_lines=False
-                                ).replace('null', np.nan).dropna()
+                                ).replace('null', _np.nan).dropna()
 
-            if isinstance(split, pd.DataFrame):
-                split.index = pd.to_datetime(split.index)
+            if isinstance(split, _pd.DataFrame):
+                split.index = _pd.to_datetime(split.index)
                 split["action"] = "SPLIT"
                 split = split.rename(columns={'Stock Splits': 'value'})
-                if len(split.index) > 0:
+                if not split.empty:
                     split['value'] = split.apply(
                         lambda x: 1 / eval(x['value']), axis=1).astype(float)
 
         if actions == 'only':
-            return pd.concat([div, split]).sort_index()
+            return _pd.concat([div, split]).sort_index()
 
     # download history
     url = url_str % (ticker, start, end, interval, 'history', crumb)
-    res = requests.get(url, cookies={'B': cookie}).text
-    hist = pd.DataFrame(
+    res = _requests.get(url, cookies={'B': cookie}).text
+    hist = _pd.DataFrame(
         columns=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
 
     if "error" in res:
-        return pd.DataFrame()
+        return _pd.DataFrame()
 
-    hist = parse_ticker_csv(io.StringIO(res), auto_adjust)
+    hist = parse_ticker_csv(_io.StringIO(res), auto_adjust)
 
-    if len(hist.index) > 0:
+    if not hist.empty:
         if actions is None:
             return hist
 
-        hist['Dividends'] = div['value'] if len(div.index) > 0 else np.nan
+        hist['Dividends'] = div['value'] if not div.empty else _np.nan
         hist['Dividends'].fillna(0, inplace=True)
-        hist['Stock Splits'] = split['value'] if len(
-            split.index) > 0 else np.nan
+        hist['Stock Splits'] = split['value'] if not split.empty else _np.nan
         hist['Stock Splits'].fillna(1, inplace=True)
 
         return hist
@@ -302,20 +297,20 @@ def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
         return download_one(ticker, start, end, interval, auto_adjust, actions)
 
 
-@multitasking.task
+@_multitasking.task
 def download_thread(tickers, start=None, end=None,
                     auto_adjust=False, progress=True,
-                    actions=False, *args, **kwargs):
-    download_chunk(tickers, start=None, end=None,
-                   auto_adjust=False, progress=progress,
-                   actions=False, *args, **kwargs)
+                    actions=False, **kwargs):
+    download_chunk(tickers, start=start, end=end,
+                   auto_adjust=auto_adjust, progress=progress,
+                   actions=actions, **kwargs)
 
 
 def download_chunk(tickers, start=None, end=None,
                    auto_adjust=False, progress=True,
-                   actions=False, *args, **kwargs):
+                   actions=False, **kwargs):
 
-    global _DFS_, _COMPLETED_, _PROGRESS_BAR_, _FAILED_
+    global _DFS, _COMPLETED, _PROGRESS_BAR, _FAILED
 
     interval = kwargs["interval"] if "interval" in kwargs else "1d"
 
@@ -330,16 +325,17 @@ def download_chunk(tickers, start=None, end=None,
     for ticker in tickers:
 
         # yahoo crumb/cookie
-        crumb, cookie = get_yahoo_crumb()
+        # crumb, cookie = get_yahoo_crumb()
+        get_yahoo_crumb()
 
         tried_once = False
         try:
             hist = download_one(ticker, start, end,
                                 interval, auto_adjust, actions)
-            if isinstance(hist, pd.DataFrame):
-                _DFS_[ticker] = hist
+            if isinstance(hist, _pd.DataFrame):
+                _DFS[ticker] = hist
                 if progress:
-                    _PROGRESS_BAR_.animate()
+                    _PROGRESS_BAR.animate()
             else:
                 round1_failed_tickers.append(ticker)
         except:
@@ -351,39 +347,38 @@ def download_chunk(tickers, start=None, end=None,
                     get_yahoo_crumb(force=True)
                     hist = download_one(ticker, start, end,
                                         interval, auto_adjust, actions)
-                    if isinstance(hist, pd.DataFrame):
-                        _DFS_[ticker] = hist
+                    if isinstance(hist, _pd.DataFrame):
+                        _DFS[ticker] = hist
                         if progress:
-                            _PROGRESS_BAR_.animate()
+                            _PROGRESS_BAR.animate()
                     else:
                         round1_failed_tickers.append(ticker)
                 except:
                     round1_failed_tickers.append(ticker)
-        time.sleep(0.001)
+        _time.sleep(0.001)
 
     # try failed items again before giving up
-    _COMPLETED_ += len(tickers) - len(round1_failed_tickers)
+    _COMPLETED += len(tickers) - len(round1_failed_tickers)
 
-    if len(round1_failed_tickers) > 0:
+    if round1_failed_tickers:
         get_yahoo_crumb(force=True)
         for ticker in round1_failed_tickers:
             try:
                 hist = download_one(ticker, start, end,
                                     interval, auto_adjust, actions)
-                if isinstance(hist, pd.DataFrame):
-                    _DFS_[ticker] = hist
+                if isinstance(hist, _pd.DataFrame):
+                    _DFS[ticker] = hist
                     if progress:
-                        _PROGRESS_BAR_.animate()
+                        _PROGRESS_BAR.animate()
                 else:
-                    _FAILED_.append(ticker)
+                    _FAILED.append(ticker)
             except:
-                _FAILED_.append(ticker)
-                pass
-            time.sleep(0.000001)
-        _COMPLETED_ += 1
+                _FAILED.append(ticker)
+            _time.sleep(0.000001)
+        _COMPLETED += 1
 
 
-class ProgressBar:
+class _ProgressBar:
     def __init__(self, iterations, text='completed'):
         self.text = text
         self.iterations = iterations
@@ -398,7 +393,8 @@ class ProgressBar:
             self.elapsed = self.iterations
         self.update_iteration(1)
         print('\r' + str(self), end='')
-        sys.stdout.flush()
+        _sys.stdout.flush()
+        print()
 
     def animate(self, iteration=None):
         if iteration is None:
@@ -408,7 +404,7 @@ class ProgressBar:
             self.elapsed += iteration
 
         print('\r' + str(self), end='')
-        sys.stdout.flush()
+        _sys.stdout.flush()
         self.update_iteration()
 
     def update_iteration(self, val=None):
@@ -440,5 +436,3 @@ def pdr_override():
         pandas_datareader.data.get_data_yahoo = download
     except:
         pass
-
-# pdr_override()
