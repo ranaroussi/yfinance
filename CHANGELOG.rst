@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.0.22
+-------
+- Deprecated Panel support
+
 0.0.21
 -------
 - Code cleanup

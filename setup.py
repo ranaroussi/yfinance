@@ -18,7 +18,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='fix-yahoo-finance',
-    version="0.0.21",
+    version="0.0.22",
     description='Fix for Pandas Datareader\'s get_data_yahoo()',
     long_description=long_description,
     url='https://github.com/ranaroussi/fix-yahoo-finance',
