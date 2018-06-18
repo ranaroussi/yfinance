@@ -108,7 +108,7 @@ def make_chunks(l, n):
         yield l[i:i + n]
 
 
-def download(tickers, start=None, end=None, as_panel=True,
+def download(tickers, start=None, end=None, as_panel=False,
              group_by='column', auto_adjust=False, progress=True,
              actions=None, threads=1, **kwargs):
     """Download yahoo tickers
@@ -121,7 +121,7 @@ def download(tickers, start=None, end=None, as_panel=True,
         end: str
             Download end date string (YYYY-MM-DD) or _datetime. Default is today
         as_panel : bool
-            Return a multi-index DataFrame or Panel. Default is True (Panel), which is deprecated
+            Deprecated
         group_by : str
             Group by ticker or 'column' (default)
         auto_adjust: bool
@@ -190,25 +190,16 @@ def download(tickers, start=None, end=None, as_panel=True,
     if progress:
         _PROGRESS_BAR.completed()
 
-    # create panel (derecated)
-    if as_panel:
-        with _warnings.catch_warnings():
-            _warnings.filterwarnings("ignore", category=DeprecationWarning)
-            data = _pd.Panel(_DFS)
-            if group_by == 'column':
-                data = data.swapaxes(0, 2)
-
     # create multiIndex df
-    else:
-        data = _pd.concat(_DFS.values(), axis=1, keys=_DFS.keys())
-        if group_by == 'column':
-            data.columns = data.columns.swaplevel(0, 1)
-            data.sort_index(level=0, axis=1, inplace=True)
-            if auto_adjust:
-                data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
-            else:
-                data = data[['Open', 'High', 'Low',
-                             'Close', 'Adj Close', 'Volume']]
+    data = _pd.concat(_DFS.values(), axis=1, keys=_DFS.keys())
+    if group_by == 'column':
+        data.columns = data.columns.swaplevel(0, 1)
+        data.sort_index(level=0, axis=1, inplace=True)
+        if auto_adjust:
+            data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
+        else:
+            data = data[['Open', 'High', 'Low',
+                            'Close', 'Adj Close', 'Volume']]
 
     # return single df if only one ticker
     if len(tickers) == 1:
