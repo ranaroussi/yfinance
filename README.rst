@@ -46,6 +46,9 @@ By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
 Quick Start
 ===========
 
+
+**For Python 3 or higher**
+
 .. code:: python
 
     from pandas_datareader import data as pdr
@@ -58,6 +61,21 @@ Quick Start
 
     # download Panel
     data = pdr.get_data_yahoo(["SPY", "IWM"], start="2017-01-01", end="2017-04-30")
+
+
+**For Python 2.7**
+
+.. code:: python
+
+    import fix_yahoo_finance as yf
+    
+    import pandas as pd
+
+    
+    # Download the Dataset from Yahoo Finance
+    data = yf.download("SPY", start="2017-01-01", end="2017-04-30")
+    # Create Pandas DataFrame with retrieved data
+    df = pd.DataFrame(data=data)
 
 
 I've also added some options to make life easier :)
