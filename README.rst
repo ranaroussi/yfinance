@@ -1,33 +1,7 @@
 Yahoo! Finance Fix for Pandas Datareader
 ========================================
 
-.. image:: https://img.shields.io/pypi/pyversions/fix-yahoo-finance.svg?maxAge=60
-    :target: https://pypi.python.org/pypi/fix-yahoo-finance
-    :alt: Python version
-
-.. image:: https://img.shields.io/travis/ranaroussi/fix-yahoo-finance/master.svg?
-    :target: https://travis-ci.org/ranaroussi/fix-yahoo-finance
-    :alt: Travis-CI build status
-
-.. image:: https://img.shields.io/pypi/v/fix-yahoo-finance.svg?maxAge=60
-    :target: https://pypi.python.org/pypi/fix-yahoo-finance
-    :alt: PyPi version
-
-.. image:: https://img.shields.io/pypi/status/fix-yahoo-finance.svg?maxAge=60
-    :target: https://pypi.python.org/pypi/fix-yahoo-finance
-    :alt: PyPi status
-
-.. image:: https://img.shields.io/github/stars/ranaroussi/fix-yahoo-finance.svg?style=social&label=Star&maxAge=60
-    :target: https://github.com/ranaroussi/fix-yahoo-finance
-    :alt: Star this repo
-
-.. image:: https://img.shields.io/twitter/follow/aroussi.svg?style=social&label=Follow%20Me&maxAge=60
-    :target: https://twitter.com/aroussi
-    :alt: Follow me on twitter
-
----
-
-.. image:: https://img.shields.io/badge/python-3.4+-blue.svg?style=flat
+.. image:: https://img.shields.io/badge/python-2.7,%203.4+-blue.svg?style=flat
     :target: https://pypi.python.org/pypi/fix-yahoo-finance
     :alt: Python version
 
