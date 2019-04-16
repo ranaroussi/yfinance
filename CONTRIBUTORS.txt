@@ -1,5 +1,5 @@
 # This file contains a list of people who have made contributions
-# to the public version of QTPyLib.
+# to the public version of this library.
 
 Ran Aroussi, Creator <https://github.com/ranaroussi>
 JPN (jonathanng), Contributor <https://github.com/jonathanng>
