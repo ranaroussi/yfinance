@@ -17,10 +17,6 @@ Yahoo! Finance Fix for Pandas Datareader
     :target: https://travis-ci.org/ranaroussi/fix-yahoo-finance
     :alt: Travis-CI build status
 
-.. image:: https://img.shields.io/badge/Patreon-accepting-ff69b4.svg?style=flat
-    :target: https://www.patreon.com/aroussi
-    :alt: Patreon Status
-
 .. image:: https://img.shields.io/github/stars/ranaroussi/fix-yahoo-finance.svg?style=social&label=Star&maxAge=60
     :target: https://github.com/ranaroussi/fix-yahoo-finance
     :alt: Star this repo
@@ -34,9 +30,9 @@ Yahoo! Finance Fix for Pandas Datareader
 `Yahoo! finance <https://ichart.finance.yahoo.com>`_ has decommissioned
 their historical data API, causing many programs that relied on it to stop working.
 
-**fix-yahoo-finance** offers a **temporary fix** to the problem
-by scraping the data from Yahoo! finance using and return a Pandas
-DataFrame/Panel in the same format as **pandas_datareader**'s ``get_data_yahoo()``.
+**fix-yahoo-finance** fixes the problem by scraping the data from Yahoo! finance
+and returning a Pandas DataFrame in the same format as **pandas_datareader**'s
+``get_data_yahoo()``.
 
 By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
 **fix-yahoo-finance**'s implantation is easy and only requires to import
@@ -50,6 +46,78 @@ By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
 Quick Start
 ===========
 
+The Ticker module
+~~~~~~~~~~~~~~~~~
+
+The ``Ticker`` module, which allows you to access
+ticker data in amore Pythonic way:
+
+.. code:: python
+
+    import fix_yahoo_finance as yf
+
+    msft = yf.Ticker("MSFT")
+
+    # get stock info
+    msft.info
+
+    # get historical market data
+    hist = msft.history(period="max", auto_adjust=True)
+
+    # show actions (dividends, splits)
+    msft.actions
+
+    # show dividends
+    msft.dividends
+
+    # show splits
+    msft.splits
+
+
+Fetching data for multiple tickers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+    import fix_yahoo_finance as yf
+    data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
+
+
+I've also added some options to make life easier :)
+
+.. code:: python
+
+    data = yf.download(  # or pdr.get_data_yahoo(...
+            # tickers list or string as well
+            tickers = "SPY IWM TLT",
+
+            # use "period" instead of start/end
+            # valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+            # (optional, default is '1mo')
+            period = "mtd",
+
+            # fetch data by interval (including intraday if period < 60 days)
+            # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+            # (optional, default is '1d')
+            interval : "1m",
+
+            # group by ticker (to access via data['SPY'])
+            # (optional, default is 'column')
+            group_by = 'ticker',
+
+            # adjust all OHLC automatically
+            # (optional, default is False)
+            auto_adjust = True,
+
+            # download pre/post regular market hours data
+            # (optional, default is False)
+            prepost = True
+        )
+
+
+``pandas_datareader`` override
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. code:: python
 
     from pandas_datareader import data as pdr
@@ -59,59 +127,6 @@ Quick Start
 
     # download dataframe
     data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
-
-    # download Panel
-    data = pdr.get_data_yahoo(["SPY", "IWM"], start="2017-01-01", end="2017-04-30")
-
-
-I've also added some options to make life easier :)
-
-Below is the full list of acceptable parameters:
-
-.. code:: python
-
-    data = pdr.get_data_yahoo(
-                # tickers list (single tickers accepts a string as well)
-                tickers = ["SPY", "IWM", "..."],
-
-                # start date (YYYY-MM-DD / datetime.datetime object)
-                # (optional, defaults is 1950-01-01)
-                start = "2017-01-01",
-
-                # end date (YYYY-MM-DD / datetime.datetime object)
-                # (optional, defaults is Today)
-                end = "2017-04-30",
-
-                # return a multi-index dataframe
-                # (optional, default is Panel, which is deprecated)
-                as_panel = False,
-
-                # group by ticker (to access via data['SPY'])
-                # (optional, default is 'column')
-                group_by = 'ticker',
-
-                # adjust all OHLC automatically
-                # (optional, default is False)
-                auto_adjust = True,
-
-                # download dividend + stock splits data
-                # (optional, default is None)
-                # options are:
-                #   - True (returns history + actions)
-                #   - 'only' (actions only)
-                actions = True,
-
-                # How may threads to use?
-                threads = 10
-            )
-
-
-It can also be used as a stand-alone library (without ``pandas_datareader``) if you want:
-
-.. code:: python
-
-    import fix_yahoo_finance as yf
-    data = yf.download("SPY", start="2017-01-01", end="2017-04-30")
 
 
 Installation
@@ -127,11 +142,10 @@ Install ``fix_yahoo_finance`` using ``pip``:
 Requirements
 ------------
 
-* `Python <https://www.python.org>`_ >=3.4
-* `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.18.1)
+* `Python <https://www.python.org>`_ >= 2.7, 3.4+
+* `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.23.1)
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `requests <http://docs.python-requests.org/en/master/>`_ >= 2.14.2
-* `multitasking <https://github.com/ranaroussi/multitasking>`_ >= 0.0.3
 
 
 Optional (if you want to use ``pandas_datareader``)
@@ -142,7 +156,7 @@ Optional (if you want to use ``pandas_datareader``)
 Legal Stuff
 ------------
 
-**fix-yahoo-finance** is distributed under the **GNU Lesser General Public License v3.0**. See the `LICENSE.txt <./LICENSE.txt>`_ file in the release for details.
+**fix-yahoo-finance** is distributed under the **Apache Software License**. See the `LICENSE.txt <./LICENSE.txt>`_ file in the release for details.
 
 
 P.S.

@@ -1,88 +1,75 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Yahoo! Finance Fix for Pandas Datareader
+# Yahoo! Finance market data downloader (+fix for Pandas Datareader)
 # https://github.com/ranaroussi/fix-yahoo-finance
 #
-# Copyright 2017-2018 Ran Aroussi
+# Copyright 2017-2019 Ran Aroussi
 #
-# Licensed under the GNU Lesser General Public License, v3.0 (the "License");
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     https://www.gnu.org/licenses/lgpl-3.0.en.html
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-from __future__ import print_function
-
-__version__ = "0.0.22"
+__version__ = "0.1.0"
 __author__ = "Ran Aroussi"
-__all__ = ['download', 'get_yahoo_crumb', 'parse_ticker_csv', 'pdr_override']
+__all__ = ['download', 'Ticker', 'pdr_override',
+           'get_yahoo_crumb', 'parse_ticker_csv']
 
 
-import datetime as _datetime
 import time as _time
-import io as _io
-import re as _re
-import warnings as _warnings
-import sys as _sys
-
-import numpy as _np
-import pandas as _pd
+import datetime as _datetime
 import requests as _requests
-import multitasking as _multitasking
-
-
-_YAHOO_COOKIE = ''
-_YAHOO_CRUMB = ''
-_YAHOO_CHECKED = None
-_YAHOO_TTL = 180
-
-_DFS = {}
-_COMPLETED = 0
-_PROGRESS_BAR = False
-_FAILED = []
-
-
-def get_yahoo_crumb(force=False):
-    global _YAHOO_COOKIE, _YAHOO_CRUMB, _YAHOO_CHECKED, _YAHOO_TTL
-
-    # use same cookie for 5 min
-    if _YAHOO_CHECKED and not force:
-        now = _datetime.datetime.now()
-        delta = (now - _YAHOO_CHECKED).total_seconds()
-        if delta < _YAHOO_TTL:
-            return (_YAHOO_CRUMB, _YAHOO_COOKIE)
-
-    res = _requests.get('https://finance.yahoo.com/quote/SPY/history')
-    _YAHOO_COOKIE = res.cookies['B']
-
-    pattern = _re.compile('.*"CrumbStore":\{"crumb":"(?P<crumb>[^"]+)"\}')
-    for line in res.text.splitlines():
-        m = pattern.match(line)
-        if m is not None:
-            _YAHOO_CRUMB = m.groupdict()['crumb']
-
-    # set global params
-    _YAHOO_CHECKED = _datetime.datetime.now()
-
-    return (_YAHOO_CRUMB, _YAHOO_COOKIE)
+import pandas as _pd
+import numpy as _np
+import sys as _sys
 
 
 def parse_ticker_csv(csv_str, auto_adjust):
-    df = _pd.read_csv(csv_str, index_col=0, error_bad_lines=False
-                     ).replace('null', _np.nan).dropna()
+    raise DeprecationWarning('This method is deprecated')
+    pass
 
-    df.index = _pd.to_datetime(df.index)
-    df = df.apply(_pd.to_numeric)
-    df['Volume'] = df['Volume'].fillna(0).astype(int)
 
-    if auto_adjust:
+def get_yahoo_crumb(force=False):
+    raise DeprecationWarning('This method is deprecated')
+    pass
+
+
+class Ticker():
+
+    def __init__(self, ticker):
+        self.ticker = ticker
+        self._history = None
+        self._base_url = 'https://query1.finance.yahoo.com'
+
+    @property
+    def info(self):
+        """ retreive metadata and currenct price data """
+        url = "{}/v7/finance/quote?symbols={}".format(
+            self._base_url, self.ticker)
+        r = _requests.get(url=url).json()["quoteResponse"]["result"]
+        if len(r) > 0:
+            return r[0]
+        return {}
+
+    """
+    # @todo
+    def _options(self):
+        # https://query1.finance.yahoo.com/v7/finance/options/SPY
+        pass
+    """
+
+    @staticmethod
+    def _auto_adjust(data):
+        df = data.copy()
         ratio = df["Close"] / df["Adj Close"]
         df["Adj Open"] = df["Open"] / ratio
         df["Adj High"] = df["High"] / ratio
@@ -97,276 +84,223 @@ def parse_ticker_csv(csv_str, auto_adjust):
             "Adj Low": "Low", "Adj Close": "Close"
         }, inplace=True)
 
-        df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+        df = df[["Open", "High", "Low", "Close", "Volume"]]
+        return df
 
-    return df.groupby(df.index).first()
+    @staticmethod
+    def _parse_quotes(data):
+        timestamps = data["timestamp"]
+        ohlc = data["indicators"]["quote"][0]
+        volumes = ohlc["volume"]
+        opens = ohlc["open"]
+        closes = ohlc["close"]
+        lows = ohlc["low"]
+        highs = ohlc["high"]
+
+        adjclose = closes
+        if "adjclose" in data["indicators"]:
+            adjclose = data["indicators"]["adjclose"][0]["adjclose"]
+
+        quotes = _pd.DataFrame({"Open": opens,
+                                "High": highs,
+                                "Low": lows,
+                                "Close": closes,
+                                "Adj Close": adjclose,
+                                "Volume": volumes})
+
+        quotes = _np.round(quotes, data["meta"]["priceHint"])
+        quotes.index = _pd.to_datetime(timestamps, unit="s")
+        quotes.sort_index(inplace=True)
+        return quotes
+
+    @staticmethod
+    def _parse_actions(data):
+        dividends = _pd.DataFrame(columns=["Dividends"])
+        splits = _pd.DataFrame(columns=["Stock Splits"])
+
+        if "events" in data:
+            if "dividends" in data["events"]:
+                dividends = _pd.DataFrame(data["events"]["dividends"].values())
+                dividends.set_index("date", inplace=True)
+                dividends.index = _pd.to_datetime(dividends.index, unit="s")
+                dividends.sort_index(inplace=True)
+                dividends.columns = ["Dividends"]
+
+            if "splits" in data["events"]:
+                splits = _pd.DataFrame(data["events"]["splits"].values())
+                splits.set_index("date", inplace=True)
+                splits.index = _pd.to_datetime(
+                    splits.index, unit="s")
+                splits.sort_index(inplace=True)
+                splits["Stock Splits"] = splits["numerator"] / \
+                    splits["denominator"]
+                splits = splits["Stock Splits"]
+
+        return dividends, splits
+
+    @property
+    def dividends(self):
+        if self._history is None:
+            self._history = self.history(period="max")
+        dividends = self._history["Dividends"]
+        return dividends[dividends != 0]
+
+    @property
+    def splits(self):
+        if self._history is None:
+            self.history(period="max")
+        splits = self._history["Stock Splits"]
+        return splits[splits != 0]
+
+    @property
+    def actions(self):
+        if self._history is None:
+            self.history(period="max")
+        actions = self._history[["Dividends", "Stock Splits"]]
+        return actions[actions != 0].dropna(how='all').fillna(0)
+
+    def history(self, period="1mo", interval="1d",
+                start=None, end=None, prepost=False, auto_adjust=False):
+        """
+        :Parameters:
+            period : str
+                Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                Either Use period parameter or use start and end
+            interval : str
+                Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+                Intraday data cannot extend last 60 days
+            start: str
+                Download start date string (YYYY-MM-DD) or _datetime.
+                Default is 1900-01-01
+            end: str
+                Download end date string (YYYY-MM-DD) or _datetime.
+                Default is now
+            prepost : bool
+                Include Pre and Post market data in results?
+                Default is False
+            auto_adjust: bool
+                Adjust all OHLC automatically? Default is False
+        """
+
+        if period is None or period == "max":
+            if start is None:
+                start = -2208988800
+            elif isinstance(start, _datetime.datetime):
+                start = int(_time.mktime(start.timetuple()))
+            else:
+                start = int(_time.mktime(
+                    _time.strptime(str(start), '%Y-%m-%d')))
+            if end is None:
+                end = int(_time.time())
+            elif isinstance(end, _datetime.datetime):
+                end = int(_time.mktime(end.timetuple()))
+            else:
+                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
+
+            params = {"period1": start, "period2": end}
+        else:
+            params = {"range": period}
+
+        params["interval"] = interval.lower()
+        params["includePrePost"] = prepost
+        params["events"] = "div,splits"
+
+        url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
+        data = _requests.get(url=url, params=params).json()
+
+        # Getting data from json
+        error = data["chart"]["error"]
+        if error:
+            raise ValueError(error["description"])
+
+        # quotes
+        quotes = self._parse_quotes(data["chart"]["result"][0])
+        if auto_adjust:
+            quotes = self._auto_adjust(quotes)
+
+        quotes.dropna(inplace=True)
+
+        # actions
+        dividends, splits = self._parse_actions(data["chart"]["result"][0])
+
+        # combine
+        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
+        df["Dividends"].fillna(0, inplace=True)
+        df["Stock Splits"].fillna(0, inplace=True)
+
+        # index eod/intraday
+        df.index = df.index.tz_localize("UTC").tz_convert(
+            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+
+        if params["interval"][-1] == "m":
+            df.index.name = "Datetime"
+        else:
+            df.index = df.index.date
+            df.index.name = "Date"
+
+        self._history = df
+        return df
 
 
-def make_chunks(l, n):
-    """Yield successive n-sized chunks from l."""
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
-
-
-def download(tickers, start=None, end=None, as_panel=False,
+def download(tickers, start=None, end=None, actions=None, threads=None,
              group_by='column', auto_adjust=False, progress=True,
-             actions=None, threads=1, **kwargs):
+             period="1mo", interval="1d", prepost=False, **kwargs):
     """Download yahoo tickers
     :Parameters:
-
         tickers : str, list
             List of tickers to download
+        period : str
+            Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+            Either Use period parameter or use start and end
+        interval : str
+            Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+            Intraday data cannot extend last 60 days
         start: str
-            Download start date string (YYYY-MM-DD) or _datetime. Default is 1950-01-01
+            Download start date string (YYYY-MM-DD) or _datetime.
+            Default is 1900-01-01
         end: str
-            Download end date string (YYYY-MM-DD) or _datetime. Default is today
-        as_panel : bool
-            Deprecated
+            Download end date string (YYYY-MM-DD) or _datetime.
+            Default is now
         group_by : str
-            Group by ticker or 'column' (default)
+            Group by 'ticker' or 'column' (default)
+        prepost : bool
+            Include Pre and Post market data in results?
+            Default is False
         auto_adjust: bool
             Adjust all OHLC automatically? Default is False
         actions: str
-            Download dividend + stock splits data. Default is None (no actions)
-            Options are 'inline' (returns history + actions) and 'only' (actions only)
+            Deprecated: actions are always downloaded
         threads: int
-            How may threads to use? Default is 1 thread
+            Deprecated
     """
 
-    global _DFS, _COMPLETED, _PROGRESS_BAR, _FAILED
-
-    _COMPLETED = 0
-    _FAILED = []
-
-    # format start
-    if start is None:
-        start = int(_time.mktime(_time.strptime('1950-01-01', '%Y-%m-%d')))
-    elif isinstance(start, _datetime.datetime):
-        start = int(_time.mktime(start.timetuple()))
-    else:
-        start = int(_time.mktime(_time.strptime(str(start), '%Y-%m-%d')))
-
-    # format end
-    if end is None:
-        end = int(_time.mktime(_datetime.datetime.now().timetuple()))
-    elif isinstance(end, _datetime.datetime):
-        end = int(_time.mktime(end.timetuple()))
-    else:
-        end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
-
     # create ticker list
-    tickers = tickers if isinstance(tickers, list) else [tickers]
+    tickers = tickers if isinstance(tickers, list) else tickers.split()
     tickers = [x.upper() for x in tickers]
 
-    # initiate progress bar
     if progress:
         _PROGRESS_BAR = _ProgressBar(len(tickers), 'downloaded')
 
-    # download using single thread
-    if threads is None or threads < 2:
-        download_chunk(tickers, start=start, end=end,
-                       auto_adjust=auto_adjust, progress=progress,
-                       actions=actions, **kwargs)
-    # threaded download
-    else:
-        threads = min([threads, len(tickers)])
-
-        # download in chunks
-        chunks = 0
-        for chunk in make_chunks(tickers, max([1, len(tickers) // threads])):
-            chunks += len(chunk)
-            download_thread(chunk, start=start, end=end,
-                            auto_adjust=auto_adjust, progress=progress,
-                            actions=actions, **kwargs)
-        if not tickers[-chunks:].empty:
-            download_thread(tickers[-chunks:], start=start, end=end,
-                            auto_adjust=auto_adjust, progress=progress,
-                            actions=actions, **kwargs)
-
-    # wait for completion
-    while _COMPLETED < len(tickers):
-        _time.sleep(0.1)
+    _DFS = {}
+    for ticker in tickers:
+        data = Ticker(ticker).history(period=period, interval=interval,
+                                      start=start, end=end, prepost=prepost,
+                                      auto_adjust=auto_adjust)
+        _DFS[ticker] = data
+        if progress:
+            _PROGRESS_BAR.animate()
 
     if progress:
         _PROGRESS_BAR.completed()
 
-    # create multiIndex df
     data = _pd.concat(_DFS.values(), axis=1, keys=_DFS.keys())
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
-        if auto_adjust:
-            data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
-        else:
-            data = data[['Open', 'High', 'Low',
-                            'Close', 'Adj Close', 'Volume']]
 
-    # return single df if only one ticker
     if len(tickers) == 1:
         data = _DFS[tickers[0]]
-
-    if _FAILED:
-        print("\nThe following tickers failed to download:\n",
-              ', '.join(_FAILED))
-
-    _DFS = {}
     return data
-
-
-def download_one(ticker, start, end, interval, auto_adjust=None, actions=None):
-
-    tried_once = False
-    crumb, cookie = get_yahoo_crumb()
-
-    url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
-    url_str += "?period1=%s&period2=%s&interval=%s&events=%s&crumb=%s"
-
-    actions = None if '^' in ticker else actions
-
-    if actions:
-        url = url_str % (ticker, start, end, interval, 'div', crumb)
-        res = _requests.get(url, cookies={'B': cookie}).text
-        # print(res)
-        div = _pd.DataFrame(columns=['action', 'value'])
-        if "error" not in res:
-            div = _pd.read_csv(_io.StringIO(res),
-                              index_col=0, error_bad_lines=False
-                              ).replace('null', _np.nan).dropna()
-
-            if isinstance(div, _pd.DataFrame):
-                div.index = _pd.to_datetime(div.index)
-                div["action"] = "DIVIDEND"
-                div = div.rename(columns={'Dividends': 'value'})
-                div['value'] = div['value'].astype(float)
-
-        # download Stock Splits data
-        url = url_str % (ticker, start, end, interval, 'split', crumb)
-        res = _requests.get(url, cookies={'B': cookie}).text
-        split = _pd.DataFrame(columns=['action', 'value'])
-        if "error" not in res:
-            split = _pd.read_csv(_io.StringIO(res),
-                                index_col=0, error_bad_lines=False
-                                ).replace('null', _np.nan).dropna()
-
-            if isinstance(split, _pd.DataFrame):
-                split.index = _pd.to_datetime(split.index)
-                split["action"] = "SPLIT"
-                split = split.rename(columns={'Stock Splits': 'value'})
-                if not split.empty:
-                    split['value'] = split.apply(
-                        lambda x: 1 / eval(x['value']), axis=1).astype(float)
-
-        if actions == 'only':
-            return _pd.concat([div, split]).sort_index()
-
-    # download history
-    url = url_str % (ticker, start, end, interval, 'history', crumb)
-    res = _requests.get(url, cookies={'B': cookie}).text
-    hist = _pd.DataFrame(
-        columns=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
-
-    if "error" in res:
-        return _pd.DataFrame()
-
-    hist = parse_ticker_csv(_io.StringIO(res), auto_adjust)
-
-    if not hist.empty:
-        if actions is None:
-            return hist
-
-        hist['Dividends'] = div['value'] if not div.empty else _np.nan
-        hist['Dividends'].fillna(0, inplace=True)
-        hist['Stock Splits'] = split['value'] if not split.empty else _np.nan
-        hist['Stock Splits'].fillna(1, inplace=True)
-
-        return hist
-
-    # empty len(hist.index) == 0
-    if not tried_once:
-        tried_once = True
-        get_yahoo_crumb(force=True)
-        return download_one(ticker, start, end, interval, auto_adjust, actions)
-
-
-@_multitasking.task
-def download_thread(tickers, start=None, end=None,
-                    auto_adjust=False, progress=True,
-                    actions=False, **kwargs):
-    download_chunk(tickers, start=start, end=end,
-                   auto_adjust=auto_adjust, progress=progress,
-                   actions=actions, **kwargs)
-
-
-def download_chunk(tickers, start=None, end=None,
-                   auto_adjust=False, progress=True,
-                   actions=False, **kwargs):
-
-    global _DFS, _COMPLETED, _PROGRESS_BAR, _FAILED
-
-    interval = kwargs["interval"] if "interval" in kwargs else "1d"
-
-    # url template
-    url_str = "https://query1.finance.yahoo.com/v7/finance/download/%s"
-    url_str += "?period1=%s&period2=%s&interval=%s&events=%s&crumb=%s"
-
-    # failed tickers collectors
-    round1_failed_tickers = []
-
-    # start downloading
-    for ticker in tickers:
-
-        # yahoo crumb/cookie
-        # crumb, cookie = get_yahoo_crumb()
-        get_yahoo_crumb()
-
-        tried_once = False
-        try:
-            hist = download_one(ticker, start, end,
-                                interval, auto_adjust, actions)
-            if isinstance(hist, _pd.DataFrame):
-                _DFS[ticker] = hist
-                if progress:
-                    _PROGRESS_BAR.animate()
-            else:
-                round1_failed_tickers.append(ticker)
-        except:
-            # something went wrong...
-            # try one more time using a new cookie/crumb
-            if not tried_once:
-                tried_once = True
-                try:
-                    get_yahoo_crumb(force=True)
-                    hist = download_one(ticker, start, end,
-                                        interval, auto_adjust, actions)
-                    if isinstance(hist, _pd.DataFrame):
-                        _DFS[ticker] = hist
-                        if progress:
-                            _PROGRESS_BAR.animate()
-                    else:
-                        round1_failed_tickers.append(ticker)
-                except:
-                    round1_failed_tickers.append(ticker)
-        _time.sleep(0.001)
-
-    # try failed items again before giving up
-    _COMPLETED += len(tickers) - len(round1_failed_tickers)
-
-    if round1_failed_tickers:
-        get_yahoo_crumb(force=True)
-        for ticker in round1_failed_tickers:
-            try:
-                hist = download_one(ticker, start, end,
-                                    interval, auto_adjust, actions)
-                if isinstance(hist, _pd.DataFrame):
-                    _DFS[ticker] = hist
-                    if progress:
-                        _PROGRESS_BAR.animate()
-                else:
-                    _FAILED.append(ticker)
-            except:
-                _FAILED.append(ticker)
-            _time.sleep(0.000001)
-        _COMPLETED += 1
 
 
 class _ProgressBar:
@@ -425,5 +359,6 @@ def pdr_override():
     try:
         import pandas_datareader
         pandas_datareader.data.get_data_yahoo = download
-    except:
+        pandas_datareader.data.get_data_yahoo_actions = download
+    except Exception:
         pass

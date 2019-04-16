@@ -1,6 +1,14 @@
 Change Log
 ===========
 
+0.1.0
+-------
+- Works with v8 API
+- Introduced Ticker module
+- Complete re-write of the entire code
+-
+- Skipped a bunch of version :)
+
 0.0.22
 -------
 - Deprecated Panel support
