@@ -19,11 +19,12 @@
 # limitations under the License.
 #
 
+from __future__ import print_function
+
 __version__ = "0.1.0"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'Ticker', 'pdr_override',
            'get_yahoo_crumb', 'parse_ticker_csv']
-
 
 import time as _time
 import datetime as _datetime
