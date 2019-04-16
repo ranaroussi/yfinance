@@ -21,7 +21,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.1.21"
+__version__ = "0.1.25"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'Ticker', 'pdr_override',
            'get_yahoo_crumb', 'parse_ticker_csv']
@@ -160,7 +160,8 @@ class Ticker():
         return actions[actions != 0].dropna(how='all').fillna(0)
 
     def history(self, period="1mo", interval="1d",
-                start=None, end=None, prepost=False, auto_adjust=False):
+                start=None, end=None, prepost=False,
+                actions=True, auto_adjust=False):
         """
         :Parameters:
             period : str
@@ -239,16 +240,20 @@ class Ticker():
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
         else:
-            df.index = df.index.date
+            df.index = _pd.to_datetime(df.index.date)
             df.index.name = "Date"
 
-        self._history = df
+        self._history = df.copy()
+
+        if not actions:
+            df.drop(columns=["Dividends", "Stock Splits"], inplace=True)
+
         return df
 
 
-def download(tickers, start=None, end=None, actions=None, threads=None,
+def download(tickers, start=None, end=None, actions=False, threads=None,
              group_by='column', auto_adjust=False, progress=True,
-             period="1mo", interval="1d", prepost=False, **kwargs):
+             period="max", interval="1d", prepost=False, **kwargs):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -272,8 +277,8 @@ def download(tickers, start=None, end=None, actions=None, threads=None,
             Default is False
         auto_adjust: bool
             Adjust all OHLC automatically? Default is False
-        actions: str
-            Deprecated: actions are always downloaded
+        actions: bool
+            Download dividend + stock splits data. Default is False
         threads: int
             Deprecated
     """
@@ -289,7 +294,7 @@ def download(tickers, start=None, end=None, actions=None, threads=None,
     for ticker in tickers:
         data = Ticker(ticker).history(period=period, interval=interval,
                                       start=start, end=end, prepost=prepost,
-                                      auto_adjust=auto_adjust)
+                                      actions=actions, auto_adjust=auto_adjust)
         _DFS[ticker] = data
         if progress:
             _PROGRESS_BAR.animate()
