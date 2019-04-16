@@ -110,6 +110,7 @@ class Ticker():
                                 "Volume": volumes})
 
         quotes = _np.round(quotes, data["meta"]["priceHint"])
+        quotes['Volume'] = quotes['Volume'].fillna(0).astype(np.int64)
         quotes.index = _pd.to_datetime(timestamps, unit="s")
         quotes.sort_index(inplace=True)
         return quotes
