@@ -21,7 +21,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.1.0"
+__version__ = "0.1.21"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'Ticker', 'pdr_override',
            'get_yahoo_crumb', 'parse_ticker_csv']
@@ -109,8 +109,6 @@ class Ticker():
                                 "Adj Close": adjclose,
                                 "Volume": volumes})
 
-        quotes = _np.round(quotes, data["meta"]["priceHint"])
-        quotes['Volume'] = quotes['Volume'].fillna(0).astype(np.int64)
         quotes.index = _pd.to_datetime(timestamps, unit="s")
         quotes.sort_index(inplace=True)
         return quotes
@@ -219,6 +217,10 @@ class Ticker():
         quotes = self._parse_quotes(data["chart"]["result"][0])
         if auto_adjust:
             quotes = self._auto_adjust(quotes)
+
+        quotes = _np.round(quotes, data[
+            "chart"]["result"][0]["meta"]["priceHint"])
+        quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
         quotes.dropna(inplace=True)
 

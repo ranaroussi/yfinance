@@ -1,12 +1,23 @@
 Change Log
 ===========
 
+0.1.21
+------
+- Bugfix
+
+0.1.2
+------
+- Round prices based on metadata decimals
+
+0.1.1
+------
+- Setting Volume colume as np.int64 dtype to avoid integer overflow on Windows
+
 0.1.0
 -------
 - Works with v8 API
 - Introduced Ticker module
 - Complete re-write of the entire code
--
 - Skipped a bunch of version :)
 
 0.0.22
