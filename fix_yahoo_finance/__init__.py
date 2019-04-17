@@ -207,6 +207,10 @@ class Ticker():
         params["includePrePost"] = prepost
         params["events"] = "div,splits"
 
+        # 1) fix weired bug with Yahoo! - returning 60m for 30m bars
+        if params["interval"] == "30m":
+            params["interval"] = "15m"
+
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
         data = _requests.get(url=url, params=params).json()
 
@@ -217,6 +221,14 @@ class Ticker():
 
         # quotes
         quotes = self._parse_quotes(data["chart"]["result"][0])
+
+        # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
+        if params["interval"] == "30m":
+            quotes = quotes.resample('30T').apply({
+                'Open': "first", 'High': "max", 'Low': "min",
+                'Close': "last", 'Adj Close': "last", 'Volume': "sum"
+            })
+
         if auto_adjust:
             quotes = self._auto_adjust(quotes)
 
