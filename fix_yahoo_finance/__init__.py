@@ -183,7 +183,7 @@ class Ticker():
                 Adjust all OHLC automatically? Default is False
         """
 
-        if period is None or period == "max":
+        if period is None or period.lower() == "max":
             if start is None:
                 start = -2208988800
             elif isinstance(start, _datetime.datetime):
@@ -200,6 +200,7 @@ class Ticker():
 
             params = {"period1": start, "period2": end}
         else:
+            period = period.lower()
             params = {"range": period}
 
         params["interval"] = interval.lower()
