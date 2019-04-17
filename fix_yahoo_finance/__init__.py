@@ -161,7 +161,7 @@ class Ticker():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
-                actions=True, auto_adjust=False):
+                actions=True, auto_adjust=True):
         """
         :Parameters:
             period : str
