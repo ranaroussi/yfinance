@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.26
+------
+- Fixed weird bug with Yahoo!, which is returning 60m interval when requesting for 30m interval, by requesting 15m interval and resampling the returned data
+- ``Ticker.history()`` auto-adjusts data by default
+
 0.1.21 - 0.1.25
 ------
 - Bugfixs
