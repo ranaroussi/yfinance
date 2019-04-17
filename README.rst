@@ -38,8 +38,11 @@ By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
 **fix-yahoo-finance**'s implantation is easy and only requires to import
 ``fix_yahoo_finance`` into your code.
 
-
 `Changelog » <./CHANGELOG.rst>`__
+
+-----
+
+==> Check out this `Blog post <https://aroussi.com/#post/python-yahoo-finance>`_ for a detailed tutorial with code examples.
 
 -----
 
