@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.28
+------
+- Threading defaults to ``None``
+
 0.1.27
 ------
 - Threading is back :)

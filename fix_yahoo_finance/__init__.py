@@ -21,7 +21,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.1.27"
+__version__ = "0.1.28"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'Ticker', 'pdr_override',
            'get_yahoo_crumb', 'parse_ticker_csv']
@@ -269,20 +269,27 @@ class Ticker():
 
 
 @_multitasking.task
-def _download_one(ticker, start=None, end=None, auto_adjust=False,
-                  actions=False, progress=True, period="max", interval="1d",
-                  prepost=False):
+def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
+                           actions=False, progress=True, period="max",
+                           interval="1d", prepost=False):
 
     global _PROGRESS_BAR, _DFS
-    data = Ticker(ticker).history(period=period, interval=interval,
-                                  start=start, end=end, prepost=prepost,
-                                  actions=actions, auto_adjust=auto_adjust)
+    data = _download_one(ticker, start, end, auto_adjust, actions,
+                         period, interval, prepost)
     _DFS[ticker] = data
     if progress:
         _PROGRESS_BAR.animate()
 
 
-def download(tickers, start=None, end=None, actions=False, threads=1,
+def _download_one(ticker, start=None, end=None, auto_adjust=False,
+                  actions=False, period="max", interval="1d", prepost=False):
+
+    return Ticker(ticker).history(period=period, interval=interval,
+                                  start=start, end=end, prepost=prepost,
+                                  actions=actions, auto_adjust=auto_adjust)
+
+
+def download(tickers, start=None, end=None, actions=False, threads=None,
              group_by='column', auto_adjust=False, progress=True,
              period="max", interval="1d", prepost=False, **kwargs):
     """Download yahoo tickers
@@ -311,11 +318,9 @@ def download(tickers, start=None, end=None, actions=False, threads=1,
         actions: bool
             Download dividend + stock splits data. Default is False
         threads: int
-            How many threads to use for mass downloading
+            How many threads to use for mass downloading. Default is None
     """
     global _PROGRESS_BAR, _DFS
-    if isinstance(threads, int):
-        _multitasking.set_max_threads(threads)
 
     # create ticker list
     tickers = tickers if isinstance(tickers, list) else tickers.split()
@@ -324,15 +329,27 @@ def download(tickers, start=None, end=None, actions=False, threads=1,
     if progress:
         _PROGRESS_BAR = _ProgressBar(len(tickers), 'downloaded')
 
-    for i, ticker in enumerate(tickers):
-        prog = i > 0 and progress
-        _download_one(ticker, period=period, interval=interval,
-                      start=start, end=end, prepost=prepost,
-                      actions=actions, auto_adjust=auto_adjust,
-                      progress=prog)
+    if isinstance(threads, int):
+        _multitasking.set_max_threads(threads)
+        _DFS = {}
+        for i, ticker in enumerate(tickers):
+            prog = i > 0 and progress
+            _download_one_threaded(ticker, period=period, interval=interval,
+                                   start=start, end=end, prepost=prepost,
+                                   actions=actions, auto_adjust=auto_adjust,
+                                   progress=prog)
+        while len(_DFS) < len(tickers):
+            _time.sleep(0.01)
 
-    while len(_DFS) < len(tickers):
-        _time.sleep(0.01)
+    else:
+        _DFS = {}
+        for i, ticker in enumerate(tickers):
+            data = _download_one(ticker, period=period, interval=interval,
+                                 start=start, end=end, prepost=prepost,
+                                 actions=actions, auto_adjust=auto_adjust)
+            _DFS[ticker] = data
+            if progress:
+                _PROGRESS_BAR.animate()
 
     if progress:
         _PROGRESS_BAR.completed()
