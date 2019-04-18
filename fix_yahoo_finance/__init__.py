@@ -29,9 +29,13 @@ __all__ = ['download', 'Ticker', 'pdr_override',
 import time as _time
 import datetime as _datetime
 import requests as _requests
+import multitasking as _multitasking
 import pandas as _pd
 import numpy as _np
 import sys as _sys
+
+_DFS = {}
+_PROGRESS_BAR = None
 
 
 def parse_ticker_csv(csv_str, auto_adjust):
@@ -264,7 +268,21 @@ class Ticker():
         return df
 
 
-def download(tickers, start=None, end=None, actions=False, threads=None,
+@_multitasking.task
+def _download_one(ticker, start=None, end=None, auto_adjust=False,
+                  actions=False, progress=True, period="max", interval="1d",
+                  prepost=False):
+
+    global _PROGRESS_BAR, _DFS
+    data = Ticker(ticker).history(period=period, interval=interval,
+                                  start=start, end=end, prepost=prepost,
+                                  actions=actions, auto_adjust=auto_adjust)
+    _DFS[ticker] = data
+    if progress:
+        _PROGRESS_BAR.animate()
+
+
+def download(tickers, start=None, end=None, actions=False, threads=1,
              group_by='column', auto_adjust=False, progress=True,
              period="max", interval="1d", prepost=False, **kwargs):
     """Download yahoo tickers
@@ -293,8 +311,11 @@ def download(tickers, start=None, end=None, actions=False, threads=None,
         actions: bool
             Download dividend + stock splits data. Default is False
         threads: int
-            Deprecated
+            How many threads to use for mass downloading
     """
+    global _PROGRESS_BAR, _DFS
+    if isinstance(threads, int):
+        _multitasking.set_max_threads(threads)
 
     # create ticker list
     tickers = tickers if isinstance(tickers, list) else tickers.split()
@@ -303,14 +324,15 @@ def download(tickers, start=None, end=None, actions=False, threads=None,
     if progress:
         _PROGRESS_BAR = _ProgressBar(len(tickers), 'downloaded')
 
-    _DFS = {}
-    for ticker in tickers:
-        data = Ticker(ticker).history(period=period, interval=interval,
-                                      start=start, end=end, prepost=prepost,
-                                      actions=actions, auto_adjust=auto_adjust)
-        _DFS[ticker] = data
-        if progress:
-            _PROGRESS_BAR.animate()
+    for i, ticker in enumerate(tickers):
+        prog = i > 0 and progress
+        _download_one(ticker, period=period, interval=interval,
+                      start=start, end=end, prepost=prepost,
+                      actions=actions, auto_adjust=auto_adjust,
+                      progress=prog)
+
+    while len(_DFS) < len(tickers):
+        _time.sleep(0.01)
 
     if progress:
         _PROGRESS_BAR.completed()
