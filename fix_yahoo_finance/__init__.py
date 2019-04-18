@@ -184,7 +184,7 @@ class Ticker():
                 Include Pre and Post market data in results?
                 Default is False
             auto_adjust: bool
-                Adjust all OHLC automatically? Default is False
+                Adjust all OHLC automatically? Default is True
         """
 
         if period is None or period.lower() == "max":
