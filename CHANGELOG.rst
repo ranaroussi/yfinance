@@ -4,10 +4,11 @@ Change Log
 0.1.29
 ------
 - Fixed issue with Pandas "DataFrame constructor not properly called!"
+- If ``threads`` is set to True, it will default to number of tickers (max = @ of CPU cores)
 
 0.1.28
 ------
-- Threading defaults to ``None``
+- Threading defaults to ``False``
 
 0.1.27
 ------

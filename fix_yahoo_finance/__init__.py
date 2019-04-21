@@ -303,7 +303,7 @@ def _download_one(ticker, start=None, end=None, auto_adjust=False,
                                   actions=actions, auto_adjust=auto_adjust)
 
 
-def download(tickers, start=None, end=None, actions=False, threads=None,
+def download(tickers, start=None, end=None, actions=False, threads=False,
              group_by='column', auto_adjust=False, progress=True,
              period="max", interval="1d", prepost=False, **kwargs):
     """Download yahoo tickers
@@ -331,8 +331,8 @@ def download(tickers, start=None, end=None, actions=False, threads=None,
             Adjust all OHLC automatically? Default is False
         actions: bool
             Download dividend + stock splits data. Default is False
-        threads: int
-            How many threads to use for mass downloading. Default is None
+        threads: bool / int
+            How many threads to use for mass downloading. Default is False
     """
     global _PROGRESS_BAR, _DFS
 
@@ -342,20 +342,26 @@ def download(tickers, start=None, end=None, actions=False, threads=None,
     if progress:
         _PROGRESS_BAR = _ProgressBar(len(tickers), 'downloaded')
 
+    # reset _DFS
+    _DFS = {}
+
+    # set thread count if True
+    if threads is True:
+        threads = min([len(tickers), _multitasking.cpu_count()])
+
+    # download using threads
     if isinstance(threads, int):
         _multitasking.set_max_threads(threads)
-        _DFS = {}
         for i, ticker in enumerate(tickers):
-            prog = i > 0 and progress
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
-                                   progress=prog)
+                                   progress=(progress and i > 0))
         while len(_DFS) < len(tickers):
             _time.sleep(0.01)
 
+    # download synchronously
     else:
-        _DFS = {}
         for i, ticker in enumerate(tickers):
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
