@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.29
+------
+- Fixed issue with Pandas "DataFrame constructor not properly called!"
+
 0.1.28
 ------
 - Threading defaults to ``None``
