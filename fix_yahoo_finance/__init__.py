@@ -48,10 +48,22 @@ def get_yahoo_crumb(force=False):
     pass
 
 
+def Tickers(tickers):
+    tickers = tickers if isinstance(tickers, list) else tickers.split()
+    ticker_objects = {}
+
+    for ticker in tickers:
+        ticker_objects[ticker] = Ticker(ticker)
+    return ticker_objects
+
+
 class Ticker():
 
+    def __repr__(self):
+        return 'Ticker object <%s>' % self.ticker
+
     def __init__(self, ticker):
-        self.ticker = ticker
+        self.ticker = ticker.upper()
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
 
@@ -124,14 +136,16 @@ class Ticker():
 
         if "events" in data:
             if "dividends" in data["events"]:
-                dividends = _pd.DataFrame(data["events"]["dividends"].values())
+                dividends = _pd.DataFrame(
+                    data=list(data["events"]["dividends"].values()))
                 dividends.set_index("date", inplace=True)
                 dividends.index = _pd.to_datetime(dividends.index, unit="s")
                 dividends.sort_index(inplace=True)
                 dividends.columns = ["Dividends"]
 
             if "splits" in data["events"]:
-                splits = _pd.DataFrame(data["events"]["splits"].values())
+                splits = _pd.DataFrame(
+                    data=list(data["events"]["splits"].values()))
                 splits.set_index("date", inplace=True)
                 splits.index = _pd.to_datetime(
                     splits.index, unit="s")
