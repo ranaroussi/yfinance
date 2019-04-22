@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.30
+------
+- Fixed Yahoo!'s 30m bars being returned as 60m/15m
+
 0.1.29
 ------
 - Fixed issue with Pandas "DataFrame constructor not properly called!"
