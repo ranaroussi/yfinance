@@ -241,11 +241,24 @@ class Ticker():
         quotes = self._parse_quotes(data["chart"]["result"][0])
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
-        if params["interval"] == "30m":
-            quotes = quotes.resample('30T').apply({
-                'Open': "first", 'High': "max", 'Low': "min",
-                'Close': "last", 'Adj Close': "last", 'Volume': "sum"
+        if interval.lower() == "30m":
+            quotes2 = quotes.resample('30T')
+            quotes = _pd.DataFrame(index=quotes2.last().index, data={
+                'Open': quotes2['Open'].first(),
+                'High': quotes2['High'].max(),
+                'Low': quotes2['Low'].min(),
+                'Close': quotes2['Close'].last(),
+                'Adj Close': quotes2['Adj Close'].last(),
+                'Volume': quotes2['Volume'].sum()
             })
+            try:
+                quotes['Dividends'] = quotes2['Dividends'].max()
+            except Exception:
+                pass
+            try:
+                quotes['Stock Splits'] = quotes2['Dividends'].max()
+            except Exception:
+                pass
 
         if auto_adjust:
             quotes = self._auto_adjust(quotes)
