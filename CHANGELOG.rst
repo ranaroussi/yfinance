@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.31
+------
+- Include ticker in error message if error is raised
+
+
 0.1.30
 ------
 - Fixed Yahoo!'s 30m bars being returned as 60m/15m
