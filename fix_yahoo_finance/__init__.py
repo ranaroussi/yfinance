@@ -303,7 +303,7 @@ def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
     global _PROGRESS_BAR, _DFS
     data = _download_one(ticker, start, end, auto_adjust, actions,
                          period, interval, prepost)
-    _DFS[ticker] = data
+    _DFS[ticker.upper()] = data
     if progress:
         _PROGRESS_BAR.animate()
 
@@ -379,7 +379,7 @@ def download(tickers, start=None, end=None, actions=False, threads=False,
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust)
-            _DFS[ticker] = data
+            _DFS[ticker.upper()] = data
             if progress:
                 _PROGRESS_BAR.animate()
 
