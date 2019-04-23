@@ -235,7 +235,7 @@ class Ticker():
         # Getting data from json
         error = data["chart"]["error"]
         if error:
-            raise ValueError(error["description"])
+            raise ValueError(self.ticker, error["description"])
 
         # quotes
         quotes = self._parse_quotes(data["chart"]["result"][0])
