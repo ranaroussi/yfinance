@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.32
+------
+- Better error handling
+- Updated min. versions for requirements
+
 0.1.31
 ------
 - Include ticker in error message if error is raised
