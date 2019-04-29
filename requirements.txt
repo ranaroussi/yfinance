@@ -1,4 +1,4 @@
-pandas>=0.18.1
-numpy>=1.11.1
-requests>=2.14.2
-multitasking>=0.0.6
+pandas>=0.24
+numpy>=1.15
+requests>=2.21
+multitasking>=0.0.7
