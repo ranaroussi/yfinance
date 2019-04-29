@@ -236,7 +236,7 @@ class Ticker():
         # Work with errors
         if "timestamp" not in data["chart"]["result"][0]:
             _DFS[self.ticker] = _pd.DataFrame()
-            raise ValueError(self.ticker, 'No data found in this date range')
+            raise ValueError(self.ticker, 'No data found for this date range')
 
         error = data["chart"]["error"]
         if error:
