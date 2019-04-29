@@ -229,15 +229,21 @@ class Ticker():
         if params["interval"] == "30m":
             params["interval"] = "15m"
 
+        # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
         data = _requests.get(url=url, params=params).json()
 
-        # Getting data from json
+        # Work with errors
+        if "timestamp" not in data["chart"]["result"][0]:
+            _DFS[self.ticker] = _pd.DataFrame()
+            raise ValueError(self.ticker, 'No data found in this date range')
+
         error = data["chart"]["error"]
         if error:
+            _DFS[self.ticker] = _pd.DataFrame()
             raise ValueError(self.ticker, error["description"])
 
-        # quotes
+        # parse quotes
         quotes = self._parse_quotes(data["chart"]["result"][0])
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
