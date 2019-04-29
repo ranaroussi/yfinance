@@ -1,7 +1,7 @@
 Yahoo! Finance Fix for Pandas Datareader
 ========================================
 
-.. image:: https://img.shields.io/badge/python-2.7,%203.5+-blue.svg?style=flat
+.. image:: https://img.shields.io/badge/python-2.7,%203.4+-blue.svg?style=flat
     :target: https://pypi.python.org/pypi/fix-yahoo-finance
     :alt: Python version
 
