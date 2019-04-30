@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.33
+------
+- Better error handling
+
 0.1.32
 ------
 - Better error handling
