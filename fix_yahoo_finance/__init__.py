@@ -234,17 +234,23 @@ class Ticker():
         data = _requests.get(url=url, params=params).json()
 
         # Work with errors
-        if "timestamp" not in data["chart"]["result"][0]:
+        err_msg = "No data found for this date range, symbol may be delisted"
+        if "chart" in data and data["chart"]["error"]:
+            err_msg = data["chart"]["error"]["description"]
             _DFS[self.ticker] = _pd.DataFrame()
-            raise ValueError(self.ticker, 'No data found for this date range')
+            raise ValueError(self.ticker, err_msg)
 
-        error = data["chart"]["error"]
-        if error:
+        elif "chart" not in data or data["chart"]["result"] is None or \
+                len(data["chart"]["result"]) == 0:
             _DFS[self.ticker] = _pd.DataFrame()
-            raise ValueError(self.ticker, error["description"])
+            raise ValueError(self.ticker, err_msg)
 
         # parse quotes
-        quotes = self._parse_quotes(data["chart"]["result"][0])
+        try:
+            quotes = self._parse_quotes(data["chart"]["result"][0])
+        except Exception:
+            _DFS[self.ticker] = _pd.DataFrame()
+            raise ValueError(self.ticker, err_msg)
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
