@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.1.34
+------
+- Intercept yahoo "site down" message
+- Better period handling
+- Threading is True by default
+
 0.1.33
 ------
 - Better error handling
