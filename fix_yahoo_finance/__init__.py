@@ -231,7 +231,12 @@ class Ticker():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = _requests.get(url=url, params=params).json()
+        data = _requests.get(url=url, params=params)
+        if "Will be right back" in data.text:
+            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                               "Our engineers are working quickly to resolve "
+                               "the issue. Thank you for your patience.")
+        data = data.json()
 
         # Work with errors
         err_msg = "No data found for this date range, symbol may be delisted"
