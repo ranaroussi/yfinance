@@ -328,7 +328,7 @@ def _download_one(ticker, start=None, end=None, auto_adjust=False,
                                   actions=actions, auto_adjust=auto_adjust)
 
 
-def download(tickers, start=None, end=None, actions=False, threads=False,
+def download(tickers, start=None, end=None, actions=False, threads=True,
              group_by='column', auto_adjust=False, progress=True,
              period="max", interval="1d", prepost=False, **kwargs):
     """Download yahoo tickers
@@ -357,7 +357,7 @@ def download(tickers, start=None, end=None, actions=False, threads=False,
         actions: bool
             Download dividend + stock splits data. Default is False
         threads: bool / int
-            How many threads to use for mass downloading. Default is False
+            How many threads to use for mass downloading. Default is True
     """
     global _PROGRESS_BAR, _DFS
 
