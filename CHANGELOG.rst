@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.35
+------
+- Updated requirements
+
 0.1.34
 ------
 - Intercept yahoo "site down" message

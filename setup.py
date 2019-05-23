@@ -18,7 +18,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='fix-yahoo-finance',
-    version="0.1.34",
+    version="0.1.35",
     description='Yahoo! Finance market data downloader +fix for Pandas Datareader\'s get_data_yahoo()',
     long_description=long_description,
     url='https://github.com/ranaroussi/fix-yahoo-finance',
@@ -49,8 +49,8 @@ setup(
     platforms = ['any'],
     keywords='pandas, yahoo finance, pandas datareader',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
-    install_requires=['pandas>=0.24', 'numpy>1.15',
-                      'requests<2.20', 'multitasking>=0.0.7'],
+    install_requires=['pandas>=0.24', 'numpy>=1.15',
+                      'requests>=2.20', 'multitasking>=0.0.7'],
     entry_points={
         'console_scripts': [
             'sample=sample:main',
