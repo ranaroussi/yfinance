@@ -28,6 +28,7 @@ __all__ = ['download', 'Ticker', 'pdr_override']
 import time as _time
 import datetime as _datetime
 import requests as _requests
+from collections import namedtuple as _namedtuple
 import multitasking as _multitasking
 import pandas as _pd
 import numpy as _np
@@ -43,7 +44,8 @@ def Tickers(tickers):
 
     for ticker in tickers:
         ticker_objects[ticker] = Ticker(ticker)
-    return ticker_objects
+    return _namedtuple("Tickers", ticker_objects.keys()
+                       )(*ticker_objects.values())
 
 
 class Ticker():
