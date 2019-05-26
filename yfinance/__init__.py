@@ -375,7 +375,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     # set thread count if True
     if threads is True:
-        threads = min([len(tickers), _multitasking.cpu_count()])
+        threads = min([len(tickers), _multitasking.cpu_count()*2])
 
     # download using threads
     if isinstance(threads, int):
