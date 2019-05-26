@@ -1,5 +1,5 @@
-# Yahoo! Finance market data downloader
-=======================================
+Yahoo! Finance market data downloader
+=====================================
 
 .. image:: https://img.shields.io/badge/python-2.7,%203.4+-blue.svg?style=flat
     :target: https://pypi.python.org/pypi/yfinance
@@ -37,6 +37,14 @@ and returning a Pandas DataFrame in the same format as **pandas_datareader**'s
 By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
 **yfinance**'s implantation is easy and only requires to import
 ``yfinance`` into your code.
+
+UPDATE (2019-05-26)
+~~~~~~~~~~~~~~~~~~~
+
+The library was originally named ``fix-yahoo-finance``, but
+I've since renamed it to ``yfinance`` as I no longer consider it a mere "fix".
+For reasons of backward-competability, ``fix-yahoo-finance`` now import and
+uses ``yfinance``, but you should install and use ``yfinance`` directly.
 
 `Changelog » <./CHANGELOG.rst>`__
 
