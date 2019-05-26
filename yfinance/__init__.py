@@ -39,7 +39,8 @@ _PROGRESS_BAR = None
 
 
 def Tickers(tickers):
-    tickers = tickers if isinstance(tickers, list) else tickers.split()
+    tickers = tickers if isinstance(
+        tickers, list) else tickers.replace(',', ' ').split()
     ticker_objects = {}
 
     for ticker in tickers:
@@ -367,7 +368,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     global _PROGRESS_BAR, _DFS
 
     # create ticker list
-    tickers = tickers if isinstance(tickers, list) else tickers.split()
+    tickers = tickers if isinstance(
+        tickers, list) else tickers.replace(',', ' ').split()
 
     if progress:
         _PROGRESS_BAR = _ProgressBar(len(tickers), 'downloaded')
