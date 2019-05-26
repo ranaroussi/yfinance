@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.37
+------
+- Overriding old ``pandas_datareader.data.DataReader`` when calling ``pdr_override()``
+- ``Tickers()`` returns a named tuple of ``Ticker()`` objects
+
 0.1.36
 ------
 - Package renamed to ``yfinance``
