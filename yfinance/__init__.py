@@ -364,6 +364,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Download dividend + stock splits data. Default is False
         threads: bool / int
             How many threads to use for mass downloading. Default is True
+        proxy: str
+            Optional. Proxy server URL scheme. Default is None
     """
     global _PROGRESS_BAR, _DFS
 
