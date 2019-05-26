@@ -27,19 +27,15 @@ Yahoo! Finance market data downloader
 
 \
 
-`Yahoo! finance <https://ichart.finance.yahoo.com>`_ has decommissioned
-their historical data API, causing many programs that relied on it to stop working.
+Ever since `Yahoo! finance <https://finance.yahoo.com>`_ decommissioned
+their historical data API, many programs that relied on it to stop working.
 
-**yfinance** fixes the problem by scraping the data from Yahoo! finance
-and returning a Pandas DataFrame in the same format as **pandas_datareader**'s
-``get_data_yahoo()``.
+**yfinance** aimes to solve this problem by offering a reliable, threaded,
+and Pythonic way to download historical market data from Yahoo! finance.
 
-By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
-**yfinance**'s implantation is easy and only requires to import
-``yfinance`` into your code.
 
-UPDATE (2019-05-26)
-~~~~~~~~~~~~~~~~~~~
+NOTE
+~~~~
 
 The library was originally named ``fix-yahoo-finance``, but
 I've since renamed it to ``yfinance`` as I no longer consider it a mere "fix".
@@ -84,6 +80,20 @@ ticker data in amore Pythonic way:
     # show splits
     msft.splits
 
+To initialize multiple ``Ticker`` objects, use
+
+.. code:: python
+
+    import yfinance as yf
+
+    tickers = yf.Tickers('msft aapl goog')
+    # ^ returns a named tuple of Ticker objects
+
+    # access each ticker using (example)
+    tickers.msft.info
+    tickers.aapl.history(period="1mo")
+    tickers.goog.actions
+
 
 Fetching data for multiple tickers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,12 +110,12 @@ I've also added some options to make life easier :)
 
     data = yf.download(  # or pdr.get_data_yahoo(...
             # tickers list or string as well
-            tickers = "SPY IWM TLT",
+            tickers = "SPY AAPL MSFT",
 
             # use "period" instead of start/end
             # valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
             # (optional, default is '1mo')
-            period = "mtd",
+            period = "ytd",
 
             # fetch data by interval (including intraday if period < 60 days)
             # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
@@ -122,12 +132,25 @@ I've also added some options to make life easier :)
 
             # download pre/post regular market hours data
             # (optional, default is False)
-            prepost = True
+            prepost = True,
+
+            # use threads for mass downloading? (True/False/Integer)
+            # (optional, default is True)
+            treads = True,
+
+            # proxy URL scheme use use when downloading?
+            # (optional, default is None)
+            proxy = None
         )
 
 
 ``pandas_datareader`` override
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your code uses ``pandas_datareader`` and you want to download data faster,
+you can "hijack" ``pandas_datareader.data.get_data_yahoo()`` method to use
+**yfinance** while making sure the returned data is in the same format as
+**pandas_datareader**'s ``get_data_yahoo()``.
 
 .. code:: python
 
