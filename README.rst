@@ -36,7 +36,7 @@ and returning a Pandas DataFrame in the same format as **pandas_datareader**'s
 
 By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
 **yfinance**'s implantation is easy and only requires to import
-``fix_yahoo_finance`` into your code.
+``yfinance`` into your code.
 
 `Changelog » <./CHANGELOG.rst>`__
 
@@ -57,7 +57,7 @@ ticker data in amore Pythonic way:
 
 .. code:: python
 
-    import fix_yahoo_finance as yf
+    import yfinance as yf
 
     msft = yf.Ticker("MSFT")
 
@@ -82,7 +82,7 @@ Fetching data for multiple tickers
 
 .. code:: python
 
-    import fix_yahoo_finance as yf
+    import yfinance as yf
     data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
 
 
@@ -125,7 +125,7 @@ I've also added some options to make life easier :)
 
     from pandas_datareader import data as pdr
 
-    import fix_yahoo_finance as yf
+    import yfinance as yf
     yf.pdr_override() # <== that's all it takes :-)
 
     # download dataframe
@@ -135,11 +135,11 @@ I've also added some options to make life easier :)
 Installation
 ------------
 
-Install ``fix_yahoo_finance`` using ``pip``:
+Install ``yfinance`` using ``pip``:
 
 .. code:: bash
 
-    $ pip install fix_yahoo_finance --upgrade --no-cache-dir
+    $ pip install yfinance --upgrade --no-cache-dir
 
 
 Requirements
