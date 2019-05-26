@@ -468,5 +468,6 @@ def pdr_override():
         import pandas_datareader
         pandas_datareader.data.get_data_yahoo = download
         pandas_datareader.data.get_data_yahoo_actions = download
+        pandas_datareader.data.DataReader = download
     except Exception:
         pass
