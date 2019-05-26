@@ -2,23 +2,23 @@ Yahoo! Finance Fix for Pandas Datareader
 ========================================
 
 .. image:: https://img.shields.io/badge/python-2.7,%203.4+-blue.svg?style=flat
-    :target: https://pypi.python.org/pypi/fix-yahoo-finance
+    :target: https://pypi.python.org/pypi/yfinance
     :alt: Python version
 
-.. image:: https://img.shields.io/pypi/v/fix-yahoo-finance.svg?maxAge=60
-    :target: https://pypi.python.org/pypi/fix-yahoo-finance
+.. image:: https://img.shields.io/pypi/v/yfinance.svg?maxAge=60
+    :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi version
 
-.. image:: https://img.shields.io/pypi/status/fix-yahoo-finance.svg?maxAge=60
-    :target: https://pypi.python.org/pypi/fix-yahoo-finance
+.. image:: https://img.shields.io/pypi/status/yfinance.svg?maxAge=60
+    :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi status
 
-.. image:: https://img.shields.io/travis/ranaroussi/fix-yahoo-finance/master.svg?maxAge=1
-    :target: https://travis-ci.org/ranaroussi/fix-yahoo-finance
+.. image:: https://img.shields.io/travis/ranaroussi/yfinance/master.svg?maxAge=1
+    :target: https://travis-ci.org/ranaroussi/yfinance
     :alt: Travis-CI build status
 
-.. image:: https://img.shields.io/github/stars/ranaroussi/fix-yahoo-finance.svg?style=social&label=Star&maxAge=60
-    :target: https://github.com/ranaroussi/fix-yahoo-finance
+.. image:: https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60
+    :target: https://github.com/ranaroussi/yfinance
     :alt: Star this repo
 
 .. image:: https://img.shields.io/twitter/follow/aroussi.svg?style=social&label=Follow&maxAge=60
@@ -30,12 +30,12 @@ Yahoo! Finance Fix for Pandas Datareader
 `Yahoo! finance <https://ichart.finance.yahoo.com>`_ has decommissioned
 their historical data API, causing many programs that relied on it to stop working.
 
-**fix-yahoo-finance** fixes the problem by scraping the data from Yahoo! finance
+**yfinance** fixes the problem by scraping the data from Yahoo! finance
 and returning a Pandas DataFrame in the same format as **pandas_datareader**'s
 ``get_data_yahoo()``.
 
 By basically "hijacking" ``pandas_datareader.data.get_data_yahoo()`` method,
-**fix-yahoo-finance**'s implantation is easy and only requires to import
+**yfinance**'s implantation is easy and only requires to import
 ``fix_yahoo_finance`` into your code.
 
 `Changelog » <./CHANGELOG.rst>`__
@@ -159,7 +159,7 @@ Optional (if you want to use ``pandas_datareader``)
 Legal Stuff
 ------------
 
-**fix-yahoo-finance** is distributed under the **Apache Software License**. See the `LICENSE.txt <./LICENSE.txt>`_ file in the release for details.
+**yfinance** is distributed under the **Apache Software License**. See the `LICENSE.txt <./LICENSE.txt>`_ file in the release for details.
 
 
 P.S.

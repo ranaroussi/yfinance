@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.36
+------
+- Package renamed to ``yfinance``
+- Added option to specify proxy server
+
 0.1.35
 ------
 - Updated requirements
@@ -23,7 +28,6 @@ Change Log
 0.1.31
 ------
 - Include ticker in error message if error is raised
-
 
 0.1.30
 ------

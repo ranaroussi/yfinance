@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Yahoo! Finance market data downloader (+fix for Pandas Datareader)
-# https://github.com/ranaroussi/fix-yahoo-finance
+# https://github.com/ranaroussi/yfinance
 #
 # Copyright 2017-2019 Ran Aroussi
 #
@@ -21,10 +21,9 @@
 
 from __future__ import print_function
 
-__version__ = "0.1.35"
+__version__ = "0.1.36"
 __author__ = "Ran Aroussi"
-__all__ = ['download', 'Ticker', 'pdr_override',
-           'get_yahoo_crumb', 'parse_ticker_csv']
+__all__ = ['download', 'Ticker', 'pdr_override']
 
 import time as _time
 import datetime as _datetime
@@ -36,16 +35,6 @@ import sys as _sys
 
 _DFS = {}
 _PROGRESS_BAR = None
-
-
-def parse_ticker_csv(csv_str, auto_adjust):
-    raise DeprecationWarning('This method is deprecated')
-    pass
-
-
-def get_yahoo_crumb(force=False):
-    raise DeprecationWarning('This method is deprecated')
-    pass
 
 
 def Tickers(tickers):
@@ -179,7 +168,7 @@ class Ticker():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
-                actions=True, auto_adjust=True):
+                actions=True, auto_adjust=True, proxy=None):
         """
         :Parameters:
             period : str
@@ -229,9 +218,15 @@ class Ticker():
         if params["interval"] == "30m":
             params["interval"] = "15m"
 
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = _requests.get(url=url, params=params)
+        data = _requests.get(url=url, params=params, proxies=proxy)
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -315,27 +310,30 @@ class Ticker():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
                            actions=False, progress=True, period="max",
-                           interval="1d", prepost=False):
+                           interval="1d", prepost=False, proxy=None):
 
     global _PROGRESS_BAR, _DFS
     data = _download_one(ticker, start, end, auto_adjust, actions,
-                         period, interval, prepost)
+                         period, interval, prepost, proxy)
     _DFS[ticker.upper()] = data
     if progress:
         _PROGRESS_BAR.animate()
 
 
 def _download_one(ticker, start=None, end=None, auto_adjust=False,
-                  actions=False, period="max", interval="1d", prepost=False):
+                  actions=False, period="max", interval="1d",
+                  prepost=False, proxy=None):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
-                                  actions=actions, auto_adjust=auto_adjust)
+                                  actions=actions, auto_adjust=auto_adjust,
+                                  proxy=proxy)
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True,
              group_by='column', auto_adjust=False, progress=True,
-             period="max", interval="1d", prepost=False, **kwargs):
+             period="max", interval="1d", prepost=False, proxy=None,
+             **kwargs):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
