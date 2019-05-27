@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.1.38
+------
+- Making sure tickers are always uppercase
+- Added Tickers to ``__all__``
+- Updated readme to reflect current library structure
+
 0.1.37
 ------
 - Overriding old ``pandas_datareader.data.DataReader`` when calling ``pdr_override()``
