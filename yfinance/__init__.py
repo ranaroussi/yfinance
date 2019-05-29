@@ -352,6 +352,36 @@ class Ticker():
         return self._cashflow
 
     # ------------------------
+
+    @property
+    def dividends(self):
+        return self.get_dividends()
+
+    @property
+    def splits(self):
+        return self.get_splits()
+
+    @property
+    def actions(self):
+        return self.get_actions()
+
+    @property
+    def financials(self):
+        return self.get_financials()
+
+    @property
+    def balance_sheet(self):
+        return self.get_balance_sheet()
+
+    @property
+    def balancesheet(self):
+        return self.get_balance_sheet()
+
+    @property
+    def cashflow(self):
+        return self.get_cashflow()
+
+
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
                            actions=False, progress=True, period="max",
