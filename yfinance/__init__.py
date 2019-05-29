@@ -60,6 +60,11 @@ class Ticker():
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
 
+        self._financials = None
+        self._balance_sheet = None
+        self._cashflow = None
+        self._scrape_url = 'https://finance.yahoo.com/quote'
+
     @property
     def info(self):
         """ retreive metadata and currenct price data """
@@ -311,6 +316,43 @@ class Ticker():
         return df
 
 
+    # ------------------------
+
+    def _get_fundamentals(self, kind, proxy=None):
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        url = '%s/%s/%s' % (self._scrape_url, self.ticker, kind)
+        data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
+
+        data.columns = [''] + list(data[:1].values[0][1:])
+        data.set_index('', inplace=True)
+        for col in data.columns:
+            data[col] = _np.where(data[col] == '-', _np.nan, data[col])
+
+        idx = data[data[data.columns[0]] == data[data.columns[1]]].index
+        data.loc[idx] = '-'
+        return data[1:]
+
+    def get_financials(self, proxy=None):
+        if self._financials is None:
+           self._financials = self._get_fundamentals('financials', proxy)
+        return self._financials
+
+    def get_balance_sheet(self, proxy=None):
+        if self._balance_sheet is None:
+           self._balance_sheet = self._get_fundamentals('balance-sheet', proxy)
+        return self._balance_sheet
+
+    def get_cashflow(self, proxy=None):
+        if self._cashflow is None:
+           self._cashflow = self._get_fundamentals('cash-flow', proxy)
+        return self._cashflow
+
+    # ------------------------
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
                            actions=False, progress=True, period="max",
