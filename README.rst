@@ -80,6 +80,15 @@ ticker data in amore Pythonic way:
     # show splits
     msft.splits
 
+    # show financials
+    msft.financials
+
+    # show balance heet
+    msft.balance_sheet
+
+    # show cashflow
+    msft.cashflow
+
 
 If you want to use a proxy server for downloading data, use:
 
