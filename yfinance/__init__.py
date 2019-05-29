@@ -154,26 +154,25 @@ class Ticker():
 
         return dividends, splits
 
-    @property
-    def dividends(self):
+    def get_dividends(self, proxy=None):
         if self._history is None:
-            self._history = self.history(period="max")
+            self.history(period="max", proxy=proxy)
         dividends = self._history["Dividends"]
         return dividends[dividends != 0]
 
-    @property
-    def splits(self):
+    def get_splits(self, proxy=None):
         if self._history is None:
-            self.history(period="max")
+            self.history(period="max", proxy=proxy)
         splits = self._history["Stock Splits"]
         return splits[splits != 0]
 
-    @property
-    def actions(self):
+    def get_actions(self, proxy=None):
         if self._history is None:
-            self.history(period="max")
+           self.history(period="max", proxy=proxy)
         actions = self._history[["Dividends", "Stock Splits"]]
         return actions[actions != 0].dropna(how='all').fillna(0)
+
+    # ------------------------
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
