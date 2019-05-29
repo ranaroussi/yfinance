@@ -80,6 +80,23 @@ ticker data in amore Pythonic way:
     # show splits
     msft.splits
 
+
+If you want to use a proxy server for downloading data, use:
+
+.. code:: python
+
+    import yfinance as yf
+
+    msft = yf.Ticker("MSFT")
+
+    msft.history(..., proxy="PROXY_SERVER")
+    msft.get_actions(proxy="PROXY_SERVER")
+    msft.get_dividends(proxy="PROXY_SERVER")
+    msft.get_splits(proxy="PROXY_SERVER")
+    msft.get_balance_sheet(proxy="PROXY_SERVER")
+    msft.get_cashflow(proxy="PROXY_SERVER")
+
+
 To initialize multiple ``Ticker`` objects, use
 
 .. code:: python

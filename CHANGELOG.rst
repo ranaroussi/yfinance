@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.39
+------
+- Added ``Ticker('XXX').financials``, ``Ticker('XXX').balance_sheet``, and ``Ticker('XXX').cashflow``
+- Proxy can be used when downloading actions
+
 0.1.38
 ------
 - Making sure tickers are always uppercase
