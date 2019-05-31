@@ -338,17 +338,20 @@ class Ticker():
 
     def get_financials(self, proxy=None):
         if self._financials is None:
-           self._financials = self._get_fundamentals('financials', proxy)
+            self._financials = self._get_fundamentals(
+                'financials', proxy)
         return self._financials
 
     def get_balance_sheet(self, proxy=None):
         if self._balance_sheet is None:
-           self._balance_sheet = self._get_fundamentals('balance-sheet', proxy)
+            self._balance_sheet = self._get_fundamentals(
+                'balance-sheet', proxy)
         return self._balance_sheet
 
     def get_cashflow(self, proxy=None):
         if self._cashflow is None:
-           self._cashflow = self._get_fundamentals('cash-flow', proxy)
+            self._cashflow = self._get_fundamentals(
+                'cash-flow', proxy)
         return self._cashflow
 
     # ------------------------
