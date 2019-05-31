@@ -314,7 +314,6 @@ class Ticker():
 
         return df
 
-
     # ------------------------
 
     def _get_fundamentals(self, kind, proxy=None):
@@ -481,13 +480,19 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     if progress:
         _PROGRESS_BAR.completed()
 
-    data = _pd.concat(_DFS.values(), axis=1, keys=_DFS.keys())
+    if len(tickers) == 1:
+        return _DFS[tickers[0]]
+
+    try:
+        data = _pd.concat(_DFS.values(), axis=1, keys=_DFS.keys())
+    except Exception:
+        _realign_dfs()
+        data = _pd.concat(_DFS.values(), axis=1, keys=_DFS.keys())
+
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
 
-    if len(tickers) == 1:
-        data = _DFS[tickers[0]]
     return data
 
 
@@ -541,12 +546,33 @@ class _ProgressBar:
         return str(self.prog_bar)
 
 
+def _realign_dfs():
+    idx_len = 0
+    idx = None
+
+    for df in _DFS.values():
+        if len(df) > idx_len:
+            idx_len = len(df)
+            idx = df.index
+
+    for key in _DFS.keys():
+        try:
+            _DFS[key] = _pd.DataFrame(
+                index=idx, data=_DFS[key]).drop_duplicates()
+        except Exception:
+            print(key)
+            df = _DFS[key].dropna().copy()
+            _DFS[key] = _emptydf(idx)
+            _DFS[key].loc[df.index, :] = df.values
+
+
 def _emptydf(index=[]):
     empty = _pd.DataFrame(index=index, data={
         'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
         'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
     empty.index.name = 'Date'
     return empty
+
 
 # make pandas datareader optional
 # otherwise can be called via fix_yahoo_finance.download(...)
