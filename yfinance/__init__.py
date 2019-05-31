@@ -455,12 +455,10 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     # reset _DFS
     _DFS = {}
 
-    # set thread count if True
-    if threads is True:
-        threads = min([len(tickers), _multitasking.cpu_count()*2])
-
     # download using threads
-    if isinstance(threads, int):
+    if threads:
+        if threads is True:
+            threads = min([len(tickers), _multitasking.cpu_count() * 2])
         _multitasking.set_max_threads(threads)
         for i, ticker in enumerate(tickers):
             _download_one_threaded(ticker, period=period, interval=interval,
