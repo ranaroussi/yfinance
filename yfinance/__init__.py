@@ -245,19 +245,19 @@ class Ticker():
         err_msg = "No data found for this date range, symbol may be delisted"
         if "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
-            _DFS[self.ticker] = _pd.DataFrame()
+            _DFS[self.ticker] = _emptydf()
             raise ValueError(self.ticker, err_msg)
 
         elif "chart" not in data or data["chart"]["result"] is None or \
                 len(data["chart"]["result"]) == 0:
-            _DFS[self.ticker] = _pd.DataFrame()
+            _DFS[self.ticker] = _emptydf()
             raise ValueError(self.ticker, err_msg)
 
         # parse quotes
         try:
             quotes = self._parse_quotes(data["chart"]["result"][0])
         except Exception:
-            _DFS[self.ticker] = _pd.DataFrame()
+            _DFS[self.ticker] = _emptydf()
             raise ValueError(self.ticker, err_msg)
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
@@ -540,6 +540,13 @@ class _ProgressBar:
     def __str__(self):
         return str(self.prog_bar)
 
+
+def _emptydf(index=[]):
+    empty = _pd.DataFrame(index=index, data={
+        'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
+        'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
+    empty.index.name = 'Date'
+    return empty
 
 # make pandas datareader optional
 # otherwise can be called via fix_yahoo_finance.download(...)
