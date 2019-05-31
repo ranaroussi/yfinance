@@ -64,6 +64,7 @@ class Ticker():
         self._balance_sheet = None
         self._cashflow = None
         self._scrape_url = 'https://finance.yahoo.com/quote'
+        self._expirations = {}
 
     @property
     def info(self):
@@ -75,12 +76,65 @@ class Ticker():
             return r[0]
         return {}
 
-    """
-    # @todo
-    def _options(self):
-        # https://query1.finance.yahoo.com/v7/finance/options/SPY
-        pass
-    """
+    def _download_options(self, date=None, proxy=None):
+        if date is None:
+            url = "{}/v7/finance/options/{}".format(
+                self._base_url, self.ticker)
+        else:
+            url = "{}/v7/finance/options/{}?date={}".format(
+                self._base_url, self.ticker, date)
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        r = _requests.get(url=url, proxies=proxy).json()
+        if len(r['optionChain']['result']) > 0:
+            for exp in r['optionChain']['result'][0]['expirationDates']:
+                self._expirations[_datetime.datetime.fromtimestamp(
+                    exp).strftime('%Y-%m-%d')] = exp
+            return r['optionChain']['result'][0]['options'][0]
+        return {}
+
+    @property
+    def options(self):
+        if not self._expirations:
+            self._download_options()
+        return tuple(self._expirations.keys())
+
+    def _options2df(self, opt):
+        return _pd.DataFrame(opt)[[
+            'contractSymbol',
+            'lastTradeDate',
+            'strike',
+            'lastPrice',
+            'bid',
+            'ask',
+            'change',
+            'percentChange',
+            'volume',
+            'openInterest',
+            'impliedVolatility',
+            'inTheMoney',
+            'contractSize',
+            'currency']]
+
+    def option_chain(self, date=None, proxy=None):
+        if date is None:
+            options = self._download_options(proxy=proxy)
+        else:
+            if not self._expirations:
+                self._download_options()
+            date = self._expirations[date]
+            options = self._download_options(date, proxy=proxy)
+
+        return _namedtuple('Options', ['calls', 'puts'])(**{
+            "calls": self._options2df(options['calls']),
+            "puts": self._options2df(options['puts'])
+        })
+
 
     @staticmethod
     def _auto_adjust(data):
