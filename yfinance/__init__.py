@@ -560,7 +560,6 @@ def _realign_dfs():
             _DFS[key] = _pd.DataFrame(
                 index=idx, data=_DFS[key]).drop_duplicates()
         except Exception:
-            print(key)
             df = _DFS[key].dropna().copy()
             _DFS[key] = _emptydf(idx)
             _DFS[key].loc[df.index, :] = df.values
