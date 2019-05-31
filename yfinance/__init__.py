@@ -447,7 +447,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     # create ticker list
     tickers = tickers if isinstance(
         tickers, list) else tickers.replace(',', ' ').split()
-    tickers = [ticker.upper() for ticker in tickers]
+    tickers = list(set([ticker.upper() for ticker in tickers]))
 
     if progress:
         _PROGRESS_BAR = _ProgressBar(len(tickers), 'downloaded')
