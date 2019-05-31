@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.40
+------
+- Fixed issue related to threads when downloading many symbols
+- Fix issue relared to missing data
+
 0.1.39
 ------
 - Added ``Ticker('XXX').financials``, ``Ticker('XXX').balance_sheet``, and ``Ticker('XXX').cashflow``
