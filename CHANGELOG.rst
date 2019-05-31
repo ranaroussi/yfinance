@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.41
+------
+- Added methods for downloading option chain
+
 0.1.40
 ------
 - Fixed issue related to threads when downloading many symbols
