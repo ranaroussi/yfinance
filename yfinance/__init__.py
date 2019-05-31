@@ -168,7 +168,7 @@ class Ticker():
 
     def get_actions(self, proxy=None):
         if self._history is None:
-           self.history(period="max", proxy=proxy)
+            self.history(period="max", proxy=proxy)
         actions = self._history[["Dividends", "Stock Splits"]]
         return actions[actions != 0].dropna(how='all').fillna(0)
 
