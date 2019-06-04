@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.42
+------
+- Fix data realignment when Yahoo returns with missing/malform data
+
 0.1.41
 ------
 - Added methods for downloading option chain

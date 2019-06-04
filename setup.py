@@ -18,7 +18,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='yfinance',
-    version="0.1.41",
+    version="0.1.42",
     description='Yahoo! Finance market data downloader',
     long_description=long_description,
     url='https://github.com/ranaroussi/yfinance',
