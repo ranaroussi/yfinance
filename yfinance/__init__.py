@@ -550,6 +550,47 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     return data
 
 
+def _realign_dfs():
+    idx_len = 0
+    idx = None
+
+    for df in _DFS.values():
+        if len(df) > idx_len:
+            idx_len = len(df)
+            idx = df.index
+
+    for key in _DFS.keys():
+        try:
+            _DFS[key] = _pd.DataFrame(
+                index=idx, data=_DFS[key]).drop_duplicates()
+        except Exception:
+            _DFS[key] = _pd.concat(
+                [_emptydf(idx), _DFS[key].dropna()], axis=0, sort=True)
+
+        # remove duplicate index
+        _DFS[key] = _DFS[key].loc[~_DFS[key].index.duplicated(keep='last')]
+
+
+def _emptydf(index=[]):
+    empty = _pd.DataFrame(index=index, data={
+        'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
+        'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
+    empty.index.name = 'Date'
+    return empty
+
+
+# make pandas datareader optional
+# otherwise can be called via fix_yahoo_finance.download(...)
+def pdr_override():
+    try:
+        import pandas_datareader
+        pandas_datareader.data.get_data_yahoo = download
+        pandas_datareader.data.get_data_yahoo_actions = download
+        pandas_datareader.data.DataReader = download
+    except Exception:
+        pass
+
+
 class _ProgressBar:
     def __init__(self, iterations, text='completed'):
         self.text = text
@@ -598,42 +639,3 @@ class _ProgressBar:
 
     def __str__(self):
         return str(self.prog_bar)
-
-
-def _realign_dfs():
-    idx_len = 0
-    idx = None
-
-    for df in _DFS.values():
-        if len(df) > idx_len:
-            idx_len = len(df)
-            idx = df.index
-
-    for key in _DFS.keys():
-        try:
-            _DFS[key] = _pd.DataFrame(
-                index=idx, data=_DFS[key]).drop_duplicates()
-        except Exception:
-            df = _DFS[key].dropna().copy()
-            _DFS[key] = _emptydf(idx)
-            _DFS[key].loc[df.index, :] = df.values
-
-
-def _emptydf(index=[]):
-    empty = _pd.DataFrame(index=index, data={
-        'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
-        'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
-    empty.index.name = 'Date'
-    return empty
-
-
-# make pandas datareader optional
-# otherwise can be called via fix_yahoo_finance.download(...)
-def pdr_override():
-    try:
-        import pandas_datareader
-        pandas_datareader.data.get_data_yahoo = download
-        pandas_datareader.data.get_data_yahoo_actions = download
-        pandas_datareader.data.DataReader = download
-    except Exception:
-        pass
