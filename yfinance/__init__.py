@@ -28,6 +28,7 @@ __all__ = ['download', 'Ticker', 'Tickers', 'pdr_override']
 import time as _time
 import datetime as _datetime
 import requests as _requests
+import json as _json
 from collections import namedtuple as _namedtuple
 import multitasking as _multitasking
 import pandas as _pd
@@ -376,6 +377,27 @@ class Ticker():
             if isinstance(proxy, dict) and "https" in proxy:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
+
+       """
+        url = '%s/%s' % (self._scrape_url, self.ticker)
+        html = _requests.get(url=url, proxies=proxy).text
+        json_str = html.split('root.App.main =')[1].split(
+            '(this)')[0].split(';\n}')[0].strip()
+        data = _json.loads(json_str)[
+            'context']['dispatcher']['stores']['QuoteSummaryStore']
+
+        new_data = ''
+        data_parts = _json.dumps(data).replace('{}', 'null').split('{"raw": ')
+        for x in range(len(data_parts)):
+            if "fmt" in data_parts[x]:
+                p = data_parts[x].split(', "fmt":', maxsplit=1)
+                new_data += p[0] + p[1].split('}', maxsplit=1)[1]
+            else:
+                new_data += data_parts[x]
+        data = _json.loads(new_data)
+
+        return data
+        """
 
         url = '%s/%s/%s' % (self._scrape_url, self.ticker, kind)
         data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
