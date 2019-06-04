@@ -378,7 +378,7 @@ class Ticker():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-       """
+        """
         url = '%s/%s' % (self._scrape_url, self.ticker)
         html = _requests.get(url=url, proxies=proxy).text
         json_str = html.split('root.App.main =')[1].split(
