@@ -13,6 +13,10 @@ Yahoo! Finance market data downloader
     :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi status
 
+.. image:: https://img.shields.io/pypi/dm/yfinance.svg?maxAge=2592000
+    :target: https://pypi.python.org/pypi/yfinance
+    :alt: PyPi downloads
+
 .. image:: https://img.shields.io/travis/ranaroussi/yfinance/master.svg?maxAge=1
     :target: https://travis-ci.org/ranaroussi/yfinance
     :alt: Travis-CI build status
