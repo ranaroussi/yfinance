@@ -21,14 +21,14 @@
 
 from __future__ import print_function
 
-__version__ = "0.1.42"
+__version__ = "0.1.43"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'Ticker', 'Tickers', 'pdr_override']
 
 import time as _time
 import datetime as _datetime
 import requests as _requests
-import json as _json
+# import json as _json
 from collections import namedtuple as _namedtuple
 import multitasking as _multitasking
 import pandas as _pd
@@ -539,7 +539,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
-                                   progress=(progress and i > 0))
+                                   progress=(progress and i > 0), proxy=proxy)
         while len(_DFS) < len(tickers):
             _time.sleep(0.01)
 
