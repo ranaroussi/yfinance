@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.43
+------
+- Bugfixes
+
 0.1.42
 ------
 - Fix data realignment when Yahoo returns with missing/malform data
