@@ -106,7 +106,7 @@ class Ticker():
         return tuple(self._expirations.keys())
 
     def _options2df(self, opt):
-        return _pd.DataFrame(opt)[[
+        return _pd.DataFrame(opt).reindex(columns=[
             'contractSymbol',
             'lastTradeDate',
             'strike',
@@ -120,7 +120,7 @@ class Ticker():
             'impliedVolatility',
             'inTheMoney',
             'contractSize',
-            'currency']]
+            'currency'])
 
     def option_chain(self, date=None, proxy=None):
         if date is None:
