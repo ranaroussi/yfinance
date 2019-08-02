@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.44
+------
+- Improved ``Tickers`` module (see https://github.com/ranaroussi/yfinance/issues/86)
+- Misc bugfixes
+
 0.1.43
 ------
 - Bugfixes
