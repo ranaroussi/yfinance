@@ -39,7 +39,7 @@ _DFS = {}
 _PROGRESS_BAR = None
 
 
-def Tickers(tickers):
+def genTickers(tickers):
     tickers = tickers if isinstance(
         tickers, list) else tickers.replace(',', ' ').split()
     tickers = [ticker.upper() for ticker in tickers]
@@ -51,10 +51,55 @@ def Tickers(tickers):
                        )(*ticker_objects.values())
 
 
+class Tickers():
+
+    def __repr__(self):
+        return 'yfinance.Tickers object <%s>' % ",".join(self.symbols)
+
+    def __init__(self, tickers):
+        tickers = tickers if isinstance(
+            tickers, list) else tickers.replace(',', ' ').split()
+        self.symbols = [ticker.upper() for ticker in tickers]
+        ticker_objects = {}
+
+        for ticker in self.symbols:
+            ticker_objects[ticker] = Ticker(ticker)
+
+        self.tickers = _namedtuple(
+            "Tickers", ticker_objects.keys())(*ticker_objects.values())
+
+    def download(self, period="1mo", interval="1d",
+                 start=None, end=None, prepost=False,
+                 actions=True, auto_adjust=True, proxy=None,
+                 threads=True, group_by='column', progress=True,
+                 **kwargs):
+
+        data = download(self.symbols,
+                        start=start, end=end, actions=actions,
+                        auto_adjust=auto_adjust,
+                        period=period,
+                        interval=interval,
+                        prepost=prepost,
+                        proxy=proxy,
+                        group_by='ticker',
+                        threads=threads,
+                        progress=progress,
+                        **kwargs)
+
+        for symbol in self.symbols:
+            getattr(self.tickers, symbol)._history = data[symbol]
+
+        if group_by == 'column':
+            data.columns = data.columns.swaplevel(0, 1)
+            data.sort_index(level=0, axis=1, inplace=True)
+
+        return data
+
+
 class Ticker():
 
     def __repr__(self):
-        return 'Ticker object <%s>' % self.ticker
+        return 'yfinance.Ticker object <%s>' % self.ticker
 
     def __init__(self, ticker):
         self.ticker = ticker.upper()
@@ -135,7 +180,6 @@ class Ticker():
             "calls": self._options2df(options['calls']),
             "puts": self._options2df(options['puts'])
         })
-
 
     @staticmethod
     def _auto_adjust(data):
