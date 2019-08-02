@@ -13,7 +13,7 @@ Yahoo! Finance market data downloader
     :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi status
 
-.. image:: https://img.shields.io/pypi/dm/yfinance.svg?maxAge=2592000
+.. image:: https://img.shields.io/pypi/dm/yfinance.svg?maxAge=2592000&label=installs&color=%2327B1FF
     :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi downloads
 

@@ -21,7 +21,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.1.43"
+__version__ = "0.1.44"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'Ticker', 'Tickers', 'pdr_override']
 
