@@ -66,7 +66,7 @@ class Tickers():
             ticker_objects[ticker] = Ticker(ticker)
 
         self.tickers = _namedtuple(
-            "Tickers", ticker_objects.keys())(*ticker_objects.values())
+            "Tickers", ticker_objects.keys(),rename=True)(*ticker_objects.values())
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
