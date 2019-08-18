@@ -275,7 +275,8 @@ class Ticker():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
-                actions=True, auto_adjust=True, proxy=None):
+                actions=True, auto_adjust=True, proxy=None,
+                rounding=True):
         """
         :Parameters:
             period : str
@@ -295,6 +296,10 @@ class Ticker():
                 Default is False
             auto_adjust: bool
                 Adjust all OHLC automatically? Default is True
+            proxy: str
+                Optional. Proxy server URL scheme. Default is None
+            rounding: bool
+                Optional. Whether to round the retrieved values to the precision suggested by Yahoo.
         """
 
         if start or period is None or period.lower() == "max":
@@ -382,8 +387,9 @@ class Ticker():
         if auto_adjust:
             quotes = self._auto_adjust(quotes)
 
-        quotes = _np.round(quotes, data[
-            "chart"]["result"][0]["meta"]["priceHint"])
+        if rounding:
+            quotes = _np.round(quotes, data[
+                "chart"]["result"][0]["meta"]["priceHint"])
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
         quotes.dropna(inplace=True)
@@ -507,11 +513,11 @@ class Ticker():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
                            actions=False, progress=True, period="max",
-                           interval="1d", prepost=False, proxy=None):
+                           interval="1d", prepost=False, proxy=None, rounding=True):
 
     global _PROGRESS_BAR, _DFS
     data = _download_one(ticker, start, end, auto_adjust, actions,
-                         period, interval, prepost, proxy)
+                         period, interval, prepost, proxy, rounding)
     _DFS[ticker.upper()] = data
     if progress:
         _PROGRESS_BAR.animate()
@@ -519,17 +525,18 @@ def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
 
 def _download_one(ticker, start=None, end=None, auto_adjust=False,
                   actions=False, period="max", interval="1d",
-                  prepost=False, proxy=None):
+                  prepost=False, proxy=None, rounding=True):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
-                                  proxy=proxy)
+                                  proxy=proxy, rounding=rounding)
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True,
              group_by='column', auto_adjust=False, progress=True,
              period="max", interval="1d", prepost=False, proxy=None,
+             rounding=True,
              **kwargs):
     """Download yahoo tickers
     :Parameters:
@@ -560,6 +567,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             How many threads to use for mass downloading. Default is True
         proxy: str
             Optional. Proxy server URL scheme. Default is None
+        rounding: bool
+            Optional. Whether to round the retrieved values to the precision suggested by Yahoo.
     """
     global _PROGRESS_BAR, _DFS
 
@@ -583,7 +592,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
-                                   progress=(progress and i > 0), proxy=proxy)
+                                   progress=(progress and i > 0), proxy=proxy,
+                                   rounding=rounding)
         while len(_DFS) < len(tickers):
             _time.sleep(0.01)
 
@@ -592,7 +602,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         for i, ticker in enumerate(tickers):
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
-                                 actions=actions, auto_adjust=auto_adjust)
+                                 actions=actions, auto_adjust=auto_adjust,
+                                 rounding=rounding)
             _DFS[ticker.upper()] = data
             if progress:
                 _PROGRESS_BAR.animate()
