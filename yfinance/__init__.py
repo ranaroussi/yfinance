@@ -118,7 +118,7 @@ class Ticker():
         url = "{}/v7/finance/quote?symbols={}".format(
             self._base_url, self.ticker)
         r = _requests.get(url=url).json()["quoteResponse"]["result"]
-        if len(r) > 0:
+        if r:
             return r[0]
         return {}
 
@@ -137,7 +137,7 @@ class Ticker():
             proxy = {"https": proxy}
 
         r = _requests.get(url=url, proxies=proxy).json()
-        if len(r['optionChain']['result']) > 0:
+        if r['optionChain']['result']:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.fromtimestamp(
                     exp).strftime('%Y-%m-%d')] = exp
@@ -348,7 +348,7 @@ class Ticker():
             raise ValueError(self.ticker, err_msg)
 
         elif "chart" not in data or data["chart"]["result"] is None or \
-                len(data["chart"]["result"]) == 0:
+                not data["chart"]["result"]:
             _DFS[self.ticker] = _emptydf()
             raise ValueError(self.ticker, err_msg)
 
