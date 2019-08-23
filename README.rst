@@ -21,6 +21,10 @@ Yahoo! Finance market data downloader
     :target: https://travis-ci.org/ranaroussi/yfinance
     :alt: Travis-CI build status
 
+.. image:: https://www.codefactor.io/repository/github/ranaroussi/yfinance/badge
+    :target: https://www.codefactor.io/repository/github/ranaroussi/yfinance
+    :alt: CodeFactor
+
 .. image:: https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60
     :target: https://github.com/ranaroussi/yfinance
     :alt: Star this repo
@@ -207,6 +211,13 @@ Install ``yfinance`` using ``pip``:
 .. code:: bash
 
     $ pip install yfinance --upgrade --no-cache-dir
+
+
+Install ``yfinance`` using ``conda``:
+
+.. code:: bash
+
+    $ conda install -c ranaroussi yfinance
 
 
 Requirements
