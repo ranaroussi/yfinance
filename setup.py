@@ -7,7 +7,7 @@
 """Yahoo! Finance market data downloader (+fix for Pandas Datareader)"""
 
 from setuptools import setup, find_packages
-# from codecs import open
+from codecs import open
 from os import path
 
 here = path.abspath(path.dirname(__file__))
