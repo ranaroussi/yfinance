@@ -109,6 +109,7 @@ class Ticker():
         self._financials = None
         self._balance_sheet = None
         self._cashflow = None
+        self._sustainability = None
         self._scrape_url = 'https://finance.yahoo.com/quote'
         self._expirations = {}
 
@@ -450,9 +451,9 @@ class Ticker():
         data.set_index('', inplace=True)
         for col in data.columns:
             data[col] = _np.where(data[col] == '-', _np.nan, data[col])
-
-        idx = data[data[data.columns[0]] == data[data.columns[1]]].index
-        data.loc[idx] = '-'
+        if len(data.columns) != 1:
+          idx = data[data[data.columns[0]] == data[data.columns[1]]].index
+          data.loc[idx] = '-'
         return data[1:]
 
     def get_financials(self, proxy=None):
@@ -472,6 +473,12 @@ class Ticker():
             self._cashflow = self._get_fundamentals(
                 'cash-flow', proxy)
         return self._cashflow
+
+    def get_sustainability(self, proxy=None):
+        if self._sustainability is None:
+            self._sustainability = self._get_fundamentals(
+                'sustainability', proxy)
+        return self._sustainability
 
     # ------------------------
 
@@ -503,6 +510,9 @@ class Ticker():
     def cashflow(self):
         return self.get_cashflow()
 
+    @property
+    def sustainability(self):
+        return self.get_sustainability()
 
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
