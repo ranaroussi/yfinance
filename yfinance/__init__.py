@@ -21,7 +21,7 @@
 
 from __future__ import print_function
 
-__version__ = "0.1.44"
+__version__ = "0.1.45"
 __author__ = "Ran Aroussi"
 __all__ = ['download', 'Ticker', 'Tickers', 'pdr_override']
 
@@ -66,7 +66,8 @@ class Tickers():
             ticker_objects[ticker] = Ticker(ticker)
 
         self.tickers = _namedtuple(
-            "Tickers", ticker_objects.keys(),rename=True)(*ticker_objects.values())
+            "Tickers", ticker_objects.keys(), rename=True
+        )(*ticker_objects.values())
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
@@ -275,9 +276,8 @@ class Ticker():
     # ------------------------
 
     def history(self, period="1mo", interval="1d",
-                start=None, end=None, prepost=False,
-                actions=True, auto_adjust=True, proxy=None,
-                rounding=True):
+                start=None, end=None, prepost=False, actions=True,
+                auto_adjust=True, proxy=None, rounding=False):
         """
         :Parameters:
             period : str
@@ -451,9 +451,14 @@ class Ticker():
         """
 
         url = '%s/%s/%s' % (self._scrape_url, self.ticker, kind)
-        try: data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
-        except ValueError: return None
-        if kind == 'sustainability': return data
+        try:
+            data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
+        except ValueError:
+            return None
+        if kind == 'sustainability':
+            data['Significant Involvement'] = data[
+                'Significant Involvement'] != 'No'
+            return data
 
         data.columns = [''] + list(data[:1].values[0][1:])
         data.set_index('', inplace=True)
@@ -520,6 +525,7 @@ class Ticker():
     @property
     def sustainability(self):
         return self.get_sustainability()
+
 
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
