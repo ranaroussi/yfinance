@@ -445,7 +445,8 @@ class Ticker():
         """
 
         url = '%s/%s/%s' % (self._scrape_url, self.ticker, kind)
-        data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
+        try: data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
+        except ValueError: return None
         if kind == 'sustainability': return data
 
         data.columns = [''] + list(data[:1].values[0][1:])
