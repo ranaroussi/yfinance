@@ -109,6 +109,7 @@ class Ticker():
         self._financials = None
         self._balance_sheet = None
         self._cashflow = None
+        self._sustainability = None
         self._scrape_url = 'https://finance.yahoo.com/quote'
         self._expirations = {}
 
@@ -450,13 +451,14 @@ class Ticker():
         """
 
         url = '%s/%s/%s' % (self._scrape_url, self.ticker, kind)
-        data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
+        try: data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
+        except ValueError: return None
+        if kind == 'sustainability': return data
 
         data.columns = [''] + list(data[:1].values[0][1:])
         data.set_index('', inplace=True)
         for col in data.columns:
             data[col] = _np.where(data[col] == '-', _np.nan, data[col])
-
         idx = data[data[data.columns[0]] == data[data.columns[1]]].index
         data.loc[idx] = '-'
         return data[1:]
@@ -478,6 +480,12 @@ class Ticker():
             self._cashflow = self._get_fundamentals(
                 'cash-flow', proxy)
         return self._cashflow
+
+    def get_sustainability(self, proxy=None):
+        if self._sustainability is None:
+            self._sustainability = self._get_fundamentals(
+                'sustainability', proxy)
+        return self._sustainability
 
     # ------------------------
 
@@ -509,6 +517,9 @@ class Ticker():
     def cashflow(self):
         return self.get_cashflow()
 
+    @property
+    def sustainability(self):
+        return self.get_sustainability()
 
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
