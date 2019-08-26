@@ -446,14 +446,14 @@ class Ticker():
 
         url = '%s/%s/%s' % (self._scrape_url, self.ticker, kind)
         data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
+        if kind == 'sustainability': return data
 
         data.columns = [''] + list(data[:1].values[0][1:])
         data.set_index('', inplace=True)
         for col in data.columns:
             data[col] = _np.where(data[col] == '-', _np.nan, data[col])
-        if len(data.columns) != 1:
-          idx = data[data[data.columns[0]] == data[data.columns[1]]].index
-          data.loc[idx] = '-'
+        idx = data[data[data.columns[0]] == data[data.columns[1]]].index
+        data.loc[idx] = '-'
         return data[1:]
 
     def get_financials(self, proxy=None):
