@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.1.45
+------
+- Added sustainability data/error handling for ETF/MF (by GregoryMorse)
+- Avoid rounding the values retrieved from Yahoo by default (by aglebov)
+- Added 'rename=True' for the namedtuple (raffieeey)
+
 0.1.44
 ------
 - Improved ``Tickers`` module (see https://github.com/ranaroussi/yfinance/issues/86)
