@@ -454,16 +454,17 @@ class Ticker():
         try:
             data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
         except ValueError:
-            return None
+            return lambda : None
         if kind == 'sustainability':
             data['Significant Involvement'] = data[
                 'Significant Involvement'] != 'No'
-            return data
+            return lambda : data
 
         data.columns = [''] + list(data[:1].values[0][1:])
         data.set_index('', inplace=True)
         for col in data.columns:
             data[col] = _np.where(data[col] == '-', _np.nan, data[col])
+        if len(data.columns) < 2: return lambda : None
         idx = data[data[data.columns[0]] == data[data.columns[1]]].index
         data.loc[idx] = '-'
         return data[1:]
