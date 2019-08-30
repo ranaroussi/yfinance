@@ -176,7 +176,7 @@ I've also added some options to make life easier :)
 
             # use threads for mass downloading? (True/False/Integer)
             # (optional, default is True)
-            treads = True,
+            threads = True,
 
             # proxy URL scheme use use when downloading?
             # (optional, default is None)
