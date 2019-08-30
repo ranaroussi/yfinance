@@ -454,7 +454,8 @@ class Ticker():
         try:
             data = _pd.read_html(_requests.get(url=url, proxies=proxy).text)[0]
         except ValueError:
-            return None
+            return _pd.DataFrame()
+
         if kind == 'sustainability':
             data['Significant Involvement'] = data[
                 'Significant Involvement'] != 'No'
@@ -462,6 +463,10 @@ class Ticker():
 
         data.columns = [''] + list(data[:1].values[0][1:])
         data.set_index('', inplace=True)
+
+        if len(data.columns) < 2:
+            return _pd.DataFrame()
+
         for col in data.columns:
             data[col] = _np.where(data[col] == '-', _np.nan, data[col])
         idx = data[data[data.columns[0]] == data[data.columns[1]]].index
