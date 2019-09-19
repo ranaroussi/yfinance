@@ -459,7 +459,7 @@ class Ticker():
         if kind == 'sustainability':
             data['Significant Involvement'] = data[
                 'Significant Involvement'] != 'No'
-            return data
+            return dict(zip(data[data.columns[0]], data[data.columns[1]]))
 
         data.columns = [''] + list(data[:1].values[0][1:])
         data.set_index('', inplace=True)
