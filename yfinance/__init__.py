@@ -457,6 +457,7 @@ class Ticker():
             return _pd.DataFrame()
 
         if kind == 'sustainability':
+            if not 'Significant Involvement' in data: return _pd.DataFrame()
             data['Significant Involvement'] = data[
                 'Significant Involvement'] != 'No'
             return dict(zip(data[data.columns[0]], data[data.columns[1]]))
