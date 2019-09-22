@@ -508,6 +508,7 @@ class Ticker():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
         url = '%s/%s/%s' % (self._scrape_url, self.ticker, 'financials')
+        my_headers = { 'User-agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18362' }
         req = _requests.get(url=url, headers = my_headers, proxies=proxy)
         parseTag = 'root.App.main = '
         r = req.text
