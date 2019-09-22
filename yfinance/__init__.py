@@ -34,6 +34,7 @@ import multitasking as _multitasking
 import pandas as _pd
 import numpy as _np
 import sys as _sys
+import re as _re
 
 _DFS = {}
 _PROGRESS_BAR = None
@@ -110,6 +111,7 @@ class Ticker():
         self._financials = None
         self._balance_sheet = None
         self._cashflow = None
+        self._all_financials = None
         self._sustainability = None
         self._scrape_url = 'https://finance.yahoo.com/quote'
         self._expirations = {}
@@ -472,7 +474,59 @@ class Ticker():
         idx = data[data[data.columns[0]] == data[data.columns[1]]].index
         data.loc[idx] = '-'
         return data[1:]
-
+    
+    #demjson.decode() and jsonnet.evaluate_snippet() can parse raw javascript string
+    def _get_financial_translator(self, vendor, proxy=None):
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+        #vendor = 'https://s.yimg.com/uc/finance/dd-site/js/vendor.d859a2b02e2b0845735f.min.js'
+        req = _requests.get(url=vendor, proxies=proxy)
+        r = req.text
+        res = _re.search('t\.p\+\"\"\+\((.*?)\[e\]\|\|e\)\+\"\.\"\+(.*?)\[e\]\+\"\.min\.js\";', r)
+        ks = json.loads(_re.sub(r'([\{\s,])(\w+)(:)', r'\1"\2"\3', res[1]))
+        vs = json.loads(_re.sub(r'([\{\s,])(\w+)(:)', r'\1"\2"\3', res[2]))
+        fncneUrl = vs[list(ks.keys())[list(ks.values()).index('Quote.financials')]]
+        url = 'https://s.yimg.com/uc/finance/dd-site/js/Quote.financials.' + fncneUrl + '.min.js'
+        req = _requests.get(url=url, proxies=proxy)
+        strs = req.text.split('e.exports=')
+        objs = [json.loads(_re.sub(':!0', ':true', _re.sub(r'([\{\s,])(\w+)(:)', r'\1"\2"\3', re.sub('}(}\);|,\d+:function\(e,t\){)', '', strs[n])))) for n in range(6, 9)]
+        return ([('incomeStatementHistory','incomeStatementHistory','incomeStatement'),
+            ('cashflowStatementHistory','cashflowStatements','cashflowStatement'),
+            ('balanceSheetHistory','balanceSheetStatements','balanceSheet'),
+            ('incomeStatementHistoryQuarterly','incomeStatementHistory','incomeStatement'),
+            ('cashflowStatementHistoryQuarterly','cashflowStatements','cashflowStatement'),
+            ('balanceSheetHistoryQuarterly','balanceSheetStatements','balanceSheet')],
+            {n['item']:[[x['items'] if 'items' in x else '',x['title'],x['isDate'] if 'isDate' in x else False] for x in n['config']] for n in objs})
+    
+    def _get_all_financials(self, proxy=None):
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+        url = '%s/%s/%s' % (self._scrape_url, self.ticker, 'financials')
+        req = _requests.get(url=url, headers = my_headers, proxies=proxy)
+        parseTag = 'root.App.main = '
+        r = req.text
+        idx = r.find(parseTag)
+        j = json.loads(r[idx:].split('\n')[0][len(parseTag):][:-1])
+        #j['context']['dispatcher']['stores']['StreamDataStore']['quoteData'][StockName] #contains Ticker.info
+        q = j['context']['dispatcher']['stores']['QuoteSummaryStore']
+        (fncls, ft) = self._get_financial_translator(re.search('https://s\.yimg\.com/uc/finance/dd-site/js/vendor\..*?\.min\.js', req.text)[0], proxy)
+        strings = j['context']['dispatcher']['stores']['LangStore']['baseLangs']['td-app-finance']
+        dfs = []
+        for (nm, sbnm, knm) in fncls:
+            print((nm, sbnm, knm))
+            df = [[strings[x[1]] if not x[2] else ''] + [((q[nm][sbnm][n][x[0]]['raw'] if not x[2] else datetime.fromtimestamp(q[nm][sbnm][n][x[0]]['raw'])) if 'raw' in q[nm][sbnm][n][x[0]] else '') if x[0] in q[nm][sbnm][n] else '-' for n in range(len(q[nm][sbnm]))] for x in ft[knm]]
+            df = pd.DataFrame(df[1:], None, df[0])
+            df.set_index('', inplace=True)
+            for col in df.columns: df[col] = np.where(df[col] == '', np.nan, df[col])
+            dfs.append(df)
+        return dfs    
+    
     def get_financials(self, proxy=None):
         if self._financials is None:
             self._financials = self._get_fundamentals(
@@ -490,6 +544,14 @@ class Ticker():
             self._cashflow = self._get_fundamentals(
                 'cash-flow', proxy)
         return self._cashflow
+    
+    def get_all_financials(self, proxy=None):
+        if self._all_financials is None:
+            self._all_financials = self._get_all_financials(proxy)
+            self._financials = self._all_financials[0]
+            self._cashflow = self._all_financials[1]
+            self._balance_sheet = self._all_financials[2]
+        return self._all_financials
 
     def get_sustainability(self, proxy=None):
         if self._sustainability is None:
@@ -526,6 +588,10 @@ class Ticker():
     @property
     def cashflow(self):
         return self.get_cashflow()
+    
+    @property
+    def all_financials(self):
+        return self.get_all_financials()
 
     @property
     def sustainability(self):
