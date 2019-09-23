@@ -469,6 +469,7 @@ class Ticker():
 
         for col in data.columns:
             data[col] = _np.where(data[col] == '-', _np.nan, data[col])
+        if len(data.columns) < 2: return None
         idx = data[data[data.columns[0]] == data[data.columns[1]]].index
         data.loc[idx] = '-'
         return data[1:]
