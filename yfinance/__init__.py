@@ -479,7 +479,7 @@ class Ticker():
         idx = data[data[data.columns[0]] == data[data.columns[1]]].index
         data.loc[idx] = '-'
         data.columns = pd.to_datetime(data.columns)
-        if not tz is None: data.columns.index = data.columns.index.tz_localize(tz)
+        if not tz is None: data.columns = data.columns.tz_localize(tz)
         return data[1:].applymap(lambda x: np.nan if x == '-' else x).astype(float)
 
     def get_financials(self, proxy=None, tz=None):
