@@ -525,7 +525,6 @@ class Ticker():
         strings = j['context']['dispatcher']['stores']['LangStore']['baseLangs']['td-app-finance']
         dfs = []
         for (nm, sbnm, knm) in fncls:
-            print((nm, sbnm, knm))
             df = [[strings[x[1]] if not x[2] else ''] + [((q[nm][sbnm][n][x[0]]['raw'] if not x[2] else q[nm][sbnm][n][x[0]]['raw']) if 'raw' in q[nm][sbnm][n][x[0]] else '') if x[0] in q[nm][sbnm][n] else '-' for n in range(len(q[nm][sbnm]))] for x in ft[knm]]
             df = pd.DataFrame(df[1:], None, df[0])
             df.set_index('', inplace=True)
