@@ -531,8 +531,7 @@ class Ticker():
             df.set_index('', inplace=True)
             df.columns = pd.to_datetime(df.columns, unit="s")
             if not tz is None: df.columns = df.columns.tz_localize(tz)
-            for col in df.columns: df[col] = np.where((df[col] == '') | (df[col] == '-'), np.nan, df[col])
-            df = df.astype(float)
+            df = df.where((df != '-') & (df != '')).astype(float)
             dfs.append(df)
         return dfs    
     
