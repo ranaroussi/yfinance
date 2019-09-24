@@ -204,7 +204,7 @@ class Ticker():
         return df
 
     @staticmethod
-    def _parse_quotes(data):
+    def _parse_quotes(data, tz=None):
         timestamps = data["timestamp"]
         ohlc = data["indicators"]["quote"][0]
         volumes = ohlc["volume"]
@@ -225,11 +225,12 @@ class Ticker():
                                 "Volume": volumes})
 
         quotes.index = _pd.to_datetime(timestamps, unit="s")
+        if not tz is None: quotes.index = quotes.index.tz_localize(tz)
         quotes.sort_index(inplace=True)
         return quotes
 
     @staticmethod
-    def _parse_actions(data):
+    def _parse_actions(data, tz=None):
         dividends = _pd.DataFrame(columns=["Dividends"])
         splits = _pd.DataFrame(columns=["Stock Splits"])
 
@@ -239,6 +240,7 @@ class Ticker():
                     data=list(data["events"]["dividends"].values()))
                 dividends.set_index("date", inplace=True)
                 dividends.index = _pd.to_datetime(dividends.index, unit="s")
+                if not tz is None: dividends.index = dividends.index.tz_localize(tz)
                 dividends.sort_index(inplace=True)
                 dividends.columns = ["Dividends"]
 
@@ -248,6 +250,7 @@ class Ticker():
                 splits.set_index("date", inplace=True)
                 splits.index = _pd.to_datetime(
                     splits.index, unit="s")
+                if not tz is None: splits.index = splits.index.tz_localize(tz)
                 splits.sort_index(inplace=True)
                 splits["Stock Splits"] = splits["numerator"] / \
                     splits["denominator"]
@@ -277,7 +280,7 @@ class Ticker():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, proxy=None, rounding=False):
+                auto_adjust=True, proxy=None, rounding=False, tz=None):
         """
         :Parameters:
             period : str
@@ -301,6 +304,8 @@ class Ticker():
                 Optional. Proxy server URL scheme. Default is None
             rounding: bool
                 Optional. Whether to round the retrieved values to the precision suggested by Yahoo.
+            tz: str
+                Optional. A timezone locale for dates such as that returned in Info field 'exchangeTimezoneName' or Default of None for non-localized dates
         """
 
         if start or period is None or period.lower() == "max":
@@ -360,7 +365,7 @@ class Ticker():
 
         # parse quotes
         try:
-            quotes = self._parse_quotes(data["chart"]["result"][0])
+            quotes = self._parse_quotes(data["chart"]["result"][0], tz)
         except Exception:
             _DFS[self.ticker] = _emptydf()
             raise ValueError(self.ticker, err_msg)
@@ -396,7 +401,7 @@ class Ticker():
         quotes.dropna(inplace=True)
 
         # actions
-        dividends, splits = self._parse_actions(data["chart"]["result"][0])
+        dividends, splits = self._parse_actions(data["chart"]["result"][0], tz)
 
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
@@ -411,6 +416,7 @@ class Ticker():
             df.index.name = "Datetime"
         else:
             df.index = _pd.to_datetime(df.index.date)
+            if not tz is None: df.index = df.index.tz_localize(tz)
             df.index.name = "Date"
 
         self._history = df.copy()
@@ -536,11 +542,11 @@ class Ticker():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
                            actions=False, progress=True, period="max",
-                           interval="1d", prepost=False, proxy=None, rounding=True):
+                           interval="1d", prepost=False, proxy=None, rounding=True, tz=None):
 
     global _PROGRESS_BAR, _DFS
     data = _download_one(ticker, start, end, auto_adjust, actions,
-                         period, interval, prepost, proxy, rounding)
+                         period, interval, prepost, proxy, rounding, tz)
     _DFS[ticker.upper()] = data
     if progress:
         _PROGRESS_BAR.animate()
@@ -548,18 +554,18 @@ def _download_one_threaded(ticker, start=None, end=None, auto_adjust=False,
 
 def _download_one(ticker, start=None, end=None, auto_adjust=False,
                   actions=False, period="max", interval="1d",
-                  prepost=False, proxy=None, rounding=True):
+                  prepost=False, proxy=None, rounding=True, tz=None):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
-                                  proxy=proxy, rounding=rounding)
+                                  proxy=proxy, rounding=rounding, tz=tz)
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True,
              group_by='column', auto_adjust=False, progress=True,
              period="max", interval="1d", prepost=False, proxy=None,
-             rounding=True,
+             rounding=True, tz=tz,
              **kwargs):
     """Download yahoo tickers
     :Parameters:
@@ -592,6 +598,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Proxy server URL scheme. Default is None
         rounding: bool
             Optional. Whether to round the retrieved values to the precision suggested by Yahoo.
+        tz: str
+            Optional. A timezone locale for dates such as that returned in Info field 'exchangeTimezoneName' or Default of None for non-localized dates
     """
     global _PROGRESS_BAR, _DFS
 
@@ -616,7 +624,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
                                    progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding)
+                                   rounding=rounding, tz=tz)
         while len(_DFS) < len(tickers):
             _time.sleep(0.01)
 
@@ -626,7 +634,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
-                                 rounding=rounding)
+                                 rounding=rounding, tz=tz)
             _DFS[ticker.upper()] = data
             if progress:
                 _PROGRESS_BAR.animate()
