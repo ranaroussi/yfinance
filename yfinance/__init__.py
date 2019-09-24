@@ -565,7 +565,7 @@ def _download_one(ticker, start=None, end=None, auto_adjust=False,
 def download(tickers, start=None, end=None, actions=False, threads=True,
              group_by='column', auto_adjust=False, progress=True,
              period="max", interval="1d", prepost=False, proxy=None,
-             rounding=True, tz=tz,
+             rounding=True, tz=None,
              **kwargs):
     """Download yahoo tickers
     :Parameters:
