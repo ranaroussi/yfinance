@@ -518,7 +518,8 @@ class Ticker():
         r = req.text
         idx = r.find(parseTag)
         j = json.loads(r[idx:].split('\n')[0][len(parseTag):][:-1])
-        #j['context']['dispatcher']['stores']['StreamDataStore']['quoteData'][StockName] #contains Ticker.info
+        #dct = j['context']['dispatcher']['stores']['StreamDataStore']['quoteData'][StockName] #contains Ticker.info but less complete and with a UUID
+        #inf = {x:(dct[x]['raw'] if type(dct[x]) is dict else dct[x]) for x in dct}
         q = j['context']['dispatcher']['stores']['QuoteSummaryStore']
         (fncls, ft) = self._get_financial_translator(re.search('https://s\.yimg\.com/uc/finance/dd-site/js/vendor\..*?\.min\.js', req.text)[0], proxy)
         strings = j['context']['dispatcher']['stores']['LangStore']['baseLangs']['td-app-finance']
