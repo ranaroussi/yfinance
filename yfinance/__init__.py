@@ -505,7 +505,7 @@ class Ticker():
             ('balanceSheetHistoryQuarterly','balanceSheetStatements','balanceSheet')],
             ft)
     
-    def _get_all_financials(self, proxy=None):
+    def _get_all_financials(self, proxy=None, tz=None):
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
@@ -526,10 +526,13 @@ class Ticker():
         dfs = []
         for (nm, sbnm, knm) in fncls:
             print((nm, sbnm, knm))
-            df = [[strings[x[1]] if not x[2] else ''] + [((q[nm][sbnm][n][x[0]]['raw'] if not x[2] else datetime.fromtimestamp(q[nm][sbnm][n][x[0]]['raw'])) if 'raw' in q[nm][sbnm][n][x[0]] else '') if x[0] in q[nm][sbnm][n] else '-' for n in range(len(q[nm][sbnm]))] for x in ft[knm]]
+            df = [[strings[x[1]] if not x[2] else ''] + [((q[nm][sbnm][n][x[0]]['raw'] if not x[2] else q[nm][sbnm][n][x[0]]['raw']) if 'raw' in q[nm][sbnm][n][x[0]] else '') if x[0] in q[nm][sbnm][n] else '-' for n in range(len(q[nm][sbnm]))] for x in ft[knm]]
             df = pd.DataFrame(df[1:], None, df[0])
             df.set_index('', inplace=True)
-            for col in df.columns: df[col] = np.where(df[col] == '', np.nan, df[col])
+            df.columns = pd.to_datetime(df.columns, unit="s")
+            if not tz is None: df.columns = df.columns.tz_localize(tz)
+            for col in df.columns: df[col] = np.where((df[col] == '') | (df[col] == '-'), np.nan, df[col])
+            df = df.astype(float)
             dfs.append(df)
         return dfs    
     
@@ -551,9 +554,9 @@ class Ticker():
                 'cash-flow', proxy)
         return self._cashflow
     
-    def get_all_financials(self, proxy=None):
+    def get_all_financials(self, proxy=None, tz=None):
         if self._all_financials is None:
-            self._all_financials = self._get_all_financials(proxy)
+            self._all_financials = self._get_all_financials(proxy, tz)
             self._financials = self._all_financials[0]
             self._cashflow = self._all_financials[1]
             self._balance_sheet = self._all_financials[2]
