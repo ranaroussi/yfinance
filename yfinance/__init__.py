@@ -428,7 +428,7 @@ class Ticker():
 
     # ------------------------
 
-    def _get_fundamentals(self, kind, proxy=None):
+    def _get_fundamentals(self, kind, proxy=None, tz=None):
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
@@ -478,24 +478,26 @@ class Ticker():
         if len(data.columns) < 2: return None
         idx = data[data[data.columns[0]] == data[data.columns[1]]].index
         data.loc[idx] = '-'
-        return data[1:]
+        data.columns = pd.to_datetime(data.columns)
+        if not tz is None: data.columns.index = data.columns.index.tz_localize(tz)
+        return data[1:].applymap(lambda x: np.nan if x == '-' else x).astype(float)
 
-    def get_financials(self, proxy=None):
+    def get_financials(self, proxy=None, tz=None):
         if self._financials is None:
             self._financials = self._get_fundamentals(
-                'financials', proxy)
+                'financials', proxy, tz)
         return self._financials
 
-    def get_balance_sheet(self, proxy=None):
+    def get_balance_sheet(self, proxy=None, tz=None):
         if self._balance_sheet is None:
             self._balance_sheet = self._get_fundamentals(
-                'balance-sheet', proxy)
+                'balance-sheet', proxy, tz)
         return self._balance_sheet
 
-    def get_cashflow(self, proxy=None):
+    def get_cashflow(self, proxy=None, tz=None):
         if self._cashflow is None:
             self._cashflow = self._get_fundamentals(
-                'cash-flow', proxy)
+                'cash-flow', proxy, tz)
         return self._cashflow
 
     def get_sustainability(self, proxy=None):
