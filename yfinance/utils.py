@@ -46,12 +46,13 @@ def get_json(url, proxy=None):
 
     new_data = ''
     data_parts = _json.dumps(data).replace('{}', 'null').split('{"raw": ')
-    for x in range(len(data_parts)):
-        if "fmt" in data_parts[x]:
-            p = data_parts[x].split(', "fmt":', maxsplit=1)
+
+    for _, item in enumerate(data_parts):
+        if "fmt" in item:
+            p = item.split(', "fmt":', maxsplit=1)
             new_data += p[0] + p[1].split('}', maxsplit=1)[1]
         else:
-            new_data += data_parts[x]
+            new_data += item
     return _json.loads(new_data)
 
 
