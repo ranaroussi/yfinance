@@ -273,11 +273,15 @@ class TickerBase():
             ['maxAge', 'ratingYear', 'ratingMonth'])]
 
         # info
-        self._info = {
-            **data['summaryProfile'],
-            **data['summaryProfile'],
-            **data['defaultKeyStatistics']
-        }
+        # self._info = {
+        #     **data['summaryProfile'],
+        #     **data['summaryDetail'],
+        #     **data['defaultKeyStatistics']
+        # }
+        # python 2+
+        self._info = data['summaryProfile']
+        self._info.update(data['summaryDetail'])
+        self._info.update(data['defaultKeyStatistics'])
 
         # events
         try:
