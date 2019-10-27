@@ -48,6 +48,7 @@ class TickerBase():
         self._sustainability = None
         self._recommendations = None
         self._calendar = None
+        self._expirations = {}
 
         self._earnings = {
             "yearly": utils.empty_df(),
