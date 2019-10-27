@@ -90,12 +90,28 @@ ticker data in amore Pythonic way:
 
     # show financials
     msft.financials
+    msft.quarterly_financials
 
     # show balance heet
     msft.balance_sheet
+    msft.quarterly_balance_sheet
 
     # show cashflow
     msft.cashflow
+    msft.quarterly_cashflow
+
+    # show earnings
+    msft.earnings
+    msft.quarterly_earnings
+
+    # show sustainability
+    msft.sustainability
+
+    # show analysts recommendations
+    msft.recommendations
+
+    # show next event (earnings, etc)
+    msft.calendar
 
     # show options expirations
     msft.options

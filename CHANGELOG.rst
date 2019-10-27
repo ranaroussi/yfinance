@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.46
+------
+- Rerwote all fundamental-related methods, which now support quarterly financials, cashflow, balance sheets, and earnings, analysts recommendations, and earnings calendar data
+- Code refactoring
+
 0.1.45
 ------
 - Added sustainability data/error handling for ETF/MF (by GregoryMorse)
