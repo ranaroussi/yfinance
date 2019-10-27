@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.47
+------
+- Fixed options-related bug that was caused by code refactoring
+
 0.1.46
 ------
 - Rerwote all fundamental-related methods, which now support quarterly financials, cashflow, balance sheets, and earnings, analysts recommendations, and earnings calendar data
