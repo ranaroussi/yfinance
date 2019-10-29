@@ -260,29 +260,27 @@ class TickerBase():
 
         # sustainability
         d = {}
-        for item in data['esgScores']:
-            if not isinstance(data['esgScores'][item], dict):
-                d[item] = data['esgScores'][item]
+        if 'esgScores' in data:
+            for item in data['esgScores']:
+                if not isinstance(data['esgScores'][item], dict):
+                    d[item] = data['esgScores'][item]
 
-        s = _pd.DataFrame(d)[-1:].T
-        s.columns = ['Value']
-        s.index.name = '%.f-%.f' % (
-            s[s.index == 'ratingYear']['Value'].values[0],
-            s[s.index == 'ratingMonth']['Value'].values[0])
+            s = _pd.DataFrame(d)[-1:].T
+            s.columns = ['Value']
+            s.index.name = '%.f-%.f' % (
+                s[s.index == 'ratingYear']['Value'].values[0],
+                s[s.index == 'ratingMonth']['Value'].values[0])
 
-        self._sustainability = s[~s.index.isin(
-            ['maxAge', 'ratingYear', 'ratingMonth'])]
+            self._sustainability = s[~s.index.isin(
+                ['maxAge', 'ratingYear', 'ratingMonth'])]
 
-        # info
-        # self._info = {
-        #     **data['summaryProfile'],
-        #     **data['summaryDetail'],
-        #     **data['defaultKeyStatistics']
-        # }
-        # python 2+
+        # info (be nice to python 2)
         self._info = data['summaryProfile']
         self._info.update(data['summaryDetail'])
-        self._info.update(data['defaultKeyStatistics'])
+        if isinstance(data['defaultKeyStatistics'], dict):
+            self._info.update(data['defaultKeyStatistics'])
+        elif 'assetProfile' in data and isinstance(data['assetProfile'], dict):
+            self._info.update(data['assetProfile'])
 
         # events
         try:
@@ -329,16 +327,17 @@ class TickerBase():
                 key[0]['quarterly'] = cleanup(data[item][key[2]])
 
         # earnings
-        earnings = data['earnings']['financialsChart']
-        df = _pd.DataFrame(earnings['yearly']).set_index('date')
-        df.columns = utils.camel2title(df.columns)
-        df.index.name = 'Year'
-        self._earnings['yearly'] = df
+        if isinstance(data['earnings'], dict):
+            earnings = data['earnings']['financialsChart']
+            df = _pd.DataFrame(earnings['yearly']).set_index('date')
+            df.columns = utils.camel2title(df.columns)
+            df.index.name = 'Year'
+            self._earnings['yearly'] = df
 
-        df = _pd.DataFrame(earnings['quarterly']).set_index('date')
-        df.columns = utils.camel2title(df.columns)
-        df.index.name = 'Quarter'
-        self._earnings['quarterly'] = df
+            df = _pd.DataFrame(earnings['quarterly']).set_index('date')
+            df.columns = utils.camel2title(df.columns)
+            df.index.name = 'Quarter'
+            self._earnings['quarterly'] = df
 
         self._fundamentals = True
 
