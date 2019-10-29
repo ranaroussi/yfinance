@@ -234,7 +234,8 @@ class TickerBase():
         def cleanup(data):
             df = _pd.DataFrame(data).drop(columns=['maxAge'])
             for col in df.columns:
-                df[col] = _np.where(df[col] == '-', _np.nan, df[col])
+                df[col] = _np.where(
+                    df[col].astype(str) == '-', _np.nan, df[col])
 
             df.set_index('endDate', inplace=True)
             df.index = _pd.to_datetime(df.index, unit='s')
