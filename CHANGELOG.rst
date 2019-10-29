@@ -3,7 +3,7 @@ Change Log
 
 0.1.48
 ------
-- Fixed issues related to non-publicly traded ticker (crypto, currency, etc)
+- Fixed issues related to non-publicly traded tickers (crypto, currency, etc)
 
 0.1.47
 ------
