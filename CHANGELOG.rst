@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.48
+------
+- Fixed issues related to non-publicly traded ticker (crypto, currency, etc)
+
 0.1.47
 ------
 - Fixed options-related bug that was caused by code refactoring
