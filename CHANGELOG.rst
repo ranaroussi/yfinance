@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.49
+------
+- Fixed `elementwise comparison`` warning
+
 0.1.48
 ------
 - Fixed issues related to non-publicly traded tickers (crypto, currency, etc)
