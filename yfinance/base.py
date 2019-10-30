@@ -278,6 +278,7 @@ class TickerBase():
         # info (be nice to python 2)
         self._info = data['summaryProfile']
         self._info.update(data['summaryDetail'])
+        self._info.update(data['quoteType'])
         if isinstance(data['defaultKeyStatistics'], dict):
             self._info.update(data['defaultKeyStatistics'])
         elif 'assetProfile' in data and isinstance(data['assetProfile'], dict):
