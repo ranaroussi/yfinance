@@ -98,10 +98,10 @@ class TickerBase():
                 (default data is returned as non-localized dates)
             **kwargs: dict
                 debug: bool
-                    Optional. If passed as False, will suppress 
+                    Optional. If passed as False, will suppress
                     error message printing to console.
         """
-
+        
         if start or period is None or period.lower() == "max":
             if start is None:
                 start = -2208988800
@@ -147,7 +147,7 @@ class TickerBase():
 
         # Work with errors
         debug_mode = True
-        if "debug" in kwargs and type(kwargs["debug"]) == bool:
+        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
             debug_mode = kwargs["debug"]
 
         err_msg = "No data found for this date range, symbol may be delisted"
@@ -155,7 +155,7 @@ class TickerBase():
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode == True:
+            if "many" not in kwargs and debug_mode is True:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -163,7 +163,7 @@ class TickerBase():
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode == True:
+            if "many" not in kwargs and debug_mode is True:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -173,7 +173,7 @@ class TickerBase():
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode == True:
+            if "many" not in kwargs and debug_mode is True:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
