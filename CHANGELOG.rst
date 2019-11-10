@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.1.50
+------
+- Fixed `ticker.info` issues
+- Handle sustainability index error
+- Added test script based on @GregoryMorse's pull request
+
 0.1.49
 ------
 - Fixed `elementwise comparison`` warning
