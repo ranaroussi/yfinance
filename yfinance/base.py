@@ -261,7 +261,7 @@ class TickerBase():
 
         # sustainability
         d = {}
-        if 'esgScores' in data:
+        if data.get('esgScores'):
             for item in data['esgScores']:
                 if not isinstance(data['esgScores'][item], dict):
                     d[item] = data['esgScores'][item]
