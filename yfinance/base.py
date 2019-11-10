@@ -261,7 +261,7 @@ class TickerBase():
 
         # sustainability
         d = {}
-        if data.get('esgScores'):
+        if isinstance(data.get('esgScores'), dict):
             for item in data['esgScores']:
                 if not isinstance(data['esgScores'][item], dict):
                     d[item] = data['esgScores'][item]
@@ -276,13 +276,12 @@ class TickerBase():
                 ['maxAge', 'ratingYear', 'ratingMonth'])]
 
         # info (be nice to python 2)
-        self._info = data['summaryProfile']
-        self._info.update(data['summaryDetail'])
-        self._info.update(data['quoteType'])
-        if isinstance(data['defaultKeyStatistics'], dict):
-            self._info.update(data['defaultKeyStatistics'])
-        elif 'assetProfile' in data and isinstance(data['assetProfile'], dict):
-            self._info.update(data['assetProfile'])
+        self._info = {}
+        items = ['summaryProfile', 'summaryDetail', 'quoteType',
+                 'defaultKeyStatistics', 'assetProfile']
+        for item in items:
+            if isinstance(data.get(item), dict):
+                self._info.update(data[item])
 
         # events
         try:
@@ -321,15 +320,15 @@ class TickerBase():
         ):
 
             item = key[1] + 'History'
-            if item in data:
+            if isinstance(data.get(item), dict):
                 key[0]['yearly'] = cleanup(data[item][key[2]])
 
             item = key[1]+'HistoryQuarterly'
-            if item in data:
+            if isinstance(data.get(item), dict):
                 key[0]['quarterly'] = cleanup(data[item][key[2]])
 
         # earnings
-        if isinstance(data['earnings'], dict):
+        if isinstance(data.get('earnings'), dict):
             earnings = data['earnings']['financialsChart']
             df = _pd.DataFrame(earnings['yearly']).set_index('date')
             df.columns = utils.camel2title(df.columns)
