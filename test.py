@@ -14,6 +14,7 @@ Sanity check for most common library uses all working
 - Currency BTC-USD
 """
 
+from __future__ import print_function
 import yfinance as yf
 
 
