@@ -96,6 +96,10 @@ class TickerBase():
             tz: str
                 Optional timezone locale for dates.
                 (default data is returned as non-localized dates)
+            **kwargs: dict
+                debug: bool
+                    Optional. If passed as False, will suppress 
+                    error message printing to console.
         """
 
         if start or period is None or period.lower() == "max":
@@ -142,12 +146,16 @@ class TickerBase():
         data = data.json()
 
         # Work with errors
+        debug_mode = True
+        if "debug" in kwargs and type(kwargs["debug"]) == bool:
+            debug_mode = kwargs["debug"]
+
         err_msg = "No data found for this date range, symbol may be delisted"
         if "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs:
+            if "many" not in kwargs and debug_mode == True:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -155,7 +163,7 @@ class TickerBase():
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs:
+            if "many" not in kwargs and debug_mode == True:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -165,7 +173,7 @@ class TickerBase():
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs:
+            if "many" not in kwargs and debug_mode == True:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
