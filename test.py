@@ -20,7 +20,7 @@ import yfinance as yf
 
 def test_yfinance():
     for symbol in ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
-        print(">>", symbol, end=' ... ', flush=True)
+        print(">>", symbol, end=' ... ')
         ticker = yf.Ticker(symbol)
 
         # always should have info and history for valid symbols
@@ -33,7 +33,7 @@ def test_yfinance():
         ticker.financials
         ticker.sustainability
 
-        print("OK", flush=True)
+        print("OK")
 
 
 if __name__ == "__main__":
