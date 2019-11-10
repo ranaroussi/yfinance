@@ -266,7 +266,7 @@ class TickerBase():
                 if not isinstance(data['esgScores'][item], dict):
                     d[item] = data['esgScores'][item]
 
-            s = _pd.DataFrame(d)[-1:].T
+            s = _pd.DataFrame(index=[0], data=d)[-1:].T
             s.columns = ['Value']
             s.index.name = '%.f-%.f' % (
                 s[s.index == 'ratingYear']['Value'].values[0],
