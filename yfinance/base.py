@@ -101,7 +101,7 @@ class TickerBase():
                     Optional. If passed as False, will suppress
                     error message printing to console.
         """
-        
+
         if start or period is None or period.lower() == "max":
             if start is None:
                 start = -2208988800
