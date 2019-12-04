@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.52
+------
+- Improved JSON regex parsing
+
 0.1.51
 ------
 - Added holdings data (`Ticker.major_holders` and `Ticker.institutional_holders`)
