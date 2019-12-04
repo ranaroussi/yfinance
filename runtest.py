@@ -32,6 +32,8 @@ def test_yfinance():
         ticker.balance_sheet
         ticker.financials
         ticker.sustainability
+        ticker.major_holders
+        ticker.institutional_holders
 
         print("OK")
 
