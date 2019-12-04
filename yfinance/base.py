@@ -246,7 +246,10 @@ class TickerBase():
                     df[col].astype(str) == '-', _np.nan, df[col])
 
             df.set_index('endDate', inplace=True)
-            df.index = _pd.to_datetime(df.index, unit='s')
+            try:
+                df.index = _pd.to_datetime(df.index, unit='s')
+            except ValueError:
+                df.index = _pd.to_datetime(df.index)
             df = df.T
             df.columns.name = ''
             df.index.name = 'Breakdown'
