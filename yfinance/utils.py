@@ -55,15 +55,10 @@ def get_json(url, proxy=None):
     data = _json.loads(json_str)[
         'context']['dispatcher']['stores']['QuoteSummaryStore']
 
-    new_data = ''
-    data_parts = _json.dumps(data).replace('{}', 'null').split('{"raw": ')
-
-    for _, item in enumerate(data_parts):
-        if "fmt" in item:
-            p = item.split(', "fmt":', maxsplit=1)
-            new_data += p[0] + p[1].split('}', maxsplit=1)[1]
-        else:
-            new_data += item
+    # return data
+    new_data = _json.dumps(data).replace('{}', 'null')
+    new_data = _re.sub(
+        r'\{\"raw\":[-+]?[0-9]*\.?[0-9]+,\"fmt\":(.*?)\}', r'\1', new_data)
     return _json.loads(new_data)
 
 
