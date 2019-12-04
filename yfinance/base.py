@@ -47,6 +47,9 @@ class TickerBase():
         self._info = None
         self._sustainability = None
         self._recommendations = None
+        self._major_holders = None
+        self._institutional_holders = None
+
         self._calendar = None
         self._expirations = {}
 
@@ -270,6 +273,15 @@ class TickerBase():
         url = '%s/%s' % (self._scrape_url, self.ticker)
         data = utils.get_json(url, proxy)
 
+        # holders
+        holders = _pd.read_html('https://finance.yahoo.com/quote/MSFT/holders')
+        self._major_holders = holders[0]
+        self._institutional_holders = holders[1]
+        self._institutional_holders['Date Reported'] = _pd.to_datetime(
+            self._institutional_holders['Date Reported'])
+        self._institutional_holders['% Out'] = self._institutional_holders[
+            '% Out'].str.replace('%', '').astype(float)/100
+
         # sustainability
         d = {}
         if isinstance(data.get('esgScores'), dict):
@@ -372,6 +384,20 @@ class TickerBase():
     def get_calendar(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
         data = self._calendar
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_major_holders(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy)
+        data = self._major_holders
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_institutional_holders(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy)
+        data = self._institutional_holders
         if as_dict:
             return data.to_dict()
         return data
