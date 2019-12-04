@@ -44,6 +44,12 @@ def empty_df(index=[]):
 
 def get_json(url, proxy=None):
     html = _requests.get(url=url, proxies=proxy).text
+
+    if "QuoteSummaryStore" not in html:
+        html = _requests.get(url=url, proxies=proxy).text
+        if "QuoteSummaryStore" not in html:
+            return {}
+
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
     data = _json.loads(json_str)[
