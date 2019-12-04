@@ -1,6 +1,16 @@
 Change Log
 ===========
 
+0.1.51
+------
+- Added logo url to `Ticker.info`
+- Handling different date formats in fundamentals
+- Faster JSON parsing using regex
+- Trying to re-download JSON twice before giving up
+- Using ujson instead of json if installed
+- Fixed (more) `ticker.info` issues
+- Misc bugfixes
+
 0.1.50
 ------
 - Fixed `ticker.info` issues
