@@ -106,6 +106,18 @@ class Ticker(TickerBase):
     # ------------------------
 
     @property
+    def major_holders(self):
+        return self.get_major_holders()
+
+    @property
+    def institutional_holders(self):
+        return self.get_institutional_holders()
+
+    @property
+    def dividends(self):
+        return self.get_dividends()
+
+    @property
     def dividends(self):
         return self.get_dividends()
 
