@@ -92,6 +92,12 @@ ticker data in amore Pythonic way:
     msft.financials
     msft.quarterly_financials
 
+    # show major holders
+    stock.major_holders
+
+    # show institutional holders
+    stock.institutional_holders
+
     # show balance heet
     msft.balance_sheet
     msft.quarterly_balance_sheet
