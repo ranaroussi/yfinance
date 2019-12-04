@@ -263,7 +263,7 @@ class TickerBase():
         d = {}
         if isinstance(data.get('esgScores'), dict):
             for item in data['esgScores']:
-                if not isinstance(data['esgScores'][item], dict):
+                if not isinstance(data['esgScores'][item], (dict, list)):
                     d[item] = data['esgScores'][item]
 
             s = _pd.DataFrame(index=[0], data=d)[-1:].T
