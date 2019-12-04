@@ -22,11 +22,16 @@
 from __future__ import print_function
 
 import requests as _requests
-import json as _json
 import re as _re
 import pandas as _pd
 import numpy as _np
 import sys as _sys
+import re as _re
+
+try:
+    import ujson as _json
+except ImportError:
+    import json as _json
 
 
 def empty_df(index=[]):
