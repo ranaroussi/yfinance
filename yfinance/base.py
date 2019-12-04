@@ -155,7 +155,7 @@ class TickerBase():
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode is True:
+            if "many" not in kwargs and debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -163,7 +163,7 @@ class TickerBase():
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode is True:
+            if "many" not in kwargs and debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -173,7 +173,7 @@ class TickerBase():
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode is True:
+            if "many" not in kwargs and debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
