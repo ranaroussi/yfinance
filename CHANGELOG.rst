@@ -3,6 +3,7 @@ Change Log
 
 0.1.51
 ------
+- Added holdings data (`Ticker.major_holders` and `Ticker.institutional_holders`)
 - Added logo url to `Ticker.info`
 - Handling different date formats in fundamentals
 - Faster JSON parsing using regex
