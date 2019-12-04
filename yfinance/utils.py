@@ -58,7 +58,8 @@ def get_json(url, proxy=None):
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
     new_data = _re.sub(
-        r'\{\"raw\":[-+]?[0-9]*\.?[0-9]+,\"fmt\":(.*?)\}', r'\1', new_data)
+        r'\{[\'|\"]raw[\'|\"]:(.*?),(.*?)\}', r'\1', new_data)
+
     return _json.loads(new_data)
 
 
