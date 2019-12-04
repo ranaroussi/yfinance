@@ -294,6 +294,14 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 self._info.update(data[item])
 
+        self._info['logo_url'] = ""
+        try:
+            domain = self._info['website'].split(
+                '://')[1].split('/')[0].replace('www.', '')
+            self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
+        except Exception:
+            pass
+
         # events
         try:
             cal = _pd.DataFrame(
