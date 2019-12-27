@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.53
+------
+- Added `Ticker.isin` + `Ticker.get_isin(...)`. This is still experimental. Do not rely on it for production.
+- Bug fixed: holders were always returning results for MSFT
+
 0.1.52
 ------
 - Improved JSON regex parsing
