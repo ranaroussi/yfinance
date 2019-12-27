@@ -106,6 +106,10 @@ class Ticker(TickerBase):
     # ------------------------
 
     @property
+    def isin(self):
+        return self.get_isin()
+
+    @property
     def major_holders(self):
         return self.get_major_holders()
 
