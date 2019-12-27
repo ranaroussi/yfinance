@@ -49,6 +49,7 @@ class TickerBase():
         self._recommendations = None
         self._major_holders = None
         self._institutional_holders = None
+        self._isin = None
 
         self._calendar = None
         self._expirations = {}
