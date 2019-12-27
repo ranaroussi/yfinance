@@ -26,6 +26,7 @@ import datetime as _datetime
 import requests as _requests
 import pandas as _pd
 import numpy as _np
+import urllib.parse
 
 from . import utils
 
@@ -486,14 +487,26 @@ class TickerBase():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
+        q = ticker
+        self.get_info(proxy=proxy)
+        if "shortName" in self._info:
+            q = self._info['shortName']
+
         url = 'https://markets.businessinsider.com/ajax/' \
-              'SearchController_Suggest?max_results=25&query=%s' % ticker
+              'SearchController_Suggest?max_results=25&query=%s' \
+            % urllib.parse.quote(q)
         data = _requests.get(url=url, proxies=proxy).text
 
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
-            self._isin = '-'
-            return self._isin
+            if q.lower() in data.lower():
+                search_str = '"|'.format(ticker)
+                if search_str not in data:
+                    self._isin = '-'
+                    return self._isin
+            else:
+                self._isin = '-'
+                return self._isin
 
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
