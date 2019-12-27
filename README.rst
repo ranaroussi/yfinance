@@ -119,6 +119,10 @@ ticker data in amore Pythonic way:
     # show next event (earnings, etc)
     msft.calendar
 
+    # show ISIN code - *experimental*
+    # ISIN = International Securities Identification Number
+    msft.isin
+
     # show options expirations
     msft.options
 
@@ -141,6 +145,7 @@ If you want to use a proxy server for downloading data, use:
     msft.get_balance_sheet(proxy="PROXY_SERVER")
     msft.get_cashflow(proxy="PROXY_SERVER")
     msgt.option_chain(..., proxy="PROXY_SERVER")
+    ...
 
 To initialize multiple ``Ticker`` objects, use
 
