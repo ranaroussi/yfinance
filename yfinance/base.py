@@ -26,7 +26,11 @@ import datetime as _datetime
 import requests as _requests
 import pandas as _pd
 import numpy as _np
-import urllib.parse
+
+try:
+    from urllib.parse import quote as urlencode
+except ImportError:
+    from urllib import quote as urlencode
 
 from . import utils
 
@@ -494,7 +498,7 @@ class TickerBase():
 
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
-            % urllib.parse.quote(q)
+            % urlencode(q)
         data = _requests.get(url=url, proxies=proxy).text
 
         search_str = '"{}|'.format(ticker)
