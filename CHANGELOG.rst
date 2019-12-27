@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.54
+------
+- ISIN lookup working with intl. tickers
+
 0.1.53
 ------
 - Added `Ticker.isin` + `Ticker.get_isin(...)`. This is still experimental. Do not rely on it for production.
