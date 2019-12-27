@@ -474,7 +474,9 @@ class TickerBase():
         if self._isin is not None:
             return self._isin
 
-        if "-" in self._isin or "^" in self._isin:
+        ticker = self.ticker.upper()
+
+        if "-" in ticker or "^" in ticker:
             self._isin = '-'
             return self._isin
 
@@ -484,15 +486,14 @@ class TickerBase():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        ticker = self.ticker.upper()
         url = 'https://markets.businessinsider.com/ajax/' \
-              'SearchController_Suggest?max_results=1&query=%s' % ticker
+              'SearchController_Suggest?max_results=25&query=%s' % ticker
         data = _requests.get(url=url, proxies=proxy).text
 
-        search_str = '{}|'.format(ticker)
+        search_str = '"{}|'.format(ticker)
         if search_str not in data:
             self._isin = '-'
             return self._isin
 
-        self._isin = data.split(search_str)[1].split('|')[0]
+        self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
