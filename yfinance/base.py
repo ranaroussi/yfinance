@@ -464,3 +464,31 @@ class TickerBase():
             self.history(period="max", proxy=proxy)
         actions = self._history[["Dividends", "Stock Splits"]]
         return actions[actions != 0].dropna(how='all').fillna(0)
+
+    def get_isin(self, proxy=None):
+        # *** experimental ***
+        if self._isin is not None:
+            return self._isin
+
+        if "-" in self._isin or "^" in self._isin:
+            self._isin = '-'
+            return self._isin
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        ticker = self.ticker.upper()
+        url = 'https://markets.businessinsider.com/ajax/' \
+              'SearchController_Suggest?max_results=1&query=%s' % ticker
+        data = _requests.get(url=url, proxies=proxy).text
+
+        search_str = '{}|'.format(ticker)
+        if search_str not in data:
+            self._isin = '-'
+            return self._isin
+
+        self._isin = data.split(search_str)[1].split('|')[0]
+        return self._isin
