@@ -100,7 +100,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, rounding=rounding)
+                                 back_adjust=back_adjust, proxy=proxy,
+                                 rounding=rounding)
             shared._DFS[ticker.upper()] = data
             if progress:
                 shared._PROGRESS_BAR.animate()
