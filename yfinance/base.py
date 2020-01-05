@@ -40,6 +40,7 @@ from . import utils
 
 from . import shared
 
+import pprint
 
 class TickerBase():
     def __init__(self, ticker):
@@ -276,7 +277,7 @@ class TickerBase():
             return
 
         # get info and sustainability
-        url = '%s/%s' % (self._scrape_url, self.ticker)
+        url = '%s/%s?p=%s' % (self._scrape_url, self.ticker, self.ticker)
         data = utils.get_json(url, proxy)
 
         # holders
@@ -306,6 +307,7 @@ class TickerBase():
 
             self._sustainability = s[~s.index.isin(
                 ['maxAge', 'ratingYear', 'ratingMonth'])]
+                
 
         # info (be nice to python 2)
         self._info = {}
@@ -351,7 +353,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(url+'/financials', proxy)
+        data = utils.get_json(url+'/financials?p='+self.ticker, proxy)
 
         # generic patterns
         for key in (
