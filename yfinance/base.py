@@ -40,8 +40,6 @@ from . import utils
 
 from . import shared
 
-import pprint
-
 class TickerBase():
     def __init__(self, ticker):
         self.ticker = ticker.upper()
