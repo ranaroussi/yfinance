@@ -18,8 +18,8 @@ from __future__ import print_function
 import yfinance as yf
 
 
-def test_yfinance():
-    for symbol in ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
+def test_yfinance(ticketList):
+    for symbol in ticketList:
         print(">>", symbol, end=' ... ')
         ticker = yf.Ticker(symbol)
 
@@ -39,4 +39,8 @@ def test_yfinance():
 
 
 if __name__ == "__main__":
-    test_yfinance()
+    default_tickets = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
+    test_yfinance(default_tickets)
+
+    additional_swedish_tickets = ['HTRO.ST', 'FING-B.ST', 'TELIA.ST', 'AZA.ST', 'NDA-SE.ST']
+    test_yfinance(additional_swedish_tickets)
