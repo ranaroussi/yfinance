@@ -168,7 +168,7 @@ class TickerBase():
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
-        elif "chart" not in data or data["chart"]["result"] is None or \
+        if "chart" not in data or data["chart"]["result"] is None or \
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
