@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.55
+------
+- Fix bug in `base.TickerBase._get_fundamentals` which broke e.g.
+  the property `Ticker.financials`
+
 0.1.54
 ------
 - ISIN lookup working with intl. tickers
