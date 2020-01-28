@@ -286,12 +286,13 @@ class TickerBase():
             self._major_holders = holders[0]
         if len(holders) == 2:
             self._institutional_holders = holders[1]
-        if 'Date Reported' in self._institutional_holders:
-            self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                self._institutional_holders['Date Reported'])
-        if '% Out' in self._institutional_holders:
-            self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+        if self._institutional_holders is not None:
+            if 'Date Reported' in self._institutional_holders:
+                self._institutional_holders['Date Reported'] = _pd.to_datetime(
+                    self._institutional_holders['Date Reported'])
+            if '% Out' in self._institutional_holders:
+                self._institutional_holders['% Out'] = self._institutional_holders[
+                    '% Out'].str.replace('%', '').astype(float)/100
 
         # sustainability
         d = {}
