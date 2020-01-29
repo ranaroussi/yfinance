@@ -410,9 +410,11 @@ class TickerBase():
     def get_institutional_holders(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
         data = self._institutional_holders
-        if as_dict:
-            return data.to_dict()
-        return data
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            else:
+                return data
 
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
