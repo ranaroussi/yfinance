@@ -18,12 +18,12 @@ with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='yfinance',
-    version="0.1.54",
+    name='yf-custom',
+    version="1.0.0",
     description='Yahoo! Finance market data downloader',
     long_description=long_description,
-    url='https://github.com/ranaroussi/yfinance',
-    author='Ran Aroussi',
+    url='https://github.com/ohenley/yfinance/tree/patch-1',
+    author='Ran Aroussi, Olivier Henley',
     author_email='ran@aroussi.com',
     license='Apache',
     classifiers=[
