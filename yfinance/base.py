@@ -280,8 +280,8 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
+#       url = "{}/{}/holders".format(self._scrape_url, self.ticker)
+        holders = _pd.read_html(url + "/holders")
         self._major_holders = holders[0]
         self._institutional_holders = holders[1]
         if 'Date Reported' in self._institutional_holders:
@@ -504,7 +504,7 @@ class TickerBase():
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
             if q.lower() in data.lower():
-                search_str = '"|'
+                search_str = '"|'.format(ticker)
                 if search_str not in data:
                     self._isin = '-'
                     return self._isin
