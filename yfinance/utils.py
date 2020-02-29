@@ -52,6 +52,16 @@ def get_json(url, proxy=None):
 
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
+
+# 2/29/20 there is a bug where the
+# return value is 7.495B for MSFT other current assets
+# but the display value on the web is 7.473B
+# this is from the api -- don't know how ui gets it right....
+
+# # vsc will only allow 64K of text in watch copy :(
+#     with open("temp.json", "w") as file:
+#         file.write(json_str)
+
     data = _json.loads(json_str)[
         'context']['dispatcher']['stores']['QuoteSummaryStore']
 
