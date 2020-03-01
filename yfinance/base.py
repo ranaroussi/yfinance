@@ -282,12 +282,13 @@ class TickerBase():
         # holders
 #       url = "{}/{}/holders".format(self._scrape_url, self.ticker)
         holders = _pd.read_html(url + "/holders")
-        self._major_holders = holders[0]
-        self._institutional_holders = holders[1]
-        if 'Date Reported' in self._institutional_holders:
+        if len(holders) > 1:
+            self._major_holders = holders[0]
+            self._institutional_holders = holders[1]
+        if type(self._institutional_holders) == _pd.DataFrame and 'Date Reported' in self._institutional_holders:
             self._institutional_holders['Date Reported'] = _pd.to_datetime(
                 self._institutional_holders['Date Reported'])
-        if '% Out' in self._institutional_holders:
+        if type(self._institutional_holders) == _pd.DataFrame and '% Out' in self._institutional_holders:
             self._institutional_holders['% Out'] = self._institutional_holders[
                 '% Out'].str.replace('%', '').astype(float)/100
 
@@ -332,21 +333,27 @@ class TickerBase():
                 cal['earningsDate'], unit='s')
             self._calendar = cal.T
             self._calendar.index = utils.camel2title(self._calendar.index)
-            self._calendar.columns = ['Value']
+
+            if len(self._calendar.columns) == 1:
+                self._calendar.columns = ['Value']
         except Exception:
             pass
 
         # analyst recommendations
         try:
-            rec = _pd.DataFrame(
-                data['upgradeDowngradeHistory']['history'])
-            rec['earningsDate'] = _pd.to_datetime(
-                rec['epochGradeDate'], unit='s')
-            rec.set_index('earningsDate', inplace=True)
-            rec.index.name = 'Date'
-            rec.columns = utils.camel2title(rec.columns)
-            self._recommendations = rec[[
-                'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
+
+            if data['upgradeDowngradeHistory']['history']:
+                rec = _pd.DataFrame(
+                    data['upgradeDowngradeHistory']['history'])
+                rec['earningsDate'] = _pd.to_datetime(
+                    rec['epochGradeDate'], unit='s')
+                rec.set_index('earningsDate', inplace=True)
+                rec.index.name = 'Date'
+                rec.columns = utils.camel2title(rec.columns)
+                self._recommendations = rec[[
+                    'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
+            else:
+                self._recommendations = _pd.DataFrame()
         except Exception:
             pass
 
