@@ -28,10 +28,7 @@ import numpy as _np
 import sys as _sys
 import re as _re
 
-try:
-    import ujson as _json
-except ImportError:
-    import json as _json
+import json as _json
 
 
 def empty_df(index=[]):
