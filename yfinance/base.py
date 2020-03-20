@@ -40,7 +40,6 @@ from . import utils
 
 from . import shared
 
-
 class TickerBase():
     def __init__(self, ticker):
         self.ticker = ticker.upper()
@@ -276,11 +275,11 @@ class TickerBase():
             return
 
         # get info and sustainability
-        url = '%s/%s' % (self._scrape_url, self.ticker)
+        url = '%s/%s?p=%s' % (self._scrape_url, self.ticker, self.ticker)
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
+        url = "{}/{}".format(self._scrape_url, self.ticker)
         holders = _pd.read_html(url)
         self._major_holders = holders[0]
         self._institutional_holders = holders[1]
@@ -351,7 +350,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(url+'/financials', proxy)
+        data = utils.get_json(url+'/financials?p='+self.ticker, proxy)
 
         # generic patterns
         for key in (
