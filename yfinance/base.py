@@ -330,10 +330,7 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 self._info.update(data[item])
 
-        if 'regularMarketPrice' in self._info:
-            self._info['regularMarketPrice'] = self._info['regularMarketOpen']
-        else:
-            self._info['regularMarketPrice'] = ""
+        self._info['regularMarketPrice'] = self._info.get('regularMarketOpen', None)
 
         self._info['logo_url'] = ""
         try:
