@@ -126,10 +126,6 @@ class Ticker(TickerBase):
         return self.get_dividends()
 
     @property
-    def dividends(self):
-        return self.get_dividends()
-
-    @property
     def splits(self):
         return self.get_splits()
 

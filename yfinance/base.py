@@ -533,10 +533,10 @@ class TickerBase():
             % urlencode(q)
         data = _requests.get(url=url, proxies=proxy).text
 
-        search_str = '"|'.format(ticker)
+        search_str = '"{}|'.format(ticker)
         if search_str not in data:
             if q.lower() in data.lower():
-                search_str = '"|'
+                search_str = '"|'.format(ticker)
                 if search_str not in data:
                     self._isin = '-'
                     return self._isin
