@@ -56,7 +56,7 @@ class Ticker(TickerBase):
         r = _requests.get(url=url, proxies=proxy).json()
         if r['optionChain']['result']:
             for exp in r['optionChain']['result'][0]['expirationDates']:
-                self._expirations[_datetime.datetime.fromtimestamp(
+                self._expirations[_datetime.datetime.utcfromtimestamp(
                     exp).strftime('%Y-%m-%d')] = exp
             return r['optionChain']['result'][0]['options'][0]
         return {}
@@ -118,8 +118,8 @@ class Ticker(TickerBase):
         return self.get_institutional_holders()
 
     @property
-    def dividends(self):
-        return self.get_dividends()
+    def mutualfund_holders(self):
+        return self.get_mutualfund_holders()
 
     @property
     def dividends(self):

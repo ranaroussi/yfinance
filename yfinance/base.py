@@ -33,13 +33,7 @@ except ImportError:
     from urllib import quote as urlencode
 
 from . import utils
-
-# import json as _json
-# import re as _re
-# import sys as _sys
-
 from . import shared
-
 
 class TickerBase():
     def __init__(self, ticker):
@@ -54,6 +48,7 @@ class TickerBase():
         self._recommendations = None
         self._major_holders = None
         self._institutional_holders = None
+        self._mutualfund_holders = None
         self._isin = None
 
         self._calendar = None
@@ -168,7 +163,7 @@ class TickerBase():
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
-        elif "chart" not in data or data["chart"]["result"] is None or \
+        if "chart" not in data or data["chart"]["result"] is None or \
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
@@ -230,7 +225,7 @@ class TickerBase():
         df.index = df.index.tz_localize("UTC").tz_convert(
             data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
-        if params["interval"][-1] == "m":
+        if params["interval"][-1] in {"m", "h"}:
             df.index.name = "Datetime"
         else:
             df.index = _pd.to_datetime(df.index.date)
@@ -249,12 +244,17 @@ class TickerBase():
 
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
-            df = _pd.DataFrame(data).drop(columns=['maxAge'])
+            df = _pd.DataFrame(data)
+            if 'maxAge' in df:
+                df = df.drop(columns=['maxAge'])
+
             for col in df.columns:
                 df[col] = _np.where(
                     df[col].astype(str) == '-', _np.nan, df[col])
 
-            df.set_index('endDate', inplace=True)
+            if 'endDate' in df:
+                df.set_index('endDate', inplace=True)
+
             try:
                 df.index = _pd.to_datetime(df.index, unit='s')
             except ValueError:
@@ -276,20 +276,33 @@ class TickerBase():
             return
 
         # get info and sustainability
-        url = '%s/%s' % (self._scrape_url, self.ticker)
+        url = '%s/%s?p=%s' % (self._scrape_url, self.ticker, self.ticker)
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
+        url = "{}/{}".format(self._scrape_url, self.ticker)
         holders = _pd.read_html(url)
-        self._major_holders = holders[0]
-        self._institutional_holders = holders[1]
-        if 'Date Reported' in self._institutional_holders:
-            self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                self._institutional_holders['Date Reported'])
-        if '% Out' in self._institutional_holders:
-            self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+
+        if len(holders) >= 1:
+            self._major_holders = holders[0]
+        if len(holders) >= 2:
+            self._institutional_holders = holders[1]
+        if self._institutional_holders is not None:
+            if 'Date Reported' in self._institutional_holders:
+                self._institutional_holders['Date Reported'] = _pd.to_datetime(
+                    self._institutional_holders['Date Reported'])
+            if '% Out' in self._institutional_holders:
+                self._institutional_holders['% Out'] = self._institutional_holders[
+                    '% Out'].str.replace('%', '').astype(float)/100
+        if len(holders) >= 3:
+            self._mutualfund_holders = holders[1]
+        if self._mutualfund_holders is not None:
+            if 'Date Reported' in self._mutualfund_holders:
+                self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
+                    self._mutualfund_holders['Date Reported'])
+            if '% Out' in self._mutualfund_holders:
+                self._mutualfund_holders['% Out'] = self._mutualfund_holders[
+                    '% Out'].str.replace('%', '').astype(float)/100
 
         # sustainability
         d = {}
@@ -300,9 +313,11 @@ class TickerBase():
 
             s = _pd.DataFrame(index=[0], data=d)[-1:].T
             s.columns = ['Value']
-            s.index.name = '%.f-%.f' % (
-                s[s.index == 'ratingYear']['Value'].values[0],
-                s[s.index == 'ratingMonth']['Value'].values[0])
+
+            if(len(s[s.index == 'ratingYear']['Value'].values) > 0 and len(s[s.index == 'ratingMonth']['Value'].values) > 0 ):
+                s.index.name = '%.f-%.f' % (s[s.index == 'ratingYear']['Value'].values[0], s[s.index == 'ratingMonth']['Value'].values[0])
+            else:
+                s.index.name = '%.f-%.f' % (0, 0)
 
             self._sustainability = s[~s.index.isin(
                 ['maxAge', 'ratingYear', 'ratingMonth'])]
@@ -310,12 +325,13 @@ class TickerBase():
         # info (be nice to python 2)
         self._info = {}
         items = ['summaryProfile', 'summaryDetail', 'quoteType',
-                 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+                 'defaultKeyStatistics', 'assetProfile', 'summaryDetail', 'financialData']
         for item in items:
             if isinstance(data.get(item), dict):
                 self._info.update(data[item])
 
-        self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        self._info['regularMarketPrice'] = self._info.get('regularMarketOpen', None)
+
         self._info['logo_url'] = ""
         try:
             domain = self._info['website'].split(
@@ -351,96 +367,109 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(url+'/financials', proxy)
+        data = utils.get_json(url+'/financials?p='+self.ticker, proxy)
 
         # generic patterns
-        for key in (
-            (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
-            (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
-            (self._financials, 'incomeStatement', 'incomeStatementHistory')
-        ):
+        try:
+            for key in (
+                (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
+                (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
+                (self._financials, 'incomeStatement', 'incomeStatementHistory')
+            ):
 
-            item = key[1] + 'History'
-            if isinstance(data.get(item), dict):
-                key[0]['yearly'] = cleanup(data[item][key[2]])
+                item = key[1] + 'History'
+                if isinstance(data.get(item), dict):
+                    key[0]['yearly'] = cleanup(data[item][key[2]])
 
-            item = key[1]+'HistoryQuarterly'
-            if isinstance(data.get(item), dict):
-                key[0]['quarterly'] = cleanup(data[item][key[2]])
+                item = key[1]+'HistoryQuarterly'
+                if isinstance(data.get(item), dict):
+                    key[0]['quarterly'] = cleanup(data[item][key[2]])
+        except Exception:
+            pass
 
         # earnings
-        if isinstance(data.get('earnings'), dict):
-            earnings = data['earnings']['financialsChart']
-            df = _pd.DataFrame(earnings['yearly']).set_index('date')
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = 'Year'
-            self._earnings['yearly'] = df
+        try:
+            if isinstance(data.get('earnings'), dict):
+                earnings = data['earnings']['financialsChart']
+                df = _pd.DataFrame(earnings['yearly']).set_index('date')
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = 'Year'
+                self._earnings['yearly'] = df
 
-            df = _pd.DataFrame(earnings['quarterly']).set_index('date')
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = 'Quarter'
-            self._earnings['quarterly'] = df
+                df = _pd.DataFrame(earnings['quarterly']).set_index('date')
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = 'Quarter'
+                self._earnings['quarterly'] = df
+        except Exception:
+            pass
 
         self._fundamentals = True
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._recommendations
         if as_dict:
             return data.to_dict()
         return data
 
     def get_calendar(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._calendar
         if as_dict:
             return data.to_dict()
         return data
 
     def get_major_holders(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._major_holders
         if as_dict:
             return data.to_dict()
         return data
 
     def get_institutional_holders(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._institutional_holders
-        if as_dict:
+        if data is not None and as_dict:
+            return data.to_dict()
+        return data
+
+    def get_mutualfund_holders(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._mutualfund_holders
+        if data is not None and as_dict:
             return data.to_dict()
         return data
 
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._info
         if as_dict:
             return data.to_dict()
         return data
 
     def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._sustainability
         if as_dict:
             return data.to_dict()
         return data
 
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._earnings[freq]
         if as_dict:
             return data.to_dict()
         return data
 
     def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._financials[freq]
         if as_dict:
             return data.to_dict()
         return data
 
     def get_balancesheet(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._balancesheet[freq]
         if as_dict:
             return data.to_dict()
@@ -450,7 +479,7 @@ class TickerBase():
         return self.get_balancesheet(proxy, as_dict, freq)
 
     def get_cashflow(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._cashflow[freq]
         if as_dict:
             return data.to_dict()
@@ -504,7 +533,7 @@ class TickerBase():
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
             if q.lower() in data.lower():
-                search_str = '"|'
+                search_str = '"|'.format(ticker)
                 if search_str not in data:
                     self._isin = '-'
                     return self._isin
