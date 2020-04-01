@@ -230,7 +230,7 @@ class TickerBase():
         df.index = df.index.tz_localize("UTC").tz_convert(
             data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
-        if params["interval"][-1] == "m":
+        if params["interval"][-1] in ["h", "m"]:
             df.index.name = "Datetime"
         else:
             df.index = _pd.to_datetime(df.index.date)
