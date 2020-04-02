@@ -1,0 +1,8 @@
+# Testing
+pytest
+pytest-cov
+pytest-pycodestyle
+pytest-xdist
+
+# Code quality
+radon
