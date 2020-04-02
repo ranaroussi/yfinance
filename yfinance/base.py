@@ -276,12 +276,12 @@ class TickerBase():
             return
 
         # get info and sustainability
-        url = '%s/%s' % (self._scrape_url, self.ticker)
-        data = utils.get_json(url, proxy)
+        ticker_url = '%s/%s' % (self._scrape_url, self.ticker)
+        data = utils.get_json(ticker_url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
+        holders_url = '/'.join([ticker_url, "holders"])
+        holders = _pd.read_html(holders_url)
         self._major_holders = holders[0]
         self._institutional_holders = holders[1]
         if 'Date Reported' in self._institutional_holders:
@@ -351,7 +351,8 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(url+'/financials', proxy)
+        financials_url = '/'.join([ticker_url, 'financials'])
+        data = utils.get_json(financials_url, proxy)
 
         # generic patterns
         for key in (
@@ -404,7 +405,8 @@ class TickerBase():
             return data.to_dict()
         return data
 
-    def get_institutional_holders(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_institutional_holders(self, proxy=None, as_dict=False,
+                                  *args, **kwargs):
         self._get_fundamentals(proxy)
         data = self._institutional_holders
         if as_dict:
