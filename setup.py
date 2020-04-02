@@ -37,7 +37,8 @@ setup(
         'Intended Audience :: Developers',
         'Topic :: Office/Business :: Financial',
         'Topic :: Office/Business :: Financial :: Investment',
-        'Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator',
+        'Topic :: Scientific/Engineering :: '
+        'Interface Engine/Protocol Translator',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
 
