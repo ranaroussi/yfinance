@@ -1,5 +1,14 @@
-__pycache__/*
-yfinance/__pycache__/*
-dist
-yfinance.egg-info
+# --- Python-generated files
+
+# compiled Python code
 *.pyc
+
+# setuptools
+dist
+*.egg-info
+
+# testing
+.cache
+.coverage
+.coverage.*
+.pytest_cache
