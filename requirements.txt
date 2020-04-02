@@ -1,4 +1,5 @@
-pandas>=0.24
-numpy>=1.15
-requests>=2.21
+lxml
 multitasking>=0.0.7
+numpy>=1.15
+pandas>=0.24
+requests>=2.21
