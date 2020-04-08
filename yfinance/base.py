@@ -310,11 +310,12 @@ class TickerBase():
         # info (be nice to python 2)
         self._info = {}
         items = ['summaryProfile', 'summaryDetail', 'quoteType',
-                 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+                 'defaultKeyStatistics', 'assetProfile', 'fundProfile']
         for item in items:
             if isinstance(data.get(item), dict):
-                self._info.update(data[item])
-
+                value = utils.expend_nest_dict(data[item])
+                self._info.update(value)
+                
         self._info['regularMarketPrice'] = self._info['regularMarketOpen']
         self._info['logo_url'] = ""
         try:

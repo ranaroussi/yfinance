@@ -216,3 +216,17 @@ class ProgressBar:
 
     def __str__(self):
         return str(self.prog_bar)
+
+def expend_nest_dict(nest_dict):
+    """ Arg: dict
+        Return: return a dict with non dict value
+    """
+    res = {}
+    for key, val in nest_dict.items():
+        if isinstance(val, dict):
+            val = expend_nest_dict(val)
+            res.update(val)
+        else:
+            res[key] = val
+
+    return res
