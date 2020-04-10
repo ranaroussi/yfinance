@@ -315,7 +315,6 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 value = utils.expend_nest_dict(data[item])
                 self._info.update(value)
-                
         self._info['regularMarketPrice'] = self._info['regularMarketOpen']
         self._info['logo_url'] = ""
         try:
