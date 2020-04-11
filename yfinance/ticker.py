@@ -81,7 +81,7 @@ class Ticker(TickerBase):
         data['lastTradeDate'] = _pd.to_datetime(
             data['lastTradeDate'], unit='s')
         if tz is not None:
-            data['lastTradeDate'] = data['lastTradeDate'].tz_localize(tz)
+            data['lastTradeDate'] = data['lastTradeDate'].dt.tz_localize(tz)
         return data
 
     def option_chain(self, date=None, proxy=None, tz=None):
