@@ -135,10 +135,6 @@ class TickerBase():
         params["includePrePost"] = prepost
         params["events"] = "div,splits"
 
-        # 1) fix weired bug with Yahoo! - returning 60m for 30m bars
-        if params["interval"] == "30m":
-            params["interval"] = "15m"
-
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
