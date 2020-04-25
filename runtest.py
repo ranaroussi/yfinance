@@ -26,6 +26,13 @@ def test_yfinance():
         # always should have info and history for valid symbols
         assert(ticker.info is not None and ticker.info != {})
         assert(ticker.history(period="max").empty is False)
+        assert(ticker.balance_sheet.empty is False)
+        assert(ticker.cashflow.empty is False)
+        assert(ticker.balance_sheet.empty is False)
+        assert(ticker.financials.empty is False)
+        assert(ticker.sustainability.empty is False)
+        assert(ticker.major_holders.empty is False)
+        assert(ticker.institutional_holders.empty is False)
 
         # following should always gracefully handled, no crashes
         ticker.cashflow
