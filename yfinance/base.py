@@ -249,7 +249,9 @@ class TickerBase():
 
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
-            df = _pd.DataFrame(data).drop(columns=['maxAge'])
+            df = _pd.DataFrame(data)
+            if 'maxAge' in df:
+                df = df.drop(columns=['maxAge'])
             for col in df.columns:
                 df[col] = _np.where(
                     df[col].astype(str) == '-', _np.nan, df[col])
