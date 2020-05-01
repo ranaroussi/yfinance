@@ -91,8 +91,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                    back_adjust=back_adjust,
                                    progress=(progress and i > 0), proxy=proxy,
                                    rounding=rounding)
-        while len(shared._DFS) < len(tickers):
-            _time.sleep(0.01)
+        _multitasking.wait_for_tasks(sleep=0.01)
+        if len(shared._DFS) < len(tickers):
+            raise Exception("Failed to download tickers: %s" % (", ".join(set(tickers) - set(shared._DFS))))
 
     # download synchronously
     else:
