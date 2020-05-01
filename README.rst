@@ -65,7 +65,7 @@ The Ticker module
 ~~~~~~~~~~~~~~~~~
 
 The ``Ticker`` module, which allows you to access
-ticker data in amore Pythonic way:
+ticker data in a more Pythonic way:
 
 .. code:: python
 
