@@ -284,6 +284,9 @@ class TickerBase():
         holders = _pd.read_html(url)
         try:
             self._major_holders = holders[0]
+        except IndexError:
+            self._major_holders = []
+        try:
             self._institutional_holders = holders[1]
         except IndexError:
             self._institutional_holders = []
