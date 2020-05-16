@@ -11,6 +11,12 @@ from setuptools import setup, find_packages
 import io
 from os import path
 
+
+INSTALL_REQUIRES = ['pandas>=0.24', 'numpy>=1.15',
+                      'requests>=2.20', 'multitasking>=0.0.7', 'lxml']
+EXTRAS_REQUIRE = {"test": ["tox", "flake8", "black", "mock", "pre-commit", "nose"]}
+
+
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
@@ -50,8 +56,8 @@ setup(
     platforms=['any'],
     keywords='pandas, yahoo finance, pandas datareader',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
-    install_requires=['pandas>=0.24', 'numpy>=1.15',
-                      'requests>=2.20', 'multitasking>=0.0.7', 'lxml'],
+    install_requires=INSTALL_REQUIRES,
+    extras_require=EXTRAS_REQUIRE,
     entry_points={
         'console_scripts': [
             'sample=sample:main',
