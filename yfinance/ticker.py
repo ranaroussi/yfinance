@@ -135,6 +135,9 @@ class Ticker(TickerBase):
 
     @property
     def info(self):
+        """
+        :return: misc info about a symbol in a dictionary, empty dictionary if symbol not found
+        """
         return self.get_info()
 
     @property

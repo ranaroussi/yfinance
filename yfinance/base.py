@@ -310,9 +310,14 @@ class TickerBase:
         if self._fundamentals:
             return
 
+        self._info = {}
+        self._fundamentals = False
+
         # get info and sustainability
         url = "%s/%s" % (self._scrape_url, self.ticker)
         data = utils.get_json(url, proxy)
+        if not data:
+            return
 
         fd = data.get("financialData")
         if fd:
@@ -362,8 +367,6 @@ class TickerBase:
                 ~s.index.isin(["maxAge", "ratingYear", "ratingMonth"])
             ]
 
-        # info (be nice to python 2)
-        self._info = {}
         items = [
             "summaryProfile",
             "summaryDetail",

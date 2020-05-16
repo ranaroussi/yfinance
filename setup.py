@@ -13,7 +13,7 @@ from os import path
 
 
 INSTALL_REQUIRES = ['pandas>=0.24', 'numpy>=1.15',
-                      'requests>=2.20', 'multitasking>=0.0.7', 'lxml']
+                      'requests>=2.20', 'multitasking>=0.0.7', 'lxml', 'beautifulsoup4==4.9.0']
 EXTRAS_REQUIRE = {"test": ["tox", "flake8", "black", "mock", "pre-commit", "nose"]}
 
 

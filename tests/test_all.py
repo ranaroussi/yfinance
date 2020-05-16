@@ -38,5 +38,11 @@ def test_yfinance():
         print("OK")
 
 
+def test_not_existing():
+    t = yf.Ticker('ASD9867987ASD')
+    nfo = t.info
+    assert not nfo
+
+
 if __name__ == "__main__":
     test_yfinance()
