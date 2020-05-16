@@ -314,9 +314,10 @@ class TickerBase:
         url = "%s/%s" % (self._scrape_url, self.ticker)
         data = utils.get_json(url, proxy)
 
-        if fd := data.get("financialData"):
-            if fc := fd.get("financialCurrency"):
-                self._financial_currency = fc
+        fd = data.get("financialData")
+        fc = fd.get("financialCurrency")
+        if fd and fc:
+            self._financial_currency = fc
 
         # holders
         #       url = "{}/{}/holders".format(self._scrape_url, self.ticker)
