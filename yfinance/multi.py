@@ -29,10 +29,23 @@ from . import Ticker, utils
 from . import shared
 
 
-def download(tickers, start=None, end=None, actions=False, threads=True,
-             group_by='column', auto_adjust=False, back_adjust=False,
-             progress=True, period="max", interval="1d", prepost=False,
-             proxy=None, rounding=False, **kwargs):
+def download(
+    tickers,
+    start=None,
+    end=None,
+    actions=False,
+    threads=True,
+    group_by="column",
+    auto_adjust=False,
+    back_adjust=False,
+    progress=True,
+    period="max",
+    interval="1d",
+    prepost=False,
+    proxy=None,
+    rounding=False,
+    **kwargs
+):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -67,13 +80,12 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     """
 
     # create ticker list
-    tickers = tickers if isinstance(
-        tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
+    tickers = tickers if isinstance(tickers, (list, set, tuple)) else tickers.replace(",", " ").split()
 
     tickers = list(set([ticker.upper() for ticker in tickers]))
 
     if progress:
-        shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
+        shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), "completed")
 
     # reset shared._DFS
     shared._DFS = {}
@@ -85,22 +97,38 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             threads = min([len(tickers), _multitasking.cpu_count() * 2])
         _multitasking.set_max_threads(threads)
         for i, ticker in enumerate(tickers):
-            _download_one_threaded(ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust,
-                                   progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding)
+            _download_one_threaded(
+                ticker,
+                period=period,
+                interval=interval,
+                start=start,
+                end=end,
+                prepost=prepost,
+                actions=actions,
+                auto_adjust=auto_adjust,
+                back_adjust=back_adjust,
+                progress=(progress and i > 0),
+                proxy=proxy,
+                rounding=rounding,
+            )
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
 
     # download synchronously
     else:
         for i, ticker in enumerate(tickers):
-            data = _download_one(ticker, period=period, interval=interval,
-                                 start=start, end=end, prepost=prepost,
-                                 actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, rounding=rounding)
+            data = _download_one(
+                ticker,
+                period=period,
+                interval=interval,
+                start=start,
+                end=end,
+                prepost=prepost,
+                actions=actions,
+                auto_adjust=auto_adjust,
+                back_adjust=back_adjust,
+                rounding=rounding,
+            )
             shared._DFS[ticker.upper()] = data
             if progress:
                 shared._PROGRESS_BAR.animate()
@@ -109,24 +137,20 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         shared._PROGRESS_BAR.completed()
 
     if shared._ERRORS:
-        print('\n%.f Failed download%s:' % (
-            len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
+        print("\n%.f Failed download%s:" % (len(shared._ERRORS), "s" if len(shared._ERRORS) > 1 else ""))
         # print(shared._ERRORS)
-        print("\n".join(['- %s: %s' %
-                         v for v in list(shared._ERRORS.items())]))
+        print("\n".join(["- %s: %s" % v for v in list(shared._ERRORS.items())]))
 
     if len(tickers) == 1:
         return shared._DFS[tickers[0]]
 
     try:
-        data = _pd.concat(shared._DFS.values(), axis=1,
-                          keys=shared._DFS.keys())
+        data = _pd.concat(shared._DFS.values(), axis=1, keys=shared._DFS.keys())
     except Exception:
         _realign_dfs()
-        data = _pd.concat(shared._DFS.values(), axis=1,
-                          keys=shared._DFS.keys())
+        data = _pd.concat(shared._DFS.values(), axis=1, keys=shared._DFS.keys())
 
-    if group_by == 'column':
+    if group_by == "column":
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
 
@@ -144,39 +168,62 @@ def _realign_dfs():
 
     for key in shared._DFS.keys():
         try:
-            shared._DFS[key] = _pd.DataFrame(
-                index=idx, data=shared._DFS[key]).drop_duplicates()
+            shared._DFS[key] = _pd.DataFrame(index=idx, data=shared._DFS[key]).drop_duplicates()
         except Exception:
-            shared._DFS[key] = _pd.concat([
-                utils.empty_df(idx), shared._DFS[key].dropna()
-            ], axis=0, sort=True)
+            shared._DFS[key] = _pd.concat([utils.empty_df(idx), shared._DFS[key].dropna()], axis=0, sort=True)
 
         # remove duplicate index
-        shared._DFS[key] = shared._DFS[key].loc[
-            ~shared._DFS[key].index.duplicated(keep='last')]
+        shared._DFS[key] = shared._DFS[key].loc[~shared._DFS[key].index.duplicated(keep="last")]
 
 
 @_multitasking.task
-def _download_one_threaded(ticker, start=None, end=None,
-                           auto_adjust=False, back_adjust=False,
-                           actions=False, progress=True, period="max",
-                           interval="1d", prepost=False, proxy=None,
-                           rounding=False):
+def _download_one_threaded(
+    ticker,
+    start=None,
+    end=None,
+    auto_adjust=False,
+    back_adjust=False,
+    actions=False,
+    progress=True,
+    period="max",
+    interval="1d",
+    prepost=False,
+    proxy=None,
+    rounding=False,
+):
 
-    data = _download_one(ticker, start, end, auto_adjust, back_adjust,
-                         actions, period, interval, prepost, proxy, rounding)
+    data = _download_one(
+        ticker, start, end, auto_adjust, back_adjust, actions, period, interval, prepost, proxy, rounding
+    )
     shared._DFS[ticker.upper()] = data
     if progress:
         shared._PROGRESS_BAR.animate()
 
 
-def _download_one(ticker, start=None, end=None,
-                  auto_adjust=False, back_adjust=False,
-                  actions=False, period="max", interval="1d",
-                  prepost=False, proxy=None, rounding=False):
+def _download_one(
+    ticker,
+    start=None,
+    end=None,
+    auto_adjust=False,
+    back_adjust=False,
+    actions=False,
+    period="max",
+    interval="1d",
+    prepost=False,
+    proxy=None,
+    rounding=False,
+):
 
-    return Ticker(ticker).history(period=period, interval=interval,
-                                  start=start, end=end, prepost=prepost,
-                                  actions=actions, auto_adjust=auto_adjust,
-                                  back_adjust=back_adjust, proxy=proxy,
-                                  rounding=rounding, many=True)
+    return Ticker(ticker).history(
+        period=period,
+        interval=interval,
+        start=start,
+        end=end,
+        prepost=prepost,
+        actions=actions,
+        auto_adjust=auto_adjust,
+        back_adjust=back_adjust,
+        proxy=proxy,
+        rounding=rounding,
+        many=True,
+    )

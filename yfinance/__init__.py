@@ -34,6 +34,7 @@ def pdr_override():
     """
     try:
         import pandas_datareader
+
         pandas_datareader.data.get_data_yahoo = download
         pandas_datareader.data.get_data_yahoo_actions = download
         pandas_datareader.data.DataReader = download
@@ -41,4 +42,4 @@ def pdr_override():
         pass
 
 
-__all__ = ['download', 'Ticker', 'Tickers', 'pdr_override']
+__all__ = ["download", "Ticker", "Tickers", "pdr_override"]

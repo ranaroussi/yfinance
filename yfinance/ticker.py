@@ -25,6 +25,7 @@ from __future__ import print_function
 import datetime as _datetime
 import requests as _requests
 import pandas as _pd
+
 # import numpy as _np
 
 # import json as _json
@@ -35,17 +36,14 @@ from .base import TickerBase
 
 
 class Ticker(TickerBase):
-
     def __repr__(self):
-        return 'yfinance.Ticker object <%s>' % self.ticker
+        return "yfinance.Ticker object <%s>" % self.ticker
 
     def _download_options(self, date=None, proxy=None):
         if date is None:
-            url = "{}/v7/finance/options/{}".format(
-                self._base_url, self.ticker)
+            url = "{}/v7/finance/options/{}".format(self._base_url, self.ticker)
         else:
-            url = "{}/v7/finance/options/{}?date={}".format(
-                self._base_url, self.ticker, date)
+            url = "{}/v7/finance/options/{}?date={}".format(self._base_url, self.ticker, date)
 
         # setup proxy in requests format
         if proxy is not None:
@@ -54,34 +52,35 @@ class Ticker(TickerBase):
             proxy = {"https": proxy}
 
         r = _requests.get(url=url, proxies=proxy).json()
-        if r['optionChain']['result']:
-            for exp in r['optionChain']['result'][0]['expirationDates']:
-                self._expirations[_datetime.datetime.utcfromtimestamp(
-                    exp).strftime('%Y-%m-%d')] = exp
-            return r['optionChain']['result'][0]['options'][0]
+        if r["optionChain"]["result"]:
+            for exp in r["optionChain"]["result"][0]["expirationDates"]:
+                self._expirations[_datetime.datetime.utcfromtimestamp(exp).strftime("%Y-%m-%d")] = exp
+            return r["optionChain"]["result"][0]["options"][0]
         return {}
 
     def _options2df(self, opt, tz=None):
-        data = _pd.DataFrame(opt).reindex(columns=[
-            'contractSymbol',
-            'lastTradeDate',
-            'strike',
-            'lastPrice',
-            'bid',
-            'ask',
-            'change',
-            'percentChange',
-            'volume',
-            'openInterest',
-            'impliedVolatility',
-            'inTheMoney',
-            'contractSize',
-            'currency'])
+        data = _pd.DataFrame(opt).reindex(
+            columns=[
+                "contractSymbol",
+                "lastTradeDate",
+                "strike",
+                "lastPrice",
+                "bid",
+                "ask",
+                "change",
+                "percentChange",
+                "volume",
+                "openInterest",
+                "impliedVolatility",
+                "inTheMoney",
+                "contractSize",
+                "currency",
+            ]
+        )
 
-        data['lastTradeDate'] = _pd.to_datetime(
-            data['lastTradeDate'], unit='s')
+        data["lastTradeDate"] = _pd.to_datetime(data["lastTradeDate"], unit="s")
         if tz is not None:
-            data['lastTradeDate'] = data['lastTradeDate'].tz_localize(tz)
+            data["lastTradeDate"] = data["lastTradeDate"].tz_localize(tz)
         return data
 
     def option_chain(self, date=None, proxy=None, tz=None):
@@ -93,15 +92,14 @@ class Ticker(TickerBase):
             if date not in self._expirations:
                 raise ValueError(
                     "Expiration `%s` cannot be found. "
-                    "Available expiration are: [%s]" % (
-                        date, ', '.join(self._expirations)))
+                    "Available expiration are: [%s]" % (date, ", ".join(self._expirations))
+                )
             date = self._expirations[date]
             options = self._download_options(date, proxy=proxy)
 
-        return _namedtuple('Options', ['calls', 'puts'])(**{
-            "calls": self._options2df(options['calls'], tz=tz),
-            "puts": self._options2df(options['puts'], tz=tz)
-        })
+        return _namedtuple("Options", ["calls", "puts"])(
+            **{"calls": self._options2df(options["calls"], tz=tz), "puts": self._options2df(options["puts"], tz=tz)}
+        )
 
     # ------------------------
 
@@ -154,7 +152,7 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_earnings(self):
-        return self.get_earnings(freq='quarterly')
+        return self.get_earnings(freq="quarterly")
 
     @property
     def financials(self):
@@ -162,7 +160,7 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_financials(self):
-        return self.get_financials(freq='quarterly')
+        return self.get_financials(freq="quarterly")
 
     @property
     def balance_sheet(self):
@@ -170,7 +168,7 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_balance_sheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.get_balancesheet(freq="quarterly")
 
     @property
     def balancesheet(self):
@@ -178,7 +176,7 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_balancesheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.get_balancesheet(freq="quarterly")
 
     @property
     def cashflow(self):
@@ -186,7 +184,7 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_cashflow(self):
-        return self.get_cashflow(freq='quarterly')
+        return self.get_cashflow(freq="quarterly")
 
     @property
     def sustainability(self):

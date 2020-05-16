@@ -19,13 +19,13 @@ import yfinance as yf
 
 
 def test_yfinance():
-    for symbol in ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
-        print(">>", symbol, end=' ... ')
+    for symbol in ["MSFT", "IWO", "VFINX", "^GSPC", "BTC-USD"]:
+        print(">>", symbol, end=" ... ")
         ticker = yf.Ticker(symbol)
 
         # always should have info and history for valid symbols
-        assert(ticker.info is not None and ticker.info != {})
-        assert(ticker.history(period="max").empty is False)
+        assert ticker.info is not None and ticker.info != {}
+        assert ticker.history(period="max").empty is False
 
         # following should always gracefully handled, no crashes
         ticker.cashflow
@@ -39,7 +39,7 @@ def test_yfinance():
 
 
 def test_not_existing():
-    t = yf.Ticker('ASD9867987ASD')
+    t = yf.Ticker("ASD9867987ASD")
     nfo = t.info
     assert not nfo
 
