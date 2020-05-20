@@ -39,7 +39,7 @@ def empty_df(index=[]):
             "High": _np.nan,
             "Low": _np.nan,
             "Close": _np.nan,
-            "Adj Close": _np.nan,
+            "AdjClose": _np.nan,
             "Volume": _np.nan,
         },
     )
@@ -81,7 +81,7 @@ def camel2title(o):
 
 def auto_adjust(data):
     df = data.copy()
-    ratio = df["Close"] / df["Adj Close"]
+    ratio = df["Close"] / df["AdjClose"]
     df["Adj Open"] = df["Open"] / ratio
     df["Adj High"] = df["High"] / ratio
     df["Adj Low"] = df["Low"] / ratio
@@ -89,7 +89,7 @@ def auto_adjust(data):
     df.drop(["Open", "High", "Low", "Close"], axis=1, inplace=True)
 
     df.rename(
-        columns={"Adj Open": "Open", "Adj High": "High", "Adj Low": "Low", "Adj Close": "Close",}, inplace=True,
+        columns={"Adj Open": "Open", "Adj High": "High", "Adj Low": "Low", "AdjClose": "Close",}, inplace=True,
     )
 
     df = df[["Open", "High", "Low", "Close", "Volume"]]
@@ -100,12 +100,12 @@ def back_adjust(data):
     """ back-adjusted data to mimic true historical prices """
 
     df = data.copy()
-    ratio = df["Adj Close"] / df["Close"]
+    ratio = df["AdjClose"] / df["Close"]
     df["Adj Open"] = df["Open"] * ratio
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
 
-    df.drop(["Open", "High", "Low", "Adj Close"], axis=1, inplace=True)
+    df.drop(["Open", "High", "Low", "AdjClose"], axis=1, inplace=True)
 
     df.rename(
         columns={"Adj Open": "Open", "Adj High": "High", "Adj Low": "Low"}, inplace=True,
@@ -128,7 +128,7 @@ def parse_quotes(data, tz=None):
         adjclose = data["indicators"]["adjclose"][0]["adjclose"]
 
     quotes = _pd.DataFrame(
-        {"Open": opens, "High": highs, "Low": lows, "Close": closes, "Adj Close": adjclose, "Volume": volumes,}
+        {"Open": opens, "High": highs, "Low": lows, "Close": closes, "AdjClose": adjclose, "Volume": volumes,}
     )
 
     quotes.index = _pd.to_datetime(timestamps, unit="s")
@@ -142,7 +142,7 @@ def parse_quotes(data, tz=None):
 
 def parse_actions(data, tz=None):
     dividends = _pd.DataFrame(columns=["Dividends"])
-    splits = _pd.DataFrame(columns=["Stock Splits"])
+    splits = _pd.DataFrame(columns=["StockSplits"])
 
     if "events" in data:
         if "dividends" in data["events"]:
@@ -162,8 +162,8 @@ def parse_actions(data, tz=None):
             splits.sort_index(inplace=True)
             if tz is not None:
                 splits.index = splits.index.tz_localize(tz)
-            splits["Stock Splits"] = splits["numerator"] / splits["denominator"]
-            splits = splits["Stock Splits"]
+            splits["StockSplits"] = splits["numerator"] / splits["denominator"]
+            splits = splits["StockSplits"]
 
     return dividends, splits
 

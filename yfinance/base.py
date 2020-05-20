@@ -130,7 +130,7 @@ class TickerBase:
 
         if start or period is None or period.lower() == "max":
             if start is None:
-                start = -2208988800
+                start = int((_datetime.datetime.now() - _datetime.timedelta(days=100 * 365)).timestamp())
             elif isinstance(start, _datetime.datetime):
                 start = int(_time.mktime(start.timetuple()))
             else:
@@ -203,7 +203,7 @@ class TickerBase:
                 print("- %s: %s" % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
-        # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
+        # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             quotes2 = quotes.resample("30T")
             quotes = _pd.DataFrame(
@@ -213,7 +213,7 @@ class TickerBase:
                     "High": quotes2["High"].max(),
                     "Low": quotes2["Low"].min(),
                     "Close": quotes2["Close"].last(),
-                    "Adj Close": quotes2["Adj Close"].last(),
+                    "AdjClose": quotes2["Adj Close"].last(),
                     "Volume": quotes2["Volume"].sum(),
                 },
             )
@@ -222,7 +222,7 @@ class TickerBase:
             except Exception:
                 pass
             try:
-                quotes["Stock Splits"] = quotes2["Dividends"].max()
+                quotes["StockSplits"] = quotes2["Dividends"].max()
             except Exception:
                 pass
 
@@ -243,7 +243,7 @@ class TickerBase:
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
         df["Dividends"].fillna(0, inplace=True)
-        df["Stock Splits"].fillna(0, inplace=True)
+        df["StockSplits"].fillna(0, inplace=True)
 
         # index eod/intraday
         df.index = df.index.tz_localize("UTC").tz_convert(data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
@@ -259,7 +259,7 @@ class TickerBase:
         self._history = df.copy()
 
         if not actions:
-            df.drop(columns=["Dividends", "Stock Splits"], inplace=True)
+            df.drop(columns=["Dividends", "StockSplits"], inplace=True)
 
         return df
 
@@ -502,13 +502,13 @@ class TickerBase:
     def get_splits(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
-        splits = self._history["Stock Splits"]
+        splits = self._history["StockSplits"]
         return splits[splits != 0]
 
     def get_actions(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
-        actions = self._history[["Dividends", "Stock Splits"]]
+        actions = self._history[["Dividends", "StockSplits"]]
         return actions[actions != 0].dropna(how="all").fillna(0)
 
     def get_isin(self, proxy=None):
