@@ -395,14 +395,16 @@ class TickerBase:
 
             item = key[1] + "History"
             if isinstance(data.get(item), dict):
-                key[0]["yearly"] = cleanup(data[item][key[2]])
+                if "err" not in data[item]:
+                    key[0]["yearly"] = cleanup(data[item][key[2]])
 
             item = key[1] + "HistoryQuarterly"
             if isinstance(data.get(item), dict):
-                key[0]["quarterly"] = cleanup(data[item][key[2]])
+                if "err" not in data[item]:
+                    key[0]["quarterly"] = cleanup(data[item][key[2]])
 
         # earnings
-        if isinstance(data.get("earnings"), dict):
+        if isinstance(data.get("earnings"), dict) and "err" not in data["earnings"]:
             earnings = data["earnings"]["financialsChart"]
             df = _pd.DataFrame(earnings["yearly"]).set_index("date")
             df.columns = utils.camel2title(df.columns)
