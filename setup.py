@@ -20,6 +20,7 @@ INSTALL_REQUIRES = [
     "multitasking>=0.0.7",
     "lxml",
     "beautifulsoup4==4.9.0",
+    "html5lib"
 ]
 EXTRAS_REQUIRE = {"test": ["tox", "flake8", "black", "mock", "pre-commit", "nose"]}
 
