@@ -267,9 +267,13 @@ class TickerBase:
 
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
-            df = _pd.DataFrame(data).drop(columns=["maxAge"])
-            for col in df.columns:
-                df[col] = _np.where(df[col].astype(str) == "-", _np.nan, df[col])
+            if not data:
+                return _pd.DataFrame()
+            df = _pd.DataFrame(data)
+            if "maxAge" in df.columns:
+                df = df.drop(columns=["maxAge"])
+
+            df.replace("-", _np.nan)
 
             df.set_index("endDate", inplace=True)
             try:
@@ -406,16 +410,21 @@ class TickerBase:
         # earnings
         if isinstance(data.get("earnings"), dict) and "err" not in data["earnings"]:
             earnings = data["earnings"]["financialsChart"]
-            df = _pd.DataFrame(earnings["yearly"]).set_index("date")
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = "Year"
+            if "yearly" in earnings and earnings["yearly"]:
+                df = _pd.DataFrame(earnings["yearly"]).set_index("date")
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = "Year"
+            else:
+                df = _pd.DataFrame()
             self._earnings["yearly"] = df
 
-            df = _pd.DataFrame(earnings["quarterly"]).set_index("date")
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = "Quarter"
+            if "quarterly" in earnings and earnings["quarterly"]:
+                df = _pd.DataFrame(earnings["quarterly"]).set_index("date")
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = "Quarter"
+            else:
+                df = _pd.DataFrame()
             self._earnings["quarterly"] = df
-
         self._fundamentals = True
 
     def get_financial_currency(self, proxy=None, *args, **kwargs):
