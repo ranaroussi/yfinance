@@ -3,3 +3,5 @@ yfinance/__pycache__/*
 dist
 yfinance.egg-info
 *.pyc
+*.swp
+*.swo
