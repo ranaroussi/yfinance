@@ -213,6 +213,9 @@ I've also added some options to make life easier :)
 Listening to the live stream of tickers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+You can receive a live stream from the market. Put your code into
+``on_new_data(data)`` function:
+
 .. code:: python
 
     import yfinance as yf
