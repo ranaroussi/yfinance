@@ -278,6 +278,7 @@ class TickerBase():
         # get info and sustainability
         url = '%s/%s' % (self._scrape_url, self.ticker)
         data = utils.get_json(url, proxy)
+        qssData = data['QuoteSummaryStore']
 
         # holders
         url = "{}/{}/holders".format(self._scrape_url, self.ticker)
@@ -293,10 +294,10 @@ class TickerBase():
 
         # sustainability
         d = {}
-        if isinstance(data.get('esgScores'), dict):
-            for item in data['esgScores']:
-                if not isinstance(data['esgScores'][item], (dict, list)):
-                    d[item] = data['esgScores'][item]
+        if isinstance(qssData.get('esgScores'), dict):
+            for item in qssData['esgScores']:
+                if not isinstance(qssData['esgScores'][item], (dict, list)):
+                    d[item] = qssData['esgScores'][item]
 
             s = _pd.DataFrame(index=[0], data=d)[-1:].T
             s.columns = ['Value']
@@ -312,8 +313,8 @@ class TickerBase():
         items = ['summaryProfile', 'summaryDetail', 'quoteType',
                  'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         for item in items:
-            if isinstance(data.get(item), dict):
-                self._info.update(data[item])
+            if isinstance(qssData.get(item), dict):
+                self._info.update(qssData[item])
 
         self._info['regularMarketPrice'] = self._info['regularMarketOpen']
         self._info['logo_url'] = ""
@@ -327,7 +328,7 @@ class TickerBase():
         # events
         try:
             cal = _pd.DataFrame(
-                data['calendarEvents']['earnings'])
+                qssData['calendarEvents']['earnings'])
             cal['earningsDate'] = _pd.to_datetime(
                 cal['earningsDate'], unit='s')
             self._calendar = cal.T
@@ -339,7 +340,7 @@ class TickerBase():
         # analyst recommendations
         try:
             rec = _pd.DataFrame(
-                data['upgradeDowngradeHistory']['history'])
+                qssData['upgradeDowngradeHistory']['history'])
             rec['earningsDate'] = _pd.to_datetime(
                 rec['epochGradeDate'], unit='s')
             rec.set_index('earningsDate', inplace=True)
@@ -350,8 +351,29 @@ class TickerBase():
         except Exception:
             pass
 
+        # get research data, valuation values
+        if 'ResearchPageStore' in data: 
+            rpsData = data['ResearchPageStore']
+            if isinstance(rpsData['technicalInsights'], dict):
+                if isinstance(rpsData['technicalInsights'][self.ticker], dict):
+                    if isinstance(rpsData['technicalInsights'][self.ticker]['instrumentInfo'], dict):
+                        if isinstance(rpsData['technicalInsights'][self.ticker]['instrumentInfo'], dict):
+                            # self._info.update(rpsData['technicalInsights'][self.ticker]['instrumentInfo'])
+                            if isinstance(rpsData['technicalInsights'][self.ticker]['instrumentInfo']['valuation'], dict):
+                                valuation = rpsData['technicalInsights'][self.ticker]['instrumentInfo']['valuation']
+                                if 'description' in valuation:
+                                    self._info['valuationDescription'] = valuation['description']
+                                if 'discount' in valuation:
+                                    self._info['valuationDiscount'] = valuation['discount']
+                                if 'provider' in valuation:
+                                    self._info['valuationProvider'] = valuation['provider']
+                                if 'relativeValue' in valuation:
+                                    self._info['valuationRelativeValue'] = valuation['relativeValue']
+
         # get fundamentals
-        data = utils.get_json(url+'/financials', proxy)
+        url = "{}/{}/financials".format(self._scrape_url, self.ticker)
+        data = utils.get_json(url, proxy)
+        qssData = data['QuoteSummaryStore']
 
         # generic patterns
         for key in (
@@ -361,16 +383,16 @@ class TickerBase():
         ):
 
             item = key[1] + 'History'
-            if isinstance(data.get(item), dict):
-                key[0]['yearly'] = cleanup(data[item][key[2]])
+            if isinstance(qssData.get(item), dict):
+                key[0]['yearly'] = cleanup(qssData[item][key[2]])
 
             item = key[1]+'HistoryQuarterly'
-            if isinstance(data.get(item), dict):
-                key[0]['quarterly'] = cleanup(data[item][key[2]])
+            if isinstance(qssData.get(item), dict):
+                key[0]['quarterly'] = cleanup(qssData[item][key[2]])
 
         # earnings
-        if isinstance(data.get('earnings'), dict):
-            earnings = data['earnings']['financialsChart']
+        if isinstance(qssData.get('earnings'), dict):
+            earnings = qssData['earnings']['financialsChart']
             df = _pd.DataFrame(earnings['yearly']).set_index('date')
             df.columns = utils.camel2title(df.columns)
             df.index.name = 'Year'

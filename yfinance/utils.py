@@ -53,7 +53,7 @@ def get_json(url, proxy=None):
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
     data = _json.loads(json_str)[
-        'context']['dispatcher']['stores']['QuoteSummaryStore']
+        'context']['dispatcher']['stores']
 
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
