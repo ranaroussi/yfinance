@@ -152,14 +152,21 @@ class TickerBase():
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
-        data = data.json()
-
+        
+        # 404 error on request give XML formatted response. If the first 
+        # element is "<" XML assumed and error message is added
+        if data.text[0] == "<":
+            err_msg = "404 returned. Likely a ticker including '/'"
+        else:
+            data = data.json()
+            err_msg = "No data found for this date"
+            "range, symbol may be delisted"
+            
         # Work with errors
         debug_mode = True
         if "debug" in kwargs and isinstance(kwargs["debug"], bool):
             debug_mode = kwargs["debug"]
-
-        err_msg = "No data found for this date range, symbol may be delisted"
+            
         if "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
@@ -504,7 +511,7 @@ class TickerBase():
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
             if q.lower() in data.lower():
-                search_str = '"|'
+                search_str = '"|'.format(ticker)
                 if search_str not in data:
                     self._isin = '-'
                     return self._isin
