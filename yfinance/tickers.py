@@ -23,6 +23,8 @@ from __future__ import print_function
 
 from . import Ticker, multi
 from collections import namedtuple as _namedtuple
+import pandas as pd
+
 
 
 def genTickers(tickers):
@@ -54,6 +56,10 @@ class Tickers():
         self.tickers = _namedtuple(
             "Tickers", ticker_objects.keys(), rename=True
         )(*ticker_objects.values())
+
+        self.match = dict()
+        for i in range(len(self.tickers._fields)):
+            self.match[self.tickers._fields[i]] = list(ticker_objects.keys())[i]
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
@@ -87,9 +93,16 @@ class Tickers():
                               progress=progress,
                               **kwargs)
 
-        for symbol in self.symbols:
-            getattr(self.tickers, symbol)._history = data[symbol]
 
+        if len(list(self.match.values())) > 1:
+            pass
+        else:
+            data.columns = pd.MultiIndex.from_product([list(self.match.values()), data.columns])
+
+        for symbol in range(len(self.tickers._fields)):
+            getattr(self.tickers, self.tickers._fields[symbol])._history = data[self.match[self.tickers._fields[symbol]]]
+        
+        
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
             data.sort_index(level=0, axis=1, inplace=True)
