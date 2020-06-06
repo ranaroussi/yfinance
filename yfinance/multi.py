@@ -112,8 +112,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         print('\n%.f Failed download%s:' % (
             len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
         # print(shared._ERRORS)
-        print("\n".join(['- %s: %s' %
-                         v for v in list(shared._ERRORS.items())]))
+        print("\n".join('- %s: %s' %
+                         v for v in list(shared._ERRORS.items())))
 
     if len(tickers) == 1:
         return shared._DFS[tickers[0]]
@@ -142,7 +142,7 @@ def _realign_dfs():
             idx_len = len(df)
             idx = df.index
 
-    for key in shared._DFS.keys():
+    for key in shared._DFS:
         try:
             shared._DFS[key] = _pd.DataFrame(
                 index=idx, data=shared._DFS[key]).drop_duplicates()

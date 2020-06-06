@@ -34,7 +34,9 @@ except ImportError:
     import json as _json
 
 
-def empty_df(index=[]):
+def empty_df(index=None):
+    if index is None:
+        index = []
     empty = _pd.DataFrame(index=index, data={
         'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
         'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
