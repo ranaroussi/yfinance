@@ -15,7 +15,7 @@ Sanity check for most common library uses all working
 """
 
 from __future__ import print_function
-import yfinance as yf
+from .. import yfinance as yf
 
 
 def test_yfinance(ticketList):
