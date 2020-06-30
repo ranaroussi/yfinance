@@ -6,7 +6,7 @@
 
 """Yahoo! Finance market data downloader (+fix for Pandas Datareader)"""
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Command
 # from codecs import open
 import io
 from os import path
@@ -16,6 +16,21 @@ here = path.abspath(path.dirname(__file__))
 # Get the long description from the README file
 with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
+
+
+class TestCommand(Command):
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import sys, subprocess
+        raise SystemExit(subprocess.call([sys.executable, 'test/__init__.py']))
+
 
 setup(
     name='yfinance',
