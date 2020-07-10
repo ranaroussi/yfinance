@@ -254,7 +254,7 @@ class TickerBase():
 
             if 'endDate' in df:
                 df.set_index('endDate', inplace=True)
-                
+
             try:
                 df.index = _pd.to_datetime(df.index, unit='s')
             except ValueError:
