@@ -3,3 +3,4 @@ yfinance/__pycache__/*
 dist
 yfinance.egg-info
 *.pyc
+build
