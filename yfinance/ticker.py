@@ -31,7 +31,7 @@ import pandas as _pd
 # import re as _re
 from collections import namedtuple as _namedtuple
 
-from .base import TickerBase
+from base import TickerBase
 
 
 class Ticker(TickerBase):

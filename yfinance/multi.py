@@ -25,8 +25,8 @@ import time as _time
 import multitasking as _multitasking
 import pandas as _pd
 
-from . import Ticker, utils
-from . import shared
+import Ticker, utils
+import shared
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True,

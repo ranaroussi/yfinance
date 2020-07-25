@@ -32,13 +32,13 @@ try:
 except ImportError:
     from urllib import quote as urlencode
 
-from . import utils
+import utils
 
 # import json as _json
 # import re as _re
 # import sys as _sys
 
-from . import shared
+import shared
 
 
 class TickerBase():
@@ -46,7 +46,7 @@ class TickerBase():
         self.ticker = ticker.upper()
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
-        self._scrape_url = 'https://finance.yahoo.com/quote'
+        self._scrape_url = 'https://in.finance.yahoo.com/quote'
 
         self._fundamentals = False
         self._info = None
@@ -280,10 +280,10 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
-        self._major_holders = holders[0]
-        self._institutional_holders = holders[1]
+        url_holders = "{}/{}/holders".format(self._scrape_url, self.ticker)
+        holders = _pd.read_html(url_holders)
+        self._major_holders = holders[0].iloc[0]
+        self._institutional_holders = holders[0].iloc[1]
         if 'Date Reported' in self._institutional_holders:
             self._institutional_holders['Date Reported'] = _pd.to_datetime(
                 self._institutional_holders['Date Reported'])
@@ -352,7 +352,7 @@ class TickerBase():
 
         # get fundamentals
         data = utils.get_json(url+'/financials', proxy)
-
+#         print(url)
         # generic patterns
         for key in (
             (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
