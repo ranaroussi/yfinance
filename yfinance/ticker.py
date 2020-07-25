@@ -194,3 +194,11 @@ class Ticker(TickerBase):
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
+    
+    @property
+    def set_indian_market(self):
+        return self._set_indian_market()
+    
+    @property
+    def set_global_market(self):
+        return self._set_global_market()

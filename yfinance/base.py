@@ -46,7 +46,8 @@ class TickerBase():
         self.ticker = ticker.upper()
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
-        self._scrape_url = 'https://in.finance.yahoo.com/quote'
+        self._scrape_url = 'https://finance.yahoo.com/quote'
+        self.indian_region_flag = False
 
         self._fundamentals = False
         self._info = None
@@ -71,6 +72,14 @@ class TickerBase():
         self._cashflow = {
             "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
+    
+    def _set_indian_market(self):
+        self._scrape_url = 'https://in.finance.yahoo.com/quote'
+        self.indian_region_flag = True
+    
+    def _set_global_market(self):
+        self._scrape_url = 'https://finance.yahoo.com/quote'
+        self.indian_region_flag = False
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
