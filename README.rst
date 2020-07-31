@@ -144,7 +144,7 @@ If you want to use a proxy server for downloading data, use:
     msft.get_splits(proxy="PROXY_SERVER")
     msft.get_balance_sheet(proxy="PROXY_SERVER")
     msft.get_cashflow(proxy="PROXY_SERVER")
-    msgt.option_chain(..., proxy="PROXY_SERVER")
+    msft.option_chain(..., proxy="PROXY_SERVER")
     ...
 
 To initialize multiple ``Ticker`` objects, use
