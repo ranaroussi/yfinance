@@ -379,8 +379,8 @@ class TickerBase():
 
     def _set_institutional_holders(self, holders):
         if len(holders) <= 1:
-	    return
-			
+            return
+
         self._institutional_holders = holders[1]
         if 'Date Reported' in self._institutional_holders:
             self._institutional_holders['Date Reported'] = _pd.to_datetime(
