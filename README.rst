@@ -157,9 +157,9 @@ To initialize multiple ``Ticker`` objects, use
     # ^ returns a named tuple of Ticker objects
 
     # access each ticker using (example)
-    tickers.msft.info
-    tickers.aapl.history(period="1mo")
-    tickers.goog.actions
+    tickers.tickers.MSFT.info
+    tickers.tickers.AAPL.history(period="1mo")
+    tickers.tickers.GOOG.actions
 
 
 Fetching data for multiple tickers
