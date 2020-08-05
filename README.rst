@@ -209,17 +209,16 @@ I've also added some options to make life easier :)
             # (optional, default is None)
             proxy = None
         )
-`Python <https://www.python.org>`_
+
 
 Managing Multi-Level Columns
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following answer on Stack Overflow discusses `How to deal with multi-level column names downloaded with yfinance? <https://stackoverflow.com/questions/63107801>`_
-
-  - `yfinance` returns a `pandas.DataFrame` with multi-level column names, with a level for the ticker and a level for the stock price data
-  - This answer discusses:
-    - How to correctly read the the multi-level columns after saving the dataframe to a csv with `pandas.DataFrame.to_csv`
-    - How to download single or multiple tickers into a single dataframe with single level column names and a ticker column
+* `yfinance` returns a `pandas.DataFrame` with multi-level column names, with a level for the ticker and a level for the stock price data
+  * This answer discusses:
+    * How to correctly read the the multi-level columns after saving the dataframe to a csv with `pandas.DataFrame.to_csv`
+    * How to download single or multiple tickers into a single dataframe with single level column names and a ticker column
 
 
 ``pandas_datareader`` override
