@@ -291,8 +291,9 @@ class TickerBase():
             if '% Out' in self._institutional_holders:
                 self._institutional_holders['% Out'] = self._institutional_holders[
                     '% Out'].str.replace('%', '').astype(float)/100
-        except (IndexError ex):
+        except IndexError as ex:
             print("Moving on....")
+            print(ex)
             
         # sustainability
         d = {}
