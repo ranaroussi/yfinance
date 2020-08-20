@@ -280,8 +280,7 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
+        holders = _pd.read_html(url+'\holders')
         self._major_holders = holders[0]
         self._institutional_holders = holders[1]
         if 'Date Reported' in self._institutional_holders:
