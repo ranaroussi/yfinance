@@ -67,6 +67,8 @@ The Ticker module
 The ``Ticker`` module, which allows you to access
 ticker data in amore Pythonic way:
 
+Note: yahoo finance datetimes are received as UTC.
+
 .. code:: python
 
     import yfinance as yf
