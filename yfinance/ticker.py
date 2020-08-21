@@ -56,7 +56,7 @@ class Ticker(TickerBase):
         r = _requests.get(url=url, proxies=proxy).json()
         if r['optionChain']['result']:
             for exp in r['optionChain']['result'][0]['expirationDates']:
-                self._expirations[_datetime.datetime.fromtimestamp(
+                self._expirations[_datetime.datetime.utcfromtimestamp(
                     exp).strftime('%Y-%m-%d')] = exp
             return r['optionChain']['result'][0]['options'][0]
         return {}
