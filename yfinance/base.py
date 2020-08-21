@@ -58,6 +58,7 @@ class TickerBase():
 
         self._calendar = None
         self._expirations = {}
+        self._data = {}
 
         self._earnings = {
             "yearly": utils.empty_df(),
@@ -153,7 +154,7 @@ class TickerBase():
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
         data = data.json()
-
+        self._data.update(data)
         # Work with errors
         debug_mode = True
         if "debug" in kwargs and isinstance(kwargs["debug"], bool):
@@ -278,6 +279,7 @@ class TickerBase():
         # get info and sustainability
         url = '%s/%s' % (self._scrape_url, self.ticker)
         data = utils.get_json(url, proxy)
+        self._data.update(data)
 
         # holders
         url = "{}/{}/holders".format(self._scrape_url, self.ticker)
@@ -314,13 +316,18 @@ class TickerBase():
 
         # info (be nice to python 2)
         self._info = {}
-        items = ['summaryProfile', 'summaryDetail', 'quoteType',
-                 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+        items = ['summaryProfile', 'summaryDetail', 'defaultKeyStatistics', 
+                 'assetProfile', 'fundProfile', 'summaryDetail', 'quoteType',]
         for item in items:
-            if isinstance(data.get(item), dict):
+            subdict = data.get(item)
+            if isinstance(subdict, dict):
                 self._info.update(data[item])
 
         self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        if 'topHoldings' in data:
+            self._info['topHoldings'] = data['topHoldings']
+            self._info['topHoldings']['sectorWeightings'] = {next(iter(u.keys())):next(iter(u.values())) for u in self._info['topHoldings']['sectorWeightings']}
+
         self._info['logo_url'] = ""
         try:
             domain = self._info['website'].split(
@@ -421,7 +428,7 @@ class TickerBase():
         data = self._info
         if as_dict:
             return data.to_dict()
-        return data
+        return dotdict(data).wrap()
 
     def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
@@ -519,3 +526,25 @@ class TickerBase():
 
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
+
+
+class dotdict(dict):
+    def __getattr__(self, key):
+        return self[key]
+
+    def tprint(self):
+        dotdict.treePrint(self)
+
+    def wrap(self):
+        for k,v in self.items():
+            if isinstance(v, dict):
+                self[k] = dotdict(v).wrap()
+        return self
+
+    @classmethod
+    def treePrint(cls, D, tablevel=0):
+        if isinstance(D, dict):
+            for k, v in D.items():
+                print('\t'*tablevel + f'{k}: {v if not isinstance(v, dict) else "-"}')
+                dotdict.treePrint(v, tablevel+1)
+
