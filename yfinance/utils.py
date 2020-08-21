@@ -21,7 +21,28 @@
 
 from __future__ import print_function
 
-import requests as _requests
+import requests as _requests_lib
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+retry_code_list = [429, 500, 502, 503, 504]
+retry_strategy = Retry(
+    total=5,
+    backoff_factor=0.25,
+    status_forcelist=retry_code_list,
+    method_whitelist=["HEAD", "GET", "OPTIONS"]
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+_requests = _requests_lib.Session()
+_requests.mount("https://", adapter)
+_requests.mount("http://", adapter)
+
+def logging_hook(response, *args, **kwargs):
+    if response.status_code in retry_code_list:
+        print(f'retrying {response.url} [{response.status_code}]')
+_requests.hooks["response"] = [logging_hook]
+
+
+
 import re as _re
 import pandas as _pd
 import numpy as _np
