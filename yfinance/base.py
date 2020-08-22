@@ -23,7 +23,7 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
-import requests as _requests
+from .utils import _requests
 import pandas as _pd
 import numpy as _np
 
