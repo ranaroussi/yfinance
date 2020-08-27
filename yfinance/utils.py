@@ -24,10 +24,36 @@ from __future__ import print_function
 import requests as _requests_lib
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+
 retry_code_list = [429, 500, 502, 503, 504]
+max_retries=6
+backoff_factor=0.075
+def logging_hook(response, *args, **kwargs):
+    # url, code, in_list = None, None, None
+    # nonlocal url
+    # nonlocal code
+    # nonlocal in_list
+    res = {}
+    try:
+        if response.status_code in retry_code_list:
+            in_list = True
+            print('>>>>>>>>>', 'requests')
+            print(dir(response))
+            print(vars(response))
+            res['url'], res['code'] = response.url, response.status_code
+    except AttributeError as e:
+        if response.code in retry_code_list:
+            in_list = True
+            print('>>>>>>>>>', 'urllib')
+            print(dir(response))
+            print(vars(response))
+            res['url'], res['code']  = response.url, response.code
+    if 'url' in res or 'code' in res:
+        print(f'retrying {res.get("url")} [{res["code"]}]')
+
 retry_strategy = Retry(
-    total=5,
-    backoff_factor=0.25,
+    total=max_retries,
+    backoff_factor=backoff_factor,
     status_forcelist=retry_code_list,
     method_whitelist=["HEAD", "GET", "OPTIONS"]
 )
@@ -36,12 +62,16 @@ _requests = _requests_lib.Session()
 _requests.mount("https://", adapter)
 _requests.mount("http://", adapter)
 
-def logging_hook(response, *args, **kwargs):
-    if response.status_code in retry_code_list:
-        print(f'retrying {response.url} [{response.status_code}]')
 _requests.hooks["response"] = [logging_hook]
 
+#moved to bottom of file
+# _requests.get = retryException(exceptions=(Exception,))(_requests.get)
 
+from urllib.error import HTTPError
+import time
+import functools
+from requests.exceptions import ChunkedEncodingError
+from http.client import IncompleteRead
 
 import re as _re
 import pandas as _pd
@@ -129,35 +159,6 @@ def back_adjust(data):
     return df[["Open", "High", "Low", "Close", "Volume"]]
 
 
-def parse_quotes(data, tz=None):
-    timestamps = data["timestamp"]
-    ohlc = data["indicators"]["quote"][0]
-    volumes = ohlc["volume"]
-    opens = ohlc["open"]
-    closes = ohlc["close"]
-    lows = ohlc["low"]
-    highs = ohlc["high"]
-
-    adjclose = closes
-    if "adjclose" in data["indicators"]:
-        adjclose = data["indicators"]["adjclose"][0]["adjclose"]
-
-    quotes = _pd.DataFrame({"Open": opens,
-                            "High": highs,
-                            "Low": lows,
-                            "Close": closes,
-                            "Adj Close": adjclose,
-                            "Volume": volumes})
-
-    quotes.index = _pd.to_datetime(timestamps, unit="s")
-    quotes.sort_index(inplace=True)
-
-    if tz is not None:
-        quotes.index = quotes.index.tz_localize(tz)
-
-    return quotes
-
-
 def parse_actions(data, tz=None):
     dividends = _pd.DataFrame(columns=["Dividends"])
     splits = _pd.DataFrame(columns=["Stock Splits"])
@@ -237,3 +238,115 @@ class ProgressBar:
 
     def __str__(self):
         return str(self.prog_bar)
+
+
+
+class dotdict(dict):
+    def __getattr__(self, key):
+        return self[key]
+
+    def tprint(self):
+        dotdict.treePrint(self)
+
+    def wrap(self):
+        for k,v in self.items():
+            if isinstance(v, dict):
+                self[k] = dotdict(v).wrap()
+        return self
+
+    @classmethod
+    def treePrint(cls, D, tablevel=0):
+        if isinstance(D, dict):
+            for k, v in D.items():
+                print('\t'*tablevel + f'{k}: {v if not isinstance(v, dict) else "-"}')
+                dotdict.treePrint(v, tablevel+1)
+
+            
+
+
+def retry(  exceptions=(Exception,),
+            total=max_retries, 
+            backoff_factor=backoff_factor, 
+            exception_predicate=lambda e : True,
+            logging_hook=print):
+    '''
+    decorator for retrying functions after they throw exceptions
+    
+    Input:
+        exceptions: tuple of Exceptions which should be retried after
+        total: maximum numer of times to retry
+        backoff_factor: {delay} = {backoff_factor} * 2**{num attempts}
+        exception_predicate: handle an Exception e iff exception_predicate(e)
+        logging_hook: function called on handled exceptions
+    '''
+
+    def decorator(  f, 
+                    exceptions=exceptions,
+                    total=total, 
+                    backoff_factor=backoff_factor, 
+                    exception_predicate=exception_predicate,
+                    logging_hook=logging_hook):
+
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            for i in range(total):
+                try:
+                    return f(*args, **kwargs)
+                except exceptions as e:
+                    if exception_predicate(e):
+                        logging_hook(i, e)
+                        delay = backoff_factor * 2**i
+                        time.sleep(delay)
+                        # print(f'failed retry number: {i} || {e}')
+                        error = e
+                        continue
+                    else:
+                        raise e 
+            # print('giving up')
+            error.msg = 'Too many retries...:' + error.msg
+            raise error
+
+        return wrapper
+
+    return decorator
+
+retryHTTP = functools.partial(
+                                retry, 
+                                exceptions=(HTTPError,),
+                                exception_predicate=lambda e: e.code in retry_code_list,
+                                logging_hook=logging_hook
+                            )
+
+_requests.get = retry(exceptions=(ChunkedEncodingError,IncompleteRead))(_requests.get)
+
+
+
+
+@retry(exceptions=(ValueError,))
+def parse_quotes(data, tz=None):
+    timestamps = data["timestamp"]
+    ohlc = data["indicators"]["quote"][0]
+    volumes = ohlc["volume"]
+    opens = ohlc["open"]
+    closes = ohlc["close"]
+    lows = ohlc["low"]
+    highs = ohlc["high"]
+
+    adjclose = closes
+    if "adjclose" in data["indicators"]:
+        adjclose = data["indicators"]["adjclose"][0]["adjclose"]
+
+    quotes = _pd.DataFrame({"Open": opens,
+                            "High": highs,
+                            "Low": lows,
+                            "Close": closes,
+                            "Adj Close": adjclose,
+                            "Volume": volumes})
+
+    quotes.index = _pd.to_datetime(timestamps, unit="s")
+    quotes.sort_index(inplace=True)
+
+    if tz is not None:
+        quotes.index = quotes.index.tz_localize(tz)
+
+    return quotes

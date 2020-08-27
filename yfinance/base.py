@@ -23,7 +23,7 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
-from .utils import _requests
+from .utils import _requests, dotdict, retryHTTP
 import pandas as _pd
 import numpy as _np
 
@@ -40,10 +40,11 @@ from . import utils
 
 from . import shared
 
+AVG_DAYS_PER_YEAR = 365
 
 class TickerBase():
     def __init__(self, ticker):
-        self.ticker = ticker.upper()
+        self.ticker = urlencode(ticker.upper())
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
@@ -114,15 +115,17 @@ class TickerBase():
 
         if start or period is None or period.lower() == "max":
             if start is None:
-                start = -2208988800
-            elif isinstance(start, _datetime.datetime):
+                start = (_datetime.datetime.now() - 
+                         _datetime.timedelta(days= 100 * AVG_DAYS_PER_YEAR) ).date()
+            if isinstance(start, _datetime.datetime):
                 start = int(_time.mktime(start.timetuple()))
             else:
                 start = int(_time.mktime(
                     _time.strptime(str(start), '%Y-%m-%d')))
             if end is None:
-                end = int(_time.time())
-            elif isinstance(end, _datetime.datetime):
+                # end = int(_time.time())
+                end = _datetime.datetime.now().date()
+            if isinstance(end, _datetime.datetime):
                 end = int(_time.mktime(end.timetuple()))
             else:
                 end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
@@ -148,13 +151,17 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
+        # print('\t', url)
+        # try:
         data = _requests.get(url=url, params=params, proxies=proxy)
+        # except urllib3.exceptions.MaxRetryError as e:
+            # raise e
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
         data = data.json()
-        self._data.update(data)
+        # self._data.update(data)
         # Work with errors
         debug_mode = True
         if "debug" in kwargs and isinstance(kwargs["debug"], bool):
@@ -250,12 +257,15 @@ class TickerBase():
 
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
-            df = _pd.DataFrame(data).drop(columns=['maxAge'])
+            df = _pd.DataFrame(data)
+            if 'maxAge' in df.columns:
+                df.drop(columns=['maxAge'])
             for col in df.columns:
                 df[col] = _np.where(
                     df[col].astype(str) == '-', _np.nan, df[col])
 
-            df.set_index('endDate', inplace=True)
+            if 'endDate' in df:
+                df.set_index('endDate', inplace=True)
             try:
                 df.index = _pd.to_datetime(df.index, unit='s')
             except ValueError:
@@ -277,26 +287,13 @@ class TickerBase():
             return
 
         # get info and sustainability
-        url = '%s/%s' % (self._scrape_url, self.ticker)
+        # url = '%s/%s' % (self._scrape_url, self.ticker)
+        url = f'{self._scrape_url}/{self.ticker}?p={self.ticker}'
         data = utils.get_json(url, proxy)
         self._data.update(data)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
-        try:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-        except IndexError:
-            self._institutional_holders = self._major_holders = {} 
-            
-       
-        if 'Date Reported' in self._institutional_holders:
-            self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                self._institutional_holders['Date Reported'])
-        if '% Out' in self._institutional_holders:
-            self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+        self._get_holders()
 
         # sustainability
         d = {}
@@ -325,10 +322,15 @@ class TickerBase():
             if isinstance(subdict, dict):
                 self._info.update(data[item])
 
-        self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        if 'regularMarketOpen' in self._info:
+            self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        else:
+            self._info['regularMarketPrice'] = self._info['regularMarketOpen'] = None
+
         if 'topHoldings' in data:
             self._info['topHoldings'] = data['topHoldings']
-            self._info['topHoldings']['sectorWeightings'] = {next(iter(u.keys())):next(iter(u.values())) for u in self._info['topHoldings']['sectorWeightings']}
+            if self._info['topHoldings'] is not None and 'sectorWeightings' in self._info['topHoldings']:
+                self._info['topHoldings']['sectorWeightings'] = {next(iter(u.keys())):next(iter(u.values())) for u in self._info['topHoldings']['sectorWeightings']}
 
         self._info['logo_url'] = ""
         try:
@@ -530,23 +532,25 @@ class TickerBase():
         return self._isin
 
 
-class dotdict(dict):
-    def __getattr__(self, key):
-        return self[key]
+    @retryHTTP()
+    def _get_holders(self):
+        # holders
+        # url = "{}/{}/holders".format(self._scrape_url, self.ticker)
+        url = "{}/{}".format(self._scrape_url, self.ticker)
+        try:
+            holders = _pd.read_html(url)
+            self._major_holders = holders[0]
+            self._institutional_holders = holders[1]
+        except (IndexError, ValueError) as e:
+            # print(f'{self.ticker}: {e}')
+            self._institutional_holders = self._major_holders = {} 
+            
+       
+        if 'Date Reported' in self._institutional_holders:
+            self._institutional_holders['Date Reported'] = _pd.to_datetime(
+                self._institutional_holders['Date Reported'])
+        if '% Out' in self._institutional_holders:
+            self._institutional_holders['% Out'] = self._institutional_holders[
+                '% Out'].str.replace('%', '').astype(float)/100
 
-    def tprint(self):
-        dotdict.treePrint(self)
-
-    def wrap(self):
-        for k,v in self.items():
-            if isinstance(v, dict):
-                self[k] = dotdict(v).wrap()
-        return self
-
-    @classmethod
-    def treePrint(cls, D, tablevel=0):
-        if isinstance(D, dict):
-            for k, v in D.items():
-                print('\t'*tablevel + f'{k}: {v if not isinstance(v, dict) else "-"}')
-                dotdict.treePrint(v, tablevel+1)
 
