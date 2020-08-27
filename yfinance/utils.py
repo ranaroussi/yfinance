@@ -254,6 +254,12 @@ class dotdict(dict):
                 self[k] = dotdict(v).wrap()
         return self
 
+    def unwrap(self):
+        for k,v in self.items():
+            if isinstance(v, dotdict):
+                self[k] = dict(v.unwrap())
+        return dict(self)
+
     @classmethod
     def treePrint(cls, D, tablevel=0):
         if isinstance(D, dict):
