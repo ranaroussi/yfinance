@@ -59,6 +59,8 @@ class TickerBase():
         self._calendar = None
         self._expirations = {}
 
+        self._fundamentals_data_raw = None
+
         self._earnings = {
             "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
@@ -280,6 +282,9 @@ class TickerBase():
         url = '%s/%s' % (self._scrape_url, self.ticker)
         data = utils.get_json(url, proxy)
 
+        # store raw data here
+        self._fundamentals_data_raw = data
+
         # holders
         text = utils.get(url+'/holders', proxy)
         holders = _pd.read_html(text)
@@ -387,6 +392,13 @@ class TickerBase():
             self._earnings['quarterly'] = df
 
         self._fundamentals = True
+
+    def get_raw_fundamentals(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy)
+        data = self._fundamentals_data_raw
+        if as_dict:
+            return data.to_dict()
+        return data
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
