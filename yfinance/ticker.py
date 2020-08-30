@@ -58,7 +58,9 @@ class Ticker(TickerBase):
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.fromtimestamp(
                     exp).strftime('%Y-%m-%d')] = exp
-            return r['optionChain']['result'][0]['options'][0]
+
+            optionChainResult = r['optionChain']['result'][0]['options']
+            return optionChainResult[0] if optionChainResult else None
         return {}
 
     def _options2df(self, opt, tz=None):
@@ -120,10 +122,6 @@ class Ticker(TickerBase):
     @property
     def institutional_holders(self):
         return self.get_institutional_holders()
-
-    @property
-    def dividends(self):
-        return self.get_dividends()
 
     @property
     def dividends(self):
