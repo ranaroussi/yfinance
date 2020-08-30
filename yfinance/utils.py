@@ -41,12 +41,16 @@ def empty_df(index=[]):
     empty.index.name = 'Date'
     return empty
 
+def get(url, proxy=None, **kwargs):
+    response = _requests.get(url=url, proxies=proxy, **kwargs)
+    response.raise_for_status()
+    return response.text
 
 def get_json(url, proxy=None):
-    html = _requests.get(url=url, proxies=proxy).text
+    html = get(url, proxy)
 
     if "QuoteSummaryStore" not in html:
-        html = _requests.get(url=url, proxies=proxy).text
+        html = get(url, proxy)
         if "QuoteSummaryStore" not in html:
             return {}
 

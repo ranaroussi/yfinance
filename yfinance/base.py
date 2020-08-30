@@ -280,10 +280,13 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
+        text = utils.get(url+'/holders', proxy)
+        holders = _pd.read_html(text)
         self._major_holders = holders[0]
-        self._institutional_holders = holders[1]
+        if len(holders) > 1:
+            self._institutional_holders = holders[1]
+        else:
+            self._institutional_holders = _pd.DataFrame()
         if 'Date Reported' in self._institutional_holders:
             self._institutional_holders['Date Reported'] = _pd.to_datetime(
                 self._institutional_holders['Date Reported'])
