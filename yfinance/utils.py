@@ -71,7 +71,7 @@ from urllib.error import HTTPError
 import time
 import functools
 from requests.exceptions import ChunkedEncodingError
-from http.client import IncompleteRead
+from http.client import IncompleteRead, HTTPException
 
 import re as _re
 import pandas as _pd
@@ -243,7 +243,13 @@ class ProgressBar:
 
 class dotdict(dict):
     def __getattr__(self, key):
-        return self[key]
+        try:
+            return self[key]
+        except KeyError as e:
+            print(f'KeyError ({key}):', e, end='\t')
+            if '__parent' in self: print('from', self['__parent'])
+            else: print('')
+            raise e
 
     def tprint(self):
         dotdict.treePrint(self)
@@ -309,8 +315,7 @@ def retry(  exceptions=(Exception,),
                     else:
                         raise e 
             # print('giving up')
-            error.msg = 'Too many retries...:' + error.msg
-            raise error
+            raise type(error)('Too many retries...:' + str(error)) from error
 
         return wrapper
 
@@ -318,7 +323,7 @@ def retry(  exceptions=(Exception,),
 
 retryHTTP = functools.partial(
                                 retry, 
-                                exceptions=(HTTPError,),
+                                exceptions=(HTTPError,IncompleteRead),
                                 exception_predicate=lambda e: e.code in retry_code_list,
                                 logging_hook=logging_hook
                             )

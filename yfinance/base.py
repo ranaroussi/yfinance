@@ -255,6 +255,7 @@ class TickerBase():
 
     # ------------------------
 
+    @utils.retry()
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
             df = _pd.DataFrame(data)
@@ -321,7 +322,15 @@ class TickerBase():
             subdict = data.get(item)
             if isinstance(subdict, dict):
                 self._info.update(data[item])
-
+        
+        try:
+            self._info['longName'] # try to access longName -- if raises KeyError retry decorator will fire
+        except KeyError as e:
+            print(self.ticker, e, type(e))
+            self._fundamentals = False
+            del self._info
+            self._data = {}
+            raise e
         if 'regularMarketOpen' in self._info:
             self._info['regularMarketPrice'] = self._info['regularMarketOpen']
         else:
@@ -432,7 +441,9 @@ class TickerBase():
         data = self._info
         if as_dict:
             return data.to_dict()
-        return dotdict(data).wrap()
+        dd = dotdict(data).wrap()
+        dd['__parent'] = self
+        return dd
 
     def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
