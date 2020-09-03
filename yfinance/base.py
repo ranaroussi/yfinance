@@ -516,7 +516,7 @@ class TickerBase():
         return self._isin
 
 
-def _list_get(l: list, idx: int, default=None):
+def _list_get(l, idx, default=None):
     """
     Safely get nth element from list, if none return none instead of IndexError
     """
