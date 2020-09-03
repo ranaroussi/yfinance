@@ -1,3 +1,4 @@
+lxml==4.4.1
 pandas>=0.24
 numpy>=1.15
 requests>=2.21

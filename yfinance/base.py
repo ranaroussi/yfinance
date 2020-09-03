@@ -115,7 +115,9 @@ class TickerBase():
 
         if start or period is None or period.lower() == "max":
             if start is None:
-                start = -2208988800
+                _now = end if isinstance(end, _datetime.datetime) else _datetime.datetime.now()
+                _max_date = _now - _datetime.timedelta(days=365 * 99)
+                start = int(_time.mktime(_max_date.timetuple()))
             elif isinstance(start, _datetime.datetime):
                 start = int(_time.mktime(start.timetuple()))
             else:
