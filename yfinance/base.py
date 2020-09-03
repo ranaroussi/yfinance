@@ -113,7 +113,9 @@ class TickerBase():
 
         if start or period is None or period.lower() == "max":
             if start is None:
-                start = -2208988800
+                _now = end if isinstance(end, _datetime.datetime) else _datetime.datetime.now()
+                _max_date = _now - _datetime.timedelta(days=365*99)
+                start = int(_time.mktime(_max_date.timetuple()))
             elif isinstance(start, _datetime.datetime):
                 start = int(_time.mktime(start.timetuple()))
             else:
@@ -315,7 +317,7 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 self._info.update(data[item])
 
-        self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        self._info['regularMarketPrice'] = self._info.get('regularMarketOpen', None)
         self._info['logo_url'] = ""
         try:
             domain = self._info['website'].split(
