@@ -282,8 +282,8 @@ class TickerBase():
         # holders
         url = "{}/{}/holders".format(self._scrape_url, self.ticker)
         holders = _pd.read_html(url)
-        self._major_holders = holders[0]
-        self._institutional_holders = holders[1]
+        self._major_holders = _list_get(holders, 0, [])
+        self._institutional_holders = _list_get(holders, 1, [])
         if 'Date Reported' in self._institutional_holders:
             self._institutional_holders['Date Reported'] = _pd.to_datetime(
                 self._institutional_holders['Date Reported'])
@@ -514,3 +514,13 @@ class TickerBase():
 
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
+
+
+def _list_get(l: list, idx: int, default=None):
+    """
+    Safely get nth element from list, if none return none instead of IndexError
+    """
+    try:
+        return l[idx]
+    except IndexError:
+        return default

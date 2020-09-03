@@ -16,10 +16,13 @@ Sanity check for most common library uses all working
 
 from __future__ import print_function
 import yfinance as yf
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def test_yfinance():
-    for symbol in ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
+    for symbol in ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD', 'MMM']:
         print(">>", symbol, end=' ... ')
         ticker = yf.Ticker(symbol)
 
