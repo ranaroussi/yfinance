@@ -20,11 +20,12 @@
 #
 
 from __future__ import print_function
-
+import sys
 import time as _time
 import multitasking as _multitasking
 import pandas as _pd
-
+from tqdm import tqdm
+import utils.tqdm_print
 from . import Ticker, utils
 from . import shared
 
@@ -72,9 +73,6 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     tickers = list(set([ticker.upper() for ticker in tickers]))
 
-    if progress:
-        shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
-
     # reset shared._DFS
     shared._DFS = {}
     shared._ERRORS = {}
@@ -84,29 +82,29 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         if threads is True:
             threads = min([len(tickers), _multitasking.cpu_count() * 2])
         _multitasking.set_max_threads(threads)
-        for i, ticker in enumerate(tickers):
-            _download_one_threaded(ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust,
-                                   progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding)
+        with tqdm(total=len(tickers), ncols=60, file=sys.stdout) as bar:
+            for i, ticker in enumerate(tickers):
+                _download_one_threaded(ticker, period=period, interval=interval,
+                                       start=start, end=end, prepost=prepost,
+                                       actions=actions, auto_adjust=auto_adjust,
+                                       back_adjust=back_adjust,
+                                       progress=(progress and i > 0), proxy=proxy,
+                                       rounding=rounding)
+                bar.update(1)
+
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
 
     # download synchronously
     else:
-        for i, ticker in enumerate(tickers):
-            data = _download_one(ticker, period=period, interval=interval,
-                                 start=start, end=end, prepost=prepost,
-                                 actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, rounding=rounding)
-            shared._DFS[ticker.upper()] = data
-            if progress:
-                shared._PROGRESS_BAR.animate()
-
-    if progress:
-        shared._PROGRESS_BAR.completed()
+        with tqdm(total=len(tickers), ncols=60, file=sys.stdout) as bar:
+            for i, ticker in enumerate(tickers):
+                data = _download_one(ticker, period=period, interval=interval,
+                                     start=start, end=end, prepost=prepost,
+                                     actions=actions, auto_adjust=auto_adjust,
+                                     back_adjust=back_adjust, rounding=rounding)
+                shared._DFS[ticker.upper()] = data
+                bar.update(1)
 
     if shared._ERRORS:
         print('\n%.f Failed download%s:' % (
@@ -166,8 +164,6 @@ def _download_one_threaded(ticker, start=None, end=None,
     data = _download_one(ticker, start, end, auto_adjust, back_adjust,
                          actions, period, interval, prepost, proxy, rounding)
     shared._DFS[ticker.upper()] = data
-    if progress:
-        shared._PROGRESS_BAR.animate()
 
 
 def _download_one(ticker, start=None, end=None,
