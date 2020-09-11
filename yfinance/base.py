@@ -34,7 +34,6 @@ except ImportError:
 from . import utils
 from . import shared
 
-from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from seleniumrequests import Chrome
 
@@ -43,8 +42,8 @@ chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--window-size=1920x1080")
 chrome_driver = '/usr/lib64/chromium-browser/chromedriver'
-# driver = webdriver.Chrome(chrome_options=chrome_options, executable_path=chrome_driver)
 driver = Chrome(chrome_options=chrome_options, executable_path=chrome_driver)
+
 
 class TickerBase():
     def __init__(self, ticker):
