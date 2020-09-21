@@ -315,8 +315,14 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 self._info.update(data[item])
 
-        self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+
+        try:
+            self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        except Exception:
+            pass                
+
         self._info['logo_url'] = ""
+        
         try:
             domain = self._info['website'].split(
                 '://')[1].split('/')[0].replace('www.', '')
