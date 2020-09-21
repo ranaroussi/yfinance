@@ -98,7 +98,7 @@ ticker data in a more Pythonic way:
     # show institutional holders
     msft.institutional_holders
 
-    # show balance heet
+    # show balance sheet
     msft.balance_sheet
     msft.quarterly_balance_sheet
 
