@@ -54,7 +54,6 @@ class TickerBase():
         self._recommendations = None
         self._major_holders = None
         self._institutional_holders = None
-        self._mutualfund_holders = None
         self._isin = None
 
         self._calendar = None
@@ -283,34 +282,13 @@ class TickerBase():
         # holders
         url = "{}/{}/holders".format(self._scrape_url, self.ticker)
         holders = _pd.read_html(url)
-        
-        if len(holders)>=3:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-            self._mutualfund_holders = holders[2]
-        elif len(holders)>=2:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-        else:
-            self._major_holders = holders[0]
-        
-        #self._major_holders = holders[0]
-        #self._institutional_holders = holders[1]
-        
-        if self._institutional_holders is not None:
-            if 'Date Reported' in self._institutional_holders:
-                self._institutional_holders['Date Reported'] = _pd.to_datetime(
+        self._major_holders = holders[0]
+        self._institutional_holders = holders[1]
+        if 'Date Reported' in self._institutional_holders:
+            self._institutional_holders['Date Reported'] = _pd.to_datetime(
                 self._institutional_holders['Date Reported'])
-            if '% Out' in self._institutional_holders:
-                self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
-
-        if self._mutualfund_holders is not None:
-            if 'Date Reported' in self._mutualfund_holders:
-                self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
-                self._mutualfund_holders['Date Reported'])
-            if '% Out' in self._mutualfund_holders:
-                self._mutualfund_holders['% Out'] = self._mutualfund_holders[
+        if '% Out' in self._institutional_holders:
+            self._institutional_holders['% Out'] = self._institutional_holders[
                 '% Out'].str.replace('%', '').astype(float)/100
 
         # sustainability
@@ -429,20 +407,9 @@ class TickerBase():
     def get_institutional_holders(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
         data = self._institutional_holders
-        if data is not None:
-            if as_dict:
-                return data.to_dict()
-            else:
-                return data
-
-    def get_mutualfund_holders(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
-        data = self._mutualfund_holders
-        if data is not None:
-            if as_dict:
-                return data.to_dict()
-            else:
-                return data
+        if as_dict:
+            return data.to_dict()
+        return data
 
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
