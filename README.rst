@@ -254,7 +254,7 @@ Requirements
 * `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.23.1)
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `requests <http://docs.python-requests.org/en/master/>`_ >= 2.14.2
-
+* _lxml >= 4.5.1
 
 Optional (if you want to use ``pandas_datareader``)
 ---------------------------------------------------
