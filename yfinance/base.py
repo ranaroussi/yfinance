@@ -432,8 +432,7 @@ class TickerBase():
         if data is not None:
             if as_dict:
                 return data.to_dict()
-            else:
-                return data
+            return data
 
     def get_mutualfund_holders(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
@@ -441,8 +440,7 @@ class TickerBase():
         if data is not None:
             if as_dict:
                 return data.to_dict()
-            else:
-                return data
+            return data
 
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
