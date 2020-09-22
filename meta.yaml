@@ -1,5 +1,5 @@
 {% set name = "yfinance" %}
-{% set version = "0.1.48" %}
+{% set version = "0.1.55" %}
 
 package:
   name: "{{ name|lower }}"
@@ -22,12 +22,14 @@ requirements:
     - pip
     - python
     - requests >=2.20
+    - lxml>=4.5.1
   run:
     - multitasking >=0.0.7
     - numpy >=1.15
     - pandas >=0.24
     - python
     - requests >=2.20
+    - lxml>=4.5.1
 
 test:
   imports:
@@ -48,3 +50,4 @@ about:
 extra:
   recipe-maintainers:
     - ranaroussi
+    - bradmetz
