@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.55
+------
+- fixed institutional investors and mutual fund holders issue
+
 0.1.54
 ------
 - ISIN lookup working with intl. tickers
