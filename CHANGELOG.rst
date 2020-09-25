@@ -1,9 +1,10 @@
 Change Log
 ===========
 
-0.1.55
+0.1.55 - to be released
 ------
-- fixed institutional investors and mutual fund holders issue
+- fixed institutional investors and mutual fund holders issue (#459)
+- fix for UTC timestamps in options chains (#429)
 
 0.1.54
 ------
