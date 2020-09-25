@@ -65,7 +65,7 @@ The Ticker module
 ~~~~~~~~~~~~~~~~~
 
 The ``Ticker`` module, which allows you to access
-ticker data in amore Pythonic way:
+ticker data in a more Pythonic way:
 
 .. code:: python
 
@@ -98,7 +98,7 @@ ticker data in amore Pythonic way:
     # show institutional holders
     msft.institutional_holders
 
-    # show balance heet
+    # show balance sheet
     msft.balance_sheet
     msft.quarterly_balance_sheet
 
@@ -144,7 +144,7 @@ If you want to use a proxy server for downloading data, use:
     msft.get_splits(proxy="PROXY_SERVER")
     msft.get_balance_sheet(proxy="PROXY_SERVER")
     msft.get_cashflow(proxy="PROXY_SERVER")
-    msgt.option_chain(..., proxy="PROXY_SERVER")
+    msft.option_chain(..., proxy="PROXY_SERVER")
     ...
 
 To initialize multiple ``Ticker`` objects, use
@@ -254,7 +254,7 @@ Requirements
 * `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.23.1)
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `requests <http://docs.python-requests.org/en/master/>`_ >= 2.14.2
-
+* `lxml <https://pypi.org/project/lxml/>`_ >= 4.5.1
 
 Optional (if you want to use ``pandas_datareader``)
 ---------------------------------------------------
