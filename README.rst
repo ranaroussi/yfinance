@@ -1,6 +1,6 @@
 Yahoo! Finance market data downloader
 =====================================
-
+updated from original repo
 .. image:: https://img.shields.io/badge/python-2.7,%203.4+-blue.svg?style=flat
     :target: https://pypi.python.org/pypi/yfinance
     :alt: Python version
