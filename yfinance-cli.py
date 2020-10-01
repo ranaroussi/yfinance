@@ -3,8 +3,8 @@
 # This file should also work if you have yfinance module installed in your
 # python environment
 
-import argparse
-import yfinance as yf
+from argparse import ArgumentParser
+from yfinance import Ticker
 import os
 from datetime import date, timedelta, datetime
 
@@ -16,7 +16,7 @@ def get_data(ticker, start, end):
         os.mkdir(os.path.join(cwd, "yfinance-data"))
     if not os.path.isdir(os.path.join(cwd, "yfinance-data", ticker)):
         os.mkdir(os.path.join(cwd, "yfinance-data", ticker))
-    t = yf.Ticker(ticker)
+    t = Ticker(ticker)
     try:
         data1 = t.history(
             interval="1d",
