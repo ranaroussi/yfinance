@@ -57,7 +57,7 @@ def get_data(ticker, start, end):
 
 
 def Main():
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         prog='A command line wrapper around yfinance module')
     parser.add_argument(
         "-t",
