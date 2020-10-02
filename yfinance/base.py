@@ -148,12 +148,24 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = _requests.get(url=url, params=params, proxies=proxy)
+        while True:
+            try:
+                data = _requests.get(url=url, params=params, proxies=proxy)
+                break
+            except Exception:
+                pass
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
-        data = data.json()
+        errorswitch = True
+        for tmp in range(10):
+            try:
+                data = data.json()
+                errorswitch = False
+                break
+            except Exception:
+                pass
 
         # Work with errors
         debug_mode = True
@@ -161,7 +173,10 @@ class TickerBase():
             debug_mode = kwargs["debug"]
 
         err_msg = "No data found for this date range, symbol may be delisted"
-        if "chart" in data and data["chart"]["error"]:
+        if errorswitch:
+            shared._DFS[self.ticker] = utils.empty_df()
+            shared._ERRORS[self.ticker] = 'JSONDecodeError for 10 times. Symbol is skipped'
+        elif "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
