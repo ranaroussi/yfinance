@@ -159,7 +159,7 @@ class TickerBase():
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
         errorswitch = True
-        for tmp in range(10):
+        for tmp in range(20):
             try:
                 data = data.json()
                 errorswitch = False
