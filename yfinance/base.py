@@ -179,15 +179,14 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = 'got JSONDecodeError 20 times. Symbol is skipped'
             return shared._DFS[self.ticker]
-        elif "chart" in data and data["chart"]["error"]:
+        if "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
-
-        elif "chart" not in data or data["chart"]["result"] is None or \
+        if "chart" not in data or data["chart"]["result"] is None or \
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
