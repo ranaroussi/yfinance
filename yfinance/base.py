@@ -150,7 +150,7 @@ class TickerBase():
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
         while True:
             try:
-                data = _requests.get(url=url, params=params, proxies=proxy)
+                data = _requests.get(url=url, params=params, proxies=proxy, timeout = 3)
                 break
             except Exception:
                 pass
