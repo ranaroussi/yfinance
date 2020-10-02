@@ -159,7 +159,9 @@ class TickerBase():
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
         errorswitch = True
-        for tmp in range(20):
+        retries = 20
+        while(retries > 0):
+            retries -= 1
             try:
                 data = data.json()
                 errorswitch = False
@@ -175,7 +177,7 @@ class TickerBase():
         err_msg = "No data found for this date range, symbol may be delisted"
         if errorswitch:
             shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = 'JSONDecodeError for 10 times. Symbol is skipped'
+            shared._ERRORS[self.ticker] = 'got JSONDecodeError 20 times. Symbol is skipped'
         elif "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
