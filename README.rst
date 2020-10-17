@@ -275,3 +275,4 @@ P.S.
 Please drop me an note with any feedback you have.
 
 **Ran Aroussi**
+[![Run on Repl.it](https://repl.it/badge/github/ranaroussi/yfinance)](https://repl.it/github/ranaroussi/yfinance)
