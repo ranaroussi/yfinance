@@ -281,9 +281,12 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
-        
+        try:
+            url = "{}/{}".format(self._scrape_url, self.ticker)
+            holders = _pd.read_html(url+'\holders') # Can return No Tables Found!
+        except Exception as e:
+            holders = []
+		        
         if len(holders)>=3:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
@@ -291,7 +294,7 @@ class TickerBase():
         elif len(holders)>=2:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
-        else:
+        elif len(holders)>=1:
             self._major_holders = holders[0]
         
         #self._major_holders = holders[0]
