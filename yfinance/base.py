@@ -384,24 +384,33 @@ class TickerBase():
 
             item = key[1] + 'History'
             if isinstance(data.get(item), dict):
-                key[0]['yearly'] = cleanup(data[item][key[2]])
+                try:
+                    key[0]['yearly'] = cleanup(data[item][key[2]])
+                except Exception as e:
+                    pass
 
             item = key[1]+'HistoryQuarterly'
             if isinstance(data.get(item), dict):
-                key[0]['quarterly'] = cleanup(data[item][key[2]])
+                try:
+                    key[0]['quarterly'] = cleanup(data[item][key[2]])
+                except Exception as e:
+                    pass
 
         # earnings
         if isinstance(data.get('earnings'), dict):
-            earnings = data['earnings']['financialsChart']
-            df = _pd.DataFrame(earnings['yearly']).set_index('date')
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = 'Year'
-            self._earnings['yearly'] = df
+            try:
+                earnings = data['earnings']['financialsChart']
+                df = _pd.DataFrame(earnings['yearly']).set_index('date')
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = 'Year'
+                self._earnings['yearly'] = df
 
-            df = _pd.DataFrame(earnings['quarterly']).set_index('date')
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = 'Quarter'
-            self._earnings['quarterly'] = df
+                df = _pd.DataFrame(earnings['quarterly']).set_index('date')
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = 'Quarter'
+                self._earnings['quarterly'] = df
+            except Exception as e:
+                pass
 
         self._fundamentals = True
 
