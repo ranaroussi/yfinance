@@ -25,6 +25,10 @@ Yahoo! Finance market data downloader
     :target: https://www.codefactor.io/repository/github/ranaroussi/yfinance
     :alt: CodeFactor
 
+.. image:: https://coveralls.io/repos/github/HMellor/yfinance/badge.svg?branch=master
+    :target: https://coveralls.io/github/HMellor/yfinance?branch=master
+    :alt: Coveralls coverage
+
 .. image:: https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60
     :target: https://github.com/ranaroussi/yfinance
     :alt: Star this repo

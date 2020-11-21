@@ -13,12 +13,12 @@ matrix:
       sudo: true
 
 install:
-  - pip install Cython
+  - pip install Cython pytest pytest-cov coveralls
   - pip install -r requirements.txt
   - pip install .
 
 script:
-  - nosetests
+  - pytest --cov=yfinance/
 
 after_success:
   - coveralls
