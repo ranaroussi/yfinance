@@ -228,10 +228,10 @@ class TickerBase():
         df["Stock Splits"].fillna(0, inplace=True)
 
         # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(
-            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+        df.index = df.index.tz_localize("UTC")
 
-        if params["interval"][-1] == "m":
+        if params["interval"][-1] in ("m", "h"):
+            df.index = df.index.tz_convert(data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
             df.index.name = "Datetime"
         else:
             df.index = _pd.to_datetime(df.index.date)
