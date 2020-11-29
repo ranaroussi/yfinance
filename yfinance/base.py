@@ -290,7 +290,7 @@ class TickerBase():
             self._mutualfund_holders = holders[2]
         elif len(holders)>=2:
             self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
+            self._mutualfund_holders = holders[1]
         else:
             self._major_holders = holders[0]
         

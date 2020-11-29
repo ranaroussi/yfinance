@@ -11,7 +11,8 @@ Sanity check for most common library uses all working
 - ETF: Russell 2000 Growth
 - Mutual fund: Vanguard 500 Index fund
 - Index: S&P500
-- Currency BTC-USD
+- Currency: BTC-USD
+- Stock: Nestle
 """
 
 from __future__ import print_function
@@ -38,25 +39,12 @@ def test_yfinance():
 
         print("OK")
 
-    # Ford has no institutional investors table or mutual fund holders
-    ticker = yf.Ticker('F')
-    print(">> F", end=" ... ")
-    assert(ticker.info is not None and ticker.info != {})
-    assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
-    print("OK")
-    # NKLA has no institutional investors table or mutual fund holders
-    ticker = yf.Ticker('NKLA')
-    print(">> NKLA", end=" ... ")
-    assert(ticker.info is not None and ticker.info != {})
-    assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
-    print("OK")
-    # NKLA has no institutional investors table or mutual fund holders
+    # NESN.SW has no institutional holders table
     ticker = yf.Ticker('NESN.SW')
     print(">> NESN.SW", end=" ... ")
     assert(ticker.info is not None and ticker.info != {})
     assert(ticker.major_holders is not None)
+    assert(ticker.mutualfund_holders is not None)
     assert(ticker.institutional_holders is None)
     print("OK")
 
