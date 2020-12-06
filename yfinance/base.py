@@ -281,9 +281,9 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
-        
+        #url = "{}/{}/holders".format(self._scrape_url, self.ticker)
+        #holders = _pd.read_html(url)
+        holders = _pd.read_html(url+'/holders')
         if len(holders)>=3:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
@@ -348,6 +348,7 @@ class TickerBase():
 
         # events
         try:
+            data = utils.get_json(url+'/financials', proxy)
             cal = _pd.DataFrame(
                 data['calendarEvents']['earnings'])
             cal['earningsDate'] = _pd.to_datetime(
