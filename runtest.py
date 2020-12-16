@@ -19,7 +19,17 @@ import yfinance as yf
 
 
 def test_yfinance():
-    for symbol in ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
+
+    # NESN.SW has no institutional investors table but it does have mutual fund holders
+    ticker = yf.Ticker('NESN.SW')
+    print(">> NESN.SW", end=" ... ")
+    assert(ticker.info is not None and ticker.info != {})
+    assert(ticker.major_holders is not None)
+    assert(ticker.institutional_holders is not None)
+    assert(ticker.mutualfund_holders is None)
+    print("OK")
+
+    for symbol in ['KO', 'MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
         print(">>", symbol, end=' ... ')
         ticker = yf.Ticker(symbol)
 
@@ -38,27 +48,24 @@ def test_yfinance():
 
         print("OK")
 
-    # Ford has no institutional investors table or mutual fund holders
+    # Ford has institutional investors table and mutual fund holders
     ticker = yf.Ticker('F')
     print(">> F", end=" ... ")
     assert(ticker.info is not None and ticker.info != {})
     assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
+    assert(ticker.institutional_holders is not None)
+    assert(ticker.mutualfund_holders is not None)
     print("OK")
-    # NKLA has no institutional investors table or mutual fund holders
+
+    # NKLA has institutional investors table and mutual fund holders
     ticker = yf.Ticker('NKLA')
     print(">> NKLA", end=" ... ")
     assert(ticker.info is not None and ticker.info != {})
     assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
+    assert(ticker.institutional_holders is not None)
+    assert(ticker.mutualfund_holders is not None)
     print("OK")
-    # NKLA has no institutional investors table or mutual fund holders
-    ticker = yf.Ticker('NESN.SW')
-    print(">> NESN.SW", end=" ... ")
-    assert(ticker.info is not None and ticker.info != {})
-    assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
-    print("OK")
+
 
 if __name__ == "__main__":
     test_yfinance()

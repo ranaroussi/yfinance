@@ -250,12 +250,15 @@ class TickerBase():
 
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
-            df = _pd.DataFrame(data).drop(columns=['maxAge'])
+            df = _pd.DataFrame(data)
+            if 'maxAge' in df:
+                df = df.drop(columns=['maxAge'])
             for col in df.columns:
                 df[col] = _np.where(
                     df[col].astype(str) == '-', _np.nan, df[col])
 
-            df.set_index('endDate', inplace=True)
+            if 'endDate' in df:
+                df.set_index('endDate', inplace=True)
             try:
                 df.index = _pd.to_datetime(df.index, unit='s')
             except ValueError:
@@ -281,38 +284,43 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
-        
-        if len(holders)>=3:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-            self._mutualfund_holders = holders[2]
-        elif len(holders)>=2:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-        else:
-            self._major_holders = holders[0]
-        
-        #self._major_holders = holders[0]
-        #self._institutional_holders = holders[1]
-        
-        if self._institutional_holders is not None:
-            if 'Date Reported' in self._institutional_holders:
-                self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                self._institutional_holders['Date Reported'])
-            if '% Out' in self._institutional_holders:
-                self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+        # url = "{}/{}/holders".format(self._scrape_url, self.ticker)
+        try:
+            holders = _pd.read_html(url+'/holders')
 
-        if self._mutualfund_holders is not None:
-            if 'Date Reported' in self._mutualfund_holders:
-                self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
-                self._mutualfund_holders['Date Reported'])
-            if '% Out' in self._mutualfund_holders:
-                self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+            # TODO: Fix: NESN.SW has no institutional holder tables but has mutual fund holders.
+            #  Mutual fund holders are stored in the institutional_holders property.
+            if len(holders) >= 3:
+                self._major_holders = holders[0]
+                self._institutional_holders = holders[1]
+                self._mutualfund_holders = holders[2]
+            elif len(holders) == 2:
+                self._major_holders = holders[0]
+                self._institutional_holders = holders[1]
+            elif len(holders) == 1:
+                self._major_holders = holders[0]
+            
+            #self._major_holders = holders[0]
+            #self._institutional_holders = holders[1]
+            
+            if self._institutional_holders is not None:
+                if 'Date Reported' in self._institutional_holders:
+                    self._institutional_holders['Date Reported'] = _pd.to_datetime(
+                    self._institutional_holders['Date Reported'])
+                if '% Out' in self._institutional_holders:
+                    self._institutional_holders['% Out'] = self._institutional_holders[
+                    '% Out'].str.replace('%', '').astype(float)/100
 
+            if self._mutualfund_holders is not None:
+                if 'Date Reported' in self._mutualfund_holders:
+                    self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
+                    self._mutualfund_holders['Date Reported'])
+                if '% Out' in self._mutualfund_holders:
+                    self._mutualfund_holders['% Out'] = self._mutualfund_holders[
+                    '% Out'].str.replace('%', '').astype(float)/100
+
+        except Exception:
+            pass
         # sustainability
         d = {}
         if isinstance(data.get('esgScores'), dict):
@@ -535,7 +543,7 @@ class TickerBase():
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
             if q.lower() in data.lower():
-                search_str = '"|'
+                search_str = '"|'.format(ticker)
                 if search_str not in data:
                     self._isin = '-'
                     return self._isin
