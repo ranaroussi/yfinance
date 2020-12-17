@@ -20,6 +20,20 @@ import yfinance as yf
 
 def test_yfinance():
 
+    # MSFT
+    ticker = yf.Ticker('MSFT')
+    print(">> MSFT", end=" ... ")
+    assert(ticker.info is not None and ticker.info != {})
+    assert(ticker.major_holders is not None)
+    assert(ticker.institutional_holders is not None)
+    assert(ticker.mutualfund_holders is not None)
+    assert(len(ticker.balance_sheet.index) > 0)
+    assert(len(ticker.financials.index) > 0)
+    assert(len(ticker.cashflow.index) > 0)
+    info = ticker.get_info(None, True)
+    assert(type(info) is dict)
+    print("OK")
+
     # NESN.SW has no institutional investors table but it does have mutual fund holders
     ticker = yf.Ticker('NESN.SW')
     print(">> NESN.SW", end=" ... ")
@@ -27,6 +41,11 @@ def test_yfinance():
     assert(ticker.major_holders is not None)
     assert(ticker.institutional_holders is not None)
     assert(ticker.mutualfund_holders is None)
+    assert(len(ticker.balance_sheet.index) > 0)
+    assert(len(ticker.financials.index) > 0)
+    assert(len(ticker.cashflow.index) > 0)
+    info = ticker.get_info(None, True)
+    assert(type(info) is dict)
     print("OK")
 
     for symbol in ['KO', 'MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
@@ -55,6 +74,11 @@ def test_yfinance():
     assert(ticker.major_holders is not None)
     assert(ticker.institutional_holders is not None)
     assert(ticker.mutualfund_holders is not None)
+    assert(len(ticker.balance_sheet.index) > 0)
+    assert(len(ticker.financials.index) > 0)
+    assert(len(ticker.cashflow.index) > 0)
+    info = ticker.get_info(None, True)
+    assert(type(info) is dict)
     print("OK")
 
     # NKLA has institutional investors table and mutual fund holders
@@ -64,6 +88,11 @@ def test_yfinance():
     assert(ticker.major_holders is not None)
     assert(ticker.institutional_holders is not None)
     assert(ticker.mutualfund_holders is not None)
+    assert(len(ticker.balance_sheet.index) > 0)
+    assert(len(ticker.financials.index) > 0)
+    assert(len(ticker.cashflow.index) > 0)
+    info = ticker.get_info(None, True)
+    assert(type(info) is dict)
     print("OK")
 
 

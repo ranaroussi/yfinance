@@ -284,12 +284,9 @@ class TickerBase():
         data = utils.get_json(url, proxy)
 
         # holders
-        # url = "{}/{}/holders".format(self._scrape_url, self.ticker)
         try:
             holders = _pd.read_html(url+'/holders')
 
-            # TODO: Fix: NESN.SW has no institutional holder tables but has mutual fund holders.
-            #  Mutual fund holders are stored in the institutional_holders property.
             if len(holders) >= 3:
                 self._major_holders = holders[0]
                 self._institutional_holders = holders[1]
@@ -453,8 +450,8 @@ class TickerBase():
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy)
         data = self._info
-        if as_dict:
-            return data.to_dict()
+        if as_dict and data is None:
+            return {}
         return data
 
     def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
@@ -543,7 +540,7 @@ class TickerBase():
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
             if q.lower() in data.lower():
-                search_str = '"|'.format(ticker)
+                search_str = '"|'
                 if search_str not in data:
                     self._isin = '-'
                     return self._isin
