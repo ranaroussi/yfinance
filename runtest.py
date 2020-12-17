@@ -31,7 +31,7 @@ def test_yfinance():
     assert(len(ticker.financials.index) > 0)
     assert(len(ticker.cashflow.index) > 0)
     info = ticker.get_info(None, True)
-    assert(type(info) is dict)
+    assert(isinstance(info, dict))
     print("OK")
 
     # NESN.SW has no institutional investors table but it does have mutual fund holders
@@ -45,7 +45,7 @@ def test_yfinance():
     assert(len(ticker.financials.index) > 0)
     assert(len(ticker.cashflow.index) > 0)
     info = ticker.get_info(None, True)
-    assert(type(info) is dict)
+    assert(isinstance(info, dict))
     print("OK")
 
     for symbol in ['KO', 'MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']:
@@ -57,13 +57,13 @@ def test_yfinance():
         assert(ticker.history(period="max").empty is False)
 
         # following should always gracefully handled, no crashes
-        ticker.cashflow
-        ticker.balance_sheet
-        ticker.financials
-        ticker.sustainability
-        ticker.major_holders
-        ticker.institutional_holders
-        ticker.mutualfund_holders
+        cf = ticker.cashflow
+        bs = ticker.balance_sheet
+        fi = ticker.financials
+        su = ticker.sustainability
+        mh = ticker.major_holders
+        ih = ticker.institutional_holders
+        mh = ticker.mutualfund_holders
 
         print("OK")
 
@@ -78,7 +78,7 @@ def test_yfinance():
     assert(len(ticker.financials.index) > 0)
     assert(len(ticker.cashflow.index) > 0)
     info = ticker.get_info(None, True)
-    assert(type(info) is dict)
+    assert(isinstance(info, dict))
     print("OK")
 
     # NKLA has institutional investors table and mutual fund holders
@@ -92,7 +92,7 @@ def test_yfinance():
     assert(len(ticker.financials.index) > 0)
     assert(len(ticker.cashflow.index) > 0)
     info = ticker.get_info(None, True)
-    assert(type(info) is dict)
+    assert(isinstance(info, dict))
     print("OK")
 
 
