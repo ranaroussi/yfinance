@@ -277,12 +277,12 @@ class TickerBase():
             return
 
         # get info and sustainability
-        url = '%s/%s' % (self._scrape_url, self.ticker)
-        data = utils.get_json(url, proxy)
+        ticker_url = '{}/{}'.format(self._scrape_url, self.ticker)
+        data = utils.get_json(ticker_url, proxy)
 
         # holders
-        url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        holders = _pd.read_html(url)
+        holders_url = ticker_url + '/holders'
+        holders = _pd.read_html(holders_url)
         
         if len(holders)>=3:
             self._major_holders = holders[0]
@@ -373,7 +373,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(url+'/financials', proxy)
+        data = utils.get_json(ticker_url+'/financials', proxy)
 
         # generic patterns
         for key in (
