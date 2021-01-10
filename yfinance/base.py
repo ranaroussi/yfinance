@@ -116,14 +116,14 @@ class TickerBase():
             if start is None:
                 start = -2208988800
             elif isinstance(start, _datetime.datetime):
-                start = int(_time.mktime(start.timetuple()))
+                start = int(start.timestamp())
             else:
                 start = int(_time.mktime(
                     _time.strptime(str(start), '%Y-%m-%d')))
             if end is None:
                 end = int(_time.time())
             elif isinstance(end, _datetime.datetime):
-                end = int(_time.mktime(end.timetuple()))
+                end = int(end.timestamp())
             else:
                 end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
 
@@ -283,7 +283,7 @@ class TickerBase():
         # holders
         url = "{}/{}/holders".format(self._scrape_url, self.ticker)
         holders = _pd.read_html(url)
-        
+
         if len(holders)>=3:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
@@ -293,10 +293,10 @@ class TickerBase():
             self._institutional_holders = holders[1]
         else:
             self._major_holders = holders[0]
-        
+
         #self._major_holders = holders[0]
         #self._institutional_holders = holders[1]
-        
+
         if self._institutional_holders is not None:
             if 'Date Reported' in self._institutional_holders:
                 self._institutional_holders['Date Reported'] = _pd.to_datetime(
