@@ -164,6 +164,27 @@ To initialize multiple ``Ticker`` objects, use
     tickers.tickers.GOOG.actions
 
 
+Pooling requests
+~~~~~~~~~~~~~~~~
+
+``Ticker`` objects also have an optional session argument, expecting
+a requests.Session() object. Ticker objects that are passed the same
+Session object will share a common TCP connection for GET requests.
+
+.. code:: python
+
+    import yfinance as yf
+    from requests import Session
+
+    session = Session()
+
+    tsla = yf.Ticker("TSLA", session)
+    msft = yf.Ticker("MSFT", session)
+
+    tsla.history()
+    msft.history()
+
+
 Fetching data for multiple tickers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

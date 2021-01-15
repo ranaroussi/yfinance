@@ -24,7 +24,6 @@ from __future__ import print_function
 import time as _time
 import datetime as _datetime
 import requests as _requests
-from requests import Session
 import pandas as _pd
 import numpy as _np
 
@@ -43,13 +42,13 @@ from . import shared
 
 
 class TickerBase():
-    def __init__(self, ticker,session:Session=None):
+    def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
 
-        if not session:
+        if not session or not isinstance(session,_requests.Session):
             self.request_session = _requests.Session()
         else:
             self.request_session = session
