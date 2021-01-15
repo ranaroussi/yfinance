@@ -21,6 +21,8 @@
 
 from __future__ import print_function
 
+import requests as _requests
+
 from . import Ticker, multi
 from collections import namedtuple as _namedtuple
 
@@ -48,8 +50,10 @@ class Tickers():
         self.symbols = [ticker.upper() for ticker in tickers]
         ticker_objects = {}
 
+        self.session = _requests.Session()
+        
         for ticker in self.symbols:
-            ticker_objects[ticker] = Ticker(ticker)
+            ticker_objects[ticker] = Ticker(ticker,self.session)
 
         self.tickers = _namedtuple(
             "Tickers", ticker_objects.keys(), rename=True
@@ -74,7 +78,7 @@ class Tickers():
                  threads=True, group_by='column', progress=True,
                  **kwargs):
 
-        data = multi.download(self.symbols,
+        data = multi.download(self.symbols, session=self.session,
                               start=start, end=end,
                               actions=actions,
                               auto_adjust=auto_adjust,
