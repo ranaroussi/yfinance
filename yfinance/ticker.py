@@ -23,7 +23,6 @@ from __future__ import print_function
 
 # import time as _time
 import datetime as _datetime
-import requests as _requests
 import pandas as _pd
 # import numpy as _np
 
@@ -53,7 +52,7 @@ class Ticker(TickerBase):
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        r = _requests.get(url=url, proxies=proxy).json()
+        r = self.request_session.get(url=url, proxies=proxy).json()
         if r['optionChain']['result']:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.utcfromtimestamp(
