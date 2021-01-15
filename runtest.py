@@ -16,6 +16,7 @@ Sanity check for most common library uses all working
 
 from __future__ import print_function
 import yfinance as yf
+import typing
 
 
 def test_yfinance():
@@ -43,22 +44,23 @@ def test_yfinance():
     print(">> F", end=" ... ")
     assert(ticker.info is not None and ticker.info != {})
     assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
+    assert(ticker.institutional_holders is not None)  # Now has institutional investors.
     print("OK")
     # NKLA has no institutional investors table or mutual fund holders
     ticker = yf.Ticker('NKLA')
     print(">> NKLA", end=" ... ")
     assert(ticker.info is not None and ticker.info != {})
     assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
+    assert(ticker.institutional_holders is not None)  # Now has institutional investors.
     print("OK")
     # NKLA has no institutional investors table or mutual fund holders
     ticker = yf.Ticker('NESN.SW')
     print(">> NESN.SW", end=" ... ")
     assert(ticker.info is not None and ticker.info != {})
     assert(ticker.major_holders is not None)
-    assert(ticker.institutional_holders is None)
+    assert(ticker.institutional_holders is not None)  # Now has institutional investors.
     print("OK")
+
 
 if __name__ == "__main__":
     test_yfinance()
