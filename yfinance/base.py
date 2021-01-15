@@ -24,6 +24,7 @@ from __future__ import print_function
 import time as _time
 import datetime as _datetime
 import requests as _requests
+from requests import Session
 import pandas as _pd
 import numpy as _np
 
@@ -42,13 +43,16 @@ from . import shared
 
 
 class TickerBase():
-    def __init__(self, ticker):
+    def __init__(self, ticker,session:Session=None):
         self.ticker = ticker.upper()
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
 
-        self.request_session = _requests.Session()
+        if not session:
+            self.request_session = _requests.Session()
+        else:
+            self.request_session = session
 
         self._fundamentals = False
         self._info = None
@@ -150,7 +154,7 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = self._request_session.get(url=url, params=params, proxies=proxy)
+        data = self.request_session.get(url=url, params=params, proxies=proxy)
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
