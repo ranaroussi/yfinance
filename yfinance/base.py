@@ -346,6 +346,13 @@ class TickerBase():
         except Exception:
             pass
 
+        expenseRatio = (data
+                       .get('fundProfile', {})
+                       .get('feesExpensesInvestment', {})
+                       .get('annualReportExpenseRatio', None))
+        if expenseRatio is not None:
+            self._info['annualReportExpenseRatio'] = expenseRatio
+
         # events
         try:
             cal = _pd.DataFrame(
