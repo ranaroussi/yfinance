@@ -337,6 +337,7 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 self._info.update(data[item])
 
+        self._info['marketState'] = data["price"]["marketState"]
         self._info['regularMarketPrice'] = self._info['regularMarketOpen']
         self._info['logo_url'] = ""
         try:
