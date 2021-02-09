@@ -44,6 +44,7 @@ from . import shared
 class TickerBase():
     def __init__(self, ticker):
         self.ticker = ticker.upper()
+        self._data = {}
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
@@ -279,46 +280,37 @@ class TickerBase():
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = utils.get_json(ticker_url, proxy)
+        self._data['summary'] = utils.get_json(ticker_url, proxy)
 
         # holders
-        holders = _pd.read_html(ticker_url+'/holders')
+        self._data['holders'] = utils.get_json(ticker_url+'/holders', proxy)
 
-        if len(holders)>=3:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-            self._mutualfund_holders = holders[2]
-        elif len(holders)>=2:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-        else:
-            self._major_holders = holders[0]
+        if isinstance(self._data['holders'].get('majorHoldersBreakdown'), (dict)):
+            df = _pd.DataFrame([self._data['holders']['majorHoldersBreakdown']])
+            if len(df.index) > 0:
+                df.drop(columns=['maxAge'], inplace=True)
+                self._major_holders = df.copy()
 
-        #self._major_holders = holders[0]
-        #self._institutional_holders = holders[1]
+        if isinstance(self._data['holders'].get('institutionOwnership'), (dict)):
+            df =  _pd.DataFrame(self._data['holders']['institutionOwnership']['ownershipList'])
+            if len(df.index) > 0:
+                df.drop(columns=['maxAge'], inplace=True)
+                df['reportDate'] = _pd.to_datetime(df['reportDate'], unit='s')
+                self._institutional_holders = df.copy()
 
-        if self._institutional_holders is not None:
-            if 'Date Reported' in self._institutional_holders:
-                self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                self._institutional_holders['Date Reported'])
-            if '% Out' in self._institutional_holders:
-                self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
-
-        if self._mutualfund_holders is not None:
-            if 'Date Reported' in self._mutualfund_holders:
-                self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
-                self._mutualfund_holders['Date Reported'])
-            if '% Out' in self._mutualfund_holders:
-                self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+        if isinstance(self._data['holders'].get('fundOwnership'), (dict)):
+            df = _pd.DataFrame(self._data['holders']['fundOwnership']['ownershipList'])
+            if len(df.index) > 0:
+                df.drop(columns=['maxAge'], inplace=True)
+                df['reportDate'] = _pd.to_datetime(df['reportDate'], unit='s')
+                self._mutualfund_holders = df.copy()
 
         # sustainability
         d = {}
-        if isinstance(data.get('esgScores'), dict):
-            for item in data['esgScores']:
-                if not isinstance(data['esgScores'][item], (dict, list)):
-                    d[item] = data['esgScores'][item]
+        if isinstance(self._data['summary'].get('esgScores'), dict):
+            for item in self._data['summary']['esgScores']:
+                if not isinstance(self._data['summary']['esgScores'][item], (dict, list)):
+                    d[item] = self._data['summary']['esgScores'][item]
 
             s = _pd.DataFrame(index=[0], data=d)[-1:].T
             s.columns = ['Value']
@@ -334,10 +326,10 @@ class TickerBase():
         items = ['summaryProfile', 'summaryDetail', 'quoteType',
                  'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         for item in items:
-            if isinstance(data.get(item), dict):
-                self._info.update(data[item])
+            if isinstance(self._data['summary'].get(item), dict):
+                self._info.update(self._data['summary'][item])
 
-        self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        self._info['regularMarketPrice'] = self._data['summary']['price']['regularMarketPrice']
         self._info['logo_url'] = ""
         try:
             domain = self._info['website'].split(
@@ -349,7 +341,7 @@ class TickerBase():
         # events
         try:
             cal = _pd.DataFrame(
-                data['calendarEvents']['earnings'])
+                self._data['summary']['calendarEvents']['earnings'])
             cal['earningsDate'] = _pd.to_datetime(
                 cal['earningsDate'], unit='s')
             self._calendar = cal.T
@@ -361,7 +353,7 @@ class TickerBase():
         # analyst recommendations
         try:
             rec = _pd.DataFrame(
-                data['upgradeDowngradeHistory']['history'])
+                self._data['summary']['upgradeDowngradeHistory']['history'])
             rec['earningsDate'] = _pd.to_datetime(
                 rec['epochGradeDate'], unit='s')
             rec.set_index('earningsDate', inplace=True)
@@ -373,7 +365,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(ticker_url+'/financials', proxy)
+        self._data['fundamentals'] = utils.get_json(ticker_url+'/financials', proxy)
 
         # generic patterns
         for key in (
@@ -383,16 +375,16 @@ class TickerBase():
         ):
 
             item = key[1] + 'History'
-            if isinstance(data.get(item), dict):
-                key[0]['yearly'] = cleanup(data[item][key[2]])
+            if isinstance(self._data['fundamentals'].get(item), dict):
+                key[0]['yearly'] = cleanup(self._data['fundamentals'][item][key[2]])
 
             item = key[1]+'HistoryQuarterly'
-            if isinstance(data.get(item), dict):
-                key[0]['quarterly'] = cleanup(data[item][key[2]])
+            if isinstance(self._data['fundamentals'].get(item), dict):
+                key[0]['quarterly'] = cleanup(self._data['fundamentals'][item][key[2]])
 
         # earnings
-        if isinstance(data.get('earnings'), dict):
-            earnings = data['earnings']['financialsChart']
+        if isinstance(self._data['fundamentals'].get('earnings'), dict):
+            earnings = self._data['fundamentals']['earnings']['financialsChart']
             df = _pd.DataFrame(earnings['yearly']).set_index('date')
             df.columns = utils.camel2title(df.columns)
             df.index.name = 'Year'
@@ -545,3 +537,6 @@ class TickerBase():
 
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
+
+    def get_data(self):
+		    return self._data
