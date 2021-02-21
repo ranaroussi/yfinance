@@ -223,13 +223,15 @@ class TickerBase():
         dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
 
         # combine
-        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
+        df = quotes.join( dividends.join(splits)) # use join to concate based on the index
         df["Dividends"].fillna(0, inplace=True)
         df["Stock Splits"].fillna(0, inplace=True)
 
         # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(
-            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+        if tz is None:
+            # if time zone not specified, return exchange time zone
+            df.index = df.index.tz_localize("UTC").tz_convert(
+                data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
