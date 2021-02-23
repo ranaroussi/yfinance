@@ -190,6 +190,10 @@ class Ticker(TickerBase):
         return self.get_sustainability()
 
     @property
+    def price(self):
+        return self.get_price()
+
+    @property
     def options(self):
         if not self._expirations:
             self._download_options()

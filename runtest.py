@@ -35,6 +35,7 @@ def test_yfinance():
         ticker.major_holders
         ticker.institutional_holders
         ticker.mutualfund_holders
+        ticker.price
 
         print("OK")
 

@@ -56,6 +56,7 @@ class TickerBase():
         self._institutional_holders = None
         self._mutualfund_holders = None
         self._isin = None
+        self._price = None
 
         self._calendar = None
         self._expirations = {}
@@ -403,6 +404,10 @@ class TickerBase():
             df.index.name = 'Quarter'
             self._earnings['quarterly'] = df
 
+        # price
+        if isinstance(data.get('price'), dict):
+            self._price = _pd.DataFrame(index=[0], data=data['price']).T
+
         self._fundamentals = True
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
@@ -445,6 +450,13 @@ class TickerBase():
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy=proxy)
         data = self._info
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_price(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._price
         if as_dict:
             return data.to_dict()
         return data
