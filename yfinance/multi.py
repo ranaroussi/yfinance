@@ -59,7 +59,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         actions: bool
             Download dividend + stock splits data. Default is False
         threads: bool / int
-            How many threads to use for mass downloading. Default is True
+            How many threads to use for mass downloading. 
+            Default is True, and uses cpu_count() * 2 threads
         proxy: str
             Optional. Proxy server URL scheme. Default is None
         rounding: bool
@@ -80,7 +81,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     shared._ERRORS = {}
 
     # download using threads
-    if threads:
+    if threads and isinstance(tickers, list) and len(tickers) > 1:
         if threads is True:
             threads = min([len(tickers), _multitasking.cpu_count() * 2])
         _multitasking.set_max_threads(threads)

@@ -73,6 +73,19 @@ class TickerBase():
             "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
 
+    def __handle_error(self, shared, err_msg, **kwargs):
+        debug_mode = True
+        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
+            debug_mode = kwargs["debug"]
+
+        shared._DFS[self.ticker] = utils.empty_df()
+        shared._ERRORS[self.ticker] = err_msg
+        
+        if "many" not in kwargs and debug_mode:
+            print('- %s: %s' % (self.ticker, err_msg))
+
+        return shared._DFS[self.ticker]
+        
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False,
@@ -148,44 +161,29 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = _requests.get(url=url, params=params, proxies=proxy)
+        try:
+            data = _requests.get(url=url, params=params, proxies=proxy)
+        except Exception as e:
+            return self.__handle_error(shared, str(e), **kwargs)
+
         if "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            return self.__handle_error(shared, "*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                                   "Our engineers are working quickly to resolve "
+                                           "the issue. Thank you for your patience.", **kwargs)
         data = data.json()
-
-        # Work with errors
-        debug_mode = True
-        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
-            debug_mode = kwargs["debug"]
-
         err_msg = "No data found for this date range, symbol may be delisted"
         if "chart" in data and data["chart"]["error"]:
-            err_msg = data["chart"]["error"]["description"]
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return shared._DFS[self.ticker]
+            return self.__handle_error(shared, data["chart"]["error"]["description"], *kwargs)
 
         elif "chart" not in data or data["chart"]["result"] is None or \
                 not data["chart"]["result"]:
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return shared._DFS[self.ticker]
+            return self.__handle_error(shared, err_msg, **kwargs)
 
         # parse quotes
         try:
             quotes = utils.parse_quotes(data["chart"]["result"][0], tz)
         except Exception:
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return shared._DFS[self.ticker]
+            return self.__handle_error(shared, err_msg, **kwargs)
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
