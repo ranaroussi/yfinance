@@ -383,11 +383,11 @@ class TickerBase():
         ):
 
             item = key[1] + 'History'
-            if isinstance(data.get(item), dict):
+            if isinstance(data.get(item), dict) and data[item][key[2]]:
                 key[0]['yearly'] = cleanup(data[item][key[2]])
 
             item = key[1]+'HistoryQuarterly'
-            if isinstance(data.get(item), dict):
+            if isinstance(data.get(item), dict) and data[item][key[2]]:
                 key[0]['quarterly'] = cleanup(data[item][key[2]])
 
         # earnings
