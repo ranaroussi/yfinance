@@ -414,7 +414,7 @@ class TickerBase():
         if isinstance(data.get('earnings'), dict):
             try:
                 earnings = data['earnings']['financialsChart']
-                earnings['financialCurrency'] = data['earnings']['financialCurrency']
+                earnings['financialCurrency'] = 'USD' if 'financialCurrency' not in data['earnings'] else data['earnings']['financialCurrency']
                 self._earnings['financialCurrency'] = earnings['financialCurrency']
                 df = _pd.DataFrame(earnings['yearly']).set_index('date')
                 df.columns = utils.camel2title(df.columns)
@@ -486,7 +486,7 @@ class TickerBase():
         data = self._earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = self._earnings['financialCurrency']
+            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
             return dict_data
         return data
 
