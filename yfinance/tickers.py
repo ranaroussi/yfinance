@@ -46,11 +46,12 @@ class Tickers():
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
+        self.safe_symbols = [symbol.replace(".", "") for symbol in self.symbols]
         ticker_objects = {}
 
-        for ticker in self.symbols:
-            ticker_objects[ticker] = Ticker(ticker)
-
+        for ticker, name in zip(self.symbols, self.safe_symbols):
+            ticker_objects[name] = Ticker(ticker)
+        
         self.tickers = _namedtuple(
             "Tickers", ticker_objects.keys(), rename=True
         )(*ticker_objects.values())
@@ -87,8 +88,8 @@ class Tickers():
                               progress=progress,
                               **kwargs)
 
-        for symbol in self.symbols:
-            getattr(self.tickers, symbol)._history = data[symbol]
+        for symbol, name in zip(self.symbols, self.safe_symbols):
+            getattr(self.tickers, name)._history = data[symbol]
 
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
