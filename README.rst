@@ -149,6 +149,20 @@ If you want to use a proxy server for downloading data, use:
     msft.option_chain(..., proxy="PROXY_SERVER")
     ...
 
+To use a custom ``requests`` session, for example to cache calls to the API, or
+customize the ``User-agent`` header, pass a session= argument to the Ticker
+constructor:
+
+.. code:: python
+
+    import requests_cache
+
+    session = requests_cache.CachedSession('yfinance.cache')
+    session.headers['User-agent'] = 'my-program/1.0'
+    ticker = yf.Ticker('msft aapl goog', session=session)
+    # The scraped response will be stored in the cache
+    ticker.actions
+
 To initialize multiple ``Ticker`` objects, use
 
 .. code:: python

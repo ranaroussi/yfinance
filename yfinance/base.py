@@ -42,8 +42,9 @@ from . import shared
 
 
 class TickerBase():
-    def __init__(self, ticker):
+    def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
+        self.session = session or _requests
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
@@ -148,7 +149,7 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = _requests.get(url=url, params=params, proxies=proxy)
+        data = self.session.get(url=url, params=params, proxies=proxy)
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -279,10 +280,11 @@ class TickerBase():
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = utils.get_json(ticker_url, proxy)
+        data = utils.get_json(self.session, ticker_url, proxy)
 
         # holders
-        holders = _pd.read_html(ticker_url+'/holders')
+        resp = self.session.get(ticker_url + '/holders')
+        holders = _pd.read_html(resp.content)
 
         if len(holders)>=3:
             self._major_holders = holders[0]
@@ -373,7 +375,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(ticker_url+'/financials', proxy)
+        data = utils.get_json(self.session, ticker_url+'/financials', proxy)
 
         # generic patterns
         for key in (
@@ -530,7 +532,7 @@ class TickerBase():
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
             % urlencode(q)
-        data = _requests.get(url=url, proxies=proxy).text
+        data = self.session.get(url=url, proxies=proxy).text
 
         search_str = '"{}|'.format(ticker)
         if search_str not in data:

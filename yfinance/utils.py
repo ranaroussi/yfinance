@@ -21,7 +21,6 @@
 
 from __future__ import print_function
 
-import requests as _requests
 import re as _re
 import pandas as _pd
 import numpy as _np
@@ -42,11 +41,11 @@ def empty_df(index=[]):
     return empty
 
 
-def get_json(url, proxy=None):
-    html = _requests.get(url=url, proxies=proxy).text
+def get_json(session, url, proxy=None):
+    html = session.get(url=url, proxies=proxy).text
 
     if "QuoteSummaryStore" not in html:
-        html = _requests.get(url=url, proxies=proxy).text
+        html = session.get(url=url, proxies=proxy).text
         if "QuoteSummaryStore" not in html:
             return {}
 
