@@ -24,6 +24,8 @@ from __future__ import print_function
 import time as _time
 import multitasking as _multitasking
 import pandas as _pd
+import backoff
+import requests
 
 from . import Ticker, utils
 from . import shared
@@ -169,7 +171,9 @@ def _download_one_threaded(ticker, start=None, end=None,
     if progress:
         shared._PROGRESS_BAR.animate()
 
-
+@backoff.on_exception(backoff.expo,
+                      requests.exceptions.RequestException,
+                      max_time=60*10)
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False,
                   actions=False, period="max", interval="1d",

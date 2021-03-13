@@ -3,3 +3,4 @@ numpy>=1.15
 requests>=2.21
 multitasking>=0.0.7
 lxml>=4.5.1
+backoff>=1.10.0
