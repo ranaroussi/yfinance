@@ -60,7 +60,9 @@ def get_json(url, proxy=None):
     new_data = _re.sub(
         r'\{[\'|\"]raw[\'|\"]:(.*?),(.*?)\}', r'\1', new_data)
 
-    return _json.loads(new_data)
+    data = _json.loads(new_data)
+    data = {k:v for k,v in data.items() if not (isinstance(v, dict) and 'err' in v)}
+    return data
 
 
 def camel2title(o):
