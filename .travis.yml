@@ -14,11 +14,14 @@ matrix:
 
 install:
   - pip install Cython
+  - pip install pytest>=4.6
+  - pip install pytest-cov
+  - pip install coveralls
   - pip install -r requirements.txt
   - pip install .
 
 script:
-  - nosetests
+  - pytest --cov=yfinance/
 
 after_success:
   - coveralls
