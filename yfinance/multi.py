@@ -172,7 +172,8 @@ def _download_one_threaded(ticker, start=None, end=None,
         shared._PROGRESS_BAR.animate()
 
 @backoff.on_exception(backoff.expo,
-                      requests.exceptions.RequestException,
+                      (requests.exceptions.RequestException,
+                        RuntimeError),
                       max_time=60*10)
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False,
