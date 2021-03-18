@@ -21,6 +21,8 @@
 
 from __future__ import print_function
 
+import re
+
 import time as _time
 import multitasking as _multitasking
 import pandas as _pd
@@ -70,8 +72,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     tickers = tickers if isinstance(
         tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
 
-    tickers = list(set([ticker.upper() for ticker in tickers]))
-
+    tickers = list(set([re.sub('\W+','', ticker.upper()) for ticker in tickers]))
     if progress:
         shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
 
