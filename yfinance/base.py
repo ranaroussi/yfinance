@@ -233,6 +233,8 @@ class TickerBase():
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
+        elif params["interval"] == '1h':
+            pass
         else:
             df.index = _pd.to_datetime(df.index.date)
             if tz is not None:
