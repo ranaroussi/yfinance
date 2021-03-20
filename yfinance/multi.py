@@ -174,7 +174,7 @@ def _download_one_threaded(ticker, start=None, end=None,
 @backoff.on_exception(backoff.expo,
                       (requests.exceptions.RequestException,
                         RuntimeError,
-                        request.exceptions.ProxyError,
+                        requests.exceptions.ProxyError,
                         OSError),
                       max_time=60*10)
 def _download_one(ticker, start=None, end=None,
