@@ -1,5 +1,5 @@
 '''
-Extendable mock test
+Module for testings earnings property
 '''
 
 import unittest
@@ -17,14 +17,19 @@ url_map0 ={
   'https://finance.yahoo.com/quote/GOOG/financials': 'goog_financials.json'
 }
 
-class TestMocking(unittest.TestCase):
-  @mock.patch('yfinance.utils.get_json', side_effect=get_mocked_get_json(url_map0))
-  def test_split(self,mock_get_json):
+class TestEarnings(unittest.TestCase):
+  '''
+  Class for testings earnings property
+  '''
+  @mock.patch('yfinance.utils.get_json',
+    side_effect=get_mocked_get_json(url_map0)
+  )
+  def test_mock(self,mock_get_json):
     goog = yf.Ticker('GOOG')
 
-    earning = goog.earnings
+    earnings = goog.earnings
 
-    earning_2017 = earning['Earnings'].iloc[0]
+    earning_2017 = earnings['Earnings'].iloc[0]
 
     self.assertEqual(earning_2017,12662000000)
 
