@@ -248,21 +248,13 @@
                     "revenue": 136819000000,
                     "earnings": 30736000000
                 }, {
-                    "date": 2019,
-                    "revenue": 161857000000,
-                    "earnings": 34343000000
-                }, {
                     "date": 2020,
                     "revenue": 182527000000,
                     "earnings": 40269000000
                 }
             ],
             "quarterly": [
-                {
-                    "date": "1Q2020",
-                    "revenue": 41159000000,
-                    "earnings": 6836000000
-                }, {
+                 {
                     "date": "2Q2020",
                     "revenue": 38297000000,
                     "earnings": 6959000000
