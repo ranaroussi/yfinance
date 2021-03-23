@@ -49,10 +49,11 @@ class TestDataValues(unittest.TestCase):
 
         earnings = goog.earnings
 
-        self.assertNotIn(34343000000, earnings)
+        self.assertNotIn(34343000000, earnings) # This is the year we deleted
         self.assertEqual(12662000000, earnings['Earnings'].iloc[0])
         self.assertEqual(30736000000, earnings['Earnings'].iloc[1])
         self.assertEqual(40269000000, earnings['Earnings'].iloc[2])
+        self.assertEqual(3, earnings["Earnings"].size) #only have 3 years in total
 
 
     @mock.patch('yfinance.utils.get_json',
@@ -72,6 +73,7 @@ class TestDataValues(unittest.TestCase):
         self.assertEqual(6959000000, earnings.iloc[0])
         self.assertEqual(11247000000, earnings.iloc[1])
         self.assertEqual(15227000000, earnings.iloc[2])
+        self.assertEqual(3, earnings.size)
 
     @mock.patch('yfinance.utils.get_json',
     side_effect=get_mocked_get_json(url_map0)
