@@ -11,3 +11,4 @@ pyvenv.cfg
 .Python
 bin/
 lib/
+docs/site
