@@ -6,3 +6,8 @@ yfinance.egg-info
 .coverage
 .vscode/
 build/
+
+pyvenv.cfg
+.Python
+bin/
+lib/
