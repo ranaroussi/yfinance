@@ -40,18 +40,15 @@ class TestDataValues(unittest.TestCase):
     def test_incomplete_data(self):
         pass
 
-    @mock.patch('yfinance.utils.get_json',
-    side_effect=get_mocked_get_json(url_map0))
+
     def test_no_quarterly_data_annual(self):
         # Test to ensure yearly earnings is still working after removal of a quarter
         earnings_2020 = earnings['Earnings'].iloc[3]
         self.assertEqual(earnings_2020,40269000000)
 
-    @mock.patch('yfinance.utils.get_json',
-    side_effect=get_mocked_get_json(url_map0))
     def test_no_quarterly_data_quarter(self):
         # Test to ensure quarterly earnings is still working after removal of a quarter
-        earnings_2020_quarterly = goog.quarterly_earnings
+        earnings_2020_quarterly = goog.quarterly_earnings['Earnings']
         self.assertNotIn(6836000000, earnings_2020_quarter)
 
     def test_missing_quarter(self):
