@@ -49,9 +49,11 @@ class TestDataValues(unittest.TestCase):
 
         earnings = goog.earnings
 
-        earning_2017 = earnings['Earnings'].iloc[0]
+        self.assertNotIn(34343000000, earnings)
+        self.assertEqual(12662000000, earnings['Earnings'].iloc[0])
+        self.assertEqual(30736000000, earnings['Earnings'].iloc[1])
+        self.assertEqual(40269000000, earnings['Earnings'].iloc[2])
 
-        self.assertNotIn(34343000000, earning_2017)
 
     @mock.patch('yfinance.utils.get_json',
     side_effect=get_mocked_get_json(url_map0)
