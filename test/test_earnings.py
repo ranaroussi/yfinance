@@ -16,7 +16,9 @@ data_path = Path(__file__).parent/'data'
 url_map0 ={
   'https://finance.yahoo.com/quote/GOOG/financials': 'goog_financials.json'
 }
-
+url_map_broken_goog ={
+  'https://finance.yahoo.com/quote/GOOG/financials': 'broken_goog_financials.json'
+}
 class TestEarnings(unittest.TestCase):
     '''
     Class for testings earnings property
@@ -42,7 +44,7 @@ class TestDataValues(unittest.TestCase):
     '''
 
     @mock.patch('yfinance.utils.get_json',
-    side_effect=get_mocked_get_json(url_map0)
+    side_effect=get_mocked_get_json(url_map_broken_goog)
     )
     def test_no_yearly_data(self, mock_get_json):
         goog = yf.Ticker('GOOG')
@@ -57,13 +59,13 @@ class TestDataValues(unittest.TestCase):
 
 
     @mock.patch('yfinance.utils.get_json',
-    side_effect=get_mocked_get_json(url_map0)
+    side_effect=get_mocked_get_json(url_map_broken_goog)
     )
     def test_no_data(self, mock_get_json):
         pass
 
     @mock.patch('yfinance.utils.get_json',
-    side_effect=get_mocked_get_json(url_map0)
+    side_effect=get_mocked_get_json(url_map_broken_goog)
     )
     def test_no_quarterly_data(self, mock_get_json):
         goog = yf.Ticker("GOOG")
@@ -75,11 +77,6 @@ class TestDataValues(unittest.TestCase):
         self.assertEqual(15227000000, earnings.iloc[2])
         self.assertEqual(3, earnings.size)
 
-    @mock.patch('yfinance.utils.get_json',
-    side_effect=get_mocked_get_json(url_map0)
-    )
-    def test_missing_quarter(self, mock_get_json):
-        pass
       
 if __name__ == '__main__':
   unittest.main()
