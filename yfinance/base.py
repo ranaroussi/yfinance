@@ -32,13 +32,13 @@ try:
 except ImportError:
     from urllib import quote as urlencode
 
-import utils
+from . import utils
 
 # import json as _json
 # import re as _re
 # import sys as _sys
 
-import shared
+from . import shared
 
 
 class TickerBase():
