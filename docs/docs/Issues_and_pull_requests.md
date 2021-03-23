@@ -32,3 +32,7 @@
 \#246 - [Fixes the scrape URL for financial data](https://github.com/ranaroussi/yfinance/pull/246)
 
 - Functionally does the same as issue \#535, however includes test cases
+
+\#480 - [Fix the fetching of fundamentals](https://github.com/ranaroussi/yfinance/pull/480) \[Merged]
+
+- Prevents the override of ticker url by holders url
