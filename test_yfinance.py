@@ -44,6 +44,8 @@ class TestTicker:
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
 
-class TestTickers:
-    def test_nothing(self):
-        pass
+    def test_recommendations(self):
+        for ticker in tickers:
+            print(ticker.recommendations)
+
+TestTicker().test_recommendations()
