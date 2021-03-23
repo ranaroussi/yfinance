@@ -30,16 +30,30 @@ class TestEarnings(unittest.TestCase):
     earnings = goog.earnings
 
     earning_2017 = earnings['Earnings'].iloc[0]
-
     self.assertEqual(earning_2017,12662000000)
 
     self.assertEqual(len(mock_get_json.call_args_list), 2)
 
 class TestDataValues(unittest.TestCase):
+    goog = yf.Ticker('GOOG')
+
     def test_incomplete_data(self):
         pass
-    def test_no_quarterly_data(self):
-        pass
+
+    @mock.patch('yfinance.utils.get_json',
+    side_effect=get_mocked_get_json(url_map0))
+    def test_no_quarterly_data_annual(self):
+        # Test to ensure yearly earnings is still working after removal of a quarter
+        earnings_2020 = earnings['Earnings'].iloc[3]
+        self.assertEqual(earnings_2020,40269000000)
+
+    @mock.patch('yfinance.utils.get_json',
+    side_effect=get_mocked_get_json(url_map0))
+    def test_no_quarterly_data_quarter(self):
+        # Test to ensure quarterly earnings is still working after removal of a quarter
+        earnings_2020_quarterly = goog.quarterly_earnings
+        self.assertNotIn(6836000000, earnings_2020_quarter)
+
     def test_missing_quarter(self):
         pass
       
