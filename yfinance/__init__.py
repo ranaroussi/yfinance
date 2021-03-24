@@ -19,7 +19,7 @@
 # limitations under the License.
 #
 
-__version__ = "0.1.54"
+__version__ = "0.1.56"
 __author__ = "Ran Aroussi"
 
 from .ticker import Ticker
