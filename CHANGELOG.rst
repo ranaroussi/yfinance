@@ -1,10 +1,15 @@
 Change Log
 ===========
 
-0.1.55 - to be released
+0.1.56
 ------
-- fixed institutional investors and mutual fund holders issue (#459)
-- fix for UTC timestamps in options chains (#429)
+- Updated numpy version
+- Merged PRs to fix some bugs
+
+0.1.55
+------
+- Fixed institutional investors and mutual fund holders issue (#459)
+- Fix for UTC timestamps in options chains (#429)
 
 0.1.54
 ------
