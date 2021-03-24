@@ -138,9 +138,10 @@ def parse_quotes(data, tz=None):
 
 
 def parse_actions(data, tz=None):
+    #print(data)
     dividends = _pd.DataFrame(columns=["Dividends"])
     splits = _pd.DataFrame(columns=["Stock Splits"])
-
+    #print(list(data["events"]["dividends"].values()))
     if "events" in data:
         if "dividends" in data["events"]:
             dividends = _pd.DataFrame(
@@ -150,9 +151,7 @@ def parse_actions(data, tz=None):
             dividends.sort_index(inplace=True)
             if tz is not None:
                 dividends.index = dividends.index.tz_localize(tz)
-
             dividends.columns = ["Dividends"]
-
         if "splits" in data["events"]:
             splits = _pd.DataFrame(
                 data=list(data["events"]["splits"].values()))
@@ -164,7 +163,7 @@ def parse_actions(data, tz=None):
             splits["Stock Splits"] = splits["numerator"] / \
                 splits["denominator"]
             splits = splits["Stock Splits"]
-
+    #print(dividends,splits)   
     return dividends, splits
 
 
