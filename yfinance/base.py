@@ -276,16 +276,14 @@ class TickerBase():
         if self._fundamentals:
             return
 
+        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
+
         # get info and sustainability
-        url = '%s/%s' % (self._scrape_url, self.ticker)
-        data = utils.get_json(url, proxy)
+        data = utils.get_json(ticker_url, proxy)
 
         # holders
-        # url = "{}/{}/holders".format(self._scrape_url, self.ticker)
-        # holders = _pd.read_html(url)
         try:
-            url = "{}/{}".format(self._scrape_url, self.ticker)
-            holders = _pd.read_html(url+'\holders') # Can return No Tables Found!
+            holders = _pd.read_html(ticker_url+'/holders')
         except Exception as e:
             holders = []
 		        
@@ -298,10 +296,10 @@ class TickerBase():
             self._institutional_holders = holders[1]
         elif len(holders)>=1:
             self._major_holders = holders[0]
-        
+
         #self._major_holders = holders[0]
         #self._institutional_holders = holders[1]
-        
+
         if self._institutional_holders is not None:
             if 'Date Reported' in self._institutional_holders:
                 self._institutional_holders['Date Reported'] = _pd.to_datetime(
@@ -388,7 +386,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(url+'/financials', proxy)
+        data = utils.get_json(ticker_url+'/financials', proxy)
 
         # generic patterns
         for key in (
@@ -431,28 +429,28 @@ class TickerBase():
         self._fundamentals = True
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._recommendations
         if as_dict:
             return data.to_dict()
         return data
 
     def get_calendar(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._calendar
         if as_dict:
             return data.to_dict()
         return data
 
     def get_major_holders(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._major_holders
         if as_dict:
             return data.to_dict()
         return data
 
     def get_institutional_holders(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._institutional_holders
         if data is not None:
             if as_dict:
@@ -460,7 +458,7 @@ class TickerBase():
             return data
 
     def get_mutualfund_holders(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._mutualfund_holders
         if data is not None:
             if as_dict:
@@ -468,21 +466,21 @@ class TickerBase():
             return data
 
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._info
         if as_dict:
             return data.to_dict()
         return data
 
     def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._sustainability
         if as_dict:
             return data.to_dict()
         return data
 
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
@@ -491,14 +489,14 @@ class TickerBase():
         return data
 
     def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._financials[freq]
         if as_dict:
             return data.to_dict()
         return data
 
     def get_balancesheet(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._balancesheet[freq]
         if as_dict:
             return data.to_dict()
@@ -508,7 +506,7 @@ class TickerBase():
         return self.get_balancesheet(proxy, as_dict, freq)
 
     def get_cashflow(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
+        self._get_fundamentals(proxy=proxy)
         data = self._cashflow[freq]
         if as_dict:
             return data.to_dict()
