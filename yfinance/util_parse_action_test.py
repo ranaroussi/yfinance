@@ -7,7 +7,8 @@ from pandas.testing import *
 #sample datas and its expected outputs
 data1={'meta': {'currency': 'USD', 'symbol': 'TSM', 'exchangeName': 'NYQ', 'instrumentType': 'EQUITY', 'firstTradeDate': 876403800, 'regularMarketTime': 1616529601, 'gmtoffset': -14400, 'timezone': 'EDT', 'exchangeTimezoneName': 'America/New_York', 'regularMarketPrice': 114.89, 'chartPreviousClose': 77.92, 'priceHint': 2, 'currentTradingPeriod': {'pre': {'timezone': 'EDT', 'start': 1616572800, 'end': 1616592600, 'gmtoffset': -14400}, 'regular': {'timezone': 'EDT', 'start': 1616592600, 'end': 1616616000, 'gmtoffset': -14400}, 'post': {'timezone': 'EDT', 'start': 1616616000, 'end': 1616630400, 'gmtoffset': -14400}}, 'dataGranularity': '1d', 'range': '6mo', 'validRanges': ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']},  'events': {'dividends': {'1615987800': {'amount': 0.448, 'date': 1615987800}, '1608215400': {'amount': 0.442, 'date': 1608215400}}}}
 data2={'meta': {'currency': 'USD', 'symbol': 'TSM', 'exchangeName': 'NYQ', 'instrumentType': 'EQUITY', 'firstTradeDate': 876403800, 'regularMarketTime': 1616529601, 'gmtoffset': -14400, 'timezone': 'EDT', 'exchangeTimezoneName': 'America/New_York', 'regularMarketPrice': 114.89, 'chartPreviousClose': 77.92, 'priceHint': 2, 'currentTradingPeriod': {'pre': {'timezone': 'EDT', 'start': 1616572800, 'end': 1616592600, 'gmtoffset': -14400}, 'regular': {'timezone': 'EDT', 'start': 1616592600, 'end': 1616616000, 'gmtoffset': -14400}, 'post': {'timezone': 'EDT', 'start': 1616616000, 'end': 1616630400, 'gmtoffset': -14400}}, 'dataGranularity': '1d', 'range': '6mo', 'validRanges': ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']}}
-output1 = pd.DataFrame(columns=["Dividends"])
+data3={'meta': {'currency': 'EUR', 'symbol': 'UH7.F', 'exchangeName': 'FRA', 'instrumentType': 'EQUITY', 'firstTradeDate': 1140678000, 'regularMarketTime': 1584084000, 'gmtoffset': 3600, 'timezone': 'CET', 'exchangeTimezoneName': 'Europe/Berlin', 'regularMarketPrice': 0.0005, 'chartPreviousClose': 0.0005, 'priceHint': 4, 'currentTradingPeriod': {'pre': {'timezone': 'CET', 'end': 1616569200, 'start': 1616569200, 'gmtoffset': 3600}, 'regular': {'timezone': 'CET', 'end': 1616619600, 'start': 1616569200, 'gmtoffset': 3600}, 'post': {'timezone': 'CET', 'end': 1616619600, 'start': 1616619600, 'gmtoffset': 3600}}, 'dataGranularity': '1d', 'range': '6mo', 'validRanges': ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']}, 'events': {'splits': {'1616482800': {'date': 1616482800, 'numerator': 1, 'denominator': 50, 'splitRatio': '1:50'}}}}
+output1=pd.DataFrame(columns=["Dividends"])
 output1=pd.DataFrame(data=[{'amount': 0.448, 'date': 1615987800},{'amount': 0.442, 'date': 1608215400}])
 output1.set_index("date",inplace=True)
 output1.index = pd.to_datetime(output1.index, unit="s")
@@ -34,6 +35,24 @@ class Test_parse_action(unittest.TestCase):
         result2=utils.parse_actions(data2)
         self.assertTrue(result2[0].empty)
         self.assertTrue(result2[1].empty)
+    
+    def test_split(self):
+
+        output = pd.DataFrame(data=[{'date': 1616482800, 'numerator': 1, 'denominator': 50, 'splitRatio': '1:50'}])
+        output.set_index("date",inplace=True)
+        output.index = pd.to_datetime(output.index, unit="s")
+        output.sort_index(inplace=True)
+        output["Stock Splits"] = output["numerator"] / \
+                output["denominator"]
+        output = output["Stock Splits"]
+
+        #case3: data has only split event
+        result=utils.parse_actions(data3)
+        self.assertNotEqual(result, None)
+        self.assertFalse(result[1].empty)
+        self.assertTrue(result[0].empty)
+        assert_series_equal(result[1], output)
+        
     
 if __name__ == '__main__':
     unittest.main()

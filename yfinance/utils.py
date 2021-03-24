@@ -138,10 +138,10 @@ def parse_quotes(data, tz=None):
 
 
 def parse_actions(data, tz=None):
-    #print(data)
     dividends = _pd.DataFrame(columns=["Dividends"])
     splits = _pd.DataFrame(columns=["Stock Splits"])
-    #print(list(data["events"]["dividends"].values()))
+    #print(data)
+    #print(list(data["events"]["splits"].values()))
     if "events" in data:
         if "dividends" in data["events"]:
             dividends = _pd.DataFrame(
