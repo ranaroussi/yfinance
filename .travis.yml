@@ -9,6 +9,8 @@ matrix:
     - python: 3.5
     - python: 3.6
     - python: 3.7
+    - python: 3.8
+    - python: 3.9
       dist: xenial
       sudo: true
 
@@ -28,7 +30,7 @@ after_success:
 
 branches:
   only:
-    - master
+    - main
 
 notifications:
   slack: tradologics:HcnS6XusfcuS02waQPCG18oc
