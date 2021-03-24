@@ -6,3 +6,4 @@ yfinance.egg-info
 .coverage
 .vscode/
 build/
+venv
