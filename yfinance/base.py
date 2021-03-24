@@ -286,7 +286,7 @@ class TickerBase():
             holders = _pd.read_html(ticker_url+'/holders')
         except Exception as e:
             holders = []
-		        
+
         if len(holders)>=3:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]

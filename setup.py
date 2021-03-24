@@ -19,7 +19,7 @@ with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='yfinance',
-    version="0.1.54",
+    version="0.1.56",
     description='Yahoo! Finance market data downloader',
     long_description=long_description,
     url='https://github.com/ranaroussi/yfinance',
@@ -46,12 +46,15 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
     platforms=['any'],
     keywords='pandas, yahoo finance, pandas datareader',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
     install_requires=['pandas>=0.24', 'numpy>=1.15',
-                      'requests>=2.20', 'multitasking>=0.0.7'],
+                      'requests>=2.20', 'multitasking>=0.0.7',
+                      'lxml>=4.5.1'],
     entry_points={
         'console_scripts': [
             'sample=sample:main',
