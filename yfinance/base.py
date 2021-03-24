@@ -233,7 +233,7 @@ class TickerBase():
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
-        elif params["interval"] == '1h':
+        elif params["interval"] == "1h":
             pass
         else:
             df.index = _pd.to_datetime(df.index.date)
@@ -349,7 +349,9 @@ class TickerBase():
             pass
 
         try:
-            self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+            # self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+            self._info['regularMarketPrice'] = data.get('price', {}).get(
+                'regularMarketPrice', self._info['regularMarketOpen'])
         except Exception:
             pass
 
