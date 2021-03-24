@@ -1,6 +1,16 @@
 Change Log
 ===========
 
+0.1.56
+------
+- Updated numpy version
+- Merged PRs to fix some bugs
+
+0.1.55
+------
+- Fixed institutional investors and mutual fund holders issue (#459)
+- Fix for UTC timestamps in options chains (#429)
+
 0.1.54
 ------
 - ISIN lookup working with intl. tickers

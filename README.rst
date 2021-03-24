@@ -17,7 +17,7 @@ Yahoo! Finance market data downloader
     :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi downloads
 
-.. image:: https://img.shields.io/travis/ranaroussi/yfinance/master.svg?maxAge=1
+.. image:: https://img.shields.io/travis/ranaroussi/yfinance/main.svg?maxAge=1
     :target: https://travis-ci.com/ranaroussi/yfinance
     :alt: Travis-CI build status
 
@@ -47,7 +47,7 @@ NOTE
 
 The library was originally named ``fix-yahoo-finance``, but
 I've since renamed it to ``yfinance`` as I no longer consider it a mere "fix".
-For reasons of backward-competability, ``fix-yahoo-finance`` now import and
+For reasons of backward-compatibility, ``fix-yahoo-finance`` now import and
 uses ``yfinance``, but you should install and use ``yfinance`` directly.
 
 `Changelog » <./CHANGELOG.rst>`__
@@ -65,7 +65,9 @@ The Ticker module
 ~~~~~~~~~~~~~~~~~
 
 The ``Ticker`` module, which allows you to access
-ticker data in amore Pythonic way:
+ticker data in a more Pythonic way:
+
+Note: yahoo finance datetimes are received as UTC.
 
 .. code:: python
 
@@ -93,12 +95,12 @@ ticker data in amore Pythonic way:
     msft.quarterly_financials
 
     # show major holders
-    stock.major_holders
+    msft.major_holders
 
     # show institutional holders
-    stock.institutional_holders
+    msft.institutional_holders
 
-    # show balance heet
+    # show balance sheet
     msft.balance_sheet
     msft.quarterly_balance_sheet
 
@@ -144,7 +146,7 @@ If you want to use a proxy server for downloading data, use:
     msft.get_splits(proxy="PROXY_SERVER")
     msft.get_balance_sheet(proxy="PROXY_SERVER")
     msft.get_cashflow(proxy="PROXY_SERVER")
-    msgt.option_chain(..., proxy="PROXY_SERVER")
+    msft.option_chain(..., proxy="PROXY_SERVER")
     ...
 
 To initialize multiple ``Ticker`` objects, use
@@ -157,9 +159,9 @@ To initialize multiple ``Ticker`` objects, use
     # ^ returns a named tuple of Ticker objects
 
     # access each ticker using (example)
-    tickers.msft.info
-    tickers.aapl.history(period="1mo")
-    tickers.goog.actions
+    tickers.tickers.MSFT.info
+    tickers.tickers.AAPL.history(period="1mo")
+    tickers.tickers.GOOG.actions
 
 
 Fetching data for multiple tickers
@@ -254,7 +256,7 @@ Requirements
 * `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.23.1)
 * `Numpy <http://www.numpy.org>`_ >= 1.11.1
 * `requests <http://docs.python-requests.org/en/master/>`_ >= 2.14.2
-
+* `lxml <https://pypi.org/project/lxml/>`_ >= 4.5.1
 
 Optional (if you want to use ``pandas_datareader``)
 ---------------------------------------------------
