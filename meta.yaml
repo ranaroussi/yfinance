@@ -7,7 +7,7 @@ package:
 
 source:
   url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: "89e984306bee13ed9a1a5d543f4f01f85716120666e404596a4e932ac7448288"
+  sha256: "65d39bccf16bef35f6a08bf0df33650c0515b5ce8ea3c53924601f5fe00590cb"
 
 build:
   noarch: python
@@ -22,14 +22,12 @@ requirements:
     - pip
     - python
     - requests >=2.20
-    - lxml>=4.5.1
   run:
     - multitasking >=0.0.7
     - numpy >=1.15
     - pandas >=0.24
     - python
     - requests >=2.20
-    - lxml>=4.5.1
 
 test:
   imports:
@@ -50,4 +48,3 @@ about:
 extra:
   recipe-maintainers:
     - ranaroussi
-    - bradmetz
