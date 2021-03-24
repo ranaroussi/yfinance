@@ -17,7 +17,7 @@ Yahoo! Finance market data downloader
     :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi downloads
 
-.. image:: https://img.shields.io/travis/ranaroussi/yfinance/master.svg?maxAge=1
+.. image:: https://img.shields.io/travis/ranaroussi/yfinance/main.svg?maxAge=1
     :target: https://travis-ci.com/ranaroussi/yfinance
     :alt: Travis-CI build status
 
@@ -25,8 +25,8 @@ Yahoo! Finance market data downloader
     :target: https://www.codefactor.io/repository/github/ranaroussi/yfinance
     :alt: CodeFactor
 
-.. image:: https://coveralls.io/repos/github/ranaroussi/yfinance/badge.svg?branch=master
-    :target: https://coveralls.io/github/ranaroussi/yfinance?branch=master
+.. image:: https://coveralls.io/repos/github/ranaroussi/yfinance/badge.svg?branch=main
+    :target: https://coveralls.io/github/ranaroussi/yfinance?branch=main
     :alt: Coveralls coverage
 
 .. image:: https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60
