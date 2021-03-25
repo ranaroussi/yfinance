@@ -149,6 +149,18 @@ If you want to use a proxy server for downloading data, use:
     msft.option_chain(..., proxy="PROXY_SERVER")
     ...
 
+To use a custom ``requests`` session (for example to cache calls to the API
+or customize the ``User-agent`` header), pass a ``session=`` argument to the
+Ticker constructor:
+
+.. code:: python
+    import requests_cache
+    session = requests_cache.CachedSession('yfinance.cache')
+    session.headers['User-agent'] = 'my-program/1.0'
+    ticker = yf.Ticker('msft aapl goog', session=session)
+    # The scraped response will be stored in the cache
+    ticker.actions
+
 To initialize multiple ``Ticker`` objects, use
 
 .. code:: python
@@ -221,7 +233,7 @@ The following answer on Stack Overflow is for `How to deal with multi-level colu
 * ``yfinance`` returns a ``pandas.DataFrame`` with multi-level column names, with a level for the ticker and a level for the stock price data
 
   * The answer discusses:
-  
+
     * How to correctly read the the multi-level columns after saving the dataframe to a csv with ``pandas.DataFrame.to_csv``
     * How to download single or multiple tickers into a single dataframe with single level column names and a ticker column
 
