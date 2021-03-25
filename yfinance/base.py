@@ -559,8 +559,11 @@ class TickerBase():
         if "shortName" in self._info:
             q = self._info['shortName']
 
-        url = 'https://markets.businessinsider.com/ajax/' \
+        """url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
+            % urlencode(q)"""
+        url = 'https://markets.businessinsider.com/ajax/' \
+              'SearchController_Suggest?max_results=1&query=%s' \
             % urlencode(q)
         data = self.session.get(url=url, proxies=proxy).text
 
@@ -575,5 +578,6 @@ class TickerBase():
                 self._isin = '-'
                 return self._isin
 
-        self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
+        self._isin = data.split('"Stocks", "')[1].split('|')[1]
+        # self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
