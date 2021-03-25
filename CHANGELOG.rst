@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.58
+------
+- Allow specifying a custom requests session instance
+
 0.1.57
 ------
 - Added Conversion rate hint using 'financialCurrency' property in earnings
