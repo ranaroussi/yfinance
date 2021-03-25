@@ -42,11 +42,12 @@ def empty_df(index=[]):
     return empty
 
 
-def get_json(url, proxy=None):
-    html = _requests.get(url=url, proxies=proxy).text
+def get_json(url, proxy=None, session=None):
+    session = session or _requests
+    html = session.get(url=url, proxies=proxy).text
 
     if "QuoteSummaryStore" not in html:
-        html = _requests.get(url=url, proxies=proxy).text
+        html = session.get(url=url, proxies=proxy).text
         if "QuoteSummaryStore" not in html:
             return {}
 
