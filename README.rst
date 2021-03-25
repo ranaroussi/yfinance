@@ -17,7 +17,7 @@ Yahoo! Finance market data downloader
     :target: https://pypi.python.org/pypi/yfinance
     :alt: PyPi downloads
 
-.. image:: https://img.shields.io/travis/ranaroussi/yfinance/master.svg?maxAge=1
+.. image:: https://img.shields.io/travis/ranaroussi/yfinance/main.svg?maxAge=1
     :target: https://travis-ci.com/ranaroussi/yfinance
     :alt: Travis-CI build status
 
@@ -47,7 +47,7 @@ NOTE
 
 The library was originally named ``fix-yahoo-finance``, but
 I've since renamed it to ``yfinance`` as I no longer consider it a mere "fix".
-For reasons of backward-competability, ``fix-yahoo-finance`` now import and
+For reasons of backward-compatibility, ``fix-yahoo-finance`` now import and
 uses ``yfinance``, but you should install and use ``yfinance`` directly.
 
 `Changelog » <./CHANGELOG.rst>`__
@@ -149,6 +149,19 @@ If you want to use a proxy server for downloading data, use:
     msft.option_chain(..., proxy="PROXY_SERVER")
     ...
 
+To use a custom ``requests`` session (for example to cache calls to the API
+or customize the ``User-agent`` header), pass a ``session=`` argument to the
+Ticker constructor.
+
+.. code:: python
+
+    import requests_cache
+    session = requests_cache.CachedSession('yfinance.cache')
+    session.headers['User-agent'] = 'my-program/1.0'
+    ticker = yf.Ticker('msft aapl goog', session=session)
+    # The scraped response will be stored in the cache
+    ticker.actions
+
 To initialize multiple ``Ticker`` objects, use
 
 .. code:: python
@@ -211,6 +224,19 @@ I've also added some options to make life easier :)
             # (optional, default is None)
             proxy = None
         )
+
+
+Managing Multi-Level Columns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following answer on Stack Overflow is for `How to deal with multi-level column names downloaded with yfinance? <https://stackoverflow.com/questions/63107801>`_
+
+* ``yfinance`` returns a ``pandas.DataFrame`` with multi-level column names, with a level for the ticker and a level for the stock price data
+
+  * The answer discusses:
+
+    * How to correctly read the the multi-level columns after saving the dataframe to a csv with ``pandas.DataFrame.to_csv``
+    * How to download single or multiple tickers into a single dataframe with single level column names and a ticker column
 
 
 ``pandas_datareader`` override

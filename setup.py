@@ -11,6 +11,14 @@ from setuptools import setup, find_packages
 import io
 from os import path
 
+# --- get version ---
+version = "unknown"
+with open("yfinance/version.py") as f:
+    line = f.read().strip()
+    version = line.replace("version = ", "").replace('"', '')
+# --- /get version ---
+
+
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
@@ -19,7 +27,7 @@ with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='yfinance',
-    version="0.1.55",
+    version=version,
     description='Yahoo! Finance market data downloader',
     long_description=long_description,
     url='https://github.com/ranaroussi/yfinance',
@@ -46,6 +54,8 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
     platforms=['any'],
     keywords='pandas, yahoo finance, pandas datareader',

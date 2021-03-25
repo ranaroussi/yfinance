@@ -1,10 +1,31 @@
 Change Log
 ===========
 
-0.1.55 - to be released
+0.1.59
 ------
-- fixed institutional investors and mutual fund holders issue (#459)
-- fix for UTC timestamps in options chains (#429)
+- Added custom requests session instance support in holders
+
+0.1.58
+------
+- Allow specifying a custom requests session instance
+
+0.1.57
+------
+- Added Conversion rate hint using 'financialCurrency' property in earnings
+- Add important try+catch statements
+- Fixed issue with 1 hour interval
+- Merged PRs to fix some bugs
+- Fixed issue with special characters in tickers
+
+0.1.56
+------
+- Updated numpy version
+- Merged PRs to fix some bugs
+
+0.1.55
+------
+- Fixed institutional investors and mutual fund holders issue (#459)
+- Fix for UTC timestamps in options chains (#429)
 
 0.1.54
 ------
@@ -12,7 +33,7 @@ Change Log
 
 0.1.53
 ------
-- Added `Ticker.isin` + `Ticker.get_isin(...)`. This is still experimental. Do not rely on it for production.
+- Added ``Ticker.isin`` + ``Ticker.get_isin(...)``. This is still experimental. Do not rely on it for production.
 - Bug fixed: holders were always returning results for MSFT
 
 0.1.52
@@ -21,24 +42,24 @@ Change Log
 
 0.1.51
 ------
-- Added holdings data (`Ticker.major_holders` and `Ticker.institutional_holders`)
-- Added logo url to `Ticker.info`
+- Added holdings data (``Ticker.major_holders`` and ``Ticker.institutional_holders``)
+- Added logo url to ``Ticker.info``
 - Handling different date formats in fundamentals
 - Faster JSON parsing using regex
 - Trying to re-download JSON twice before giving up
 - Using ujson instead of json if installed
-- Fixed (more) `ticker.info` issues
+- Fixed (more) ``ticker.info`` issues
 - Misc bugfixes
 
 0.1.50
 ------
-- Fixed `ticker.info` issues
+- Fixed ``ticker.info`` issues
 - Handle sustainability index error
 - Added test script based on @GregoryMorse's pull request
 
 0.1.49
 ------
-- Fixed `elementwise comparison`` warning
+- Fixed ``elementwise comparison`` warning
 
 0.1.48
 ------
