@@ -286,7 +286,9 @@ class TickerBase():
 
         # holders
         try:
-            holders = _pd.read_html(ticker_url+'/holders')
+            resp = self.session.get(ticker_url + '/holders')
+            resp.raise_for_status()
+            holders = _pd.read_html(resp.content)
         except Exception as e:
             holders = []
 
