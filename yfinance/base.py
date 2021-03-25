@@ -270,6 +270,27 @@ class TickerBase():
             df.index = utils.camel2title(df.index)
             return df
 
+        # wrapping generic pattern functionality in function for testing
+        def generic_patterns(data):
+            for key in (
+                (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
+                (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
+                (self._financials, 'incomeStatement', 'incomeStatementHistory')
+            ):
+                item = key[1] + 'History'
+                if isinstance(data.get(item), dict):
+                    try:
+                        key[0]['yearly'] = cleanup(data[item][key[2]])
+                    except Exception as e:
+                        pass
+
+                item = key[1]+'HistoryQuarterly'
+                if isinstance(data.get(item), dict):
+                    try:
+                        key[0]['quarterly'] = cleanup(data[item][key[2]])
+                    except Exception as e:
+                        pass
+
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
@@ -396,24 +417,7 @@ class TickerBase():
         data = utils.get_json(ticker_url+'/financials', proxy, self.session)
 
         # generic patterns
-        for key in (
-            (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
-            (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
-            (self._financials, 'incomeStatement', 'incomeStatementHistory')
-        ):
-            item = key[1] + 'History'
-            if isinstance(data.get(item), dict):
-                try:
-                    key[0]['yearly'] = cleanup(data[item][key[2]])
-                except Exception as e:
-                    pass
-
-            item = key[1]+'HistoryQuarterly'
-            if isinstance(data.get(item), dict):
-                try:
-                    key[0]['quarterly'] = cleanup(data[item][key[2]])
-                except Exception as e:
-                    pass
+        generic_patterns(data=data)
 
         # earnings
         if isinstance(data.get('earnings'), dict):
