@@ -27,7 +27,7 @@ class TestMethods(unittest.TestCase):
 
             # call method to be tested 
             output = tickerbase.analyst_recommendations(data)
-            print(output)
+            # print(output)
 
             # test 
             if output is not None:
@@ -44,7 +44,18 @@ class TestMethods(unittest.TestCase):
             self.assertIsNone(tickerbase.analyst_recommendations(None))
             self.assertIsNone(tickerbase.analyst_recommendations("wrong data format"))
             self.assertIsNone(tickerbase.analyst_recommendations(1))
-    
+
+    def test_camel2title_should_correctly_camel_titles(self):
+        scrape_url = 'https://finance.yahoo.com/quote'
+        ticker_url = "{}/{}".format(scrape_url, 'MSFT')
+        data = utils.get_json(ticker_url, None)
+        res = TickerBase.analyst_recommendations(self, data)
+        titles = res.columns
+        titles_arr = titles.to_numpy()
+        alist = ['firm', 'toGrade', 'fromGrade', 'action']
+        expected_res = utils.camel2title(alist)
+        self.assertTrue((titles_arr == expected_res).all())
+
     # def test_exception(self):
     #     for symbol in symbols: 
     #         # setup
