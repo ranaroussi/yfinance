@@ -1,15 +1,16 @@
 import yfinance as yf
 from yfinance.base import TickerBase
 from yfinance import utils
-import unittest 
+import unittest
 import pandas as _pd
 import datetime
 
 symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
 
+
 class TestMethods(unittest.TestCase):
-    
+
     def test_happyPath_shouldReturnCorrectData(self):
         ''' 
         Test case: if scrape URL is correct, ticker is MSFT, and all conditions are met
@@ -17,7 +18,7 @@ class TestMethods(unittest.TestCase):
             index.name should = "Date"
         '''
 
-        for symbol in symbols: 
+        for symbol in symbols:
             # setup
             tickerbase = TickerBase(symbol)
             scrape_url = 'https://finance.yahoo.com/quote'
@@ -34,7 +35,7 @@ class TestMethods(unittest.TestCase):
                 self.assertEqual(output.index.name, "Date")
 
     def test_incorrectInputData_shouldReturnNone(self):
-        for symbol in symbols: 
+        for symbol in symbols:
             # setup
             tickerbase = TickerBase(symbol)
 
@@ -56,21 +57,17 @@ class TestMethods(unittest.TestCase):
         expected_res = utils.camel2title(alist)
         self.assertTrue((titles_arr == expected_res).all())
 
-    def test_index(self):
-        ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
-        data = utils.get_json(ticker_url, None)
-        self.assertEqual(TickerBase.analyst_recommendations(self,data).index.name,"Date")
-
     def test_if_sorted(self):
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
-        for i in range(1, len(TickerBase.analyst_recommendations(self,data).index)):
-            self.assertTrue(TickerBase.analyst_recommendations(self,data).index[i] > TickerBase.analyst_recommendations(self,data).index[i-1])
+        for i in range(1, len(TickerBase.analyst_recommendations(self, data).index)):
+            self.assertTrue(TickerBase.analyst_recommendations(self, data).index[i] >
+                            TickerBase.analyst_recommendations(self, data).index[i - 1])
 
     def test_date_time_format(self):
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
-        for i in range(1, len(TickerBase.analyst_recommendations(self,data).index)):
+        for i in range(1, len(TickerBase.analyst_recommendations(self, data).index)):
             test_variable = TickerBase.analyst_recommendations(self, data).index[i]
             self.assertTrue(isinstance(test_variable, datetime.datetime))
 
@@ -97,11 +94,11 @@ class TestMethods(unittest.TestCase):
     #         rec.set_index('earningsDate', inplace=True)
     #         print(rec)
 
-            # data = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-            # print(output)
+    # data = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
+    # print(output)
 
-            # test 
-            # self.assertIsNone(output)
+    # test
+    # self.assertIsNone(output)
 
     # def test_deletion(self):
     #     for symbol in symbols: 
