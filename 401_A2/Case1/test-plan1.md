@@ -18,7 +18,9 @@ This test plan is to test the function of parse_action with data containing the 
 1.2 Team Members
 
 ```
-Name:Shiyu Xiu Role:Unit Testing the parse_actions
+* Shiyu Xiu - Unit Testing the parse_actions
+* Luke Kim - Unit Testing the parse_actions for split case
+
 
 ```
 
@@ -89,5 +91,6 @@ Compare the result.
 
 ```
 MacOs Big Sur 11.2.
+Windows 10 Home 64-bit
 Python 3.9.2 64 bit version
 ```
