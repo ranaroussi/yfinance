@@ -22,19 +22,7 @@
 from __future__ import print_function
 
 from . import Ticker, multi
-from collections import namedtuple as _namedtuple
-
-
-def genTickers(tickers):
-    tickers = tickers if isinstance(
-        tickers, list) else tickers.replace(',', ' ').split()
-    tickers = [ticker.upper() for ticker in tickers]
-    ticker_objects = {}
-
-    for ticker in tickers:
-        ticker_objects[ticker] = Ticker(ticker)
-    return _namedtuple("Tickers", ticker_objects.keys()
-                       )(*ticker_objects.values())
+# from collections import namedtuple as _namedtuple
 
 
 class Tickers():
@@ -51,9 +39,10 @@ class Tickers():
         for ticker in self.symbols:
             ticker_objects[ticker] = Ticker(ticker)
 
-        self.tickers = _namedtuple(
-            "Tickers", ticker_objects.keys(), rename=True
-        )(*ticker_objects.values())
+        self.tickers = ticker_objects
+        # self.tickers = _namedtuple(
+        #     "Tickers", ticker_objects.keys(), rename=True
+        # )(*ticker_objects.values())
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
@@ -88,7 +77,7 @@ class Tickers():
                               **kwargs)
 
         for symbol in self.symbols:
-            getattr(self.tickers, symbol)._history = data[symbol]
+            self.tickers.get(symbol, {})._history = data[symbol]
 
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
