@@ -19,12 +19,13 @@
 # limitations under the License.
 #
 
-__version__ = "0.1.54"
-__author__ = "Ran Aroussi"
-
+from . import version
 from .ticker import Ticker
 from .tickers import Tickers
 from .multi import download
+
+__version__ = version.version
+__author__ = "Ran Aroussi"
 
 
 def pdr_override():

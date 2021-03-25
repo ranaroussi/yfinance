@@ -42,8 +42,9 @@ from . import shared
 
 
 class TickerBase():
-    def __init__(self, ticker):
+    def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
+        self.session = session or _requests
         self._history = None
         self._base_url = 'https://query1.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
@@ -148,7 +149,7 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = _requests.get(url=url, params=params, proxies=proxy)
+        data = self.session.get(url=url, params=params, proxies=proxy)
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -233,6 +234,8 @@ class TickerBase():
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
+        elif params["interval"] == "1h":
+            pass
         else:
             df.index = _pd.to_datetime(df.index.date)
             if tz is not None:
@@ -279,10 +282,15 @@ class TickerBase():
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = utils.get_json(ticker_url, proxy)
+        data = utils.get_json(ticker_url, proxy, self.session)
 
         # holders
-        holders = _pd.read_html(ticker_url+'/holders')
+        try:
+            resp = self.session.get(ticker_url + '/holders')
+            resp.raise_for_status()
+            holders = _pd.read_html(resp.content)
+        except Exception as e:
+            holders = []
 
         if len(holders)>=3:
             self._major_holders = holders[0]
@@ -291,7 +299,7 @@ class TickerBase():
         elif len(holders)>=2:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
-        else:
+        elif len(holders)>=1:
             self._major_holders = holders[0]
 
         #self._major_holders = holders[0]
@@ -315,29 +323,41 @@ class TickerBase():
 
         # sustainability
         d = {}
-        if isinstance(data.get('esgScores'), dict):
-            for item in data['esgScores']:
-                if not isinstance(data['esgScores'][item], (dict, list)):
-                    d[item] = data['esgScores'][item]
+        try:
+            if isinstance(data.get('esgScores'), dict):
+                for item in data['esgScores']:
+                    if not isinstance(data['esgScores'][item], (dict, list)):
+                        d[item] = data['esgScores'][item]
 
-            s = _pd.DataFrame(index=[0], data=d)[-1:].T
-            s.columns = ['Value']
-            s.index.name = '%.f-%.f' % (
-                s[s.index == 'ratingYear']['Value'].values[0],
-                s[s.index == 'ratingMonth']['Value'].values[0])
+                s = _pd.DataFrame(index=[0], data=d)[-1:].T
+                s.columns = ['Value']
+                s.index.name = '%.f-%.f' % (
+                    s[s.index == 'ratingYear']['Value'].values[0],
+                    s[s.index == 'ratingMonth']['Value'].values[0])
 
-            self._sustainability = s[~s.index.isin(
-                ['maxAge', 'ratingYear', 'ratingMonth'])]
+                self._sustainability = s[~s.index.isin(
+                    ['maxAge', 'ratingYear', 'ratingMonth'])]
+        except Exception:
+            pass
 
         # info (be nice to python 2)
         self._info = {}
-        items = ['summaryProfile', 'summaryDetail', 'quoteType',
-                 'defaultKeyStatistics', 'assetProfile', 'summaryDetail', 'financialData']
-        for item in items:
-            if isinstance(data.get(item), dict):
-                self._info.update(data[item])
+        try:
+            items = ['summaryProfile', 'summaryDetail', 'quoteType',
+                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+            for item in items:
+                if isinstance(data.get(item), dict):
+                    self._info.update(data[item])
+        except Exception:
+            pass
 
-        self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+        try:
+            # self._info['regularMarketPrice'] = self._info['regularMarketOpen']
+            self._info['regularMarketPrice'] = data.get('price', {}).get(
+                'regularMarketPrice', self._info['regularMarketOpen'])
+        except Exception:
+            pass
+
         self._info['logo_url'] = ""
         try:
             domain = self._info['website'].split(
@@ -373,7 +393,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(ticker_url+'/financials', proxy)
+        data = utils.get_json(ticker_url+'/financials', proxy, self.session)
 
         # generic patterns
         for key in (
@@ -381,27 +401,37 @@ class TickerBase():
             (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
             (self._financials, 'incomeStatement', 'incomeStatementHistory')
         ):
-
             item = key[1] + 'History'
             if isinstance(data.get(item), dict):
-                key[0]['yearly'] = cleanup(data[item][key[2]])
+                try:
+                    key[0]['yearly'] = cleanup(data[item][key[2]])
+                except Exception as e:
+                    pass
 
             item = key[1]+'HistoryQuarterly'
             if isinstance(data.get(item), dict):
-                key[0]['quarterly'] = cleanup(data[item][key[2]])
+                try:
+                    key[0]['quarterly'] = cleanup(data[item][key[2]])
+                except Exception as e:
+                    pass
 
         # earnings
         if isinstance(data.get('earnings'), dict):
-            earnings = data['earnings']['financialsChart']
-            df = _pd.DataFrame(earnings['yearly']).set_index('date')
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = 'Year'
-            self._earnings['yearly'] = df
+            try:
+                earnings = data['earnings']['financialsChart']
+                earnings['financialCurrency'] = 'USD' if 'financialCurrency' not in data['earnings'] else data['earnings']['financialCurrency']
+                self._earnings['financialCurrency'] = earnings['financialCurrency']
+                df = _pd.DataFrame(earnings['yearly']).set_index('date')
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = 'Year'
+                self._earnings['yearly'] = df
 
-            df = _pd.DataFrame(earnings['quarterly']).set_index('date')
-            df.columns = utils.camel2title(df.columns)
-            df.index.name = 'Quarter'
-            self._earnings['quarterly'] = df
+                df = _pd.DataFrame(earnings['quarterly']).set_index('date')
+                df.columns = utils.camel2title(df.columns)
+                df.index.name = 'Quarter'
+                self._earnings['quarterly'] = df
+            except Exception as e:
+                pass
 
         self._fundamentals = True
 
@@ -460,7 +490,9 @@ class TickerBase():
         self._get_fundamentals(proxy=proxy)
         data = self._earnings[freq]
         if as_dict:
-            return data.to_dict()
+            dict_data = data.to_dict()
+            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
+            return dict_data
         return data
 
     def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
@@ -530,7 +562,7 @@ class TickerBase():
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
             % urlencode(q)
-        data = _requests.get(url=url, proxies=proxy).text
+        data = self.session.get(url=url, proxies=proxy).text
 
         search_str = '"{}|'.format(ticker)
         if search_str not in data:

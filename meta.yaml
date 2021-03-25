@@ -1,5 +1,5 @@
 {% set name = "yfinance" %}
-{% set version = "0.1.55" %}
+{% set version = "0.1.58" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: "89e984306bee13ed9a1a5d543f4f01f85716120666e404596a4e932ac7448288"
+  sha256: "207da19e87792bf742d2744eee2fe18169853c1b82cfe14a9a7cfb8d05f09137"
 
 build:
   noarch: python
@@ -16,20 +16,21 @@ build:
 
 requirements:
   host:
+    - pandas >=0.24.0
+    - numpy >=1.16.5
+    - requests >=2.21
     - multitasking >=0.0.7
-    - numpy >=1.15
-    - pandas >=0.24
+    - lxml >=4.5.1
     - pip
     - python
-    - requests >=2.20
-    - lxml>=4.5.1
+
   run:
+    - pandas >=0.24.0
+    - numpy >=1.16.5
+    - requests >=2.21
     - multitasking >=0.0.7
-    - numpy >=1.15
-    - pandas >=0.24
+    - lxml >=4.5.1
     - python
-    - requests >=2.20
-    - lxml>=4.5.1
 
 test:
   imports:
@@ -50,4 +51,3 @@ about:
 extra:
   recipe-maintainers:
     - ranaroussi
-    - bradmetz
