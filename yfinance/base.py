@@ -396,17 +396,18 @@ class TickerBase():
 
     def analyst_recommendations(self, data):
         try:
-            rec = _pd.DataFrame(
-                data['upgradeDowngradeHistory']['history'])
-            rec['earningsDate'] = _pd.to_datetime(
-                rec['epochGradeDate'], unit='s')
+            rec = _pd.DataFrame(data['upgradeDowngradeHistory']['history'])
+
+            rec['earningsDate'] = _pd.to_datetime(rec['epochGradeDate'], unit='s')
             rec.set_index('earningsDate', inplace=True)
+
             rec.index.name = 'Date'
             rec.columns = utils.camel2title(rec.columns)
-            self._recommendations = rec[[
-                'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
+            self._recommendations = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
         except Exception:
             pass
+        
+        return self._recommendations
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy=proxy)
