@@ -408,6 +408,8 @@ class TickerBase():
         except Exception:
             pass
 
+        return self._recommendations
+
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy=proxy)
         data = self._recommendations
