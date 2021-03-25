@@ -1,4 +1,5 @@
 import unittest
+import tfiance as yf
 
 class TestGenericPatterns(unittest.TestCae):
     def test_generic_pattern(self):
