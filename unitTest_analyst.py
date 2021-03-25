@@ -2,8 +2,8 @@ import yfinance as yf
 from yfinance.base import TickerBase
 from yfinance import utils
 import unittest 
-import doctest
 import pandas as _pd
+import datetime
 
 symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
@@ -55,6 +55,30 @@ class TestMethods(unittest.TestCase):
         alist = ['firm', 'toGrade', 'fromGrade', 'action']
         expected_res = utils.camel2title(alist)
         self.assertTrue((titles_arr == expected_res).all())
+
+    def test_index(self):
+        ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
+        data = utils.get_json(ticker_url, None)
+        self.assertEqual(TickerBase.analyst_recommendations(self,data).index.name,"Date")
+
+    def test_if_sorted(self):
+        ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
+        data = utils.get_json(ticker_url, None)
+        for i in range(1, len(TickerBase.analyst_recommendations(self,data).index)):
+            self.assertTrue(TickerBase.analyst_recommendations(self,data).index[i] > TickerBase.analyst_recommendations(self,data).index[i-1])
+
+    def test_date_time_format(self):
+        ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
+        data = utils.get_json(ticker_url, None)
+        for i in range(1, len(TickerBase.analyst_recommendations(self,data).index)):
+            test_variable = TickerBase.analyst_recommendations(self, data).index[i]
+            self.assertTrue(isinstance(test_variable, datetime.datetime))
+
+    def test_if_dataframe(self):
+        ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
+        data = utils.get_json(ticker_url, None)
+        output = TickerBase.analyst_recommendations(self, data)
+        self.assertTrue(isinstance(output, _pd.core.frame.DataFrame))
 
     # def test_exception(self):
     #     for symbol in symbols: 
