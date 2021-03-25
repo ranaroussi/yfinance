@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.59
+------
+- Added custom requests session instance support in holders
+
 0.1.58
 ------
 - Allow specifying a custom requests session instance

@@ -151,9 +151,10 @@ If you want to use a proxy server for downloading data, use:
 
 To use a custom ``requests`` session (for example to cache calls to the API
 or customize the ``User-agent`` header), pass a ``session=`` argument to the
-Ticker constructor:
+Ticker constructor.
 
 .. code:: python
+
     import requests_cache
     session = requests_cache.CachedSession('yfinance.cache')
     session.headers['User-agent'] = 'my-program/1.0'
