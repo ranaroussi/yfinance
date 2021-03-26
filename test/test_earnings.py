@@ -2,6 +2,9 @@
 Module for testings earnings property
 '''
 
+import sys
+sys.path.insert(1, '../') # Allows us to import yfinance
+
 import unittest
 import yfinance as yf
 
@@ -24,6 +27,7 @@ class TestEarnings(unittest.TestCase):
   @mock.patch('yfinance.utils.get_json',
     side_effect=get_mocked_get_json(url_map0)
   )
+
   def test_mock(self,mock_get_json):
     goog = yf.Ticker('GOOG')
 
@@ -34,6 +38,14 @@ class TestEarnings(unittest.TestCase):
     self.assertEqual(earning_2017,12662000000)
 
     self.assertEqual(len(mock_get_json.call_args_list), 2)
+
+
+  def test_invalid_ticker(self):
+    invalid = yf.Ticker('InvalidTickerName')
+
+    with self.assertRaises(ValueError):
+        invalid.earnings
+
 
 
 if __name__ == '__main__':
