@@ -33,6 +33,8 @@ class TestMethods(unittest.TestCase):
             # test 
             if output is not None:
                 self.assertEqual(output.index.name, "Date")
+            else:
+                self.assertEqual(output, None)
 
     def test_incorrectInputData_shouldReturnNone(self):
         for symbol in symbols:
@@ -76,47 +78,6 @@ class TestMethods(unittest.TestCase):
         data = utils.get_json(ticker_url, None)
         output = TickerBase.analyst_recommendations(self, data)
         self.assertTrue(isinstance(output, _pd.core.frame.DataFrame))
-
-    # def test_exception(self):
-    #     for symbol in symbols: 
-    #         # setup
-    #         tickerbase = TickerBase(symbol)
-    #         scrape_url = 'https://finance.yahoo.com/quote'
-    #         ticker_url = "{}/{}".format(scrape_url, symbol)
-
-    #         data = utils.get_json(ticker_url, None)
-
-    #         # call method to be tested 
-    #         output = tickerbase.analyst_recommendations(data)
-
-    #         rec = _pd.DataFrame(data['upgradeDowngradeHistory']['history'])
-    #         rec['earningsDate'] = _pd.to_datetime(rec['epochGradeDate'], unit='s')
-    #         rec.set_index('earningsDate', inplace=True)
-    #         print(rec)
-
-    # data = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-    # print(output)
-
-    # test
-    # self.assertIsNone(output)
-
-    # def test_deletion(self):
-    #     for symbol in symbols: 
-    #         # setup
-    #         tickerbase = TickerBase(symbol)
-    #         scrape_url = 'https://finance.yahoo.com/quote'
-    #         ticker_url = "{}/{}".format(scrape_url, symbol)
-
-    #         data = utils.get_json(ticker_url, None)
-
-    #         # call method to be tested 
-    #         if 'earningsDate' in data.index:
-    #             del data['earningsDate'] 
-    #         output = tickerbase.analyst_recommendations(data)
-    #         # print(output)
-
-    #         # test 
-    #         self.assertIsNone(output)
 
 
 if __name__ == "__main__":
