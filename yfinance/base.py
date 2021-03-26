@@ -284,11 +284,11 @@ class TickerBase():
         # holders
         holders = _pd.read_html(ticker_url+'/holders')
 
-        if len(holders)>=3:
+        if len(holders) >= 3:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
             self._mutualfund_holders = holders[2]
-        elif len(holders)>=2:
+        elif len(holders) >= 2:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
         else:
@@ -300,18 +300,18 @@ class TickerBase():
         if self._institutional_holders is not None:
             if 'Date Reported' in self._institutional_holders:
                 self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                self._institutional_holders['Date Reported'])
+                    self._institutional_holders['Date Reported'])
             if '% Out' in self._institutional_holders:
                 self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float)/100
 
         if self._mutualfund_holders is not None:
             if 'Date Reported' in self._mutualfund_holders:
                 self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
-                self._mutualfund_holders['Date Reported'])
+                    self._mutualfund_holders['Date Reported'])
             if '% Out' in self._mutualfund_holders:
                 self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float)/100
 
         # sustainability
         d = {}

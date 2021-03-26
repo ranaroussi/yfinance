@@ -15,10 +15,13 @@ Sanity check for most common library uses all working
 """
 
 import yfinance as yf
+from yfinance import utils
 
 
-symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
+# , 'IWO', 'VFINX', '^GSPC', 'BTC-USD'
+symbols = ['MSFT']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
+
 
 class TestTicker:
     def test_info_history(self):
@@ -45,7 +48,8 @@ class TestTicker:
             assert(ticker.institutional_holders is not None)
 
     def test_recommendations(self):
-        for ticker in tickers:
-            print(ticker.recommendations)
+        print(yf.Ticker('MSFT').analyst_recommendations(utils.get_json(
+            "{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).columns.to_numpy())
+
 
 TestTicker().test_recommendations()
