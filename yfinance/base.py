@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+import re
 import time as _time
 import datetime as _datetime
 import requests as _requests
@@ -569,14 +570,19 @@ class TickerBase():
 
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
-            if q.lower() in data.lower() or q.replace(",", "").lower() in data.lower():
-                search_str = '"|'
-                if search_str not in data and '|' not in data:
+            q_components = q.lower().replace(' ', ',').split(',')
+            d = data.lower()
+            for c in q_components:
+                if c in d:
+                    search_str = '"|'
+                    if search_str not in data and '|' not in data:
+                        self._isin = '-'
+                        return self._isin
+                    else:
+                        break
+                else:
                     self._isin = '-'
                     return self._isin
-            else:
-                self._isin = '-'
-                return self._isin
 
         self._isin = data.split('"Stocks", "')[1].split('|')[1]
         # self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
