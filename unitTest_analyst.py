@@ -82,7 +82,8 @@ class TestMethods(unittest.TestCase):
 
     def test_camel2title_should_correctly_camel_titles(self):
         ''' 
-        Test case: Test if the titles of the output of analyst_recommendations(data) is camel-cased
+        Test case: Test if the titles of the output of analyst_recommendations(data) 
+            is correctly converted from camel case to title case
         Test condition: if the data input is correct, all conditions met
         Return type: 
             analyst_recommendations(data).columns.to_numpy() = ['Firm', 'To Grade', 'From Grade', 'Action']

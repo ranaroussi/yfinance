@@ -1,16 +1,26 @@
 # Test Case: test_incorrectInputData_shouldReturnNone
 
-### **Purpose**: Test the case where incorrect data is passed into `analyst_recommendations()`, `None` Should be returned.
+### Purpose:
 
-### **Tester name**: Michelle Wang
+Test the case where incorrect data is passed into `analyst_recommendations()`, `None` Should be returned.
 
-### **Date of Test**: March 25, 2021
+### Tester name:
 
-### Operating System: Windows 10, MacOS
+Michelle Wang
 
-### Required Configuration: No special setup
+### Date of Test:
 
-# Test Script/Results
+March 25, 2021
+
+### Operating System:
+
+Windows 10, MacOS
+
+### Required Configuration:
+
+No special setup
+
+### Test Script/Results
 
 | Test | Input                      | Expected Result | Actual Result | Pass/Fail |
 | ---- | -------------------------- | --------------- | ------------- | --------- |
