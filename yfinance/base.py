@@ -284,11 +284,11 @@ class TickerBase():
         # holders
         holders = _pd.read_html(ticker_url+'/holders')
 
-        if len(holders)>=3:
+        if len(holders) >= 3:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
             self._mutualfund_holders = holders[2]
-        elif len(holders)>=2:
+        elif len(holders) >= 2:
             self._major_holders = holders[0]
             self._institutional_holders = holders[1]
         else:
@@ -300,18 +300,18 @@ class TickerBase():
         if self._institutional_holders is not None:
             if 'Date Reported' in self._institutional_holders:
                 self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                self._institutional_holders['Date Reported'])
+                    self._institutional_holders['Date Reported'])
             if '% Out' in self._institutional_holders:
                 self._institutional_holders['% Out'] = self._institutional_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float)/100
 
         if self._mutualfund_holders is not None:
             if 'Date Reported' in self._mutualfund_holders:
                 self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
-                self._mutualfund_holders['Date Reported'])
+                    self._mutualfund_holders['Date Reported'])
             if '% Out' in self._mutualfund_holders:
                 self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float)/100
 
         # sustainability
         d = {}
@@ -359,18 +359,7 @@ class TickerBase():
             pass
 
         # analyst recommendations
-        try:
-            rec = _pd.DataFrame(
-                data['upgradeDowngradeHistory']['history'])
-            rec['earningsDate'] = _pd.to_datetime(
-                rec['epochGradeDate'], unit='s')
-            rec.set_index('earningsDate', inplace=True)
-            rec.index.name = 'Date'
-            rec.columns = utils.camel2title(rec.columns)
-            self._recommendations = rec[[
-                'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-        except Exception:
-            pass
+        self.analyst_recommendations(data)
 
         # get fundamentals
         data = utils.get_json(ticker_url+'/financials', proxy)
@@ -404,6 +393,21 @@ class TickerBase():
             self._earnings['quarterly'] = df
 
         self._fundamentals = True
+
+    def analyst_recommendations(self, data):
+        try:
+            rec = _pd.DataFrame(data['upgradeDowngradeHistory']['history'])
+
+            rec['earningsDate'] = _pd.to_datetime(rec['epochGradeDate'], unit='s')
+            rec.set_index('earningsDate', inplace=True)
+
+            rec.index.name = 'Date'
+            rec.columns = utils.camel2title(rec.columns)
+            self._recommendations = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
+        except Exception:
+            pass
+        
+        return self._recommendations
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
         #self._get_fundamentals(proxy=proxy)
