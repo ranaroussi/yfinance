@@ -104,7 +104,7 @@ class TestMethods(unittest.TestCase):
 
     def test_if_sorted(self):
         '''
-        Test Case: To check the index ordering of the data is the acending order 
+        Test Case: To check the index ordering of the data is the ascending order 
         Test Condition: Check the the previous index has a lower datetime than the current index datetime
         Return type: TickerBase.analyst_recommendations(self, data).index[i] > TickerBase.analyst_recommendations(self, data).index[i-1]
             
