@@ -20,7 +20,7 @@ class TestMethods(unittest.TestCase):
             analyst_recommendations(data).index.name = "Date"
 
         >>> yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).index.name
-        "Date"
+        'Date'
         '''
 
         for symbol in symbols:
@@ -53,18 +53,18 @@ class TestMethods(unittest.TestCase):
             analyst_recommendations([1,2,3]) -> None
             analyst_recommendations(1) -> None
 
-        >>> yf.Ticker('MSFT').analyst_recommendations(True)
-        None
-        >>> yf.Ticker('MSFT').analyst_recommendations(False)
-        None
-        >>> yf.Ticker('MSFT').analyst_recommendations(None)
-        None
-        >>> yf.Ticker('MSFT').analyst_recommendations('wrong data format')
-        None
-        >>> yf.Ticker('MSFT').analyst_recommendations([1,2,3])
-        None
-        >>> yf.Ticker('MSFT').analyst_recommendations(1)
-        None
+        >>> yf.Ticker('MSFT').analyst_recommendations(True) is None
+        True
+        >>> yf.Ticker('MSFT').analyst_recommendations(False) is None
+        True
+        >>> yf.Ticker('MSFT').analyst_recommendations(None) is None
+        True
+        >>> yf.Ticker('MSFT').analyst_recommendations('wrong data format') is None
+        True
+        >>> yf.Ticker('MSFT').analyst_recommendations([1,2,3]) is None
+        True
+        >>> yf.Ticker('MSFT').analyst_recommendations(1) is None
+        True
         '''
 
         for symbol in symbols:
@@ -84,10 +84,11 @@ class TestMethods(unittest.TestCase):
         ''' 
         Test case: Test if the titles of the output of analyst_recommendations(data) is camel-cased
         Test condition: if the data input is correct, all conditions met
-        Return type: analyst_recommendations(data).columns.to_numpy() = ['firm', 'toGrade', 'fromGrade', 'action']
+        Return type: 
+            analyst_recommendations(data).columns.to_numpy() = ['Firm', 'To Grade', 'From Grade', 'Action']
 
         >>> yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).columns.to_numpy()
-        ['Firm' 'To Grade' 'From Grade' 'Action']
+        array(['Firm', 'To Grade', 'From Grade', 'Action'], dtype=object)
         '''
 
         scrape_url = 'https://finance.yahoo.com/quote'
