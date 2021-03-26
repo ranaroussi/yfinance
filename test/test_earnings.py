@@ -9,50 +9,90 @@ from unittest import mock
 from pathlib import Path
 
 from mock import get_mocked_get_json
+from math import isnan
 
 # Mock based on https://stackoverflow.com/a/28507806/3558475:
 data_path = Path(__file__).parent/'data'
 
-url_map0 ={
+
+
+class TestEarnings(unittest.TestCase):
+    '''
+    Class for testings earnings property
+    '''
+    url_map0 ={
   'https://finance.yahoo.com/quote/GOOG/financials': 'goog_financials.json'
 }
 
-class TestEarnings(unittest.TestCase):
-  '''
-  Class for testings earnings property
-  '''
-  @mock.patch('yfinance.utils.get_json',
-    side_effect=get_mocked_get_json(url_map0)
-  )
-  def test_mock(self,mock_get_json):
-    goog = yf.Ticker('GOOG')
+    @mock.patch('yfinance.utils.get_json',
+        side_effect=get_mocked_get_json(url_map0)
+        )
+    def test_mock(self,mock_get_json):
+        goog = yf.Ticker('GOOG')
 
-    earnings = goog.earnings
+        earnings = goog.earnings
 
-    earning_2017 = earnings['Earnings'].iloc[0]
-    self.assertEqual(earning_2017,12662000000)
+        earning_2017 = earnings['Earnings'].iloc[0]
 
-    self.assertEqual(len(mock_get_json.call_args_list), 2)
+        self.assertEqual(earning_2017,12662000000)
+
+        self.assertEqual(len(mock_get_json.call_args_list), 2)
 
 class TestDataValues(unittest.TestCase):
-    goog = yf.Ticker('GOOG')
+    '''
+    Class for testing Missing or Incomplete Data values.
+    Removed: quarterly earnings 1Q2020, yearly earnings 2019
+    '''
+    url_map0 ={
+  'https://finance.yahoo.com/quote/GOOG/financials': 'goog_removed_data.json'
+}
+    url_map1 ={
+  'https://finance.yahoo.com/quote/GOOG/financials': 'goog_removed.json'
+}
 
-    def test_incomplete_data(self):
-        pass
+    @mock.patch('yfinance.utils.get_json',
+    side_effect=get_mocked_get_json(url_map0)
+    )
+    def test_no_yearly_data(self, mock_get_json):
+        goog = yf.Ticker('GOOG')
+
+        earnings = goog.earnings
+
+        self.assertNotIn(34343000000, earnings['Earnings'])
+        self.assertEqual(12662000000, earnings['Earnings'].iloc[0])
+        self.assertEqual(30736000000, earnings['Earnings'].iloc[1])
+        self.assertEqual(40269000000, earnings['Earnings'].iloc[2])
 
 
-    def test_no_quarterly_data_annual(self):
-        # Test to ensure yearly earnings is still working after removal of a quarter
-        earnings_2020 = earnings['Earnings'].iloc[3]
-        self.assertEqual(earnings_2020,40269000000)
+    @mock.patch('yfinance.utils.get_json',
+    side_effect=get_mocked_get_json(url_map0)
+    )
+    def test_no_quarterly_data(self, mock_get_json):
+        goog = yf.Ticker("GOOG")
+        earnings = goog.quarterly_earnings["Earnings"]
+        self.assertNotIn(6836000000, earnings)
+        self.assertEqual(6959000000, earnings.iloc[0])
+        self.assertEqual(11247000000, earnings.iloc[1])
+        self.assertEqual(15227000000, earnings.iloc[2])
+        self.assertTrue(earnings.size == 3)
 
-    def test_no_quarterly_data_quarter(self):
-        # Test to ensure quarterly earnings is still working after removal of a quarter
-        earnings_2020_quarterly = goog.quarterly_earnings['Earnings']
-        self.assertNotIn(6836000000, earnings_2020_quarter)
+    
+    @mock.patch('yfinance.utils.get_json',
+    side_effect=get_mocked_get_json(url_map1)
+    )
+    def test_annual_earnings_field_missing(self, mock_get_json):
+        goog = yf.Ticker("GOOG")
+        earnings = goog.earnings
+        self.assertTrue(isnan(earnings['Earnings'].iloc[0]))
 
-    def test_missing_quarter(self):
-        pass
-      
+    @mock.patch('yfinance.utils.get_json',
+    side_effect=get_mocked_get_json(url_map1)
+    )
+    def test_quarterly_earnings_field_missing(self, mock_get_json):
+        goog = yf.Ticker("GOOG")
+        earnings = goog.quarterly_earnings["Earnings"]
+        self.assertTrue(isnan(earnings.iloc[0]))
+
+
 if __name__ == '__main__':
   unittest.main()
