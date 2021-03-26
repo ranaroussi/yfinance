@@ -20,7 +20,7 @@ Windows 10, MacOS
 
 No special setup
 
-# Test Script/Results
+### Test Script/Results
 
 | Test | Input                                            | Expected Result                                                   | Actual Result                                                     | Pass/Fail |
 | ---- | ------------------------------------------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------- | --------- |
