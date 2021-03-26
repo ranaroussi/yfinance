@@ -47,20 +47,7 @@ class TestTicker:
 
     def test_recommendations(self):
         for ticker in tickers:
-            rec = ticker.recommendations
-
-            # Test if the pandas.to_datetime function returns the result as expected
-            times = rec['earningsDate']
-            for time in times:
-                assert(time.units == 's')
-
-            # Test if the index.name has been renamed to ‘Date’
-            assert(rec.index.name == 'Date')
-
-
-class TestTickers:
-    def test_nothing(self):
-        pass
+            print(ticker.recommendations)
 
 
 TestTicker().test_recommendations()
