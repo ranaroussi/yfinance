@@ -16,12 +16,11 @@ Sanity check for most common library uses all working
 
 import yfinance as yf
 from yfinance import utils
-
-
+import pandas
+import datetime
 # , 'IWO', 'VFINX', '^GSPC', 'BTC-USD'
 symbols = ['MSFT']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
-
 
 class TestTicker:
     def test_info_history(self):
@@ -52,4 +51,5 @@ class TestTicker:
             "{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).columns.to_numpy())
 
 
-TestTicker().test_recommendations()
+#TestTicker().test_recommendations()
+print(datetime.datetime)

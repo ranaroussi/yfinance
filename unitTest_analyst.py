@@ -103,6 +103,14 @@ class TestMethods(unittest.TestCase):
         self.assertTrue((titles_arr == expected_res).all())
 
     def test_if_sorted(self):
+        '''
+        Test Case: To check the index ordering of the data is the acending order 
+        Test Condition: Check the the previous index has a lower datetime than the current index datetime
+        Return type: TickerBase.analyst_recommendations(self, data).index[i] > TickerBase.analyst_recommendations(self, data).index[i-1]
+            
+        >>> 
+            
+        '''
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
         for i in range(1, len(TickerBase.analyst_recommendations(self, data).index)):
@@ -110,14 +118,32 @@ class TestMethods(unittest.TestCase):
                             TickerBase.analyst_recommendations(self, data).index[i - 1])
 
     def test_date_time_format(self):
+        '''
+        Test Case: To check the index used in the dataframe work is stored as a datetime format 
+        Test Condition: Check if every index value in the dataframe is in datetime timestamp
+        Return type: TickerBase.analyst_recommendations(self, data).index
+            
+        >>> type(yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', "MSFT"), None)).index)
+            <class 'pandas.core.indexes.datetimes.DatetimeIndex'>
+        >>> type(yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', "MSFT"), None)).index[0])
+            <class 'pandas._libs.tslibs.timestamps.Timestamp'>
+            
+        '''
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
-        for i in range(1, len(TickerBase.analyst_recommendations(self, data).index)):
-            test_variable = TickerBase.analyst_recommendations(
-                self, data).index[i]
-            self.assertTrue(isinstance(test_variable, datetime.datetime))
+        for index in TickerBase.analyst_recommendations(self, data).index:
+            print(isinstance(index, datetime.datetime))
+            self.assertTrue(isinstance(index, datetime.datetime))
 
     def test_if_dataframe(self):
+        '''
+        Test Case: To check the output data of analyst recommendation is stored as a panda dataframe 
+        Test Condition: If the returned variable instance is a dataframe
+        Return type: isinstance(TickerBase.analyst_recommendations(self, data), _pd.core.frame.DataFrame)
+            
+        >>> type(yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', "MSFT"), None)))
+            <class 'pandas.core.frame.DataFrame'>
+        '''
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
         output = TickerBase.analyst_recommendations(self, data)
