@@ -87,7 +87,7 @@ class TestMethods(unittest.TestCase):
         Return type: analyst_recommendations(data).columns.to_numpy() = ['firm', 'toGrade', 'fromGrade', 'action']
 
         >>> yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).columns.to_numpy()
-        ['firm', 'toGrade', 'fromGrade', 'action']
+        ['Firm' 'To Grade' 'From Grade' 'Action']
         '''
 
         scrape_url = 'https://finance.yahoo.com/quote'
