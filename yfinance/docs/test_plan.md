@@ -26,18 +26,17 @@ For this plan, the test team will be responsible for testing the following two m
 
 ## Assumptions / Risks
 ### Assumptions
-This section lists assumptions that are made specific to this project.
+This section lists assumptions that are made during testing.
 
-TODO  - EXAMPLE BELOW
-1. Delivery of the product is in format that the test team can check it into CVS.
+1. `Ticker` module is fully implemented and can be used.
+2. Any existing code that calls methods `.financials` and `.quarterly_financials` is fully implemented and works as intended.
 
 ### Risks
-TODO - EXAMPLE BELOW
+Risks and the appropriate actions to address them are identified in this section. The impact of a risk is based on how the project
+would be affected if the risk was triggered. Trigger indicates an event that would
+cause the risk to become an issue that needs to be resolved.
 
-The following risks have been identified and the appropriate action identified to mitigate
-their impact on the project. The impact (or severity) of the risk is based on how the project
-would be affected if the risk was triggered. The trigger is what milestone or event would
-cause the risk to become an issue to be dealt with.
+TODO - EXAMPLE BELOW
 
 | # | Risk | Impact | Trigger | Mitigation Plan |
 |---|------|--------|---------|-----------------|
