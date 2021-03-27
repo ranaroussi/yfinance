@@ -1,3 +1,6 @@
+## Note: code for test 1 is located in the yfinance/yfinance/test_task1.py
+
+
 |                                 |                  GENERAL INFORMATION                                                                           |
 |---------------------------------|----------------------------------------------------------------------------------------------------------------|
 | Test Stage:                     |⬛️ Unit ☐ Functionality ☐ Performance ☐ Regression ☐ Integration ☐ Acceptance ☐ System ☐ Pilot ☐ Interface |
@@ -21,7 +24,7 @@
 |                          |                     ENVIRONMENTAL NEEDS                                                                                                  |
 |--------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
 | Hardware:                | N/A                                                                                           |
-| Software:                | Have yfinance library installed  |
+| Software:                | Have yfinance library installed |
 | Procedural Requirements: | N/A                                                     |
 
 
