@@ -24,6 +24,9 @@ class Test_parse_action(unittest.TestCase):
     """
     
     def test_dividend(self):
+        """
+        Test if it can correctly return the dividends in the correct order and format(parsed correctly)
+        """
         output1=pd.DataFrame(columns=["Dividends"])
         output1=pd.DataFrame(data=[{'amount': 0.448, 'date': 1615987800},{'amount': 0.442, 'date': 1608215400}])
         output1.set_index("date",inplace=True)
@@ -31,9 +34,7 @@ class Test_parse_action(unittest.TestCase):
         output1.sort_index(inplace=True)
         #dividends.index = dividends.index.tz_localize(tz)
         output1.columns=["Dividends"]
-        """
-        Test if it can correctly return the dividends in the correct order and format(parsed correctly)
-        """
+        
         #case1: when Data that contains two different dividends and contains no splits.
         result=utils.parse_actions(data1)
         self.assertNotEqual(result, None)#check if the returned result is None
@@ -47,7 +48,9 @@ class Test_parse_action(unittest.TestCase):
         self.assertTrue(result2[1].empty)
     
     def test_split(self):
-        
+        """
+        Test if it can correctly parsr the data with splits.
+        """
         #mock dataframe containing a stock info with splits
         output = pd.DataFrame(data=[{'date': 1616482800, 'numerator': 1, 'denominator': 50, 'splitRatio': '1:50'}])
         output.set_index("date",inplace=True)

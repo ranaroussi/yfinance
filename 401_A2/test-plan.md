@@ -12,7 +12,7 @@ out of scope.
 
 ```
 The parse_actions function is utils.py is used to correctly parse the data passed in and return the correct dataframe object.
-This test plan is to test the function of parse_action with data containing the dividends section only and without dividends and splits section.
+This test plan is to test the function of parse_action with with different ticker data and ppossbily found any bugs inside.
 ```
 
 1.2 Team Members
@@ -27,7 +27,7 @@ This test plan is to test the function of parse_action with data containing the 
 **2 Problem found in Research phase**
 
 ```
-TODO
+No problem has been found
 ```
 
 **3 Risks**
