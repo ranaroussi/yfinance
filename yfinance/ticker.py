@@ -35,7 +35,7 @@ from .base import TickerBase
 
 
 class Ticker(TickerBase):
-
+    ismocked = False
     def __repr__(self):
         return 'yfinance.Ticker object <%s>' % self.ticker
 
@@ -155,7 +155,41 @@ class Ticker(TickerBase):
 
     @property
     def financials(self):
-        return self.get_financials()
+        """
+        A getter that returns a Panda Dataframe with the yearly financials for the past 4 years.
+        >>> import os
+        >>> import dill
+        >>> # Adding mock data to isolate our getter from the Ticker constructor :
+        >>> msft = dill.load(open("msft.dill", "rb"))
+        >>> # Adding mocked flag to isolate our getter from get_fundamentals() :
+        >>> msft.ismocked = True
+        >>> msft.financials
+                                                    2020-06-30      2019-06-30      2018-06-30     2017-06-30
+        Research Development                     19269000000.0   16876000000.0   14726000000.0  13037000000.0
+        Effect Of Accounting Charges                      None            None            None           None
+        Income Before Tax                        53036000000.0   43688000000.0   36474000000.0  29901000000.0
+        Minority Interest                                 None            None            None           None
+        Net Income                               44281000000.0   39240000000.0   16571000000.0  25489000000.0
+        Selling General Administrative           24709000000.0   23098000000.0   22223000000.0  19942000000.0
+        Gross Profit                             96937000000.0   82933000000.0   72007000000.0  62310000000.0
+        Ebit                                     52959000000.0   42959000000.0   35058000000.0  29331000000.0
+        Operating Income                         52959000000.0   42959000000.0   35058000000.0  29331000000.0
+        Other Operating Expenses                          None            None            None           None
+        Interest Expense                         -2591000000.0   -2686000000.0   -2733000000.0  -2222000000.0
+        Extraordinary Items                               None            None            None           None
+        Non Recurring                                     None            None            None           None
+        Other Items                                       None            None            None           None
+        Income Tax Expense                        8755000000.0    4448000000.0   19903000000.0   4412000000.0
+        Total Revenue                           143015000000.0  125843000000.0  110360000000.0  96571000000.0
+        Total Operating Expenses                 90056000000.0   82884000000.0   75302000000.0  67240000000.0
+        Cost Of Revenue                          46078000000.0   42910000000.0   38353000000.0  34261000000.0
+        Total Other Income Expense Net              77000000.0     729000000.0    1416000000.0    570000000.0
+        Discontinued Operations                           None            None            None           None
+        Net Income From Continuing Ops           44281000000.0   39240000000.0   16571000000.0  25489000000.0
+        Net Income Applicable To Common Shares   44281000000.0   39240000000.0   16571000000.0  25489000000.0
+        """
+        if self.ismocked == True: return self.get_financials(ismocked = True)
+        else: return self.get_financials()
 
     @property
     def quarterly_financials(self):
@@ -194,3 +228,7 @@ class Ticker(TickerBase):
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
