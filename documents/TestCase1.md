@@ -2,12 +2,12 @@
 |---------------------------------|----------------------------------------------------------------------------------------------------------------|
 | Test Stage:                     | ☐ Unit ☐ Functionality ☐ Performance ☐ Regression ☐ Integration ☐ Acceptance ☐ System ☐ Pilot ☐ Interface |
 | Test Date:                      | 03/26/2021                                                                                                     |
-| System Date, if applicable:     | N/A                                                                                                            |
-| Tester:                         | Specify the name(s) of who is testing this case scenario.                                                      |
+| System Date, if applicable:     | 03/21/2021                                                                                                     |
+| Tester:                         | Anastasia Borissova                                                                                            |
 | Test Case Number:               | 1                                                                                                              |
 | Test Case Description:          | This test checks if the variable ‘cal’ gets an empty pandas DataFrame, e.g. not receiving any data.            |
 | Results:                        | ☐ Pass ☐ Fail                                                                                                 |
-| Incident Number, if applicable: | Specify the unique identifier assigned to the incident.                                                        |
+| Incident Number, if applicable: | Issue #1                                                                                                       |
 
 
 |                              |                     INTRODUCTION                                                                                                                                      |
