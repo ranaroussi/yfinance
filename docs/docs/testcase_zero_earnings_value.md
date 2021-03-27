@@ -31,7 +31,7 @@ No special setup needed
 
 | **Step**     | **Test Step/Input** | **Expected Results** | **Actual Results** | **Requirement Validation** | **Pass/Fail** |
 | ------------ | ------------------- | -------------------- | ------------------ | -------------------------- | ------------- |
-| Replace `get_json` with mock function that returns a company with zero earnings | `get_json` is updated |  | `get_json` is updated |  | ✅ |
-| Create ticker that corrisponds to the mocked data | Ticker is created |  | `get_json` is updated |  | ✅ |
-| Get `earnings` property | Ticker is created |  | `get_json` is updated |  | ✅ |
-| Validate that the `earnings` match expected zero value| Ticker is created | `earnings` can handle values of zero | `get_json` is updated |  | ✅ |
+| 1 | Replace `get_json` with mock function that returns a company with zero earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
+| 2 | Create ticker that corrisponds to the mocked data | Ticker is created | `get_json` is updated |  | ✅ |
+| 3 | Get `earnings` property | Ticker is created | `get_json` is updated |  | ✅ |
+| 4 | Validate that the `earnings` match expected zero value| Ticker is created | `earnings` can handle values of zero | `get_json` is updated | ✅ |
