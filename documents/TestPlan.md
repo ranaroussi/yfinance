@@ -53,7 +53,7 @@ A new server is required for the web server, the application and the database.
 We did not find any github PRs that implements a solution to the problem identifies by our tests.
 
 #### Quick Fix?
-- Issue #1:
+- Issue #1: Have a quick test that checks if dataframe is empty. If empty, pass. Otherwise, continue execution of the function
 - Issue #2:
 - Issue #3:
 - Issue #4:
