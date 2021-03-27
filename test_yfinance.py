@@ -44,6 +44,26 @@ class TestTicker:
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
 
+    def test_balance_sheet(self):
+        for ticker in tickers:
+            assert(ticker.balance_sheet is not None)
+            assert(ticker.balance_sheet == ticker.get_balancesheet())
+
+    def test_quarterly_balance_sheet(self):
+        for ticker in tickers:
+            assert(ticker.quarterly_balance_sheet is not None)
+            assert(ticker.quarterly_balance_sheet == ticker.get_balancesheet(freq='quarterly'))
+
+    def test_balancesheet(self):
+        for ticker in tickers:
+            assert(ticker.balancesheet is not None)
+            assert(ticker.balancesheet == ticker.get_balancesheet())
+
+    def test_quarterly_balancesheet(self):
+        for ticker in tickers:
+            assert(ticker.quarterly_balancesheet is not None)
+            assert(ticker.quarterly_balancesheet == ticker.get_balancesheet('quarterly'))
+
 class TestTickers:
     def test_nothing(self):
         pass
