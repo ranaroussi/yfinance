@@ -50,7 +50,7 @@ def test_balance_sheet(self):
             assert(ticker.balance_sheet is not None)
             assert(ticker.balance_sheet == ticker.get_balancesheet())
 
-    `def test_quarterly_balance_sheet(self):
+    def test_quarterly_balance_sheet(self):
         for ticker in tickers:
             assert(ticker.quarterly_balance_sheet is not None)
             assert(ticker.quarterly_balance_sheet == ticker.get_balancesheet(freq='quarterly'))
