@@ -15,7 +15,7 @@ class FinancialsTestCase(TestCase):
     'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
     ticker.quarterly_financials.return_value = data
     self.response = ticker.quarterly_financials
-  def test_get_financials_quarterly_invalid_data_returns_empty_dataframe
+  def test_get_financials_quarterly_invalid_data_returns_empty_dataframe(self):
     self.assertIsNone(self.response)
             
     
