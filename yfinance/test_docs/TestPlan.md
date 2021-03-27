@@ -64,6 +64,14 @@ Automated functional testing is going to be tested, since functional testing is 
 
 
 ## Test Environment
-
+The database with yahoo's data would be required for testing actual values, however dummy data can be used for the sake of testing functionalities.
 
 ## Milestone / Deliverables
+**6.1 Test Schedule**<br>
+| Task Name          | Start  | Finish | Effort | Comments |
+|--------------------|--------|        |        |          |
+| Test Planning      | Mar 27 | Mar 27 | 0 d    | N/A      |
+|                    | N/A    |        |        |          |
+|                    | N/A    |        |        |          |
+|                    | N/A    |        |        |          |
+|                    | N/A    |        |        |          |
