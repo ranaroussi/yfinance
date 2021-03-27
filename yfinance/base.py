@@ -249,6 +249,9 @@ class TickerBase():
     # ------------------------
     def fill_calendar(self, data):
         try:
+            #print(data['calendarEvents']['earnings'])
+            #print()
+            #print()
             cal = _pd.DataFrame(
                 data['calendarEvents']['earnings'])
             cal['earningsDate'] = _pd.to_datetime(
@@ -258,6 +261,8 @@ class TickerBase():
             self._calendar.columns = ['Value']
         except Exception:
             pass
+        #print(type(self._calendar))
+        return self._calendar
 
 
     def _get_fundamentals(self, kind=None, proxy=None):

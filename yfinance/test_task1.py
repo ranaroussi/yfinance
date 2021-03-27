@@ -12,7 +12,7 @@ tickers = [yf.Ticker(symbol) for symbol in symbols]
 
 
 class TestEvent1(unittest.TestCase):
-    def __init__(self):
+    def setUp(self):
         self.msft = yf.Ticker("MSFT")
         self.utils_mock = patch('yfinance.base.utils.get_json', autospec=True).start()
         self.addCleanup(patch.stopall)
