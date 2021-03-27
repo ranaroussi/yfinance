@@ -47,3 +47,13 @@ A new server is required for the web server, the application and the database.
 | Xiyuan Shen         | Test 3 report sheet and software fixing for it | March 28, 2021      |
 | Wilson Quon         | Test 4 report sheet and software fixing for it | March 28, 2021      |
 | Qian Yu             | Test 5 report sheet and software fixing for it | March 28, 2021      |
+
+## Software Fixing
+
+We did not find any github PRs that implements a solution to the problem identifies by our tests
+
+#### Quick Fix?
+Issue #1:
+Issue #2:
+Issue #3:
+Issue #4:
