@@ -14,10 +14,6 @@ Sanity check for most common library uses all working
 """
 
 import yfinance as yf
-from unittest import TestCase
-from unittest.mock import patch
-import pandas as _pd
-import numpy as _np
 
 
 symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
