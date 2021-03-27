@@ -6,7 +6,7 @@
 | Tester:                         | Anastasia Borissova                                                                                            |
 | Test Case Number:               | 1                                                                                                              |
 | Test Case Description:          | This test checks if the variable ‘cal’ gets an empty pandas DataFrame, e.g. not receiving any data.            |
-| Results:                        | ☐ Pass ☐ Fail                                                                                                 |
+| Results:                        | ⬛️ Pass ☐ Fail                                                                                                 |
 | Incident Number, if applicable: | Issue #1                                                                                                       |
 
 
