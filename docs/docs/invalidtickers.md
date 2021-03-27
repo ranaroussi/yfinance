@@ -1,4 +1,4 @@
-###Test Case Document
+# Test Case Document
 
 **Purpose:** Prevent errors with:
 
@@ -13,8 +13,9 @@
 
 **Prerequisites for this test:** None
 
-**Software Versions:** Current version of yfinance
-
+**Software Versions:** 
+	Current version of yfinance
+	python 3
 **Required Configuration:**
 
 **Notes and Results:**
