@@ -27,13 +27,13 @@ We did not find any github PRs related to our assigned section of code.
 ### Planned Tests
 1. check if the variable ‘cal’ gets an empty pandas DataFrame, in other words, check if the variable 'cal' is not receiving proper data.
 2. check if the code properly handles when the variable ‘cal’ gets a pandas DataFrame that contains only NaNs.
-3. ,
-4. .
+3. check if cal[‘earningsDate’] is being properly converted to a readable datetime format using to_datetime()
+4. check if self._calendar.index is being set properly by camel2title()
 
 ### Risks
 
 
-## Test Approach
+### Test Approach
 Read and understand the code assigned to us, and develop tests that address the functionality of the code block. No automation.
 
 ### Test Environment
