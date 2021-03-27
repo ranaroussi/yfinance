@@ -1,6 +1,6 @@
 |                                 |                  GENERAL INFORMATION                                                                           |
 |---------------------------------|----------------------------------------------------------------------------------------------------------------|
-| Test Stage:                     | ☐ Unit ☐ Functionality ☐ Performance ☐ Regression ☐ Integration ☐ Acceptance ☐ System ☐ Pilot ☐ Interface |
+| Test Stage:                     |⬛️ Unit ☐ Functionality ☐ Performance ☐ Regression ☐ Integration ☐ Acceptance ☐ System ☐ Pilot ☐ Interface |
 | Test Date:                      | 03/26/2021                                                                                                     |
 | System Date, if applicable:     | 03/21/2021                                                                                                     |
 | Tester:                         | Anastasia Borissova                                                                                            |
@@ -20,15 +20,15 @@
 
 |                          |                     ENVIRONMENTAL NEEDS                                                                                                  |
 |--------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| Hardware:                | Identify the qualities and configurations of the hardware required to execute the test case.                                             |
-| Software:                | Identify system and application software required to execute the test case. Specify any software that the test case will interact with.  |
-| Procedural Requirements: | Describe any constraints on the test procedures necessary to execute the test case.                                                      |
+| Hardware:                | N/A                                                                                           |
+| Software:                | Have yfinance library installed  |
+| Procedural Requirements: | N/A                                                     |
 
 
 |                           |                     TEST                                                                                                                                                                                                      |
 |---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Test Items and Features:  | Identify and describe the items and features that will be exercised by the test case.                                                                                                                                         |
-| Input Specifications:     | Define each input required to execute the test case, and reference any required relationships between inputs.                                                                                                                 |
+| Input Specifications:     | Empty and not empty data                                                                                                                 |
 | Procedural Steps:         | Describe the sequences of actions necessary to prepare and execute the test case.                                                                                                                                             |
 | Expected Results of Case: | Describe the outcome anticipated from the test case.                                                                                                                                                                          |
 
