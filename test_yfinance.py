@@ -47,12 +47,19 @@ class TestTicker:
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
             
-    def test_quarterly_financials(self):
-        data = _pd.DataFrame(index =0,data={
+       def test_quarterly_financials(self):
+        #mock tickerbase
+        wiht patch('yf.Ticker(' ')') ad MockTicker:
+            ticker = MockTicker()
+            index =[]
+            data = _pd.DataFrame(index =index,data={
             'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
             'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
-        for ticker in tickers:
-            assert(ticker.quarterly_financials is None)
+            ticker.quarterly_financials.return_value = data
+            response = ticker.quarterly_financials
+            assertIsNone(response) 
+            
+            ticker.reset_mock()
         
             
 
