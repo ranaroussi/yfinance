@@ -22,7 +22,7 @@ class TestMethods(unittest.TestCase):
         >>> yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).index.name
         'Date'
         '''
-
+        print("TESTING test_happyPath_shouldReturnCorrectData")
         for symbol in symbols:
             # setup
             tickerbase = TickerBase(symbol)
@@ -66,7 +66,7 @@ class TestMethods(unittest.TestCase):
         >>> yf.Ticker('MSFT').analyst_recommendations(1) is None
         True
         '''
-
+        print("TESTING test_incorrectInputData_shouldReturnNone")
         for symbol in symbols:
             # setup
             tickerbase = TickerBase(symbol)
@@ -75,8 +75,7 @@ class TestMethods(unittest.TestCase):
             self.assertIsNone(tickerbase.analyst_recommendations(True))
             self.assertIsNone(tickerbase.analyst_recommendations(False))
             self.assertIsNone(tickerbase.analyst_recommendations(None))
-            self.assertIsNone(
-                tickerbase.analyst_recommendations("wrong data format"))
+            self.assertIsNone(tickerbase.analyst_recommendations("123"))
             self.assertIsNone(tickerbase.analyst_recommendations([1, 2, 3]))
             self.assertIsNone(tickerbase.analyst_recommendations(1))
 
@@ -91,7 +90,7 @@ class TestMethods(unittest.TestCase):
         >>> yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).columns.to_numpy()
         array(['Firm', 'To Grade', 'From Grade', 'Action'], dtype=object)
         '''
-
+        print("TESTING test_camel2title_should_correctly_camel_titles")
         scrape_url = 'https://finance.yahoo.com/quote'
         ticker_url = "{}/{}".format(scrape_url, 'MSFT')
         data = utils.get_json(ticker_url, None)
@@ -111,6 +110,8 @@ class TestMethods(unittest.TestCase):
         >>> 
             
         '''
+
+        print("TESTING test_if_sorted")
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
         for i in range(1, len(TickerBase.analyst_recommendations(self, data).index)):
@@ -129,10 +130,11 @@ class TestMethods(unittest.TestCase):
             <class 'pandas._libs.tslibs.timestamps.Timestamp'>
             
         '''
+
+        print("TESTING test_date_time_format")
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
         for index in TickerBase.analyst_recommendations(self, data).index:
-            print(isinstance(index, datetime.datetime))
             self.assertTrue(isinstance(index, datetime.datetime))
 
     def test_if_dataframe(self):
@@ -144,6 +146,8 @@ class TestMethods(unittest.TestCase):
         >>> type(yf.Ticker('MSFT').analyst_recommendations(utils.get_json("{}/{}".format('https://finance.yahoo.com/quote', "MSFT"), None)))
             <class 'pandas.core.frame.DataFrame'>
         '''
+
+        print("TESTING test_if_dataframe")
         ticker_url = "{}/{}".format('https://finance.yahoo.com/quote', "MSFT")
         data = utils.get_json(ticker_url, None)
         output = TickerBase.analyst_recommendations(self, data)

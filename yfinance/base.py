@@ -32,13 +32,13 @@ try:
 except ImportError:
     from urllib import quote as urlencode
 
-import utils
+from . import utils
 
 # import json as _json
 # import re as _re
 # import sys as _sys
 
-import shared
+from . import shared
 
 
 class TickerBase():
@@ -404,32 +404,13 @@ class TickerBase():
             rec.index.name = 'Date'
             rec.columns = utils.camel2title(rec.columns)
             self._recommendations = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-        except Exception:
-            pass
+        except Exception as e:
+            print("ERROR", e)
         
         return self._recommendations
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
-        #self._get_fundamentals(proxy=proxy)
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
-        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
-        data = utils.get_json(ticker_url, proxy)
-
-        # analyst recommendations
-        try:
-            rec = _pd.DataFrame(data['upgradeDowngradeHistory']['history'])
-            rec['earningsDate'] = _pd.to_datetime(rec['epochGradeDate'], unit='s')
-            rec.set_index('earningsDate', inplace=True)
-            rec.index.name = 'Date'
-            rec.columns = utils.camel2title(rec.columns)
-            self._recommendations = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-        except Exception:
-            pass
-
+        self._get_fundamentals(proxy=proxy)
         data = self._recommendations
         if as_dict:
             return data.to_dict()
