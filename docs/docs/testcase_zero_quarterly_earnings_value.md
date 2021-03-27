@@ -33,5 +33,5 @@ No special setup needed
 | ------------ | ------------------- | -------------------- | ------------------ | -------------------------- | ------------- |
 | 1 | Replace `get_json` with mock function that returns a company with zero quarterly earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
 | 2 | Create ticker that corrisponds to the mocked data | Ticker is created | `get_json` is updated |  | ✅ |
-| 3 | Get `quarterly_earnings` property | Ticker is created | `get_json` is updated |  | ✅ |
-| 4 | Validate that the `quarterly_earnings` match expected zero value| Ticker is created | `quarterly_earnings` can handle values of zero | `get_json` is updated |✅ |
+| 3 | Get `quarterly_earnings` property | Earning property is returned | `get_json` is updated |  | ✅ |
+| 4 | Validate that the `quarterly_earnings` | Match expected zero value | `quarterly_earnings` can handle values of zero | `get_json` is updated |✅ |

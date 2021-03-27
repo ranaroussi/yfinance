@@ -33,5 +33,5 @@ No special setup needed
 | ------------ | ------------------- | -------------------- | ------------------ | -------------------------- | ------------- |
 | 1 | Replace `get_json` with mock function that returns a company with negative earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
 | 2 | Create ticker that corrisponds to the mocked data | Ticker is created | `get_json` is updated |  | ✅ |
-| 3 | Get `earnings` property | Ticker is created | `get_json` is updated |  | ✅ |
-| 4 | Validate that the `earnings` match expected negative value| Ticker is created | `earnings` can handle negative values | `get_json` is updated | ✅ |
+| 3 | Get `earnings` property | Earning property is returned | `get_json` is updated |  | ✅ |
+| 4 | Validate that the `earnings` | Match expected negative value | `earnings` can handle negative values | `get_json` is updated | ✅ |
