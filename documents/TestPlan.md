@@ -15,7 +15,8 @@ Another objective is to get exposed to the Open Source projects and learn the pr
 |                     | Tester |
 
 ## Research
-We did not find any github issues or github PRs related to our assigned section of code.
+Issues:
+1. **No "calendar" attribute in yf.Ticker object #562.** It appears that the the .calendar attribute is not returning the next earnings event: AttributeError: 'Ticker' object has no attribute 'calendar' Tried a few different tickers, but it does not work with "MSFT", the example ticker
 
 ## Planned Tests
 1. check if the variable ‘cal’ gets an empty pandas DataFrame, in other words, check if the variable 'cal' is not receiving proper data.
