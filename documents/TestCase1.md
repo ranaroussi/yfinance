@@ -6,7 +6,7 @@
 | Tester:                         | Anastasia Borissova                                                                                            |
 | Test Case Number:               | 1                                                                                                              |
 | Test Case Description:          | This test checks if the variable ‘cal’ gets an empty pandas DataFrame, e.g. not receiving any data.            |
-| Results:                        | ⬛️ Pass ☐ Fail                                                                                                 |
+| Results:                        |  ☐ Pass ⬛️Fail                                                                                                 |
 | Incident Number, if applicable: | Issue #1                                                                                                       |
 
 
@@ -27,15 +27,15 @@
 
 |                           |                     TEST                                                                                                                                                                                                      |
 |---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Test Items and Features:  | Identify and describe the items and features that will be exercised by the test case.                                                                                                                                         |
+| Test Items and Features:  | This test would check if the data passed to create a calendar is empty or not                                                  |
 | Input Specifications:     | Empty and not empty data                                                                                                                 |
 | Procedural Steps:         | Describe the sequences of actions necessary to prepare and execute the test case.                                                                                                                                             |
-| Expected Results of Case: | Describe the outcome anticipated from the test case.                                                                                                                                                                          |
+| Expected Results of Case: | It should pass the tests                                                                                                                    |
 
 
 |                        |                     ACTUAL RESULTS                                                                                                |
 |------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| Output Specifications: | Define all of the outputs and features required of the test case and provide expected values.                                     |
+| Output Specifications: | Failed the test                                  |
 
 
 
