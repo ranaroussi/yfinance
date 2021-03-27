@@ -43,7 +43,28 @@
 <a id="plannedTests"><h2>3. Planned Tests</h2></a>
 - We plan to do two tests cases for each of the four methods we need to test. For each method we test whether the balance sheet is None, 
 and we test if the balance sheet passed into the test is equivalent to what we receive from "ticker.get_balancesheet()". 
-We do the same tests for the quarterly balance sheets.
+We do the same tests for the quarterly balance sheets. Below are the tests we would run.
+
+def test_balance_sheet(self):
+        for ticker in tickers:
+            assert(ticker.balance_sheet is not None)
+            assert(ticker.balance_sheet == ticker.get_balancesheet())
+
+    def test_quarterly_balance_sheet(self):
+        for ticker in tickers:
+            assert(ticker.quarterly_balance_sheet is not None)
+            assert(ticker.quarterly_balance_sheet == ticker.get_balancesheet(freq='quarterly'))
+
+    def test_balancesheet(self):
+        for ticker in tickers:
+            assert(ticker.balancesheet is not None)
+            assert(ticker.balancesheet == ticker.get_balancesheet())
+
+    def test_quarterly_balancesheet(self):
+        for ticker in tickers:
+            assert(ticker.quarterly_balancesheet is not None)
+            assert(ticker.quarterly_balancesheet == ticker.get_balancesheet('quarterly'))`
+
 
 <a id="risks"><h2>4. Risks</h2></a>
 
