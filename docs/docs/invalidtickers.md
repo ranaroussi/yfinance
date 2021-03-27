@@ -22,17 +22,17 @@
 
 <table>
   <tr>
-   <td>**Step**
+  <td><b>Step</b>
    </td>
-   <td>**Test Step/Input**
+   <td><b>Test Step/Input</b>
    </td>
-   <td>**Expected Results**
+   <td><b>Expected Results</b>
    </td>
-   <td>**Actual Results**
+   <td><b>Actual Results</b>
    </td>
-   <td>**Requirements Validation**
+   <td><b>Requirements Validation</b>
    </td>
-   <td>**Pass/Fail**
+   <td><b>Pass/Fail</b>
    </td>
   </tr>
   <tr>
