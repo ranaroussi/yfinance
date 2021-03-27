@@ -49,7 +49,7 @@ class TestTicker:
             
     def test_quarterly_financials(self):
        #mock tickerbase
-        wiht patch('yf.Ticker(' ')') ad MockTicker:
+        with patch('yf.Ticker(' ')') as MockTicker:
             ticker = MockTicker()
             index =[]
             data = _pd.DataFrame(index =index,data={
