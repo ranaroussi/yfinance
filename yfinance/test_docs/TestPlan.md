@@ -75,3 +75,12 @@ The database with yahoo's data would be required for testing actual values, howe
 | N/A                | N/A    | N/A    | 0 d    | N/A      |
 | N/A                | N/A    | N/A    | 0 d    | N/A      |
 | N/A                | N/A    | N/A    | 0 d    | N/A      |
+
+**6.2 Deliverables**<br>
+| Deliverable | For                | Date / Milestone |
+|-------------|--------------------|------------------|
+| Test Plan   | Everyone           | Mar 27           |
+| N/A         | Chirag Khurana     | Mar 27           |
+| N/A         | Christian Arbelaez | Mar 27           |
+| N/A         | Scot Kavalinas     | Mar 27           |
+| N/A         | Walker Peters      | Mar 27           |
