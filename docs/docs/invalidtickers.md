@@ -16,6 +16,7 @@
 **Software Versions:** 
 	Current version of yfinance
 	python 3
+
 **Required Configuration:**
 
 **Notes and Results:**
