@@ -39,5 +39,5 @@ Procedural Steps:
 
 Expected Results of Case:
 
-## Aactual Results
+## Actual Results
 Output Specifications:
