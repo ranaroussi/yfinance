@@ -90,12 +90,12 @@ Existing unit test modules such as `unittest` will be used to create new unit te
 In total, the team plans to implement 4 test cases - two for each method.
 
 #### `.financials`
-- assert that output is accurate when a valid (mock) input is received
-- assert throws exception when invalid (mock) input is received
+- assert that output data is accurate when valid (mock) input is received
+- assert that output data is empty when invalid (mock) input is received
 
 #### `.quarterly-financials`
-- assert that output is accurate when a valid (mock) input is received
-- assert throws exception when invalid (mock) input is received
+- assert that output data is accurate when valid (mock) input is received
+- assert that output data is empty when invalid (mock) input is received
 
 ## Assumptions / Risks
 ### Assumptions
