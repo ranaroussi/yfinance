@@ -12,8 +12,13 @@ class FinancialsTestCase(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_get_financials_invalid_data_returns_empty_dataframe(self):
-        self.assertTrue(self.msft.financials.empty)
+    def test_get_financials_invalid_data_returns_empty(self):
+        try:
+            financials = self.msft.financials 
+            self.assertTrue(financials.empty)
+        except:
+            # Ensure financials call does not throw exception, graceful behavior only
+            self.assertTrue(False)
 
 if __name__ == "__main__":
     unittest.main()
