@@ -5,6 +5,9 @@
   - [1.1 Objective](#s1)
   - [1.2 Team Members](#s2)
 * [2. Problems](#problems)
+  - [2.1 Issues](#issues)
+  - [2.2 Pull Requests](#pr)
+  - [2.3 Problems found](#pf)
 * [3. Planned Tests](#plannedTests)
 * [4. Risks](#risks)
 * [5. Test Approach](#testApproach)
@@ -27,7 +30,15 @@
 
 
 <a id="problems"><h2>2. Problems</h2></a>
-- balane sheet returns empty dataframme
+
+<a id="issues"><h4>2.1 Issues</h4></a>
+- Issues #618, #595, #547, #191, #465, #474, #475, #419, #423
+
+<a id="pr"><h4>2.2 Pull Requests</h4></a>
+- Pull requests #480, #526
+
+<a id="pf"><h4>2.3 Problems Found</h4></a>
+- balance sheet returns empty data frame
 
 <a id="plannedTests"><h2>3. Planned Tests</h2></a>
 - We plan to do two tests cases for each of the four methods we need to test. For each method we test whether the balance sheet is None, 
