@@ -71,10 +71,10 @@ The database with yahoo's data would be required for testing actual values, howe
 | Task Name          | Start  | Finish | Effort | Comments |
 |--------------------|--------|--------|--------|----------|
 | Test Planning      | Mar 27 | Mar 27 | 0 d    | N/A      |
-| N/A                | N/A    | N/A    | 0 d    | N/A      |
-| N/A                | N/A    | N/A    | 0 d    | N/A      |
-| N/A                | N/A    | N/A    | 0 d    | N/A      |
-| N/A                | N/A    | N/A    | 0 d    | N/A      |
+| N/A                | Mar 27 | Mar 27 | 0 d    | N/A      |
+| N/A                | Mar 27 | Mar 27 | 0 d    | N/A      |
+| N/A                | Mar 27 | Mar 27 | 0 d    | N/A      |
+| N/A                | Mar 27 | Mar 27 | 0 d    | N/A      |
 
 **6.2 Deliverables**<br>
 | Deliverable | For                | Date / Milestone |
