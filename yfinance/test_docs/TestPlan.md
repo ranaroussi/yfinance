@@ -22,13 +22,13 @@ Our objective for this assignment is to isolate a part of a big chunk of code an
 multiple runs with different values and to see if the output matches the desired output.
 
 **1.2 Team Members**<br>
-| Name               | Role |
-|--------------------|------|
-| Chirag Khurana     | N/A  |
-| Christian Arbelaez | N/A  |
-| Ji Heon Kim        | N/A  |
-| Scott Kavalinas    | N/A  |
-| Walker Peters      | N/A  |
+| Name               | Role     |
+|--------------------|----------|
+| Chirag Khurana     | Testing  |
+| Christian Arbelaez | Testing  |
+| Ji Heon Kim        | Testing  |
+| Scott Kavalinas    | Testing  |
+| Walker Peters      | Testing  |
 
 
 ## Research and Screening
@@ -68,19 +68,18 @@ The database with yahoo's data would be required for testing actual values, howe
 
 ## Milestone / Deliverables
 **6.1 Test Schedule**<br>
-| Task Name          | Start  | Finish | Effort | Comments |
-|--------------------|--------|--------|--------|----------|
-| Test Planning      | Mar 25 | Mar 25 | 0 d    | N/A      |
-| N/A                | Mar 25 | Mar 27 | 2 d    | N/A      |
-| N/A                | Mar 25 | Mar 27 | 2 d    | N/A      |
-| N/A                | Mar 25 | Mar 27 | 2 d    | N/A      |
-| N/A                | Mar 25 | Mar 27 | 2 d    | N/A      |
+| Task Name                 | Start  | Finish | Effort | Comments |
+|---------------------------|--------|--------|--------|----------|
+| Test Planning             | Mar 25 | Mar 25 | 0d     | N/A      |
+| Documentating             | Mar 25 | Mar 27 | 2d     | N/A      |
+| Testing Functionality     | Mar 25 | Mar 27 | 2d     | N/A      |
+| Testing Data Type         | Mar 25 | Mar 27 | 2d     | N/A      |
+| Testing Dictionary Values | Mar 25 | Mar 27 | 2d     | N/A      |
 
 **6.2 Deliverables**<br>
-| Deliverable | For                | Date / Milestone |
-|-------------|--------------------|------------------|
-| Test Plan   | Everyone           | Mar 25           |
-| N/A         | Chirag Khurana     | Mar 27           |
-| N/A         | Christian Arbelaez | Mar 27           |
-| N/A         | Scot Kavalinas     | Mar 27           |
-| N/A         | Walker Peters      | Mar 27           |
+| Deliverable        | For                | Date / Milestone |
+|--------------------|--------------------|------------------|
+| Test Plan          | All team members   | Mar 25           |
+| Test Results       | All team members   | Mar 27           |
+| Test Status Report | All team members   | Mar 27           |
+| Metrics            | All team members   | Mar 27           |
