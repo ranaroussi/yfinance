@@ -1,40 +1,38 @@
-Test Case: Invalid values
+###Test Case Document
 
-Purpose: Prevent errors with:
-
-
+**Purpose:** Prevent errors with:
 
     1. Invalid ticketer
     2. Invalid company
 
-Test Run Information: 
+**Test Run Information:** 
 
-Tester Names: Cameron and Ryan
+**Tester Names:** Cameron and Ryan
 
-Date(s) of Test:
+**Date(s) of Test:** March 27, 2021
 
-Prerequisites for this test: None
+**Prerequisites for this test:** None
 
-Software Versions: Current version of yfinance
+**Software Versions:** Current version of yfinance
 
-Required Configuration:
+**Required Configuration:**
 
-Notes and Results:
+**Notes and Results:**
 
 
 <table>
   <tr>
-   <td>Step
+   <td>**Step**
    </td>
-   <td>Test Step/Input
+   <td>**Test Step/Input**
    </td>
-   <td>Expected Results
+   <td>**Expected Results**
    </td>
-   <td>Actual Results
+   <td>**Actual Results**
    </td>
-   <td>Requirements Validation
+   <td>**Requirements Validation**
    </td>
-   <td>Pass/Fail
+   <td>**Pass/Fail**
    </td>
   </tr>
   <tr>
