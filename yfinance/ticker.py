@@ -157,6 +157,7 @@ class Ticker(TickerBase):
     def financials(self):
         """
         A getter that returns a Panda Dataframe with the yearly financials for the past 4 years.
+        Ticker.py uses relative imports so use this command to run tests: python -m yfinance.ticker -v
         >>> import os
         >>> import dill
         >>> # Adding mock data to isolate our getter from the Ticker constructor :
@@ -188,7 +189,9 @@ class Ticker(TickerBase):
         Net Income From Continuing Ops           44281000000.0   39240000000.0   16571000000.0  25489000000.0
         Net Income Applicable To Common Shares   44281000000.0   39240000000.0   16571000000.0  25489000000.0
         """
+        # Run method using mocked data without making a call to the Yahoo Finance api (for testing)
         if self.ismocked == True: return self.get_financials(ismocked = True)
+        # Run method normally (for production)
         else: return self.get_financials()
 
     @property
