@@ -495,8 +495,9 @@ class TickerBase():
             return dict_data
         return data
 
-    def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy=proxy)
+    def get_financials(self, proxy=None, as_dict=False, freq="yearly", ismocked=False):
+
+        if not ismocked: self._get_fundamentals(proxy=proxy)
         data = self._financials[freq]
         if as_dict:
             return data.to_dict()
