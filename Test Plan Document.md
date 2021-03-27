@@ -77,7 +77,7 @@ def test_balance_sheet(self):
 
 <a id="testApproach"><h2>5. Test Approach</h2></a>
 <a id="s5"><h4>5.1 Test Automation</h4></a>
-- We will be implementing tests that can be run via a python file. An attempt to retrieve data from the yahoo finance website must be made.
+- We will be implementing tests that can run via a python file. An attempt to retrieve data from the yahoo finance website must be made.
 After data is successfully retrieved and parsed, tests can commence on “.balance_sheet” and “.quarterly_balance_sheet”.
 
 <a id="testEnvironment"><h2>6. Test Environment</h2></a>
