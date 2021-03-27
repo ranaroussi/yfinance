@@ -249,21 +249,18 @@ class TickerBase():
     # ------------------------
     def fill_calendar(self, data):
         try:
-            #print(data['calendarEvents']['earnings'])
-            #print()
-            #print()
             cal = _pd.DataFrame(
-                data['calendarEvents']['earnings'])
+                data)
+            cal1 = cal
             cal['earningsDate'] = _pd.to_datetime(
                 cal['earningsDate'], unit='s')
             self._calendar = cal.T
             self._calendar.index = utils.camel2title(self._calendar.index)
             self._calendar.columns = ['Value']
+            return cal1
         except Exception:
             pass
         #print(type(self._calendar))
-        return self._calendar
-
 
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
@@ -364,7 +361,7 @@ class TickerBase():
             pass
 
         # events
-        self.fill_calendar(data)
+        self.fill_calendar(data['calendarEvents']['earnings'])
         '''
         try:
             cal = _pd.DataFrame(
