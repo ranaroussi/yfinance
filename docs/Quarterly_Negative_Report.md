@@ -37,7 +37,7 @@ Stop Procedures: kill it like any other program, if you can do that fast enough 
 
 **Input Specifications**: No input  
 
-**Procedural Steps**: if using pytest, call `pytest` from the root folder or inside the tests folder. Otherwise call `python3 tests/quarterly_financial_test.py`  
+**Procedural Steps**: if using pytest, call `pytest` from the root folder or inside the tests folder. Otherwise call `python3 tests/negative_quarterly_financial_test.py`  
 
 **Expected Results of Case**: pytest should exit with a code of 0 and display that all tests passed.
 
