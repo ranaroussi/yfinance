@@ -52,7 +52,7 @@ class TestTicker:
             'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
             'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
         for ticker in tickers:
-            ticker.quarterly_financials
+            assert(ticker.quarterly_financials is None)
         
             
 
