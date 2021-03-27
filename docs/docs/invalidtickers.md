@@ -13,7 +13,8 @@
 
 **Prerequisites for this test:** None
 
-**Software Versions:** 
+**Software Versions:**
+
 	Current version of yfinance
 	python 3
 
