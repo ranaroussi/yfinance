@@ -27,8 +27,8 @@ We did not find any github PRs related to our assigned section of code.
 ### Planned Tests
 1. check if the variable ‘cal’ gets an empty pandas DataFrame, in other words, check if the variable 'cal' is not receiving proper data.
 2. check if the code properly handles when the variable ‘cal’ gets a pandas DataFrame that contains only NaNs.
-3. check if cal[‘earningsDate’] is being properly converted to a readable datetime format using to_datetime()
-4. check if self._calendar.index is being set properly by camel2title()
+3. check if cal[‘earningsDate’] is being properly converted to a readable datetime format using to_datetime().
+4. check if self._calendar.index is being set properly by camel2title().
 
 ## Risks
 
@@ -50,10 +50,10 @@ A new server is required for the web server, the application and the database.
 
 ## Software Fixing
 
-We did not find any github PRs that implements a solution to the problem identifies by our tests
+We did not find any github PRs that implements a solution to the problem identifies by our tests.
 
 #### Quick Fix?
-Issue #1:
-Issue #2:
-Issue #3:
-Issue #4:
+- Issue #1:
+- Issue #2:
+- Issue #3:
+- Issue #4:
