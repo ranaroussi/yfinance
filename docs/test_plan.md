@@ -84,7 +84,7 @@ Since yfinance is an open-source project, many collaborators contribute to the d
 Since yfinance is also a new tool to the test team, exploratory testing will be employed; essentially, the team will learn as they go.
 
 ### Test Environment
-pytest will be used to create new unit test cases. Mocking data will also be needed.
+Existing unit test modules such as `unittest` will be used to create new unit test cases, as well as mock any data needed for each case.
 
 ### Planned Tests
 In total, the team plans to implement 4 test cases - two for each method.
