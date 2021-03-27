@@ -47,8 +47,8 @@ class TestTicker:
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
             
-       def test_quarterly_financials(self):
-        #mock tickerbase
+    def test_quarterly_financials(self):
+       #mock tickerbase
         wiht patch('yf.Ticker(' ')') ad MockTicker:
             ticker = MockTicker()
             index =[]
