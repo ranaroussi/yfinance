@@ -161,9 +161,11 @@ class Ticker(TickerBase):
         >>> import os
         >>> import dill
         >>> # Adding mock data to isolate our getter from the Ticker constructor :
-        >>> msft = dill.load(open("msft.dill", "rb"))
+        >>> f = open("msft.dill", "rb")
+        >>> msft = dill.load(f)
         >>> # Adding mocked flag to isolate our getter from get_fundamentals() :
         >>> msft.ismocked = True
+        >>> f.close()
         >>> msft.financials
                                                     2020-06-30      2019-06-30      2018-06-30     2017-06-30
         Research Development                     19269000000.0   16876000000.0   14726000000.0  13037000000.0
