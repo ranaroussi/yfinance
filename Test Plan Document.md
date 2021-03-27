@@ -38,7 +38,7 @@
 - Pull requests #480, #526
 
 <a id="pf"><h4>2.3 Problems Found</h4></a>
-- When atempting to retrieve a balance sheet, an empty data frame is returned.
+- When attempting to retrieve a balance sheet, an empty data frame is returned.
 
 <a id="plannedTests"><h2>3. Planned Tests</h2></a>
 - We plan to do two tests cases for each of the four methods we need to test. For each method we test whether the balance sheet is None, 
