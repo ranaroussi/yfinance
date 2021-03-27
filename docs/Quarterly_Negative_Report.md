@@ -8,7 +8,7 @@
 
 **Test Case Number**: 4   
 
-**Test case description**: Test the quarterly_financials property of a ticker input invaild value, check if it throws an exception.      
+**Test case description**: Test the quarterly_financials property of a ticker by using invaild value, check if it throws an exception.      
 
 **Results**: Pass  
 
