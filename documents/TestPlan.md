@@ -1,5 +1,5 @@
 # TEST PLAN
-### Introduction
+## Introduction
 ### Objective
 The objective of this assignment is to improve our abilities of reading other people’s code. We also hope to learn new testing strategies and how to document them. 
 Another objective is to get exposed to the Open Source projects and learn the process of how to contribute to them properly and in the best way possible. 
@@ -30,13 +30,13 @@ We did not find any github PRs related to our assigned section of code.
 3. check if cal[‘earningsDate’] is being properly converted to a readable datetime format using to_datetime()
 4. check if self._calendar.index is being set properly by camel2title()
 
-### Risks
+## Risks
 
 
-### Test Approach
+## Test Approach
 Read and understand the code assigned to us, and develop tests that address the functionality of the code block. No automation.
 
-### Test Environment
+## Test Environment
 A new server is required for the web server, the application and the database. 
 
-### Test Deliverables
+## Test Deliverables
