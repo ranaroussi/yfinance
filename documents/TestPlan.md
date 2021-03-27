@@ -40,3 +40,10 @@ Read and understand the code assigned to us, and develop tests that address the 
 A new server is required for the web server, the application and the database. 
 
 ## Test Deliverables
+| Member Names        | Task                                           | Date/Milestone      |
+|:-------------------:|:----------------------------------------------:|:-------------------:|
+| Anastasia Borissova | Test 1 report sheet and software fixing for it | March 28, 2021      |
+| Khang Nguyen        | Test 2 report sheet and software fixing for it | March 28, 2021      |
+| Xiyuan Shen         | Test 3 report sheet and software fixing for it | March 28, 2021      |
+| Wilson Quon         | Test 4 report sheet and software fixing for it | March 28, 2021      |
+| Qian Yu             | Test 5 report sheet and software fixing for it | March 28, 2021      |
