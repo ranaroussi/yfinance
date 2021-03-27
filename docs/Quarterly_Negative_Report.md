@@ -3,8 +3,10 @@
 **Test Stage**: Unit  
 **Test Date**: 2020-03-27 (Y-M-D)  
 **Tester**: hgou 
-**Test Case Number**: 4
-**Test case description**: Test the quarterly_financials property of a ticker input invaild value, check if it throws an exception.        
+**Test Case Number**: 4   
+
+**Test case description**: Test the quarterly_financials property of a ticker input invaild value, check if it throws an exception.      
+
 **Results**: Pass  
 **Incident Number**: [#142](https://github.com/ranaroussi/yfinance/issues/142)  
 
