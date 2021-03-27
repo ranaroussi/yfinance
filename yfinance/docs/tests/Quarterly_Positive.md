@@ -4,7 +4,7 @@ Test Stage: Unit
 Test Date: 2020-03-27 (Y-M-D)  
 Tester: Pierre  
 Test Case Number: 3  
-Purpose: this will test the quarterly_financials function along a happy path, making sure the data has the right format. 
+Purpose: this will test the quarterly_financials function along a happy path, making sure the data is returned properly. 
 Incident Number: [#639](https://github.com/ranaroussi/yfinance/issues/639)  
 Prerequisites: None  
 Software version: yfinance 0.1.59  
