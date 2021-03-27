@@ -6,7 +6,6 @@
 
 """
 Sanity check for most common library uses all working
-
 - Stock: Microsoft
 - ETF: Russell 2000 Growth
 - Mutual fund: Vanguard 500 Index fund
@@ -42,7 +41,7 @@ class TestTicker:
         for ticker in tickers:
             assert(ticker.info is not None and ticker.info != {})
             assert(ticker.major_holders is not None)
-            assert(ticker.institutional_holders is not None)
+            assert(ticker.institutional_holders is not None)           
 
 class TestTickers:
     def test_nothing(self):
