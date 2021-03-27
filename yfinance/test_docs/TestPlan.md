@@ -69,9 +69,9 @@ The database with yahoo's data would be required for testing actual values, howe
 ## Milestone / Deliverables
 **6.1 Test Schedule**<br>
 | Task Name          | Start  | Finish | Effort | Comments |
-|--------------------|--------|        |        |          |
+|--------------------|--------|--------|--------|----------|
 | Test Planning      | Mar 27 | Mar 27 | 0 d    | N/A      |
-|                    | N/A    |        |        |          |
-|                    | N/A    |        |        |          |
-|                    | N/A    |        |        |          |
-|                    | N/A    |        |        |          |
+| N/A                | N/A    | N/A    | 0 d    | N/A      |
+| N/A                | N/A    | N/A    | 0 d    | N/A      |
+| N/A                | N/A    | N/A    | 0 d    | N/A      |
+| N/A                | N/A    | N/A    | 0 d    | N/A      |
