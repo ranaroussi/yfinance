@@ -250,7 +250,7 @@ class TickerBase():
         return df
 
     # ------------------------
-    # also have to move this function to use it in generic_patterns
+    # copying cleanup function externally for testing
     def cleanup(self, data=None):
         df = _pd.DataFrame(data).drop(columns=['maxAge'])
         for col in df.columns:
@@ -269,7 +269,7 @@ class TickerBase():
         df.index = utils.camel2title(df.index)
         return df
 
-    # wrapping generic pattern functionality in function for testing
+    # wrapping generic pattern functionality in external function for testing
     def generic_patterns(self, data=None):
         for key in (
             (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
@@ -290,7 +290,26 @@ class TickerBase():
                 except Exception as e:
                     pass
 
+        return data
+
     def _get_fundamentals(self, kind=None, proxy=None):
+        def cleanup(data):
+            df = _pd.DataFrame(data).drop(columns=['maxAge'])
+            for col in df.columns:
+                df[col] = _np.where(
+                    df[col].astype(str) == '-', _np.nan, df[col])
+
+            df.set_index('endDate', inplace=True)
+            try:
+                df.index = _pd.to_datetime(df.index, unit='s')
+            except ValueError:
+                df.index = _pd.to_datetime(df.index)
+            df = df.T
+            df.columns.name = ''
+            df.index.name = 'Breakdown'
+
+            df.index = utils.camel2title(df.index)
+            return df
 
         # setup proxy in requests format
         if proxy is not None:
@@ -418,7 +437,24 @@ class TickerBase():
         data = utils.get_json(ticker_url+'/financials', proxy, self.session)
 
         # generic patterns
-        self.generic_patterns(data=data)
+        for key in (
+            (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
+            (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
+            (self._financials, 'incomeStatement', 'incomeStatementHistory')
+        ):
+            item = key[1] + 'History'
+            if isinstance(data.get(item), dict):
+                try:
+                    key[0]['yearly'] = cleanup(data[item][key[2]])
+                except Exception as e:
+                    pass
+
+            item = key[1]+'HistoryQuarterly'
+            if isinstance(data.get(item), dict):
+                try:
+                    key[0]['quarterly'] = cleanup(data[item][key[2]])
+                except Exception as e:
+                    pass
 
         # earnings
         if isinstance(data.get('earnings'), dict):
