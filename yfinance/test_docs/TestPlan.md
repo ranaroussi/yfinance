@@ -49,6 +49,7 @@ to thoroughly test the functionality contained in this section of code and uncov
 
 **2.2 Pull requests related to the code**<br>
 **Closed**
+- Pull Request #619 (https://github.com/ranaroussi/yfinance/pull/619)
 - Pull Request #497 (https://github.com/ranaroussi/yfinance/pull/497)
 - Pull Request #174 (https://github.com/ranaroussi/yfinance/pull/174)
 
