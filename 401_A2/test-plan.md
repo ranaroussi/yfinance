@@ -76,6 +76,8 @@ test when data has only dividends:
 - test if the returned dividend dataframe is empty
 - test if the returned splits dataframe is empty
 - test if the dataframe returned matches with expected dataframe
+- test if the date and timne dataframe returned matches expected dataframe
+- tetst if the empty data and time dataframe reutrned matched expected dataframe
 
   4.2 Test approach:
 
