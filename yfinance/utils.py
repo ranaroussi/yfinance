@@ -167,7 +167,7 @@ def parse_actions(data, tz=None):
                 splits["denominator"]
             splits = splits["Stock Splits"]
 
-    #print(dividends['date'].dtype)
+
     
     #print(dividends.index[0])
     #print(dividends.index[1])

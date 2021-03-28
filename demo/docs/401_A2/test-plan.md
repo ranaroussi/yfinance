@@ -20,12 +20,8 @@ This test plan is to test the function of parse_action with with different ticke
 ```
 * Shiyu Xiu - Unit Testing the parse_actions
 * Luke Kim - Unit Testing the parse_actions for split case
-<<<<<<< HEAD
 
 
-=======
-* Ruochen Lin - Unit Testing the parse_actions for date & time match correct and empty input
->>>>>>> 8d1fc39f13fb122ff2d07dbb5d22ced9a7d5f6cd
 ```
 
 **2 Problem found in Research phase**
@@ -71,14 +67,6 @@ Risk: Low
 Trigger: Retrieving data through run.py contains outdated/wrong data
 Mitigation Plan: Check the yahoo stock website to validate the data
 
-```
-4.Changes to the date under divident may lead to inaccurate display of date and time.
-```
-Risk: Low
-Trigger: if the date of input is inaccurate.
-Mitigation Plan: Correct time by adding get current dataTime function to compare.
-```
-
 **4 Test Approach**
 
 4.1 Planned tests:
@@ -97,8 +85,6 @@ test when data has only dividends:
 - test if the returned dividend dataframe is empty
 - test if the returned splits dataframe is empty
 - test if the dataframe returned matches with expected dataframe
-- test if the date and timne dataframe returned matches expected dataframe
-- tetst if the empty data and time dataframe reutrned matched expected dataframe
 
 ```
 test when data has only splits:
@@ -108,8 +94,6 @@ test when data has only splits:
 - test if the returned dataframe contains splits
 - test if the returned dataframe does not contain dividends
 - test if the returned dataseries matches the expected output listed
-- test if the date and timne dataframe returned matches expected dataframe
-- tetst if the empty data and time dataframe reutrned matched expected dataframe
 
   4.2 Test approach:
 
