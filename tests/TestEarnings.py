@@ -11,7 +11,7 @@ import yfinance.base as yfBase
 
 
 class TestEarnings(unittest.TestCase):
-    def set_get_json_mock(self, earnings_data):
+    def mock_get_json(self, earnings_data):
         first_return = {"financialData":{"regularMarketPrice":100, "regularMarketOpen":100}}
         second_return = earnings_data
         yfBase.utils.get_json = Mock(side_effect=[first_return, second_return])
@@ -19,9 +19,6 @@ class TestEarnings(unittest.TestCase):
     def set_up(self):
         self.tb = yfBase.TickerBase("stub_ticker_base")
         yfBase._pd.read_html = MagicMock(return_value=[None,])
-
-    def mock_get_json(self, earnings_data):
-        yfBase.utils.get_json = Mock(return_value={}, side_effect=TestEarnings.create_side_effect(earnings_data))
 
     def test_yearly_earnings(self):
         self.set_up()
@@ -39,7 +36,7 @@ class TestEarnings(unittest.TestCase):
                                 }
                             }
                         }
-        self.set_get_json_mock(earnings_data)
+        self.mock_get_json(earnings_data)
         self.tb._get_fundamentals()
 
         financials_chart = earnings_data["earnings"]["financialsChart"]
@@ -64,7 +61,7 @@ class TestEarnings(unittest.TestCase):
                                 }
                             }
                         }
-        self.set_get_json_mock(earnings_data)
+        self.mock_get_json(earnings_data)
         self.tb._get_fundamentals()
         
         financials_chart = earnings_data["earnings"]["financialsChart"]
@@ -90,7 +87,7 @@ class TestEarnings(unittest.TestCase):
                                 }
                             }
                         }
-        self.set_get_json_mock(earnings_data)
+        self.mock_get_json(earnings_data)
         self.tb._get_fundamentals()
 
         financials_chart = earnings_data["earnings"]["financialsChart"]
