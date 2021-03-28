@@ -8,7 +8,7 @@ class TestGenericPatterns(unittest.TestCase):
         tickerBase = base.TickerBase(ticker="MSFT")
         empty_dict = dict()
         data = tickerBase.generic_patterns(empty_dict)
-        self.assertTrue(isinstance(tickerBase.get_info(), dict))
+        self.assertTrue(isinstance(data, dict))
         self.assertEquals(tickerBase.get_info()['zip'], '98052-6399')
 
 
