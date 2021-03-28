@@ -32,13 +32,13 @@ try:
 except ImportError:
     from urllib import quote as urlencode
 
-from . import utils
+import utils
 
 # import json as _json
 # import re as _re
 # import sys as _sys
 
-from . import shared
+import shared
 
 
 class TickerBase():
@@ -291,7 +291,6 @@ class TickerBase():
                         key[0]['quarterly'] = cleanup(data[item][key[2]])
                     except Exception as e:
                         pass
-            print(data)
             return data
                         
 
