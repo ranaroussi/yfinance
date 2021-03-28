@@ -19,7 +19,9 @@
 **1.1 Objectives**<br>
 yfinance is a library, developed by yahoo, that provides a Pythonic way to download historical market data.<br>
 Our objective for this assignment is to isolate a part of a big chunk of code and run functional tests to simulate 
-multiple runs with different values and to see if the output matches the desired output.
+multiple runs with different values and to see if the output matches the desired output. Specifically, we want to 
+isolate the code tagged under `# generic patterns` in the `_get_fundamentals` function of *base.py*. Our goal is
+to thoroughly test the functionality contained in this section of code and uncover any bugs/improvements we can.
 
 **1.2 Team Members**<br>
 | Name               | Role     |
