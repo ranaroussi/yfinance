@@ -35,16 +35,18 @@ to thoroughly test the functionality contained in this section of code and uncov
 
 ## Research and Screening
 **2.1 Issues related to the code**<br>
+**Open**
 - GitHub Issue #599 (https://github.com/ranaroussi/yfinance/issues/599)
 - GitHub Issue #172 (https://github.com/ranaroussi/yfinance/issues/172)
 - GitHub Issue #167 (https://github.com/ranaroussi/yfinance/issues/167)
 - GitHub Issue #163 (https://github.com/ranaroussi/yfinance/issues/163)
 - GitHub Issue #150 (https://github.com/ranaroussi/yfinance/issues/150)
-Closed
+
+**Closed**
 - GitHub Issue #275 (https://github.com/ranaroussi/yfinance/issues/275)
 - GitHub Issue #142 (https://github.com/ranaroussi/yfinance/issues/142)
 - GitHub Issue #140 (https://github.com/ranaroussi/yfinance/issues/140)
-- 
+
 **2.2 Pull requests related to the code**<br>
 - Pull Request #497 (https://github.com/ranaroussi/yfinance/pull/497)
 
