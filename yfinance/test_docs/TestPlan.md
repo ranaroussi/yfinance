@@ -78,12 +78,13 @@ create mock data to work with and test using mock data for specific testing scen
 
 **4.2 Test Automation**<br>
 Automated functional testing is going to be tested, since functional testing is performed at the level of system testing. 
-Automated unit tests are also part of the process. All of our testing is going to be done using Python's unit testing 
-framework, unittest (https://docs.python.org/3.9/library/unittest.html)
-
+Automated unit tests are not a part of the process and testing is currently done manually using Python's Unit testing 
+framework, unittest (https://docs.python.org/3.9/library/unittest.html).
 
 ## Test Environment
-The database with yahoo's data would be required for testing actual values, however mock data can be used for the sake of testing functionalities.
+The database with yahoo's data would be required for testing actual values, however mock data can be used for the sake of testing 
+functionalities. Python is required to run the code contained in this project, and you can install the required modules using pip by 
+typing `pip3 install -r requirements.txt` or `pip install -r requirements.txt` (depending on your configuration) in the root directory.
 
 ## Milestone / Deliverables
 **6.1 Test Schedule**<br>
