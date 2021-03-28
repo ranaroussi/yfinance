@@ -293,7 +293,7 @@ class TickerBase():
         return data
 
     def _get_fundamentals(self, kind=None, proxy=None):
-        def cleanup(self, data=None):
+        def cleanup(data):
             df = _pd.DataFrame(data).drop(columns=['maxAge'])
             for col in df.columns:
                 df[col] = _np.where(
@@ -311,7 +311,7 @@ class TickerBase():
             df.index = utils.camel2title(df.index)
             return df
 
-            
+
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
@@ -446,14 +446,14 @@ class TickerBase():
             item = key[1] + 'History'
             if isinstance(data.get(item), dict):
                 try:
-                    key[0]['yearly'] = self.cleanup(data[item][key[2]])
+                    key[0]['yearly'] = cleanup(data[item][key[2]])
                 except Exception as e:
                     pass
 
             item = key[1]+'HistoryQuarterly'
             if isinstance(data.get(item), dict):
                 try:
-                    key[0]['quarterly'] = self.cleanup(data[item][key[2]])
+                    key[0]['quarterly'] = cleanup(data[item][key[2]])
                 except Exception as e:
                     pass
 
