@@ -144,21 +144,31 @@ def parse_actions(data, tz=None):
     #print(list(data["events"]["splits"].values()))
     if "events" in data:
         if "dividends" in data["events"]:
+
             dividends = _pd.DataFrame(
                 data=list(data["events"]["dividends"].values()))
             
             dividends.set_index("date", inplace=True)
-            
+            #print(dividends.index[0])
+            if dividends.index[0] < 3308400:
+                dividends.index.values[0] = 3308400
+            #print(dividends.index[0])
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
+            
+            
             dividends.sort_index(inplace=True)
             if tz is not None:
                 dividends.index = dividends.index.tz_localize(tz)
             dividends.columns = ["Dividends"]
             
+
+
         if "splits" in data["events"]:
             splits = _pd.DataFrame(
                 data=list(data["events"]["splits"].values()))
             splits.set_index("date", inplace=True)
+            if splits.index[0] < 3308400:
+                splits.index[0] = 3308400
             splits.index = _pd.to_datetime(splits.index, unit="s")
             splits.sort_index(inplace=True)
             if tz is not None:
@@ -167,9 +177,9 @@ def parse_actions(data, tz=None):
                 splits["denominator"]
             splits = splits["Stock Splits"]
 
-
+    #print(dividends['date'].dtype)
     
-    #print(dividends.index[0])
+    #print(dividends.index[1])
     #print(dividends.index[1])
     #print(dividends,splits)   
     return dividends, splits

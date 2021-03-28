@@ -10,7 +10,7 @@ data2={'meta': {'currency': 'USD', 'symbol': 'TSM', 'exchangeName': 'NYQ', 'inst
 data3={'meta': {'currency': 'EUR', 'symbol': 'UH7.F', 'exchangeName': 'FRA', 'instrumentType': 'EQUITY', 'firstTradeDate': 1140678000, 'regularMarketTime': 1584084000, 'gmtoffset': 3600, 'timezone': 'CET', 'exchangeTimezoneName': 'Europe/Berlin', 'regularMarketPrice': 0.0005, 'chartPreviousClose': 0.0005, 'priceHint': 4, 'currentTradingPeriod': {'pre': {'timezone': 'CET', 'end': 1616569200, 'start': 1616569200, 'gmtoffset': 3600}, 'regular': {'timezone': 'CET', 'end': 1616619600, 'start': 1616569200, 'gmtoffset': 3600}, 'post': {'timezone': 'CET', 'end': 1616619600, 'start': 1616619600, 'gmtoffset': 3600}}, 'dataGranularity': '1d', 'range': '6mo', 'validRanges': ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']}, 'events': {'splits': {'1616482800': {'date': 1616482800, 'numerator': 1, 'denominator': 50, 'splitRatio': '1:50'}}}}
 data4={'meta': {'currency': 'USD', 'symbol': 'AAPL', 'exchangeName': 'NMS', 'instrumentType': 'EQUITY', 'firstTradeDate': 345479400, 'regularMarketTime': 1616616002, 'gmtoffset': -14400, 'timezone': 'EDT', 'exchangeTimezoneName': 'America/New_York', 'regularMarketPrice': 120.09, 'chartPreviousClose': 108.22, 'priceHint': 2, 'currentTradingPeriod': {'pre': {'timezone': 'EDT', 'start': 1616659200, 'end': 1616679000, 'gmtoffset': -14400}, 'regular': {'timezone': 'EDT', 'start': 1616679000, 'end': 1616702400, 'gmtoffset': -14400}, 'post': {'timezone': 'EDT', 'start': 1616702400, 'end': 1616716800, 'gmtoffset': -14400}}, 'dataGranularity': '1d', 'range': '6mo', 'validRanges': ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']}, 'events': {'dividends': {'1604673000': {'amount': 0.205, 'date': 1604673000}, '1612535400': {'amount': 0.205, 'date': 1612535400}}}}
 data5=''
-data6={'meta': {'currency': 'ABC', 'symbol': 'AAPL', 'exchangeName': 'NMS', 'instrumentType': 'EQUITY', 'firstTradeDate': 345479400, 'regularMarketTime': 1616616002, 'gmtoffset': -14400, 'timezone': 'EDT', 'exchangeTimezoneName': 'America/New_York', 'regularMarketPrice': 120.09, 'chartPreviousClose': 108.22, 'priceHint': 2, 'currentTradingPeriod': {'pre': {'timezone': 'EDT', 'start': 1616659200, 'end': 1616679000, 'gmtoffset': -14400}, 'regular': {'timezone': 'EDT', 'start': 1616679000, 'end': 1616702400, 'gmtoffset': -14400}, 'post': {'timezone': 'EDT', 'start': 1616702400, 'end': 1616716800, 'gmtoffset': -14400}}, 'dataGranularity': '1d', 'range': '6mo', 'validRanges': ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']}, 'events': {'dividends': {'1604673000': {'amount': 0.205, 'date': 1604673000}, '1612535400': {'amount': 0.205, 'date': -9999999}}}}
+data6={'meta': {'currency': 'USD', 'symbol': 'AAPL', 'exchangeName': 'NMS', 'instrumentType': 'EQUITY', 'firstTradeDate': 345479400, 'regularMarketTime': 1616616002, 'gmtoffset': -14400, 'timezone': 'EDT', 'exchangeTimezoneName': 'America/New_York', 'regularMarketPrice': 120.09, 'chartPreviousClose': 108.22, 'priceHint': 2, 'currentTradingPeriod': {'pre': {'timezone': 'EDT', 'start': 1616659200, 'end': 1616679000, 'gmtoffset': -14400}, 'regular': {'timezone': 'EDT', 'start': 1616679000, 'end': 1616702400, 'gmtoffset': -14400}, 'post': {'timezone': 'EDT', 'start': 1616702400, 'end': 1616716800, 'gmtoffset': -14400}}, 'dataGranularity': '1d', 'range': '6mo', 'validRanges': ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']}, 'events': {'dividends': {'1604673000': {'amount': 0.205, 'date': 0}, '1612535400': {'amount': 0.205, 'date': 0}}}}
 output1=pd.DataFrame(columns=["Dividends"])
 output1=pd.DataFrame(data=[{'amount': 0.448, 'date': 1615987800},{'amount': 0.442, 'date': 1608215400}])
 output1.set_index("date",inplace=True)
@@ -99,13 +99,19 @@ class Test_parse_action(unittest.TestCase):
         self.assertTrue(result[1].empty)
 
 
-    def test_wrongData(self):
+    def test_wrongDate(self):
         """
-        Test wring data
+        Test the date beyond the electronic stock market was created
         """
+        output = pd.DataFrame(columns=["Dividends"])
+        output = pd.DataFrame(data=[{'amount': 0.205, 'date': 1604673000}, {'amount': 0.205, 'date': 3308400}])
+        output.set_index("date",inplace=True)
+        output.index = pd.to_datetime(output.index, unit="s")
+
+        dividends, splits = utils.parse_actions(data6)
+
+        self.assertEqual(dividends.index[1], output.index[1])
         
-        result = utils.parse_actions(data6)
-        #print(result)
 
 
 if __name__ == '__main__':
