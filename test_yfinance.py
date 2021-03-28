@@ -44,7 +44,7 @@ class TestTicker(unittest.TestCase):
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
 
-    def test_balance_sheet(self):
+    def test_balance(self):
         '''
             Tests ticker.balance_sheet & ticker.balancesheet
             Unified in same function due to same name 
@@ -55,7 +55,7 @@ class TestTicker(unittest.TestCase):
             assert(ticker.balance_sheet == ticker.get_balancesheet())
             assert(ticker.balancesheet == ticker.get_balancesheet())
 
-    def test_quarterly_balance_sheet(self):
+    def test_quarterly_balance(self):
         '''
             Tests ticker.quarterly_balance_sheet & ticker.quarterly_balancesheet
             Unified in same function due to same name 

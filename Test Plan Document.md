@@ -41,7 +41,7 @@
 - When attempting to retrieve a balance sheet, an empty data frame is returned.
 
 <a id="plannedTests"><h2>3. Planned Tests</h2></a>
-- We plan to separate the test cases into to two sections. One test testing the balance sheets which are `ticker.balancesheet` and `ticker.balance_sheet`, finally the second test will be testing the quarterly balance sheets which are `ticker.quarterly_balance_sheet` and `ticker.quarterly_balancesheet`.
+- We plan to separate the test cases into to two sections. One test testing the balance sheets which are `ticker.balance` and `ticker.balance`, finally the second test will be testing the quarterly balance sheets which are `ticker.quarterly_balance` and `ticker.quarterly_balance`.
 - For each method we test whether the balance sheet is None.
 - We plan to implement the tests in `test_yfinance.py` file in `TestTicker Class`. This is the source used as python unit test, [unit test](https://docs.python.org/3/library/unittest.html)
 
@@ -59,7 +59,7 @@ After the fetch is successful, tests can commence on “.balance_sheet” and �
 - The following python tests were used as the approach
 
 ```python
-    def test_balance_sheet(self):
+    def test_balance(self):
         '''
             Tests ticker.balance_sheet & ticker.balancesheet
             Unified in same function due to same name 
@@ -70,7 +70,7 @@ After the fetch is successful, tests can commence on “.balance_sheet” and �
             assert(ticker.balance_sheet == ticker.get_balancesheet())
             assert(ticker.balancesheet == ticker.get_balancesheet())
 
-    def test_quarterly_balance_sheet(self):
+    def test_quarterly_balance(self):
         '''
             Tests ticker.quarterly_balance_sheet & ticker.quarterly_balancesheet
             Unified in same function due to same name 
