@@ -105,7 +105,7 @@ class Test_parse_action(unittest.TestCase):
         """
         
         result = utils.parse_actions(data6)
-        print(result)
+        #print(result)
 
 
 if __name__ == '__main__':
