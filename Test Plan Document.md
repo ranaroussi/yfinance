@@ -41,30 +41,9 @@
 - When attempting to retrieve a balance sheet, an empty data frame is returned.
 
 <a id="plannedTests"><h2>3. Planned Tests</h2></a>
-- We plan to do two tests cases for each of the four methods we need to test. For each method we test whether the balance sheet is None, 
-and we test if the balance sheet passed into the test is equivalent to what we receive from "ticker.get_balancesheet()". 
-We do the same tests for the quarterly balance sheets. Below are the tests we would run.
-
-`def test_balance_sheet(self):
-        for ticker in tickers:
-            assert(ticker.balance_sheet is not None)
-            assert(ticker.balance_sheet == ticker.get_balancesheet())
-
-    def test_quarterly_balance_sheet(self):
-        for ticker in tickers:
-            assert(ticker.quarterly_balance_sheet is not None)
-            assert(ticker.quarterly_balance_sheet == ticker.get_balancesheet(freq='quarterly'))
-
-    def test_balancesheet(self):
-        for ticker in tickers:
-            assert(ticker.balancesheet is not None)
-            assert(ticker.balancesheet == ticker.get_balancesheet())
-
-    def test_quarterly_balancesheet(self):
-        for ticker in tickers:
-            assert(ticker.quarterly_balancesheet is not None)
-            assert(ticker.quarterly_balancesheet == ticker.get_balancesheet('quarterly'))`
-
+- We plan to separate the test cases into to two sections. One test testing the balance sheets which are `ticker.balancesheet` and `ticker.balance_sheet`, finally the second test will be testing the quarterly balance sheets which are `ticker.quarterly_balance_sheet` and `ticker.quarterly_balancesheet`.
+- For each method we test whether the balance sheet is None.
+- We plan to implement the tests in `test_yfinance.py` file in `TestTicker Class`. This is the source used as python unit test, [unit test](https://docs.python.org/3/library/unittest.html)
 
 <a id="risks"><h2>4. Risks</h2></a>
 
@@ -77,10 +56,34 @@ We do the same tests for the quarterly balance sheets. Below are the tests we wo
 <a id="s5"><h4>5.1 Test Automation</h4></a>
 - We will be implementing tests that can run via a python file. An attempt to retrieve data from the yahoo finance website must be made.
 After the fetch is successful, tests can commence on “.balance_sheet” and “.quarterly_balance_sheet”. Both sheets are tested to see if their values are "None" or if they match the expected banacle sheet for the given trigger tested.
+- The following python tests were used as the approach
+
+```python
+    def test_balance_sheet(self):
+        '''
+            Tests ticker.balance_sheet & ticker.balancesheet
+            Unified in same function due to same name 
+        '''
+        for ticker in tickers:
+            assert(ticker.balance_sheet is not None)
+            assert(ticker.balancesheet is not None)
+            assert(ticker.balance_sheet == ticker.get_balancesheet())
+            assert(ticker.balancesheet == ticker.get_balancesheet())
+
+    def test_quarterly_balance_sheet(self):
+        '''
+            Tests ticker.quarterly_balance_sheet & ticker.quarterly_balancesheet
+            Unified in same function due to same name 
+        '''
+        for ticker in tickers:
+            assert(ticker.quarterly_balance_sheet is not None)
+            assert(ticker.quarterly_balancesheet is not None)
+            assert(ticker.quarterly_balancesheet == ticker.get_balancesheet('quarterly'))
+            assert(ticker.quarterly_balance_sheet == ticker.get_balancesheet(freq='quarterly'))
+```
 
 <a id="testEnvironment"><h2>6. Test Environment</h2></a>
 - Everything is run locally on your machine. Data is retrieved from yahoo finance website.
-
 
 
 
