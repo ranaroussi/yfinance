@@ -62,7 +62,7 @@ create mock data to work with and test using mock data for specific testing scen
 **4.2 Test Automation**<br>
 Automated functional testing is going to be tested, since functional testing is performed at the level of system testing. 
 Automated unit tests are also part of the process. All of our testing is going to be done using Python's unit testing 
-framework, unittest(https://docs.python.org/3.9/library/unittest.html)
+framework, unittest (https://docs.python.org/3.9/library/unittest.html)
 
 
 ## Test Environment
