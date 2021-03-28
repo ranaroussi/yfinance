@@ -59,6 +59,14 @@ Trigger: Loss of all test cases
 Mitigation Plan: Export data prior to any upgrade, massage as necessary and re-import after upgrade.
 ```
 
+```
+3.Stock mock data might be inaccurate
+```
+
+Risk: Low
+Trigger: Retrieving data through run.py contains outdated/wrong data
+Mitigation Plan: Check the yahoo stock website to validate the data
+
 **4 Test Approach**
 
 4.1 Planned tests:
@@ -77,6 +85,15 @@ test when data has only dividends:
 - test if the returned dividend dataframe is empty
 - test if the returned splits dataframe is empty
 - test if the dataframe returned matches with expected dataframe
+
+```
+test when data has only splits:
+```
+
+- test if the returned dataseries is None
+- test if the returned dataframe contains splits
+- test if the returned dataframe does not contain dividends
+- test if the returned dataseries matches the expected output listed
 
   4.2 Test approach:
 
