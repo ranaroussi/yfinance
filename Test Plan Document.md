@@ -65,10 +65,10 @@ After the fetch is successful, tests can commence on “.balance_sheet” and �
             Unified in same function due to same name 
         '''
         for ticker in tickers:
-            assert(ticker.balance_sheet is not None)
-            assert(ticker.balancesheet is not None)
-            assert(ticker.balance_sheet == ticker.get_balancesheet())
-            assert(ticker.balancesheet == ticker.get_balancesheet())
+            self.assertIsNotNone(ticker.balance_sheet)
+            self.assertIsNotNone(ticker.balancesheet)
+            self.assertIs(ticker.balancesheet, ticker.get_balancesheet())
+            self.assertIs(ticker.balance_sheet, ticker.get_balancesheet())
 
     def test_quarterly_balance(self):
         '''
@@ -76,10 +76,10 @@ After the fetch is successful, tests can commence on “.balance_sheet” and �
             Unified in same function due to same name 
         '''
         for ticker in tickers:
-            assert(ticker.quarterly_balance_sheet is not None)
-            assert(ticker.quarterly_balancesheet is not None)
-            assert(ticker.quarterly_balancesheet == ticker.get_balancesheet('quarterly'))
-            assert(ticker.quarterly_balance_sheet == ticker.get_balancesheet(freq='quarterly'))
+            self.assertIsNotNone(ticker.quarterly_balance_sheet)
+            self.assertIsNotNone(ticker.quarterly_balancesheet)
+            self.assertIs(ticker.quarterly_balancesheet, ticker.get_balancesheet(freq='quarterly'))
+            self.assertIs(ticker.quarterly_balance_sheet, ticker.get_balancesheet(freq='quarterly'))
 ```
 
 <a id="testEnvironment"><h2>6. Test Environment</h2></a>

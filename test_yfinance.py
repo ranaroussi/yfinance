@@ -50,10 +50,10 @@ class TestTicker(unittest.TestCase):
             Unified in same function due to same name 
         '''
         for ticker in tickers:
-            assertIsNotNone(ticker.balance_sheet)
-            assertIsNotNone(ticker.balancesheet)
-            assertEqual(ticker.balance_sheet, ticker.get_balancesheet())
-            assertEqual(ticker.balancesheet, ticker.get_balancesheet())
+            self.assertIsNotNone(ticker.balance_sheet)
+            self.assertIsNotNone(ticker.balancesheet)
+            self.assertIs(ticker.balancesheet, ticker.get_balancesheet())
+            self.assertIs(ticker.balance_sheet, ticker.get_balancesheet())
 
     def test_quarterly_balance(self):
         '''
@@ -61,10 +61,10 @@ class TestTicker(unittest.TestCase):
             Unified in same function due to same name 
         '''
         for ticker in tickers:
-            assertIsNotNone(ticker.quarterly_balance_sheet)
-            assertIsNotNone(ticker.quarterly_balancesheet)
-            assertEqual(ticker.quarterly_balancesheet, ticker.get_balancesheet('quarterly'))
-            assertEqual(ticker.quarterly_balance_sheet, ticker.get_balancesheet(freq='quarterly'))
+            self.assertIsNotNone(ticker.quarterly_balance_sheet)
+            self.assertIsNotNone(ticker.quarterly_balancesheet)
+            self.assertIs(ticker.quarterly_balancesheet, ticker.get_balancesheet(freq='quarterly'))
+            self.assertIs(ticker.quarterly_balance_sheet, ticker.get_balancesheet(freq='quarterly'))
 
 class TestTickers:
     def test_nothing(self):
