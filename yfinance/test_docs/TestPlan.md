@@ -3,10 +3,6 @@
 ## yfinance Group #5 (line 378 to 391)
 **Ji Heon Kim**†<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, jiheon@ualberta.ca<br>
-**Chirag Khurana**†<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, ckhurana@ualberta.ca <br>
-**Christian Arbelaez**†<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, carbelae@ualberta.ca <br>
 **Scott Kavalinas**†<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, skavalin@ualberta.ca <br>
 **Walker Peters**†<br>
@@ -26,8 +22,6 @@ to thoroughly test the functionality contained in this section of code and uncov
 **1.2 Team Members**<br>
 | Name               | Role     |
 |--------------------|----------|
-| Chirag Khurana     | Testing  |
-| Christian Arbelaez | Testing  |
 | Ji Heon Kim        | Testing  |
 | Scott Kavalinas    | Testing  |
 | Walker Peters      | Testing  |
@@ -51,7 +45,11 @@ input data types match the data types of what it’s comparing, the test should 
 values. This assumption needs to be made if we assume all the dictionary values to be string type.
 
 **3.2 Risks**<br>
-- Working with only string type may result in a mismatch between the test output and the actual output.
+| Risk                                                                                                              | Impact | Trigger                                         | Mitigation Plan                                                                    |
+|-------------------------------------------------------------------------------------------------------------------|--------|-------------------------------------------------|------------------------------------------------------------------------------------|
+| Scope Creep - as testers start to get further along with testing, we realize there is more to do than anticipated | High   | Testing implementation proves to be difficult   | Start working on the testing as early as possible.                                 |
+| Working with only string type may result in a mismatch  between the test output and the actual output             | Medium | Mismatching types causes testing to take longer | Be mindful  of this fact                                                           |
+| Familiarity with testing in Python causes  testing to take longer than expected                                   | Medium | Delays in implementing required testing         | Read Python testing documentation. Spend a fair amount of time working on project. |
 
 
 ## Test Approach
