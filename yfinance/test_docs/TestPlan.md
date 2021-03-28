@@ -57,14 +57,16 @@ values. This assumption needs to be made if we assume all the dictionary values 
 The part of the code we are assigned to is a loop that iterates through a dictionary, finds specific keys, and 
 runs a cleanup operation to the data if the found keys are of a specific type. A good test approach for us would 
 be exploratory testing. A reason for that is because we do not have the actual data to test with. We will have to 
-create dummy data to work with and test using dummy data for specific testing scenarios. 
+create mock data to work with and test using mock data for specific testing scenarios. 
 
 **4.2 Test Automation**<br>
-Automated functional testing is going to be tested, since functional testing is performed at the level of system testing.
+Automated functional testing is going to be tested, since functional testing is performed at the level of system testing. 
+Automated unit tests are also part of the process. All of our testing is going to be done using Python's unit testing 
+framework, unittest(https://docs.python.org/3.9/library/unittest.html)
 
 
 ## Test Environment
-The database with yahoo's data would be required for testing actual values, however dummy data can be used for the sake of testing functionalities.
+The database with yahoo's data would be required for testing actual values, however mock data can be used for the sake of testing functionalities.
 
 ## Milestone / Deliverables
 **6.1 Test Schedule**<br>
