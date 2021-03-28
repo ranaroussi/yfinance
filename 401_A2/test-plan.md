@@ -20,8 +20,7 @@ This test plan is to test the function of parse_action with with different ticke
 ```
 * Shiyu Xiu - Unit Testing the parse_actions
 * Luke Kim - Unit Testing the parse_actions for split case
-
-
+* Ruochen Lin - Unit Testing the parse_actions for date & time match correct and empty input
 ```
 
 **2 Problem found in Research phase**
