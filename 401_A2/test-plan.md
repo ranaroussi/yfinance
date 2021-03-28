@@ -58,6 +58,16 @@ Trigger: Loss of all test cases
 Mitigation Plan: Export data prior to any upgrade, massage as necessary and re-import after upgrade.
 ```
 
+```
+3.Changes to the date under divident may lead to inaccurate display of date and time.
+```
+
+```
+Risk: Low
+Trigger: if the date of input is inaccurate.
+Mitigation Plan: Correct time by adding get current dataTime function to compare.
+```
+
 **4 Test Approach**
 
 4.1 Planned tests:
