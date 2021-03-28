@@ -6,7 +6,6 @@
 
 """
 Sanity check for most common library uses all working
-
 - Stock: Microsoft
 - ETF: Russell 2000 Growth
 - Mutual fund: Vanguard 500 Index fund
@@ -15,11 +14,9 @@ Sanity check for most common library uses all working
 """
 
 import yfinance as yf
-from yfinance import utils
-import pandas
-import datetime
-# , 'IWO', 'VFINX', '^GSPC', 'BTC-USD'
-symbols = ['MSFT']
+
+
+symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
 
 class TestTicker:
@@ -46,10 +43,6 @@ class TestTicker:
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
 
-    def test_recommendations(self):
-        print(yf.Ticker('MSFT').analyst_recommendations(utils.get_json(
-            "{}/{}".format('https://finance.yahoo.com/quote', 'MSFT'), None)).columns.to_numpy())
-
-
-#TestTicker().test_recommendations()
-print(datetime.datetime)
+class TestTickers:
+    def test_nothing(self):
+        pass

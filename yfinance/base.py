@@ -394,19 +394,26 @@ class TickerBase():
 
         self._fundamentals = True
 
+    # analyst_recommendations
     def analyst_recommendations(self, data):
-        try:
-            rec = _pd.DataFrame(data['upgradeDowngradeHistory']['history'])
+        # test if the type of data is dict
+        if isinstance(data, dict):
+            # test if 'upgradeDowngradeHistory' exists in data.keys
+            if 'upgradeDowngradeHistory' in data:
+                # test if 'history' exists in data['upgradeDowngradeHistory'].keys
+                if 'history' in data['upgradeDowngradeHistory']:
+                    rec = _pd.DataFrame(data['upgradeDowngradeHistory']['history'])
+                    # test if 'epochGradeDate' exists in dataframe.columns
+                    if "epochGradeDate" in rec.columns:
+                        rec['earningsDate'] = _pd.to_datetime(rec['epochGradeDate'], unit='s')
+                        rec.set_index('earningsDate', inplace=True)
+                        rec.index.name = 'Date'
+                        rec.columns = utils.camel2title(rec.columns)
 
-            rec['earningsDate'] = _pd.to_datetime(rec['epochGradeDate'], unit='s')
-            rec.set_index('earningsDate', inplace=True)
+                        # test if "Firm", "To Grade", 'From Grade', "Action" exists in dataframe.columns
+                        if all(i in rec.columns for i in ("Firm", "To Grade", 'From Grade', "Action")):
+                            self._recommendations = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
 
-            rec.index.name = 'Date'
-            rec.columns = utils.camel2title(rec.columns)
-            self._recommendations = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-        except Exception as e:
-            print("ERROR", e)
-        
         return self._recommendations
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
