@@ -418,7 +418,7 @@ class TickerBase():
         data = utils.get_json(ticker_url+'/financials', proxy, self.session)
 
         # generic patterns
-        self.generic_patterns(self, data=data)
+        self.generic_patterns(data=data)
 
         # earnings
         if isinstance(data.get('earnings'), dict):
