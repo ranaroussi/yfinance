@@ -19,17 +19,17 @@ Requirement(s) to be tested: .earnings
 
 Roles and Responsibilities: The team's goal was to test for the proper response from the .earnings method for multiple different valid and invalid inputs.
 
-Set Up Procedures: \n
-Retrieve codebase\n
-*Assuming user has github account and git installed onto their machine*\n
+Set Up Procedures:<br>
+Retrieve codebase<br>
+*Assuming user has github account and git installed onto their machine*<br>
 1. `git clone https://github.com/sazzy4o/yfinance.git`
-Setup Virtual Environment (recommended)\n
+Setup Virtual Environment (recommended)<br>
 3. Install venv for Python
 4. Create virtual environment
 `virtualenv <desired path>`
 4. Activate virtual environment (macOS)
 `source <desired path/bin/activate>`
-Install Necessary Modules\n
+Install Necessary Modules<br>
 5. `pip3 install unittest`
 6. `pip3 install . -editable`
 
@@ -40,7 +40,7 @@ Hardware: Any computer capable of running a modern operating system.
 
 Software: Any modern operating system capable of running python3.
 
-Procedural Requirements:\n
+Procedural Requirements:<br>
 Ensure the “data” folder contains the correct json files. Must run `pip install . -editable` inside the yfinance folder in order to install yfinance’s required additional modules.
 
 ## Test
@@ -50,12 +50,12 @@ Test Features:
 
 Input Specifications: N/A, all tests run automatically
 
-Procedural Steps:\n
+Procedural Steps:<br>
 1. Go to test directory `cd test`
 2. run command `python3 test_earnings.py`
 The test case is run with the unittest module. This test case is set up under the “TestDataValues” class, and the tests themselves are all run using the python code: `unittest.main()`, which is run when the file “test_earnings.py” is run.
 
-Expected Results of Case:\n
+Expected Results of Case:<br>
 The output will say that a test failed if a test failed. It will show the following if the test is completed successfully:
 
 `.....`
