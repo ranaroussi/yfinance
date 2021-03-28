@@ -17,8 +17,6 @@ None
 
 Fork of finance: https://github.com/sazzy4o/yfinance
 
-(Commit hash: 90c157344931c137777c0f10e2403192f174eacc)
-
 Python Version: Python 3.4+
 
 **Required Configuration:**
@@ -27,35 +25,227 @@ No special setup needed
 
 **Notes and Results:**
 
-| **Step**     | **Test Step/Input** | **Expected Results** | **Actual Results** | **Requirement Validation** | **Pass/Fail** |
-| ------------ | ------------------- | -------------------- | ------------------ | -------------------------- | ------------- |
-| Flow 1: Verify that the annual `.earnings` property supports positive values
-| 1 | Replace `get_json` with mock function that returns a company with positive earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
-| 2 | Create ticker that corrisponds to the mocked data | Ticker is created |  Ticker is created |  | ✅ |
-| 3 | Get `earnings` property | Earning property is returned | Earning property is returned |  | ✅ |
-| 4 | Validate that the `earnings` | Match expected positive value| Match expected positive value | `earnings` can handle positive values |✅ |
-| Flow 2: Verify that the `.quarterly_earnings` property supports positive values
-| 1 | Replace `get_json` with mock function that returns a company with positive quarterly earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
-| 2 | Create ticker that corrisponds to the mocked data | Ticker is created | Ticker is created |  | ✅ |
-| 3 | Get `quarterly_earnings` property | Earning property is returned | Earning property is returned |  | ✅ |
-| 4 | Validate that the `quarterly_earnings`| Match expected positive value |Match expected positive value | `quarterly_earnings` can handle positive values | ✅ |
-| Flow 3: Verify that the annual `.earnings` property supports positive values
-| 1 | Replace `get_json` with mock function that returns a company with negative earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
-| 2 | Create ticker that corrisponds to the mocked data | Ticker is created | Ticker is created |  | ✅ |
-| 3 | Get `earnings` property | Earning property is returned | Earning property is returned |  | ✅ |
-| 4 | Validate that the `earnings` | Match expected negative value | Match expected negative value|`earnings` can handle negative values | ✅ |
-| Flow 4: Verify that the `.quarterly_earnings` property supports negative values
-| 1 | Replace `get_json` with mock function that returns a company with negative quarterly earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
-| 2 | Create ticker that corrisponds to the mocked data | Ticker is created | Ticker is created |  | ✅ |
-| 3 | Get `quarterly_earnings` property | Earning property is returned | Earning property is returned  |  | ✅ |
-| 4 | Validate that the `quarterly_earnings`| Match expected negative value | Match expected negative value| `quarterly_earnings` can handle negative values |✅ |
-| Flow 5: Verify that the annual `.earnings` property supports zero values
-| 1 | Replace `get_json` with mock function that returns a company with zero earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
-| 2 | Create ticker that corrisponds to the mocked data | Ticker is created | Ticker is created |  | ✅ |
-| 3 | Get `earnings` property | Earning property is returned | Earning property is returned |  | ✅ |
-| 4 | Validate that the `earnings` | Match expected zero value |Match expected zero value| `earnings` can handle values of zero | ✅ |
-| Flow 6: Verify that the `.quarterly_earnings` property supports zero values
-| 1 | Replace `get_json` with mock function that returns a company with zero quarterly earnings | `get_json` is updated | `get_json` is updated |  | ✅ |
-| 2 | Create ticker that corrisponds to the mocked data | Ticker is created | Ticker is created |  | ✅ |
-| 3 | Get `quarterly_earnings` property | Earning property is returned | Earning property is returned |  | ✅ |
-| 4 | Validate that the `quarterly_earnings` | Match expected zero value | Match expected zero value| `quarterly_earnings` can handle values of zero |✅ |
+<table>
+<thead>
+<tr>
+<th><strong>Step</strong></th>
+<th><strong>Test Step/Input</strong></th>
+<th><strong>Expected Results</strong></th>
+<th><strong>Actual Results</strong></th>
+<th><strong>Requirement Validation</strong></th>
+<th><strong>Pass/Fail</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td colspan="6">Flow 1: Verify that the annual <code>.earnings</code> property supports positive values</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Replace <code>get_json</code> with mock function that returns a company with positive earnings</td>
+<td><code>get_json</code> is updated</td>
+<td><code>get_json</code> is updated</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Create ticker that corrisponds to the mocked data</td>
+<td>Ticker is created</td>
+<td>Ticker is created</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Get <code>earnings</code> property</td>
+<td>Earning property is returned</td>
+<td>Earning property is returned</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Validate that the <code>earnings</code></td>
+<td>Match expected positive value</td>
+<td>Match expected positive value</td>
+<td><code>earnings</code> can handle positive values</td>
+<td>✅</td>
+</tr>
+<tr>
+<td colspan="6">Flow 2: Verify that the <code>.quarterly_earnings</code> property supports positive values</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Replace <code>get_json</code> with mock function that returns a company with positive quarterly earnings</td>
+<td><code>get_json</code> is updated</td>
+<td><code>get_json</code> is updated</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Create ticker that corrisponds to the mocked data</td>
+<td>Ticker is created</td>
+<td>Ticker is created</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Get <code>quarterly_earnings</code> property</td>
+<td>Earning property is returned</td>
+<td>Earning property is returned</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Validate that the <code>quarterly_earnings</code></td>
+<td>Match expected positive value</td>
+<td>Match expected positive value</td>
+<td><code>quarterly_earnings</code> can handle positive values</td>
+<td>✅</td>
+</tr>
+<tr>
+<td colspan="6">Flow 3: Verify that the annual <code>.earnings</code> property supports positive values</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Replace <code>get_json</code> with mock function that returns a company with negative earnings</td>
+<td><code>get_json</code> is updated</td>
+<td><code>get_json</code> is updated</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Create ticker that corrisponds to the mocked data</td>
+<td>Ticker is created</td>
+<td>Ticker is created</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Get <code>earnings</code> property</td>
+<td>Earning property is returned</td>
+<td>Earning property is returned</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Validate that the <code>earnings</code></td>
+<td>Match expected negative value</td>
+<td>Match expected negative value</td>
+<td><code>earnings</code> can handle negative values</td>
+<td>✅</td>
+</tr>
+<tr>
+<td colspan="6">Flow 4: Verify that the <code>.quarterly_earnings</code> property supports negative values</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Replace <code>get_json</code> with mock function that returns a company with negative quarterly earnings</td>
+<td><code>get_json</code> is updated</td>
+<td><code>get_json</code> is updated</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Create ticker that corrisponds to the mocked data</td>
+<td>Ticker is created</td>
+<td>Ticker is created</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Get <code>quarterly_earnings</code> property</td>
+<td>Earning property is returned</td>
+<td>Earning property is returned</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Validate that the <code>quarterly_earnings</code></td>
+<td>Match expected negative value</td>
+<td>Match expected negative value</td>
+<td><code>quarterly_earnings</code> can handle negative values</td>
+<td>✅</td>
+</tr>
+<tr>
+<td colspan="6">Flow 5: Verify that the annual <code>.earnings</code> property supports zero values</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Replace <code>get_json</code> with mock function that returns a company with zero earnings</td>
+<td><code>get_json</code> is updated</td>
+<td><code>get_json</code> is updated</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Create ticker that corrisponds to the mocked data</td>
+<td>Ticker is created</td>
+<td>Ticker is created</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Get <code>earnings</code> property</td>
+<td>Earning property is returned</td>
+<td>Earning property is returned</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Validate that the <code>earnings</code></td>
+<td>Match expected zero value</td>
+<td>Match expected zero value</td>
+<td><code>earnings</code> can handle values of zero</td>
+<td>✅</td>
+</tr>
+<tr>
+<td colspan="6">Flow 6: Verify that the <code>.quarterly_earnings</code> property supports zero values</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Replace <code>get_json</code> with mock function that returns a company with zero quarterly earnings</td>
+<td><code>get_json</code> is updated</td>
+<td><code>get_json</code> is updated</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Create ticker that corrisponds to the mocked data</td>
+<td>Ticker is created</td>
+<td>Ticker is created</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Get <code>quarterly_earnings</code> property</td>
+<td>Earning property is returned</td>
+<td>Earning property is returned</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Validate that the <code>quarterly_earnings</code></td>
+<td>Match expected zero value</td>
+<td>Match expected zero value</td>
+<td><code>quarterly_earnings</code> can handle values of zero</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
