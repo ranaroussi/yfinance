@@ -3,6 +3,10 @@
 ## yfinance Group #5 (line 378 to 391)
 **Ji Heon Kim**†<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, jiheon@ualberta.ca<br>
+**Chirag Khurana**†<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, ckhurana@ualberta.ca <br>
+**Christian Arbelaez**†<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, carbelae@ualberta.c<br>
 **Scott Kavalinas**†<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Department of Computer Science, University of Alberta, Edmonton, Alberta, Canada, skavalin@ualberta.ca <br>
 **Walker Peters**†<br>
@@ -23,17 +27,30 @@ to thoroughly test the functionality contained in this section of code and uncov
 | Name               | Role     |
 |--------------------|----------|
 | Ji Heon Kim        | Testing  |
+| Chirag Khura       | Testing  |
+| Christian Arbelaez | Testing  |
 | Scott Kavalinas    | Testing  |
 | Walker Peters      | Testing  |
 
 
 ## Research and Screening
 **2.1 Issues related to the code**<br>
+**Open**
 - GitHub Issue #599 (https://github.com/ranaroussi/yfinance/issues/599)
-- GitHub Issue #144 (https://github.com/ranaroussi/yfinance/issues/144)
+- GitHub Issue #172 (https://github.com/ranaroussi/yfinance/issues/172)
+- GitHub Issue #167 (https://github.com/ranaroussi/yfinance/issues/167)
+- GitHub Issue #163 (https://github.com/ranaroussi/yfinance/issues/163)
+- GitHub Issue #150 (https://github.com/ranaroussi/yfinance/issues/150)
+
+**Closed**
+- GitHub Issue #275 (https://github.com/ranaroussi/yfinance/issues/275)
+- GitHub Issue #142 (https://github.com/ranaroussi/yfinance/issues/142)
+- GitHub Issue #140 (https://github.com/ranaroussi/yfinance/issues/140)
 
 **2.2 Pull requests related to the code**<br>
+**Closed**
 - Pull Request #497 (https://github.com/ranaroussi/yfinance/pull/497)
+- Pull Request #174 (https://github.com/ranaroussi/yfinance/pull/174)
 
 
 ## Assumptions / Risks
@@ -61,12 +78,13 @@ create mock data to work with and test using mock data for specific testing scen
 
 **4.2 Test Automation**<br>
 Automated functional testing is going to be tested, since functional testing is performed at the level of system testing. 
-Automated unit tests are also part of the process. All of our testing is going to be done using Python's unit testing 
-framework, unittest (https://docs.python.org/3.9/library/unittest.html)
-
+Automated unit tests are not a part of the process and testing is currently done manually using Python's Unit testing 
+framework, unittest (https://docs.python.org/3.9/library/unittest.html).
 
 ## Test Environment
-The database with yahoo's data would be required for testing actual values, however mock data can be used for the sake of testing functionalities.
+The database with yahoo's data would be required for testing actual values, however mock data can be used for the sake of testing 
+functionalities. Python is required to run the code contained in this project, and you can install the required modules using pip by 
+typing `pip3 install -r requirements.txt` or `pip install -r requirements.txt` (depending on your configuration) in the root directory.
 
 ## Milestone / Deliverables
 **6.1 Test Schedule**<br>
