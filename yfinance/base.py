@@ -311,7 +311,6 @@ class TickerBase():
             df.index = utils.camel2title(df.index)
             return df
 
-
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
