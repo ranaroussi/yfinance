@@ -359,18 +359,7 @@ class TickerBase():
             pass
 
         # analyst recommendations
-        try:
-            rec = _pd.DataFrame(
-                data['upgradeDowngradeHistory']['history'])
-            rec['earningsDate'] = _pd.to_datetime(
-                rec['epochGradeDate'], unit='s')
-            rec.set_index('earningsDate', inplace=True)
-            rec.index.name = 'Date'
-            rec.columns = utils.camel2title(rec.columns)
-            self._recommendations = rec[[
-                'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-        except Exception:
-            pass
+        self.analyst_recommendations(data)
 
         # get fundamentals
         data = utils.get_json(ticker_url+'/financials', proxy)
@@ -404,6 +393,27 @@ class TickerBase():
             self._earnings['quarterly'] = df
 
         self._fundamentals = True
+
+    def analyst_recommendations(self, data):
+        # test if the type of data is dict
+        if isinstance(data, dict):
+            # test if 'upgradeDowngradeHistory' exists in data.keys
+            if 'upgradeDowngradeHistory' in data:
+                # test if 'history' exists in data['upgradeDowngradeHistory'].keys
+                if 'history' in data['upgradeDowngradeHistory']:
+                    rec = _pd.DataFrame(data['upgradeDowngradeHistory']['history'])
+                    # test if 'epochGradeDate' exists in dataframe.columns
+                    if "epochGradeDate" in rec.columns:
+                        rec['earningsDate'] = _pd.to_datetime(rec['epochGradeDate'], unit='s')
+                        rec.set_index('earningsDate', inplace=True)
+                        rec.index.name = 'Date'
+                        rec.columns = utils.camel2title(rec.columns)
+
+                        # test if "Firm", "To Grade", 'From Grade', "Action" exists in dataframe.columns
+                        if all(i in rec.columns for i in ("Firm", "To Grade", 'From Grade', "Action")):
+                            self._recommendations = rec[['Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
+
+        return self._recommendations
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy=proxy)
