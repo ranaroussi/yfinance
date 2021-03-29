@@ -13,7 +13,8 @@
 
 **Prerequisites for this test:** None
 
-**Software Versions:** 
+**Software Versions:**
+
 	Current version of yfinance
 	python 3
 
@@ -64,7 +65,7 @@
    </td>
    <td>HTTPError
    </td>
-   <td>
+   <td>Can't use an empty string for a ticker
    </td>
    <td>Pass
    </td>
@@ -96,7 +97,7 @@
    </td>
    <td>KeyError
    </td>
-   <td>
+   <td>Can't research debunct companies
    </td>
    <td>Pass
    </td>
@@ -128,7 +129,7 @@
    </td>
    <td>KeyError
    </td>
-   <td>
+   <td>Does not allow spelling mistakes
    </td>
    <td>Pass
    </td>
@@ -160,7 +161,7 @@
    </td>
    <td>InvalidURL
    </td>
-   <td>
+   <td>Can't use white space
    </td>
    <td>Pass
    </td>
@@ -192,7 +193,7 @@
    </td>
    <td>KeyError
    </td>
-   <td>
+   <td>Can not use numbers
    </td>
    <td>Pass
    </td>
