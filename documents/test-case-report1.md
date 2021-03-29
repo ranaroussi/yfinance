@@ -48,11 +48,11 @@
 
 **ENVIRONMENTAL NEEDS**
 
-**Hardware:** Identify the qualities and configurations of the hardware required to execute the test case.
+**Hardware:** A device capable of handling the minimum requirements of python3.
 
-**Software:** Identify system and application software required to execute the test case. Specify any software that the test case will interact with.
+**Software:** unittest framework for python3.
 
-**Procedural Requirements:** Describe any constraints on the test procedures necessary to execute the test case.
+**Procedural Requirements:** None
 
 **TEST**
 
