@@ -15,12 +15,12 @@ Sanity check for most common library uses all working
 """
 
 import yfinance as yf
-
+import unittest
 
 symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
 
-class TestTicker:
+class TestTicker(unittest.TestCase):
     def test_info_history(self):
         for ticker in tickers:
             # always should have info and history for valid symbols
@@ -44,6 +44,31 @@ class TestTicker:
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
 
+    def test_balance(self):
+        '''
+            Tests ticker.balance_sheet & ticker.balancesheet
+            Unified in same function due to same name 
+        '''
+        for ticker in tickers:
+            assert(ticker.balance_sheet is not None)
+            assert(ticker.balancesheet is not None)
+            assert(ticker.balance_sheet == ticker.get_balancesheet())
+            assert(ticker.balancesheet == ticker.get_balancesheet())
+
+    def test_quarterly_balance(self):
+        '''
+            Tests ticker.quarterly_balance_sheet & ticker.quarterly_balancesheet
+            Unified in same function due to same name 
+        '''
+        for ticker in tickers:
+            assert(ticker.quarterly_balance_sheet is not None)
+            assert(ticker.quarterly_balancesheet is not None)
+            assert(ticker.quarterly_balancesheet == ticker.get_balancesheet('quarterly'))
+            assert(ticker.quarterly_balance_sheet == ticker.get_balancesheet(freq='quarterly'))
+
 class TestTickers:
     def test_nothing(self):
         pass
+
+if __name__ == '__main__':
+    unittest.main()
