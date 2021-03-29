@@ -10,7 +10,6 @@ import yfinance as yf
 
 from unittest import mock
 from pathlib import Path
-
 from mock import get_mocked_get_json
 
 # Mock based on https://stackoverflow.com/a/28507806/3558475:
@@ -38,14 +37,6 @@ class TestEarnings(unittest.TestCase):
     self.assertEqual(earning_2017,12662000000)
 
     self.assertEqual(len(mock_get_json.call_args_list), 2)
-
-
-  def test_invalid_ticker(self):
-    invalid = yf.Ticker('InvalidTickerName')
-
-    with self.assertRaises(ValueError):
-        invalid.earnings
-
 
 
 if __name__ == '__main__':
