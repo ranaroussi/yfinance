@@ -1,39 +1,40 @@
-﻿
-
-**<Project Name>**
+**<yfinance>**
 
 **Test Case Report**
 
-**<Date of Document>**
+**<03/28/21>**
 
 **TEST CASE REPORT**
-
-(Use one template for each test case)
 
 **GENERAL INFORMATION**
 
 **Test Stage:**
 
-☐Unit ☐Performance ☐Functionality ☐Regression ☐Integration ☐Acceptance ☐System ☐Pilot ☐Interface
+- [ ] Performance 
+- [x] Functionality 
+- [ ] Regression 
+- [ ] Integration 
+- [x] Acceptance 
+- [ ] System 
+- [ ] Pilot 
+- [ ] Interface
 
-Specify the testing stage for this test case.
+**Test Date:** 03/27/21
 
+**System Date, if applicable:** N/A
 
-**Test Date:** mm/dd/yy
+**Tester:** Harshal, Jonathan, Jordon, JuSong, Ravi
 
-**System Date, if applicable:** mm/dd/yy
+**Test Case Number:** #657
 
-**Tester:** Specify the name(s) of who is testing this
-
-**Test Case Number:** Specify a unique test number assigned to the test case.
-
-**Test Case Description** Provide a brief description of what functionality the case will test.
+**Test Case Description** Testing balancesheet and balance_sheet to ensure that they are returning something.
 
 **Results:**
 
-☐Pass ☐Fail
+- [x] Pass 
+- [ ] Fail
 
-**Incident Number, if applicable:** Specify the unique identifier assigned to the incident.
+**Incident Number, if applicable:** #618, #595, #547, #191, #465, #474, #475, #419, #423
 
 **INTRODUCTION**
 
@@ -55,28 +56,27 @@ Specify the testing stage for this test case.
 
 **TEST**
 
-**Test Items and Features:** Identify and describe the items and features that will be exercised by the test case. Group the test cases into
+**Test Items and Features:** balancesheet: a table that contains information on balances. Need to ensure that the balancesheet is not empty upon returning.
 
-logically related scenarios that test related items and features. For each item or feature, a reference to its
+**Input Specifications:** N/A
 
-associated requirement source should be included.
+**Procedural Steps:** Have all the data related to balancesheet setup and ready to go, then execute the test for balancesheet. If everything is working and balancesheet contains information, the testcases will pass. However, if the balancesheet is empty, the testcase will fail.
 
-**Input Specifications:** Define each input required to execute the test case, and reference any required relationships between inputs.
-
-**Procedural Steps:** Describe the sequences of actions necessary to prepare and execute the test case. Provide detailed test
-
-procedures for each test case; explain precisely how each test case will be executed.
-
-**Expected Results of Case:** Describe the outcome anticipated from the test case. Specify the criteria to be used to determine whether the item has passed or failed.
+**Expected Results of Case:** The outcome anticipated is pass if data on balancesheet is provided. The item will pass the test as long as balancesheet is not None.
 
 **ACTUAL RESULTS**
 
-**Output Specifications:** Define all of the outputs and features required of the test case and provide expected values. While executing the
+**Output Specifications:** 
+**TEST SCRIPT STEPS/RESULTS**
 
-test, record and describe the visually observable outputs as they occur. Produce tangible evidence of the output
-
-such as a screen print. At the conclusion, describe the actual outcome. Indicate whether the test passed or failed,
-
-and identify any discrepancies between the expected results and the actual results.
+| Step | Test Step/Input                                             | Expected Results                               | Actual Results |
+|------|-------------------------------------------------------------|------------------------------------------------|----------------|
+| 1    | Navigate to the root directory and run Python               | Python shell runs                              | pass           |
+| 2.   | Run the test_yfinance.py                                    | all test run without any errors                | pass           |
+| 3.   | test case test_balance gets executed 	                     | test case gets runs without errors             | pass           |
+| 4.   | ticker.balance_sheet gets called    	                     | A dictionary and not None   		              | pass           |
+| 5.   | ticker.balancesheet gets called 	                     	 | A dictionary and not None                      | pass           |
+| 6.   | ticker.get_balance_sheet() gets called 	                 | balance_sheet is same as the called dictonary  | pass           |
+| 7.   | ticker.get_balancesheet() gets called 	                     | balancesheet is same as the called dictonary   | pass           |
 
 
