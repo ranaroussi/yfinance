@@ -27,7 +27,7 @@
 
 **Tester:** Harshal, Jonathan, Jordon, JuSong, Ravi
 
-**Test Case Number:** #658
+**Test Case Number:** 9
 
 **Test Case Description** Testing quarterly_balancesheet and quarterly_balance_sheet to ensure that they are returning something.
 
