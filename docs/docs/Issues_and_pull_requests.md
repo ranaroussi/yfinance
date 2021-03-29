@@ -1,6 +1,6 @@
-## Assignment: Test .earnings and .quarterly_earnings in ticker.py file lines 148 to 154
+# Assignment: Test .earnings and .quarterly_earnings in ticker.py file lines 148 to 154
 
-**Issues:**
+## **Issues:**
 
 ### Issue #533
 
@@ -36,7 +36,7 @@
 - PR #174 is linked to this issue, it is closed
 
 
-**Pull Requests**
+## **Pull Requests**
 
 ### PR #620 - [Added an important financialCurrency property](https://github.com/ranaroussi/yfinance/pull/620)
 
