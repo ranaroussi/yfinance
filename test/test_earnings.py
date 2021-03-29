@@ -2,12 +2,14 @@
 Module for testings earnings property
 '''
 
+import sys
+sys.path.insert(1, '../') # Allows us to import yfinance
+
 import unittest
 import yfinance as yf
 
 from unittest import mock
 from pathlib import Path
-
 from mock import get_mocked_get_json
 from math import isnan
 
