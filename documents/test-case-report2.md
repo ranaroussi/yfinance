@@ -40,13 +40,13 @@
 
 **INTRODUCTION**
 
-**Requirement(s) to be tested:** Identify the requirements to be tested and include the requirement number and description from the Requirements Traceability Matrix.
+**Requirement(s) to be tested:** python, terminal
 
-**Roles and Responsibilities:** Describe each project team member and stakeholder involved in the test, and identify their associated responsibility for ensuring the test is executed appropriately.
+**Roles and Responsibilities:** Every team member ran the tests on their end to ensure consistency between results.
 
-**Set Up Procedures:** Describe the sequence of actions necessary to prepare for execution of the test.
+**Set Up Procedures:** Nvigate to main directory, run test_yfinance.py with command python -m test_yfinance.py.
 
-**Stop Procedures:** Describe the sequence of actions necessary to terminate the test.
+**Stop Procedures:** Testing should autoend.
 
 **ENVIRONMENTAL NEEDS**
 
