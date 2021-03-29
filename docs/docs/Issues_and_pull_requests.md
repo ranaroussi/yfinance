@@ -2,7 +2,7 @@
 
 **Issues:**
 
-\Issue #533
+\ Issue #533
 
 - PR #534 is linked to this issue
 
