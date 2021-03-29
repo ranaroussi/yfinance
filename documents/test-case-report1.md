@@ -25,7 +25,7 @@
 
 **Tester:** Harshal, Jonathan, Jordon, JuSong, Ravi
 
-**Test Case Number:** #657
+**Test Case Number:** 9
 
 **Test Case Description** Testing balancesheet and balance_sheet to ensure that they are returning something.
 
