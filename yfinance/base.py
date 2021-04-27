@@ -209,9 +209,25 @@ class TickerBase():
                 pass
 
         if auto_adjust:
-            quotes = utils.auto_adjust(quotes)
+            try:
+                quotes = utils.auto_adjust(quotes)
+            except Exception as e:
+                err_msg = "auto_adjust failed with %s" % e
+                shared._DFS[self.ticker] = utils.empty_df()
+                shared._ERRORS[self.ticker] = err_msg
+                if "many" not in kwargs and debug_mode:
+                    print('- %s: %s' % (self.ticker, err_msg))
+                return shared._DFS[self.ticker]
         elif back_adjust:
-            quotes = utils.back_adjust(quotes)
+            try:
+                quotes = utils.back_adjust(quotes)
+            except Exception as e:
+                err_msg = "back_adjust failed with %s" % e
+                shared._DFS[self.ticker] = utils.empty_df()
+                shared._ERRORS[self.ticker] = err_msg
+                if "many" not in kwargs and debug_mode:
+                    print('- %s: %s' % (self.ticker, err_msg))
+                return shared._DFS[self.ticker]
 
         if rounding:
             quotes = _np.round(quotes, data[
