@@ -343,8 +343,12 @@ class TickerBase():
         # info (be nice to python 2)
         self._info = {}
         try:
-            items = ['summaryProfile', 'summaryDetail', 'quoteType',
-                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+            # financialData & summaryDetail shared fields: ['maxAge']
+            # financialData & defaultKeyStatistics shared fields: ['maxAge', 'profitMargins']
+            # summaryDetail & defaultKeyStatistics shared fields: ['totalAssets', 'yield', 'beta', 'priceHint', 'priceToSalesTrailing12Months', 'ytdReturn', 'forwardPE', 'maxAge']
+            # summaryDetail overrides defaultKeyStatistics because 'priceToSalesTrailing12Months' is None in defaultKeyStatistics while exists in summaryDetail
+            items = ['summaryProfile', 'quoteType', 'assetProfile',
+                     'defaultKeyStatistics', 'financialData', 'summaryDetail']
             for item in items:
                 if isinstance(data.get(item), dict):
                     self._info.update(data[item])
