@@ -42,13 +42,27 @@ def empty_df(index=[]):
     return empty
 
 
+def simplify_data(tree):
+    if isinstance(tree, dict):
+        if set(tree.keys()) == {'fmt', 'raw'}:
+            return tree['raw']
+        if set(tree.keys()) == set():
+            return None
+        for k, v in tree.items():
+            tree[k] = simplify_data(v)
+    if isinstance(tree, list):
+        for idx, elem in enumerate(tree):
+            tree[idx] = simplify_data(elem)
+    return tree
+
+
 def get_json(url, proxy=None, session=None, key='QuoteSummaryStore'):
     session = session or _requests
     html = session.get(url=url, proxies=proxy).text
 
-    if not key in html:
+    if key not in html:
         html = session.get(url=url, proxies=proxy).text
-        if not key in html:
+        if key not in html:
             return {}
 
     json_str = html.split('root.App.main =')[1].split(
@@ -60,10 +74,7 @@ def get_json(url, proxy=None, session=None, key='QuoteSummaryStore'):
     data = stores[key]
 
     # return data
-    new_data = _json.dumps(data).replace('{}', 'null')
-    new_data = _re.sub(
-        r'\{[\'|\"]raw[\'|\"]:(.*?),(.*?)\}', r'\1', new_data)
-    return _json.loads(new_data)
+    return simplify_data(data)
 
 
 def camel2title(o):
