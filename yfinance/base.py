@@ -354,7 +354,7 @@ class TickerBase():
         try:
             # self._info['regularMarketPrice'] = self._info['regularMarketOpen']
             self._info['regularMarketPrice'] = data.get('price', {}).get(
-                'regularMarketPrice', self._info['regularMarketOpen'])
+                'regularMarketPrice', self._info.get('regularMarketOpen', None))
         except Exception:
             pass
 
