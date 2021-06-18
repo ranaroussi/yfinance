@@ -579,11 +579,12 @@ class TickerBase():
                         self._isin = '-'
                         return self._isin
                     else:
-                        break
-                else:
-                    self._isin = '-'
-                    return self._isin
+                        try:
+                            self._isin = data.split('"Stocks", "')[1].split('|')[1]
+                            # self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
+                            return self._isin
+                        except:
+                            break
 
-        self._isin = data.split('"Stocks", "')[1].split('|')[1]
-        # self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
-        return self._isin
+            self._isin = '-'
+            return self._isin
