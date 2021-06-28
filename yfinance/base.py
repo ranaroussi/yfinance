@@ -522,20 +522,29 @@ class TickerBase():
     def get_dividends(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
-        dividends = self._history["Dividends"]
-        return dividends[dividends != 0]
+        if self._history is not None and "Dividends" in self._history:
+            dividends = self._history["Dividends"]
+            return dividends[dividends != 0]
+        else:
+            return []
 
     def get_splits(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
-        splits = self._history["Stock Splits"]
-        return splits[splits != 0]
+        if self._history is not None and "Stock Splits" in self._history:
+            splits = self._history["Stock Splits"]
+            return splits[splits != 0]
+        else:
+            return []
 
     def get_actions(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
-        actions = self._history[["Dividends", "Stock Splits"]]
-        return actions[actions != 0].dropna(how='all').fillna(0)
+        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
+            actions = self._history[["Dividends", "Stock Splits"]]
+            return actions[actions != 0].dropna(how='all').fillna(0)
+        else:
+            return []
 
     def get_isin(self, proxy=None):
         # *** experimental ***
