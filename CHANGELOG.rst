@@ -1,6 +1,16 @@
 Change Log
 ===========
 
+0.1.60
+------
+- Gracefully fail on misc operations (options, auto/back adjustments, etc)
+- Added financial data to ```info()```
+- Using session headers
+- Get price even if open price not available
+- Argument added for silencing error printing
+- Merged PRs to fix some bugs
+
+
 0.1.59
 ------
 - Added custom requests session instance support in holders
