@@ -343,7 +343,7 @@ class TickerBase():
         # info (be nice to python 2)
         self._info = {}
         try:
-            items = ['summaryProfile', 'summaryDetail', 'quoteType',
+            items = ['summaryProfile', 'financialData', 'quoteType',
                      'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
             for item in items:
                 if isinstance(data.get(item), dict):
