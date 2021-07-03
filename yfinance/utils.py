@@ -45,7 +45,6 @@ def empty_df(index=[]):
 def get_json(url, proxy=None, session=None):
 
     session = session or _requests
-
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
     html = session.get(url=url, proxies=proxy, headers=headers).text
 
