@@ -208,10 +208,20 @@ class TickerBase():
             except Exception:
                 pass
 
-        if auto_adjust:
-            quotes = utils.auto_adjust(quotes)
-        elif back_adjust:
-            quotes = utils.back_adjust(quotes)
+        try:
+            if auto_adjust:
+                quotes = utils.auto_adjust(quotes)
+            elif back_adjust:
+                quotes = utils.back_adjust(quotes)
+        except Exception as e:
+            if auto_adjust:
+                err_msg = "auto_adjust failed with %s" % e
+            else:
+                err_msg = "back_adjust failed with %s" % e
+            shared._DFS[self.ticker] = utils.empty_df()
+            shared._ERRORS[self.ticker] = err_msg
+            if "many" not in kwargs and debug_mode:
+                print('- %s: %s' % (self.ticker, err_msg))
 
         if rounding:
             quotes = _np.round(quotes, data[
@@ -350,7 +360,7 @@ class TickerBase():
                     self._info.update(data[item])
         except Exception:
             pass
-        
+
         if not isinstance(data.get('summaryDetail'), dict):
             # For some reason summaryDetail did not give any results. The price dict usually has most of the same info
             self._info.update(data.get('price', {}))
