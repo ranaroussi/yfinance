@@ -190,6 +190,18 @@ class Ticker(TickerBase):
         return self.get_sustainability()
 
     @property
+    def current_recommendations(self):
+        return self.get_current_recommendations()
+
+    @property
+    def revenue_forecasts(self):
+        return self.get_rev_forecast()
+
+    @property
+    def earnings_forecasts(self):
+        return self.get_earnings_forecast()
+
+    @property
     def options(self):
         if not self._expirations:
             self._download_options()
