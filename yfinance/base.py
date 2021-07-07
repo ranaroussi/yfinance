@@ -405,7 +405,7 @@ class TickerBase():
         except Exception:
             pass
 
-        # get fundamentals
+        # get fundamental financial data
         fundamentals_data = utils.get_json(ticker_url+'/financials', proxy, self.session)
         data = fundamentals_data['context']['dispatcher']['stores']['QuoteSummaryStore']
         # generic patterns
@@ -445,6 +445,36 @@ class TickerBase():
                 self._earnings['quarterly'] = df
             except Exception as e:
                 pass
+        
+        # analysis data
+        analysis_data = utils.get_json(ticker_url+'/analysis',proxy,self.session)
+        analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']
+        try:
+            self._analyst_trend_details = _pd.DataFrame(analysis_data['recommendationTrend']['trend'])
+        except:
+            self._analyst_trend_details = _pd.DataFrame()
+        earnings_estimate = []
+        revenue_estimate = []
+        if len(self._analyst_trend_details) != 0:
+            for key in analysis_data['earningsTrend']['trend']:
+                try:
+                    earnings_dict = key['earningsEstimate']
+                    earnings_dict['period'] = key['period']
+                    earnings_dict['endDate'] = key['endDate']
+                    earnings_estimate.append(earnings_dict)
+                    
+                    revenue_dict = key['revenueEstimate']
+                    revenue_dict['period'] = key['period']
+                    revenue_dict['endDate'] = key['endDate']
+                    revenue_estimate.append(revenue_dict)
+                except:
+                    pass
+            self._rev_est = _pd.DataFrame(revenue_estimate)
+            self._eps_est = _pd.DataFrame(earnings_estimate)
+        else:
+            self._rev_est = _pd.DataFrame()
+            self._eps_est = _pd.DataFrame()
+
 
         self._fundamentals = True
 
@@ -495,6 +525,27 @@ class TickerBase():
     def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy=proxy)
         data = self._sustainability
+        if as_dict:
+            return data.to_dict()
+        return data
+    
+    def get_current_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._analyst_trend_details
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_rev_forecast(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._rev_est
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_earnings_forecast(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._eps_est
         if as_dict:
             return data.to_dict()
         return data
