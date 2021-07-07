@@ -406,8 +406,8 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(ticker_url+'/financials', proxy, self.session)
-
+        fundamentals_data = utils.get_json(ticker_url+'/financials', proxy, self.session)
+        data = fundamentals_data['context']['dispatcher']['stores']['QuoteSummaryStore']
         # generic patterns
         for key in (
             (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
