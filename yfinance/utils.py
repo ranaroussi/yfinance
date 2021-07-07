@@ -50,20 +50,16 @@ def get_html(url, proxy=None, session=None):
 
 
 def get_json(url, proxy=None, session=None):
-
+    '''
+    get_json returns a python dictionary of the store detail for yahoo finance web pages.
+    '''
     session = session or _requests
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
     html = session.get(url=url, proxies=proxy, headers=headers).text
 
-    if "QuoteSummaryStore" not in html:
-        html = session.get(url=url, proxies=proxy).text
-        if "QuoteSummaryStore" not in html:
-            return {}
-
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
-    data = _json.loads(json_str)[
-        'context']['dispatcher']['stores']['QuoteSummaryStore']
+    data = _json.loads(json_str)
 
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
