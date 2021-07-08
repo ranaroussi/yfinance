@@ -448,11 +448,15 @@ class TickerBase():
         
         # analysis data
         analysis_data = utils.get_json(ticker_url+'/analysis',proxy,self.session)
-        analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']
+        analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']        
         try:
             self._analyst_trend_details = _pd.DataFrame(analysis_data['recommendationTrend']['trend'])
         except:
             self._analyst_trend_details = _pd.DataFrame()
+        try:
+            self._analyst_price_target = _pd.DataFrame(analysis_data['financialData'], index=[0])[['targetLowPrice','currentPrice','targetMeanPrice','targetHighPrice','numberOfAnalystOpinions']].T
+        except:
+            self._analyst_price_target = _pd.DataFrame()
         earnings_estimate = []
         revenue_estimate = []
         if len(self._analyst_trend_details) != 0:
@@ -474,6 +478,8 @@ class TickerBase():
         else:
             self._rev_est = _pd.DataFrame()
             self._eps_est = _pd.DataFrame()
+
+
 
 
         self._fundamentals = True
@@ -532,6 +538,13 @@ class TickerBase():
     def get_current_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy=proxy)
         data = self._analyst_trend_details
+        if as_dict:
+            return data.to_dict()
+        return data
+    
+    def get_analyst_price_target(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._analyst_price_target
         if as_dict:
             return data.to_dict()
         return data

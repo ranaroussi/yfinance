@@ -194,6 +194,10 @@ class Ticker(TickerBase):
         return self.get_current_recommendations()
 
     @property
+    def analyst_price_target(self):
+        return self.get_analyst_price_target()
+
+    @property
     def revenue_forecasts(self):
         return self.get_rev_forecast()
 
