@@ -132,6 +132,15 @@ Note: yahoo finance datetimes are received as UTC.
     opt = msft.option_chain('YYYY-MM-DD')
     # data available via: opt.calls, opt.puts
 
+    # get analyst recommendation trends
+    msft.current_recommendations
+
+    # get analyst revenue forecasts
+    msft.revenue_forecasts
+    
+    # get analyst earnings forecasts
+    msft.earnings_forecasts
+
 If you want to use a proxy server for downloading data, use:
 
 .. code:: python
