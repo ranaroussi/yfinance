@@ -22,7 +22,7 @@
 from __future__ import print_function
 
 import time as _time
-import multitasking as _multitasking
+import concurrent.futures as _futures
 import pandas as _pd
 
 from . import Ticker, utils
@@ -77,24 +77,30 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     if progress:
         shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
 
-    # reset shared._DFS
-    shared._DFS = {}
+    # reset dfs
+    dfs = {}
     shared._ERRORS = {}
 
     # download using threads
     if threads:
-        if threads is True:
-            threads = min([len(tickers), _multitasking.cpu_count() * 2])
-        _multitasking.set_max_threads(threads)
-        for i, ticker in enumerate(tickers):
-            _download_one_threaded(ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust,
-                                   progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding)
-        while len(shared._DFS) < len(tickers):
-            _time.sleep(0.01)
+        with _futures.ThreadPoolExecutor() as executor:
+            futures = []
+            for i, ticker in enumerate(tickers):
+                futures.append(
+                    executor.submit(_download_one_threaded, ticker=ticker, period=period,
+                                    interval=interval, start=start, end=end, prepost=prepost,
+                                    actions=actions, auto_adjust=auto_adjust,
+                                    back_adjust=back_adjust,
+                                    progress=(progress and i > 0), proxy=proxy,
+                                    rounding=rounding
+                    )
+                )
+
+            for future in _futures.as_completed(futures):
+                ticker, data = future.result()
+                dfs[ticker.upper()] = data
+                if progress:
+                    shared._PROGRESS_BAR.animate()
 
     # download synchronously
     else:
@@ -104,7 +110,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, proxy=proxy,
                                  rounding=rounding)
-            shared._DFS[ticker.upper()] = data
+            dfs[ticker.upper()] = data
             if progress:
                 shared._PROGRESS_BAR.animate()
 
@@ -118,16 +124,13 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         print("\n".join(['- %s: %s' %
                          v for v in list(shared._ERRORS.items())]))
 
-    if len(tickers) == 1:
-        return shared._DFS[tickers[0]]
-
     try:
-        data = _pd.concat(shared._DFS.values(), axis=1,
-                          keys=shared._DFS.keys())
+        data = _pd.concat(dfs.values(), axis=1,
+                          keys=dfs.keys())
     except Exception:
-        _realign_dfs()
-        data = _pd.concat(shared._DFS.values(), axis=1,
-                          keys=shared._DFS.keys())
+        _realign_dfs(dfs)
+        data = _pd.concat(dfs.values(), axis=1,
+                          keys=dfs.keys())
 
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)
@@ -136,30 +139,29 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     return data
 
 
-def _realign_dfs():
+def _realign_dfs(dfs):
     idx_len = 0
     idx = None
 
-    for df in shared._DFS.values():
+    for df in dfs.values():
         if len(df) > idx_len:
             idx_len = len(df)
             idx = df.index
 
-    for key in shared._DFS.keys():
+    for key in dfs.keys():
         try:
-            shared._DFS[key] = _pd.DataFrame(
-                index=idx, data=shared._DFS[key]).drop_duplicates()
+            dfs[key] = _pd.DataFrame(
+                index=idx, data=dfs[key]).drop_duplicates()
         except Exception:
-            shared._DFS[key] = _pd.concat([
-                utils.empty_df(idx), shared._DFS[key].dropna()
+            dfs[key] = _pd.concat([
+                utils.empty_df(idx), dfs[key].dropna()
             ], axis=0, sort=True)
 
         # remove duplicate index
-        shared._DFS[key] = shared._DFS[key].loc[
-            ~shared._DFS[key].index.duplicated(keep='last')]
+        dfs[key] = dfs[key].loc[
+            ~dfs[key].index.duplicated(keep='last')]
 
 
-@_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False,
                            actions=False, progress=True, period="max",
@@ -168,9 +170,8 @@ def _download_one_threaded(ticker, start=None, end=None,
 
     data = _download_one(ticker, start, end, auto_adjust, back_adjust,
                          actions, period, interval, prepost, proxy, rounding)
-    shared._DFS[ticker.upper()] = data
-    if progress:
-        shared._PROGRESS_BAR.animate()
+
+    return ticker, data
 
 
 def _download_one(ticker, start=None, end=None,
