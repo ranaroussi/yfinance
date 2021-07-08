@@ -46,7 +46,7 @@ class TickerBase():
         self.ticker = ticker.upper()
         self.session = session or _requests
         self._history = None
-        self._base_url = 'https://query1.finance.yahoo.com'
+        self._base_url = 'https://query2.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
 
         self._fundamentals = False
