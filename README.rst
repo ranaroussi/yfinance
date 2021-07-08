@@ -135,6 +135,9 @@ Note: yahoo finance datetimes are received as UTC.
     # get analyst recommendation trends
     msft.current_recommendations
 
+    # get analyst price targets (low estimate, current price, mean estimate, high estimate and number of analysts providing estimates)
+    msft.analyst_price_target
+
     # get analyst revenue forecasts
     msft.revenue_forecasts
     
