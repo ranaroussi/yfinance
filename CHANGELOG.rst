@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.62
+------
+- Added UserAgent to all requests (via ```utils.user_agent_headers```)
+
 0.1.61
 ------
 - Switched to using ```query2.finance.yahoo.com```, which used HTTP/1.1
