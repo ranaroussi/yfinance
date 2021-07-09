@@ -48,6 +48,8 @@ class TickerBase():
         self._history = None
         self._base_url = 'https://query2.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
+        self._headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
 
         self._fundamentals = False
         self._info = None
@@ -149,7 +151,7 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = self.session.get(url=url, params=params, proxies=proxy)
+        data = self.session.get(url=url, params=params, proxies=proxy, headers=self._headers)
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
