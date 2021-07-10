@@ -26,6 +26,8 @@ import datetime as _datetime
 import requests as _requests
 import pandas as _pd
 import numpy as _np
+import urllib
+import json
 
 try:
     from urllib.parse import quote as urlencode
@@ -159,7 +161,8 @@ class TickerBase():
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
-        data = data.json()
+        r = urllib.request.urlopen(data.url)
+        data = json.load(r)
 
         # Work with errors
         debug_mode = True
