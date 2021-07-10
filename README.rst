@@ -268,12 +268,7 @@ Install ``yfinance`` using ``pip``:
     $ pip install yfinance --upgrade --no-cache-dir
 
 
-Install ``yfinance`` using ``conda``:
-
-.. code:: bash
-
-    $ conda install -c ranaroussi yfinance
-
+To install ``yfinance`` using ``conda``, see `this <https://anaconda.org/ranaroussi/yfinance>`_.
 
 Requirements
 ------------
