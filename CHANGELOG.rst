@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.63
+------
+- Duplicates and missing rows cleanup
+
 0.1.62
 ------
 - Added UserAgent to all requests (via ```utils.user_agent_headers```)
