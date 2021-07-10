@@ -257,6 +257,11 @@ class TickerBase():
                 df.index = df.index.tz_localize(tz)
             df.index.name = "Date"
 
+        # duplicates and missing rows cleanup
+        df.dropna(how='all', inplace=True)
+        df.drop_duplicates(inplace=True)
+        df = df.groupby(df.index).last()
+
         self._history = df.copy()
 
         if not actions:
