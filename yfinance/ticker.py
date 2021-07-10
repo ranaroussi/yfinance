@@ -205,6 +205,18 @@ class Ticker(TickerBase):
     def earnings_forecasts(self):
         return self.get_earnings_forecast()
 
+    # testing ground start
+
+    @property
+    def extra_ttm(self):
+        return self.get_TTM_detail()
+
+    @property
+    def income_statement(self):
+        return self.get_income_statement()
+
+    # testing ground end
+
     @property
     def options(self):
         if not self._expirations:

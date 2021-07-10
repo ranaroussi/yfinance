@@ -21,8 +21,10 @@
 
 from __future__ import print_function
 
+
 import time as _time
 import datetime as _datetime
+from numpy.lib.function_base import iterable
 import requests as _requests
 import pandas as _pd
 import numpy as _np
@@ -40,6 +42,8 @@ from . import utils
 
 from . import shared
 
+_pd.set_option('display.max_rows', None)
+_pd.set_option('display.max_columns', None)
 
 class TickerBase():
     def __init__(self, ticker, session=None):
@@ -446,7 +450,66 @@ class TickerBase():
             except Exception as e:
                 pass
         
-        # analysis data
+        # Grab the financial template store. This  details the order in which the financials should be presented.
+        import pdb
+        pdb.set_trace()
+        data = fundamentals_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # This provides the layout/correct order of the financial data.
+        financial_template_ttm_order = []   # Save the TTM (Trailing Twelve Months) ordering to an object.
+        financial_template_annual_order = []    # Save the annual ordering to an object.
+        level_detail = []   #Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
+        for key in data['template']:    # Loop through the json to retreive the exact financial order whilst appending to the objects
+            financial_template_ttm_order.append('trailing{}'.format(key['key']))
+            financial_template_annual_order.append('annual{}'.format(key['key']))
+            level_detail.append(0)
+            if 'children' in key:
+                for child1 in key['children']:  # Level 1
+                    financial_template_ttm_order.append('trailing{}'.format(child1['key']))
+                    financial_template_annual_order.append('annual{}'.format(child1['key']))
+                    level_detail.append(1)
+                    if 'children' in child1:
+                        for child2 in child1['children']:   # Level 2
+                            financial_template_ttm_order.append('trailing{}'.format(child2['key']))
+                            financial_template_annual_order.append('annual{}'.format(child2['key']))
+                            level_detail.append(2)
+                            if 'children' in child2:
+                                for child3 in child2['children']:   # Level 3
+                                    financial_template_ttm_order.append('trailing{}'.format(child3['key']))
+                                    financial_template_annual_order.append('annual{}'.format(child3['key']))
+                                    level_detail.append(3)
+        
+        # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
+        TTM_dicts = []  # Save a dictionary object to store the TTM financials.
+        Annual_dicts = []   # Save a dictionary object to store the Annual financials.
+        data = fundamentals_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
+        
+        for key in data['timeSeries']:  # Loop through the time series data to grab the key financial figures.
+            try:
+                if len(data['timeSeries'][key]) > 0:
+                    time_series_dict = {}
+                    time_series_dict['index'] = key
+                    for each in data['timeSeries'][key]:    # Loop through the years
+                        time_series_dict[each['asOfDate']] = each['reportedValue']
+                        # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
+                    if each['periodType'] == 'TTM':
+                        TTM_dicts.append(time_series_dict)
+                    elif each['periodType'] == '12M':
+                        Annual_dicts.append(time_series_dict)
+            except:
+                pass
+        TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
+        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+        # Combine the raw financial details and the template
+        TTM = TTM.reindex(financial_template_ttm_order)
+        Annual = Annual.reindex(financial_template_annual_order)
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        TTM.index = TTM.index.str.replace(r'trailing', '')
+        Annual.index = Annual.index.str.replace(r'annual','')
+        _income_statement = Annual.merge(TTM, left_index=True, right_index=True)
+        _income_statement['level_detail'] = level_detail 
+        _income_statement = _income_statement.set_index([_income_statement.index,'level_detail'])
+        self._income_statement = _income_statement.dropna(how='all')
+        
+        # analysis data/analyst forecasts
         analysis_data = utils.get_json(ticker_url+'/analysis',proxy,self.session)
         analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']        
         try:
@@ -478,9 +541,6 @@ class TickerBase():
         else:
             self._rev_est = _pd.DataFrame()
             self._eps_est = _pd.DataFrame()
-
-
-
 
         self._fundamentals = True
 
@@ -571,6 +631,22 @@ class TickerBase():
             dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
             return dict_data
         return data
+
+    # testing ground start
+    def get_TTM_detail(self, proxy=None, as_dict=False, freq="yearly"):
+        self._get_fundamentals(proxy)
+        data = self._TTM
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_income_statement(self, proxy=None, as_dict=False, freq="yearly"):
+        self._get_fundamentals(proxy)
+        data = self._income_statement
+        if as_dict:
+            return data.to_dict()
+        return data
+    # testing ground end
 
     def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
         self._get_fundamentals(proxy=proxy)
