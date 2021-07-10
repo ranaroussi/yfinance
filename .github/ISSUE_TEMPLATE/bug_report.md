@@ -12,9 +12,6 @@ assignees: ''
 Before posting an issue - please upgrade to the latest version and confirm the issue/bug is still there.
 
 Upgrade using:
-
-```bash
 $ pip install yfinance --upgrade --no-cache-dir 
-```
 
 Bug still there? Submit a bug report here...
