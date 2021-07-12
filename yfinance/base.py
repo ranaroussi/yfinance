@@ -57,6 +57,11 @@ class TickerBase():
         self._info = None
         self._sustainability = None
         self._recommendations = None
+        self._analyst_trend_details = None
+        self._analyst_price_target = None
+        self._rev_est = None
+        self._eps_est = None
+        
         self._major_holders = None
         self._institutional_holders = None
         self._mutualfund_holders = None
@@ -65,17 +70,20 @@ class TickerBase():
         self._calendar = None
         self._expirations = {}
 
+        self._income_statement = None
+        self._balance_sheet = None
+        self._cash_flow_statement = None
         self._earnings = {
             "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
-        self._financials = {
-            "yearly": utils.empty_df(),
+        self._quarterly_income_statement = {
+            # "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
-        self._balancesheet = {
-            "yearly": utils.empty_df(),
+        self._quarterly_balance_sheet = {
+            # "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
-        self._cashflow = {
-            "yearly": utils.empty_df(),
+        self._quarterly_cash_flow = {
+            # "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
 
     def history(self, period="1mo", interval="1d",
@@ -260,13 +268,13 @@ class TickerBase():
 
         if not actions:
             df.drop(columns=["Dividends", "Stock Splits"], inplace=True)
-
         return df
-
-    # ------------------------
 
     def _get_fundamentals(self, kind=None, proxy=None):
         def cleanup(data):
+            '''
+            The cleanup function is used for parsing yahoo finance json financial statement data into a pandas dataframe format.
+            '''
             df = _pd.DataFrame(data).drop(columns=['maxAge'])
             for col in df.columns:
                 df[col] = _np.where(
@@ -284,7 +292,7 @@ class TickerBase():
             df.index = utils.camel2title(df.index)
             return df
 
-        # setup proxy in requests format
+        #------------------ Setup Proxy in Requests Format ------------------
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
                 proxy = proxy["https"]
@@ -295,10 +303,7 @@ class TickerBase():
 
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
-        # get info and sustainability
-        data = utils.get_json(ticker_url, proxy, self.session)
-
-        # holders
+        #------------------ Holders ------------------ 
         try:
             resp = utils.get_html(ticker_url + '/holders', proxy, self.session)
             holders = _pd.read_html(resp)
@@ -334,7 +339,8 @@ class TickerBase():
                 self._mutualfund_holders['% Out'] = self._mutualfund_holders[
                     '% Out'].str.replace('%', '').astype(float)/100
 
-        # sustainability
+        #------------------ Sustainability ------------------
+        data = utils.get_json(ticker_url, proxy, self.session)
         d = {}
         try:
             if isinstance(data.get('esgScores'), dict):
@@ -353,7 +359,7 @@ class TickerBase():
         except Exception:
             pass
 
-        # info (be nice to python 2)
+        #------------------ Info (be nice to python 2) ------------------
         self._info = {}
         try:
             items = ['summaryProfile', 'financialData', 'quoteType',
@@ -383,7 +389,7 @@ class TickerBase():
         except Exception:
             pass
 
-        # events
+        #------------------ Events ------------------
         try:
             cal = _pd.DataFrame(
                 data['calendarEvents']['earnings'])
@@ -395,7 +401,7 @@ class TickerBase():
         except Exception:
             pass
 
-        # analyst recommendations
+        #------------------ Long Term Analyst Recommendations ------------------
         try:
             rec = _pd.DataFrame(
                 data['upgradeDowngradeHistory']['history'])
@@ -408,22 +414,21 @@ class TickerBase():
                 'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
         except Exception:
             pass
-
-        # get fundamental financial data
-        fundamentals_data = utils.get_json(ticker_url+'/financials', proxy, self.session)
-        data = fundamentals_data['context']['dispatcher']['stores']['QuoteSummaryStore']
+        #------------------ Quarterly Income Statement, Balance Sheet and Cash Flow ------------------
+        financials_data = utils.get_json(ticker_url+'/financials', proxy, self.session)
+        data = financials_data['context']['dispatcher']['stores']['QuoteSummaryStore']
         # generic patterns
         for key in (
-            (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
-            (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
-            (self._financials, 'incomeStatement', 'incomeStatementHistory')
+            (self._quarterly_cash_flow, 'cashflowStatement', 'cashflowStatements'),
+            (self._quarterly_balance_sheet, 'balanceSheet', 'balanceSheetStatements'),
+            (self._quarterly_income_statement, 'incomeStatement', 'incomeStatementHistory')
         ):
-            item = key[1] + 'History'
-            if isinstance(data.get(item), dict):
-                try:
-                    key[0]['yearly'] = cleanup(data[item][key[2]])
-                except Exception as e:
-                    pass
+            # item = key[1] + 'History'
+            # if isinstance(data.get(item), dict):
+            #     try:
+            #         key[0]['yearly'] = cleanup(data[item][key[2]])
+            #     except Exception as e:
+            #         pass
 
             item = key[1]+'HistoryQuarterly'
             if isinstance(data.get(item), dict):
@@ -432,7 +437,7 @@ class TickerBase():
                 except Exception as e:
                     pass
 
-        # earnings
+        #------------------ Earnings ------------------
         if isinstance(data.get('earnings'), dict):
             try:
                 earnings = data['earnings']['financialsChart']
@@ -449,67 +454,68 @@ class TickerBase():
                 self._earnings['quarterly'] = df
             except Exception as e:
                 pass
+
+        #------------------ Income Statement ------------------ 
+        data = financials_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
+        financials_template_ttm_order, financials_template_annual_order, financials_level_detail = utils.build_template(data)
         
-        # Grab the financial template store. This  details the order in which the financials should be presented.
-        import pdb
-        pdb.set_trace()
-        data = fundamentals_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # This provides the layout/correct order of the financial data.
-        financial_template_ttm_order = []   # Save the TTM (Trailing Twelve Months) ordering to an object.
-        financial_template_annual_order = []    # Save the annual ordering to an object.
-        level_detail = []   #Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
-        for key in data['template']:    # Loop through the json to retreive the exact financial order whilst appending to the objects
-            financial_template_ttm_order.append('trailing{}'.format(key['key']))
-            financial_template_annual_order.append('annual{}'.format(key['key']))
-            level_detail.append(0)
-            if 'children' in key:
-                for child1 in key['children']:  # Level 1
-                    financial_template_ttm_order.append('trailing{}'.format(child1['key']))
-                    financial_template_annual_order.append('annual{}'.format(child1['key']))
-                    level_detail.append(1)
-                    if 'children' in child1:
-                        for child2 in child1['children']:   # Level 2
-                            financial_template_ttm_order.append('trailing{}'.format(child2['key']))
-                            financial_template_annual_order.append('annual{}'.format(child2['key']))
-                            level_detail.append(2)
-                            if 'children' in child2:
-                                for child3 in child2['children']:   # Level 3
-                                    financial_template_ttm_order.append('trailing{}'.format(child3['key']))
-                                    financial_template_annual_order.append('annual{}'.format(child3['key']))
-                                    level_detail.append(3)
-        
-        # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
-        TTM_dicts = []  # Save a dictionary object to store the TTM financials.
-        Annual_dicts = []   # Save a dictionary object to store the Annual financials.
-        data = fundamentals_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
-        
-        for key in data['timeSeries']:  # Loop through the time series data to grab the key financial figures.
-            try:
-                if len(data['timeSeries'][key]) > 0:
-                    time_series_dict = {}
-                    time_series_dict['index'] = key
-                    for each in data['timeSeries'][key]:    # Loop through the years
-                        time_series_dict[each['asOfDate']] = each['reportedValue']
-                        # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
-                    if each['periodType'] == 'TTM':
-                        TTM_dicts.append(time_series_dict)
-                    elif each['periodType'] == '12M':
-                        Annual_dicts.append(time_series_dict)
-            except:
-                pass
+        data = financials_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
+        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
+       
         TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
         Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
         # Combine the raw financial details and the template
-        TTM = TTM.reindex(financial_template_ttm_order)
-        Annual = Annual.reindex(financial_template_annual_order)
+        TTM = TTM.reindex(financials_template_ttm_order)
+        Annual = Annual.reindex(financials_template_annual_order)
         TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
         TTM.index = TTM.index.str.replace(r'trailing', '')
         Annual.index = Annual.index.str.replace(r'annual','')
         _income_statement = Annual.merge(TTM, left_index=True, right_index=True)
-        _income_statement['level_detail'] = level_detail 
+        _income_statement.index = utils.camel2title(_income_statement.T)
+        _income_statement['level_detail'] = financials_level_detail 
         _income_statement = _income_statement.set_index([_income_statement.index,'level_detail'])
         self._income_statement = _income_statement.dropna(how='all')
         
-        # analysis data/analyst forecasts
+        #------------------ Balance Sheet ------------------ 
+        balance_sheet_data = utils.get_json(ticker_url+'/balance-sheet', proxy, self.session)
+        data = balance_sheet_data['context']['dispatcher']['stores']['FinancialTemplateStore']
+        balance_sheet_template_ttm_order, balance_sheet_template_annual_order, balance_sheet_level_detail = utils.build_template(data)
+        
+        data = balance_sheet_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
+        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
+       
+        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+        Annual = Annual.reindex(balance_sheet_template_annual_order)
+        Annual.index = Annual.index.str.replace(r'annual','')
+        Annual.index = utils.camel2title(Annual.T)
+        _balance_sheet = Annual
+        _balance_sheet['level_detail'] = balance_sheet_level_detail 
+        _balance_sheet = _balance_sheet.set_index([_balance_sheet.index,'level_detail'])
+        self._balance_sheet = _balance_sheet.dropna(how='all')
+        
+        #------------------ Cash Flow Statement ------------------ 
+        cash_flow_data = utils.get_json(ticker_url+'/cash-flow', proxy, self.session)
+        data = cash_flow_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
+        cash_flow_template_ttm_order, cash_flow_template_annual_order, cash_flow_level_detail = utils.build_template(data)
+        
+        data = cash_flow_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
+        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
+       
+        TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
+        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+        # Combine the raw financial details and the template
+        TTM = TTM.reindex(cash_flow_template_ttm_order)
+        Annual = Annual.reindex(cash_flow_template_annual_order)
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        TTM.index = TTM.index.str.replace(r'trailing', '')
+        Annual.index = Annual.index.str.replace(r'annual','')
+        _cash_flow_statement = Annual.merge(TTM, left_index=True, right_index=True)
+        _cash_flow_statement.index = utils.camel2title(_cash_flow_statement.T)
+        _cash_flow_statement['level_detail'] = cash_flow_level_detail 
+        _cash_flow_statement = _cash_flow_statement.set_index([_cash_flow_statement.index,'level_detail'])
+        self._cash_flow_statement = _cash_flow_statement.dropna(how='all')
+
+        #------------------ Analysis Data/Analyst Forecasts ------------------
         analysis_data = utils.get_json(ticker_url+'/analysis',proxy,self.session)
         analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']        
         try:
@@ -632,42 +638,44 @@ class TickerBase():
             return dict_data
         return data
 
-    # testing ground start
-    def get_TTM_detail(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy)
-        data = self._TTM
-        if as_dict:
-            return data.to_dict()
-        return data
-
-    def get_income_statement(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_income_statement(self, proxy=None, as_dict=False):
         self._get_fundamentals(proxy)
         data = self._income_statement
         if as_dict:
             return data.to_dict()
         return data
-    # testing ground end
 
-    def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_quarterly_income_statement(self, proxy=None, as_dict=False): # Could still be used for quarterly
         self._get_fundamentals(proxy=proxy)
-        data = self._financials[freq]
+        data = self._quarterly_income_statement["quarterly"]
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_balancesheet(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy=proxy)
-        data = self._balancesheet[freq]
+    def get_balance_sheet(self, proxy=None, as_dict=False):
+        self._get_fundamentals(proxy)
+        data = self._balance_sheet
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_balance_sheet(self, proxy=None, as_dict=False, freq="yearly"):
-        return self.get_balancesheet(proxy, as_dict, freq)
-
-    def get_cashflow(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_quarterly_balance_sheet(self, proxy=None, as_dict=False):   # Could still be used for quarterly
         self._get_fundamentals(proxy=proxy)
-        data = self._cashflow[freq]
+        data = self._quarterly_balance_sheet["quarterly"]
+        if as_dict:
+            return data.to_dict()
+        return data
+    
+    def get_cash_flow_statement(self, proxy=None, as_dict=False):
+        self._get_fundamentals(proxy=proxy)
+        data = self._cash_flow_statement
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_quarterly_cash_flow_statement(self, proxy=None, as_dict=False):   # Could still be used for quarterly
+        self._get_fundamentals(proxy=proxy)
+        data = self._quarterly_cash_flow["quarterly"]
         if as_dict:
             return data.to_dict()
         return data
