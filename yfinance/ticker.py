@@ -154,36 +154,28 @@ class Ticker(TickerBase):
         return self.get_earnings(freq='quarterly')
 
     @property
-    def financials(self):
-        return self.get_financials()
+    def income_statement(self):
+        return self.get_income_statement()
 
     @property
-    def quarterly_financials(self):
-        return self.get_financials(freq='quarterly')
+    def quarterly_income_statement(self):
+        return self.get_quarterly_income_statement()
 
     @property
     def balance_sheet(self):
-        return self.get_balancesheet()
+        return self.get_balance_sheet()
 
     @property
     def quarterly_balance_sheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.get_quarterly_balance_sheet()
 
     @property
-    def balancesheet(self):
-        return self.get_balancesheet()
+    def cash_flow_statement(self):
+        return self.get_cash_flow_statement()
 
     @property
-    def quarterly_balancesheet(self):
-        return self.get_balancesheet(freq='quarterly')
-
-    @property
-    def cashflow(self):
-        return self.get_cashflow()
-
-    @property
-    def quarterly_cashflow(self):
-        return self.get_cashflow(freq='quarterly')
+    def quarterly_cash_flow_statement(self):
+        return self.get_quarterly_cash_flow_statement()
 
     @property
     def sustainability(self):
@@ -204,18 +196,6 @@ class Ticker(TickerBase):
     @property
     def earnings_forecasts(self):
         return self.get_earnings_forecast()
-
-    # testing ground start
-
-    @property
-    def extra_ttm(self):
-        return self.get_TTM_detail()
-
-    @property
-    def income_statement(self):
-        return self.get_income_statement()
-
-    # testing ground end
 
     @property
     def options(self):
