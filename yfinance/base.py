@@ -167,8 +167,8 @@ class TickerBase():
 
         try:
             data = data.json()
-        except:
-            err_msg = f"Failed to read the json data for {self.ticker}. [{data.text}]"
+        except Exception:
+            err_msg = "Failed to read the json data for %s. [%s]" % (self.ticker, data.text)
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
