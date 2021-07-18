@@ -120,11 +120,11 @@ def retreive_financial_details(data):
                 for each in data['timeSeries'][key]:    # Loop through the years
                     time_series_dict[each['asOfDate']] = each['reportedValue']
                     # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
-                if each['periodType'] == 'TTM':
-                    TTM_dicts.append(time_series_dict)
-                elif each['periodType'] == '12M':
-                    Annual_dicts.append(time_series_dict)
-        except:
+                    if each['periodType'] == 'TTM':
+                        TTM_dicts.append(time_series_dict)
+                    elif each['periodType'] == '12M':
+                        Annual_dicts.append(time_series_dict)
+        except Exception as e:
             pass
     return TTM_dicts, Annual_dicts
 
