@@ -466,43 +466,49 @@ class TickerBase():
                 pass
 
         #------------------ Income Statement ------------------ 
-        data = financials_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
-        financials_template_ttm_order, financials_template_annual_order, financials_level_detail = utils.build_template(data)
+        try:
+            data = financials_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
+            financials_template_ttm_order, financials_template_annual_order, financials_level_detail = utils.build_template(data)
+            
+            data = financials_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
+            TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
         
-        data = financials_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
-        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
-       
-        TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
-        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
-        # Combine the raw financial details and the template
-        TTM = TTM.reindex(financials_template_ttm_order)
-        Annual = Annual.reindex(financials_template_annual_order)
-        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
-        TTM.index = TTM.index.str.replace(r'trailing', '')
-        Annual.index = Annual.index.str.replace(r'annual','')
-        _income_statement = Annual.merge(TTM, left_index=True, right_index=True)
-        _income_statement.index = utils.camel2title(_income_statement.T)
-        _income_statement['level_detail'] = financials_level_detail 
-        _income_statement = _income_statement.set_index([_income_statement.index,'level_detail'])
-        self._income_statement = _income_statement.dropna(how='all')
+            TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
+            Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+            # Combine the raw financial details and the template
+            TTM = TTM.reindex(financials_template_ttm_order)
+            Annual = Annual.reindex(financials_template_annual_order)
+            TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+            TTM.index = TTM.index.str.replace(r'trailing', '')
+            Annual.index = Annual.index.str.replace(r'annual','')
+            _income_statement = Annual.merge(TTM, left_index=True, right_index=True)
+            _income_statement.index = utils.camel2title(_income_statement.T)
+            _income_statement['level_detail'] = financials_level_detail 
+            _income_statement = _income_statement.set_index([_income_statement.index,'level_detail'])
+            self._income_statement = _income_statement.dropna(how='all')
+        except Exception as e:
+            self._income_statement = _pd.DataFrame()
         
         #------------------ Balance Sheet ------------------ 
-        balance_sheet_data = utils.get_json(ticker_url+'/balance-sheet', proxy, self.session)
-        data = balance_sheet_data['context']['dispatcher']['stores']['FinancialTemplateStore']
-        balance_sheet_template_ttm_order, balance_sheet_template_annual_order, balance_sheet_level_detail = utils.build_template(data)
+        try:
+            balance_sheet_data = utils.get_json(ticker_url+'/balance-sheet', proxy, self.session)
+            data = balance_sheet_data['context']['dispatcher']['stores']['FinancialTemplateStore']
+            balance_sheet_template_ttm_order, balance_sheet_template_annual_order, balance_sheet_level_detail = utils.build_template(data)
+            
+            data = balance_sheet_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
+            TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
         
-        data = balance_sheet_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
-        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
-       
-        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
-        Annual = Annual.reindex(balance_sheet_template_annual_order)
-        Annual.index = Annual.index.str.replace(r'annual','')
-        Annual.index = utils.camel2title(Annual.T)
-        _balance_sheet = Annual
-        _balance_sheet['level_detail'] = balance_sheet_level_detail 
-        _balance_sheet = _balance_sheet.set_index([_balance_sheet.index,'level_detail'])
-        self._balance_sheet = _balance_sheet.dropna(how='all')
-        
+            Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+            Annual = Annual.reindex(balance_sheet_template_annual_order)
+            Annual.index = Annual.index.str.replace(r'annual','')
+            Annual.index = utils.camel2title(Annual.T)
+            _balance_sheet = Annual
+            _balance_sheet['level_detail'] = balance_sheet_level_detail 
+            _balance_sheet = _balance_sheet.set_index([_balance_sheet.index,'level_detail'])
+            self._balance_sheet = _balance_sheet.dropna(how='all')
+        except Exception as e:
+            self._balance_sheet = _pd.DataFrame()
+
         #------------------ Cash Flow Statement ------------------ 
         cash_flow_data = utils.get_json(ticker_url+'/cash-flow', proxy, self.session)
         data = cash_flow_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
