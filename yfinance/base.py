@@ -530,11 +530,11 @@ class TickerBase():
         analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']        
         try:
             self._analyst_trend_details = _pd.DataFrame(analysis_data['recommendationTrend']['trend'])
-        except:
+        except Exception as e:
             self._analyst_trend_details = _pd.DataFrame()
         try:
             self._analyst_price_target = _pd.DataFrame(analysis_data['financialData'], index=[0])[['targetLowPrice','currentPrice','targetMeanPrice','targetHighPrice','numberOfAnalystOpinions']].T
-        except:
+        except Exception as e:
             self._analyst_price_target = _pd.DataFrame()
         earnings_estimate = []
         revenue_estimate = []
@@ -550,7 +550,7 @@ class TickerBase():
                     revenue_dict['period'] = key['period']
                     revenue_dict['endDate'] = key['endDate']
                     revenue_estimate.append(revenue_dict)
-                except:
+                except Exception as e:
                     pass
             self._rev_est = _pd.DataFrame(revenue_estimate)
             self._eps_est = _pd.DataFrame(earnings_estimate)
