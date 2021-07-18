@@ -510,30 +510,35 @@ class TickerBase():
             self._balance_sheet = _pd.DataFrame()
 
         #------------------ Cash Flow Statement ------------------ 
-        cash_flow_data = utils.get_json(ticker_url+'/cash-flow', proxy, self.session)
-        data = cash_flow_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
-        cash_flow_template_ttm_order, cash_flow_template_annual_order, cash_flow_level_detail = utils.build_template(data)
+        try:
+            cash_flow_data = utils.get_json(ticker_url+'/cash-flow', proxy, self.session)
+            data = cash_flow_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
+            cash_flow_template_ttm_order, cash_flow_template_annual_order, cash_flow_level_detail = utils.build_template(data)
+            
+            data = cash_flow_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
+            TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
         
-        data = cash_flow_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
-        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
-       
-        TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
-        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
-        # Combine the raw financial details and the template
-        TTM = TTM.reindex(cash_flow_template_ttm_order)
-        Annual = Annual.reindex(cash_flow_template_annual_order)
-        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
-        TTM.index = TTM.index.str.replace(r'trailing', '')
-        Annual.index = Annual.index.str.replace(r'annual','')
-        _cash_flow_statement = Annual.merge(TTM, left_index=True, right_index=True)
-        _cash_flow_statement.index = utils.camel2title(_cash_flow_statement.T)
-        _cash_flow_statement['level_detail'] = cash_flow_level_detail 
-        _cash_flow_statement = _cash_flow_statement.set_index([_cash_flow_statement.index,'level_detail'])
-        self._cash_flow_statement = _cash_flow_statement.dropna(how='all')
-
+            TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
+            Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+            # Combine the raw financial details and the template
+            TTM = TTM.reindex(cash_flow_template_ttm_order)
+            Annual = Annual.reindex(cash_flow_template_annual_order)
+            TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+            TTM.index = TTM.index.str.replace(r'trailing', '')
+            Annual.index = Annual.index.str.replace(r'annual','')
+            _cash_flow_statement = Annual.merge(TTM, left_index=True, right_index=True)
+            _cash_flow_statement.index = utils.camel2title(_cash_flow_statement.T)
+            _cash_flow_statement['level_detail'] = cash_flow_level_detail 
+            _cash_flow_statement = _cash_flow_statement.set_index([_cash_flow_statement.index,'level_detail'])
+            self._cash_flow_statement = _cash_flow_statement.dropna(how='all')
+        except Exception as e:
+            self._cash_flow_statement = _pd.DataFrame()
         #------------------ Analysis Data/Analyst Forecasts ------------------
-        analysis_data = utils.get_json(ticker_url+'/analysis',proxy,self.session)
-        analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']        
+        try:
+            analysis_data = utils.get_json(ticker_url+'/analysis',proxy,self.session)
+            analysis_data = analysis_data['context']['dispatcher']['stores']['QuoteSummaryStore']        
+        except Exception as e:
+            analysis_data = {}
         try:
             self._analyst_trend_details = _pd.DataFrame(analysis_data['recommendationTrend']['trend'])
         except Exception as e:
