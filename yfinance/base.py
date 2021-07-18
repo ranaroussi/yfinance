@@ -50,7 +50,7 @@ class TickerBase():
         self.ticker = ticker.upper()
         self.session = session or _requests
         self._history = None
-        self._base_url = 'https://query1.finance.yahoo.com'
+        self._base_url = 'https://query2.finance.yahoo.com'
         self._scrape_url = 'https://finance.yahoo.com/quote'
 
         self._fundamentals = False
@@ -161,7 +161,12 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = self.session.get(url=url, params=params, proxies=proxy)
+        data = self.session.get(
+            url=url,
+            params=params,
+            proxies=proxy,
+            headers=utils.user_agent_headers
+        )
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -263,6 +268,11 @@ class TickerBase():
             if tz is not None:
                 df.index = df.index.tz_localize(tz)
             df.index.name = "Date"
+
+        # duplicates and missing rows cleanup
+        df.dropna(how='all', inplace=True)
+        df.drop_duplicates(inplace=True)
+        df = df.groupby(df.index).last()
 
         self._history = df.copy()
 
@@ -729,7 +739,11 @@ class TickerBase():
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
             % urlencode(q)
-        data = self.session.get(url=url, proxies=proxy).text
+        data = self.session.get(
+            url=url,
+            proxies=proxy,
+            headers=utils.user_agent_headers
+        ).text
 
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
