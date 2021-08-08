@@ -351,6 +351,7 @@ class TickerBase():
 
         #------------------ Sustainability ------------------
         data = utils.get_json(ticker_url, proxy, self.session)
+        data = data['context']['dispatcher']['stores']['QuoteSummaryStore']
         d = {}
         try:
             if isinstance(data.get('esgScores'), dict):
