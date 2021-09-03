@@ -370,9 +370,12 @@ class TickerBase():
         except Exception:
             pass
 
-        if not isinstance(data.get('summaryDetail'), dict):
-            # For some reason summaryDetail did not give any results. The price dict usually has most of the same info
-            self._info.update(data.get('price', {}))
+        try:
+            if not isinstance(data.get('summaryDetail'), dict):
+                # For some reason summaryDetail did not give any results. The price dict usually has most of the same info
+                self._info.update(data.get('price', {}))
+        except Exception:
+            pass
 
         try:
             # self._info['regularMarketPrice'] = self._info['regularMarketOpen']
