@@ -50,7 +50,7 @@ I've since renamed it to ``yfinance`` as I no longer consider it a mere "fix".
 For reasons of backward-compatibility, ``fix-yahoo-finance`` now import and
 uses ``yfinance``, but you should install and use ``yfinance`` directly.
 
-`Changelog » <./CHANGELOG.rst>`__
+`Changelog » <https://github.com/ranaroussi/yfinance/edit/main/README.rst>`__
 
 -----
 
