@@ -18,6 +18,7 @@ nav:
   - Introduction: 'index.md'
   - Installation: 'installation.md'
   - Quick Start: 'quickstart.md'
+  - Advanced Usage: 'advancedUsage.md'
   # - Ticker: 'Ticker.md'
   - TickerBase: 'TickerBase.md'
   # - Tickers: 'Tickers.md'
