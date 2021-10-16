@@ -67,6 +67,9 @@ msft.isin
 # show options expirations
 msft.options
 
+# show news
+msft.news
+
 # get option chain for specific expiration
 opt = msft.option_chain('YYYY-MM-DD')
 # data available via: opt.calls, opt.puts

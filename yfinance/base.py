@@ -57,6 +57,7 @@ class TickerBase():
         self._institutional_holders = None
         self._mutualfund_holders = None
         self._isin = None
+        self._news = []
 
         self._calendar = None
         self._expirations = {}
@@ -617,3 +618,31 @@ class TickerBase():
 
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
+
+    def get_news(self, proxy=None):
+        if self._news:
+            return self._news
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        # Getting data from json
+        url = "{}/v1/finance/search?q={}".format(self._base_url, self.ticker)
+        data = self.session.get(
+            url=url,
+            proxies=proxy,
+            headers=utils.user_agent_headers
+        )
+        if "Will be right back" in data.text:
+            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                               "Our engineers are working quickly to resolve "
+                               "the issue. Thank you for your patience.")
+        data = data.json()
+
+        # parse news
+        self._news = data.get("news", [])
+        return self._news
+
