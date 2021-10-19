@@ -1,6 +1,16 @@
 Change Log
 ===========
 
+0.1.64
+------
+- Merged PRs to fix some bugs
+- Added ``Ticker.stats()`` method
+- Added ``Ticker.news`` property
+- Providing topHoldings for ETFs
+- Replaceed drop duplicate prices with indexes
+- Added pre-market price to ``Ticker.info``
+
+
 0.1.63
 ------
 - Duplicates and missing rows cleanup
