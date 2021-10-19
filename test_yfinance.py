@@ -49,6 +49,7 @@ class TestTicker(unittest.TestCase):
             ticker.quarterly_cashflow
             ticker.sustainability
             ticker.options
+            ticker.news
 
     def test_holders(self):
         for ticker in tickers:
