@@ -260,8 +260,7 @@ class TickerBase():
 
         # duplicates and missing rows cleanup
         df.dropna(how='all', inplace=True)
-        df.drop_duplicates(inplace=True)
-        df = df.groupby(df.index).last()
+        df = df[~df.index.duplicated(keep='first')]
 
         self._history = df.copy()
 
