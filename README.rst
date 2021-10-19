@@ -50,7 +50,7 @@ I've since renamed it to ``yfinance`` as I no longer consider it a mere "fix".
 For reasons of backward-compatibility, ``fix-yahoo-finance`` now import and
 uses ``yfinance``, but you should install and use ``yfinance`` directly.
 
-`Changelog » <./CHANGELOG.rst>`__
+`Changelog » <https://github.com/ranaroussi/yfinance/edit/main/README.rst>`__
 
 -----
 
@@ -127,6 +127,9 @@ Note: yahoo finance datetimes are received as UTC.
 
     # show options expirations
     msft.options
+
+    # show news
+    msft.news
 
     # get option chain for specific expiration
     opt = msft.option_chain('YYYY-MM-DD')
