@@ -199,3 +199,7 @@ class Ticker(TickerBase):
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
+
+    @property
+    def news(self):
+        return self.get_news()
