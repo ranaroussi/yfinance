@@ -386,13 +386,19 @@ class TickerBase():
         except Exception:
             pass
 
-        # For ETFs, provide this valuable data: the top holdings of the ETF
-        if data.get('topHoldings'):
-            self._info.update(data['topHoldings'])
+       # For ETFs, provide this valuable data: the top holdings of the ETF 
+        try:
+            if 'topHoldings' in data:
+                self._info.update(data['topHoldings'])
+        except Exception:
+            pass
 
-        if not isinstance(data.get('summaryDetail'), dict):
-            # For some reason summaryDetail did not give any results. The price dict usually has most of the same info
-            self._info.update(data.get('price', {}))
+        try:
+            if not isinstance(data.get('summaryDetail'), dict):
+                # For some reason summaryDetail did not give any results. The price dict usually has most of the same info
+                self._info.update(data.get('price', {}))
+        except Exception:
+            pass
 
         try:
             # self._info['regularMarketPrice'] = self._info['regularMarketOpen']
