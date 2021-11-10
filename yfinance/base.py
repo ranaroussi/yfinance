@@ -324,7 +324,7 @@ class TickerBase():
         try:
             resp = utils.get_html(ticker_url + '/holders', proxy, self.session)
             holders = _pd.read_html(resp)
-        except Exception as e:
+        except Exception:
             holders = []
 
         if len(holders) >= 3:
@@ -337,8 +337,8 @@ class TickerBase():
         elif len(holders) >= 1:
             self._major_holders = holders[0]
 
-        #self._major_holders = holders[0]
-        #self._institutional_holders = holders[1]
+        # self._major_holders = holders[0]
+        # self._institutional_holders = holders[1]
 
         if self._institutional_holders is not None:
             if 'Date Reported' in self._institutional_holders:
@@ -346,7 +346,7 @@ class TickerBase():
                     self._institutional_holders['Date Reported'])
             if '% Out' in self._institutional_holders:
                 self._institutional_holders['% Out'] = self._institutional_holders[
-                    '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float) / 100
 
         if self._mutualfund_holders is not None:
             if 'Date Reported' in self._mutualfund_holders:
@@ -354,7 +354,7 @@ class TickerBase():
                     self._mutualfund_holders['Date Reported'])
             if '% Out' in self._mutualfund_holders:
                 self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                    '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float) / 100
 
         # sustainability
         d = {}
@@ -442,7 +442,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(ticker_url+'/financials', proxy, self.session)
+        data = utils.get_json(ticker_url + '/financials', proxy, self.session)
 
         # generic patterns
         for key in (
@@ -454,14 +454,14 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 try:
                     key[0]['yearly'] = cleanup(data[item][key[2]])
-                except Exception as e:
+                except Exception:
                     pass
 
-            item = key[1]+'HistoryQuarterly'
+            item = key[1] + 'HistoryQuarterly'
             if isinstance(data.get(item), dict):
                 try:
                     key[0]['quarterly'] = cleanup(data[item][key[2]])
-                except Exception as e:
+                except Exception:
                     pass
 
         # earnings
@@ -479,7 +479,7 @@ class TickerBase():
                 df.columns = utils.camel2title(df.columns)
                 df.index.name = 'Quarter'
                 self._earnings['quarterly'] = df
-            except Exception as e:
+            except Exception:
                 pass
 
         self._fundamentals = True
