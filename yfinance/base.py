@@ -51,6 +51,7 @@ class TickerBase():
 
         self._fundamentals = False
         self._info = None
+        self._analysis = None
         self._sustainability = None
         self._recommendations = None
         self._major_holders = None
@@ -482,6 +483,32 @@ class TickerBase():
             except Exception:
                 pass
 
+        # Analysis
+        data = utils.get_json(ticker_url + '/analysis', proxy, self.session)
+
+        if isinstance(data.get('earningsTrend'), dict):
+            try:
+                analysis = _pd.DataFrame(data['earningsTrend']['trend'])
+                analysis['endDate'] = _pd.to_datetime(analysis['endDate'])
+                analysis.set_index('period', inplace=True)
+                analysis.index = analysis.index.str.upper()
+                analysis.index.name = 'Period'
+                analysis.columns = utils.camel2title(analysis.columns)
+
+                dict_cols = []
+
+                for idx, row in analysis.iterrows():
+                    for colname, colval in row.items():
+                        if isinstance(colval, dict):
+                            dict_cols.append(colname)
+                            for k, v in colval.items():
+                                new_colname = colname + ' ' + utils.camel2title([k])[0]
+                                analysis.loc[idx, new_colname] = v
+
+                self._analysis = analysis[[c for c in analysis.columns if c not in dict_cols]]
+            except Exception:
+                pass
+
         self._fundamentals = True
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
@@ -542,6 +569,13 @@ class TickerBase():
             dict_data = data.to_dict()
             dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
             return dict_data
+        return data
+
+    def get_analysis(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._analysis
+        if as_dict:
+            return data.to_dict()
         return data
 
     def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
