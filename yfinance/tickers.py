@@ -48,20 +48,20 @@ class Tickers():
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, proxy=None,
                 threads=True, group_by='column', progress=True,
-                **kwargs):
+                timeout=None, **kwargs):
 
         return self.download(
                 period, interval,
                 start, end, prepost,
                 actions, auto_adjust, proxy,
                 threads, group_by, progress,
-                **kwargs)
+                timeout, **kwargs)
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, proxy=None,
                  threads=True, group_by='column', progress=True,
-                 **kwargs):
+                 timeout=None, **kwargs):
 
         data = multi.download(self.symbols,
                               start=start, end=end,
@@ -74,6 +74,7 @@ class Tickers():
                               group_by='ticker',
                               threads=threads,
                               progress=progress,
+                              timeout=timeout,
                               **kwargs)
 
         for symbol in self.symbols:
