@@ -124,9 +124,9 @@ class TickerBase():
             tz: str
                 Optional timezone locale for dates.
                 (default data is returned as non-localized dates)
-            timeout: None or int
-                If not None sets timout of requests.get method.
-                If feching data is slow try to set timout=1.
+            timeout: None or float
+                If not None stops waiting for a response after given number of
+                seconds. (Can also be a fraction of a second e.g. 0.01)
                 Default is None.
             **kwargs: dict
                 debug: bool
