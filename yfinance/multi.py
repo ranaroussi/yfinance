@@ -32,7 +32,7 @@ from . import shared
 def download(tickers, start=None, end=None, actions=False, threads=True,
              group_by='column', auto_adjust=False, back_adjust=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, **kwargs):
+             proxy=None, rounding=False, timeout=None, **kwargs):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -66,6 +66,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Round values to 2 decimal places?
         show_errors: bool
             Optional. Doesn't print errors if True
+        timeout: None or float
+            If not None stops waiting for a response after given number of
+            seconds. (Can also be a fraction of a second e.g. 0.01)
     """
 
     # create ticker list
@@ -92,7 +95,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust,
                                    progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding)
+                                   rounding=rounding, timeout=timeout)
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
 
@@ -103,7 +106,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, proxy=proxy,
-                                 rounding=rounding)
+                                 rounding=rounding, timeout=timeout)
             shared._DFS[ticker.upper()] = data
             if progress:
                 shared._PROGRESS_BAR.animate()
@@ -164,10 +167,11 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           rounding=False):
+                           rounding=False, timeout=None):
 
     data = _download_one(ticker, start, end, auto_adjust, back_adjust,
-                         actions, period, interval, prepost, proxy, rounding)
+                         actions, period, interval, prepost, proxy, rounding,
+                         timeout)
     shared._DFS[ticker.upper()] = data
     if progress:
         shared._PROGRESS_BAR.animate()
@@ -176,10 +180,12 @@ def _download_one_threaded(ticker, start=None, end=None,
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False,
                   actions=False, period="max", interval="1d",
-                  prepost=False, proxy=None, rounding=False):
+                  prepost=False, proxy=None, rounding=False,
+                  timeout=None):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
                                   back_adjust=back_adjust, proxy=proxy,
-                                  rounding=rounding, many=True)
+                                  rounding=rounding, many=True,
+                                  timeout=timeout)
