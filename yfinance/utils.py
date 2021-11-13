@@ -36,6 +36,44 @@ except ImportError:
 
 user_agent_headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
+
+def get_all_by_isin(isin, proxy=None, session=None):
+    from .base import _BASE_URL_
+    session = session or _requests
+    url = "{}/v1/finance/search?q={}".format(_BASE_URL_, isin)
+    data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
+    try:
+        data = data.json()
+        ticker = data.get('quotes', [{}])[0]
+        return {
+            'ticker': {
+                'symbol': ticker['symbol'],
+                'shortname': ticker['shortname'],
+                'longname': ticker['longname'],
+                'type': ticker['quoteType'],
+                'exchange': ticker['exchDisp'],
+            },
+            'news': data.get('news', [])
+        }
+    except Exception:
+        return {}
+
+
+def get_ticker_by_isin(isin, proxy=None, session=None):
+    data = get_all_by_isin(isin, proxy, session)
+    return data.get('ticker', {}).get('symbol', '')
+
+
+def get_info_by_isin(isin, proxy=None, session=None):
+    data = get_all_by_isin(isin, proxy, session)
+    return data.get('ticker', {})
+
+
+def get_news_by_isin(isin, proxy=None, session=None):
+    data = get_all_by_isin(isin, proxy, session)
+    return data.get('news', {})
+
+
 def empty_df(index=[]):
     empty = _pd.DataFrame(index=index, data={
         'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
@@ -51,7 +89,6 @@ def get_html(url, proxy=None, session=None):
 
 
 def get_json(url, proxy=None, session=None):
-
     session = session or _requests
     html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
 
