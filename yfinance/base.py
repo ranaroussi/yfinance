@@ -26,6 +26,7 @@ import datetime as _datetime
 import requests as _requests
 import pandas as _pd
 import numpy as _np
+import re as _re
 
 try:
     from urllib.parse import quote as urlencode
@@ -77,6 +78,10 @@ class TickerBase():
         self._cashflow = {
             "yearly": utils.empty_df(),
             "quarterly": utils.empty_df()}
+
+        # accept isin as ticker
+        if utils.is_isin(self.ticker):
+            self.ticker = utils.get_ticker_by_isin(self.ticker, None, session)
 
     def stats(self, proxy=None):
         # setup proxy in requests format
@@ -394,7 +399,7 @@ class TickerBase():
         except Exception:
             pass
 
-       # For ETFs, provide this valuable data: the top holdings of the ETF 
+       # For ETFs, provide this valuable data: the top holdings of the ETF
         try:
             if 'topHoldings' in data:
                 self._info.update(data['topHoldings'])

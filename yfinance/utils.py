@@ -26,7 +26,6 @@ import re as _re
 import pandas as _pd
 import numpy as _np
 import sys as _sys
-import re as _re
 
 try:
     import ujson as _json
@@ -37,7 +36,14 @@ except ImportError:
 user_agent_headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
+def is_isin(string):
+    return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9]{1})$", string))
+
+
 def get_all_by_isin(isin, proxy=None, session=None):
+    if not(is_isin(isin)):
+        raise ValueError("Invalid ISIN number")
+
     from .base import _BASE_URL_
     session = session or _requests
     url = "{}/v1/finance/search?q={}".format(_BASE_URL_, isin)
