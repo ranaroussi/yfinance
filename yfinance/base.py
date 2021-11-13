@@ -51,6 +51,7 @@ class TickerBase():
 
         self._fundamentals = False
         self._info = None
+        self._analysis = None
         self._sustainability = None
         self._recommendations = None
         self._major_holders = None
@@ -324,7 +325,7 @@ class TickerBase():
         try:
             resp = utils.get_html(ticker_url + '/holders', proxy, self.session)
             holders = _pd.read_html(resp)
-        except Exception as e:
+        except Exception:
             holders = []
 
         if len(holders) >= 3:
@@ -337,8 +338,8 @@ class TickerBase():
         elif len(holders) >= 1:
             self._major_holders = holders[0]
 
-        #self._major_holders = holders[0]
-        #self._institutional_holders = holders[1]
+        # self._major_holders = holders[0]
+        # self._institutional_holders = holders[1]
 
         if self._institutional_holders is not None:
             if 'Date Reported' in self._institutional_holders:
@@ -346,7 +347,7 @@ class TickerBase():
                     self._institutional_holders['Date Reported'])
             if '% Out' in self._institutional_holders:
                 self._institutional_holders['% Out'] = self._institutional_holders[
-                    '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float) / 100
 
         if self._mutualfund_holders is not None:
             if 'Date Reported' in self._mutualfund_holders:
@@ -354,7 +355,7 @@ class TickerBase():
                     self._mutualfund_holders['Date Reported'])
             if '% Out' in self._mutualfund_holders:
                 self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                    '% Out'].str.replace('%', '').astype(float)/100
+                    '% Out'].str.replace('%', '').astype(float) / 100
 
         # sustainability
         d = {}
@@ -448,7 +449,7 @@ class TickerBase():
             pass
 
         # get fundamentals
-        data = utils.get_json(ticker_url+'/financials', proxy, self.session)
+        data = utils.get_json(ticker_url + '/financials', proxy, self.session)
 
         # generic patterns
         for key in (
@@ -460,14 +461,14 @@ class TickerBase():
             if isinstance(data.get(item), dict):
                 try:
                     key[0]['yearly'] = cleanup(data[item][key[2]])
-                except Exception as e:
+                except Exception:
                     pass
 
-            item = key[1]+'HistoryQuarterly'
+            item = key[1] + 'HistoryQuarterly'
             if isinstance(data.get(item), dict):
                 try:
                     key[0]['quarterly'] = cleanup(data[item][key[2]])
-                except Exception as e:
+                except Exception:
                     pass
 
         # earnings
@@ -485,7 +486,33 @@ class TickerBase():
                 df.columns = utils.camel2title(df.columns)
                 df.index.name = 'Quarter'
                 self._earnings['quarterly'] = df
-            except Exception as e:
+            except Exception:
+                pass
+
+        # Analysis
+        data = utils.get_json(ticker_url + '/analysis', proxy, self.session)
+
+        if isinstance(data.get('earningsTrend'), dict):
+            try:
+                analysis = _pd.DataFrame(data['earningsTrend']['trend'])
+                analysis['endDate'] = _pd.to_datetime(analysis['endDate'])
+                analysis.set_index('period', inplace=True)
+                analysis.index = analysis.index.str.upper()
+                analysis.index.name = 'Period'
+                analysis.columns = utils.camel2title(analysis.columns)
+
+                dict_cols = []
+
+                for idx, row in analysis.iterrows():
+                    for colname, colval in row.items():
+                        if isinstance(colval, dict):
+                            dict_cols.append(colname)
+                            for k, v in colval.items():
+                                new_colname = colname + ' ' + utils.camel2title([k])[0]
+                                analysis.loc[idx, new_colname] = v
+
+                self._analysis = analysis[[c for c in analysis.columns if c not in dict_cols]]
+            except Exception:
                 pass
 
         self._fundamentals = True
@@ -548,6 +575,13 @@ class TickerBase():
             dict_data = data.to_dict()
             dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
             return dict_data
+        return data
+
+    def get_analysis(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._analysis
+        if as_dict:
+            return data.to_dict()
         return data
 
     def get_financials(self, proxy=None, as_dict=False, freq="yearly"):

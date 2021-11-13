@@ -203,3 +203,7 @@ class Ticker(TickerBase):
     @property
     def news(self):
         return self.get_news()
+
+    @property
+    def analysis(self):
+        return self.get_analysis()
