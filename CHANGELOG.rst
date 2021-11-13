@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.66
+------
+- Merged PR to allow yfinance to be pickled
+
 0.1.65
 ------
 - Merged PRs to fix some bugs
