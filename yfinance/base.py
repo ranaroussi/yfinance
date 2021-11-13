@@ -95,7 +95,7 @@ class TickerBase():
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False,
-                proxy=None, rounding=False, tz=None, **kwargs):
+                proxy=None, rounding=False, tz=None, timeout=None, **kwargs):
         """
         :Parameters:
             period : str
@@ -125,6 +125,10 @@ class TickerBase():
             tz: str
                 Optional timezone locale for dates.
                 (default data is returned as non-localized dates)
+            timeout: None or float
+                If not None stops waiting for a response after given number of
+                seconds. (Can also be a fraction of a second e.g. 0.01)
+                Default is None.
             **kwargs: dict
                 debug: bool
                     Optional. If passed as False, will suppress
@@ -171,7 +175,8 @@ class TickerBase():
             url=url,
             params=params,
             proxies=proxy,
-            headers=utils.user_agent_headers
+            headers=utils.user_agent_headers,
+            timeout=timeout
         )
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
@@ -703,4 +708,3 @@ class TickerBase():
         # parse news
         self._news = data.get("news", [])
         return self._news
-
