@@ -75,6 +75,18 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     tickers = tickers if isinstance(
         tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
 
+    # accept isin as ticker
+    shared._ISINS = {}
+    _tickers_ = []
+    for ticker in tickers:
+        if utils.is_isin(ticker):
+            isin = ticker
+            ticker = utils.get_ticker_by_isin(ticker, proxy)
+            shared._ISINS[ticker] = isin
+        _tickers_.append(ticker)
+
+    tickers = _tickers_
+
     tickers = list(set([ticker.upper() for ticker in tickers]))
 
     if progress:
@@ -122,7 +134,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                          v for v in list(shared._ERRORS.items())]))
 
     if len(tickers) == 1:
-        return shared._DFS[tickers[0]]
+        ticker = tickers[0]
+        return shared._DFS[shared._ISINS.get(ticker, ticker)]
 
     try:
         data = _pd.concat(shared._DFS.values(), axis=1,
@@ -131,6 +144,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1,
                           keys=shared._DFS.keys())
+
+    # switch names back to isins if applicable
+    data.rename(columns=shared._ISINS, inplace=True)
 
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)

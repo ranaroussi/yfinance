@@ -1,6 +1,14 @@
 Change Log
 ===========
 
+0.1.65
+------
+- Merged PRs to fix some bugs
+- Added lookup by ISIN ``utils.get_all_by_isin(...)``, ``utils.get_ticker_by_isin(...)``, ``utils.get_info_by_isin(...)``, ``utils.get_news_by_isin(...)``
+- ``yf.Ticker``, ``yf.Tickers``, and ``yf.download`` will auto-detect ISINs and convert them to tickers
+- Propagating timeout parameter through code, setting request.get(timeout)
+- Adds ``Ticker.analysis`` and ``Ticker.get_analysis(...)``
+
 0.1.64
 ------
 - Merged PRs to fix some bugs

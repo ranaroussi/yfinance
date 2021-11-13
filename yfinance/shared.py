@@ -22,3 +22,4 @@
 _DFS = {}
 _PROGRESS_BAR = None
 _ERRORS = {}
+_ISINS = {}
