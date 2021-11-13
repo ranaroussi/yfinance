@@ -47,7 +47,7 @@ _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 class TickerBase():
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
-        self.session = session or _requests
+        self.session = session
         self._history = None
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
@@ -178,7 +178,9 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = self.session.get(
+
+        session = self.session or _requests
+        data = session.get(
             url=url,
             params=params,
             proxies=proxy,
@@ -669,7 +671,8 @@ class TickerBase():
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
             % urlencode(q)
-        data = self.session.get(
+        session = self.session or _requests
+        data = session.get(
             url=url,
             proxies=proxy,
             headers=utils.user_agent_headers
@@ -701,7 +704,8 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v1/finance/search?q={}".format(self._base_url, self.ticker)
-        data = self.session.get(
+        session = self.session or _requests
+        data = session.get(
             url=url,
             proxies=proxy,
             headers=utils.user_agent_headers
