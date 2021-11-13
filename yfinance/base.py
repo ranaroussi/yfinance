@@ -40,14 +40,16 @@ from . import utils
 
 from . import shared
 
+_BASE_URL_ = 'https://query2.finance.yahoo.com'
+_SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
 class TickerBase():
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
         self.session = session or _requests
         self._history = None
-        self._base_url = 'https://query2.finance.yahoo.com'
-        self._scrape_url = 'https://finance.yahoo.com/quote'
+        self._base_url = _BASE_URL_
+        self._scrape_url = _SCRAPE_URL_
 
         self._fundamentals = False
         self._info = None
