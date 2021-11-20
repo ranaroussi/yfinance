@@ -1,3 +1,0 @@
-# Ticker
-
-::: yfinance.ticker.Ticker
