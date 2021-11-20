@@ -24,7 +24,14 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
-![https://pypi.python.org/pypi/yfinance](https://img.shields.io/badge/python-2.7,%203.4+-blue.svg?style=flat "Python version") ![image](https://img.shields.io/pypi/v/yfinance.svg?maxAge=60%0A%20:target:%20https://pypi.python.org/pypi/yfinance%0A%20 "PyPi version") ![https://pypi.python.org/pypi/yfinance](https://img.shields.io/pypi/status/yfinance.svg?maxAge=60 "PyPi%20status") ![https://pypi.python.org/pypi/yfinance](https://img.shields.io/pypi/dm/yfinance.svg?maxAge=2592000&label=installs&color=%2327B1FF "PyPi downloads") ![https://travis-ci.com/github/ranaroussi/yfinance](https://img.shields.io/travis/ranaroussi/yfinance/main.svg?maxAge=1 "Travis-CI build status") ![https://www.codefactor.io/repository/github/ranaroussi/yfinance](https://www.codefactor.io/repository/github/ranaroussi/yfinance/badge "CodeFactor") ![https://github.com/ranaroussi/yfinance](https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60 "Star this repo") ![https://twitter.com/aroussi](https://img.shields.io/twitter/follow/aroussi.svg?style=social&label=Follow&maxAge=60 "Follow me on twitter")
+<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/badge/python-2.7,%203.4+-blue.svg?style=flat" alt="Python version"></a>
+<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/pypi/v/yfinance.svg?maxAge=60%" alt="PyPi version"></a>
+<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/pypi/status/yfinance.svg?maxAge=60" alt="PyPi status"></a>
+<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/pypi/dm/yfinance.svg?maxAge=2592000&label=installs&color=%2327B1FF" alt="PyPi downloads"></a>
+<a target="new" href="https://travis-ci.com/github/ranaroussi/yfinance"><img border=0 src="https://img.shields.io/travis/ranaroussi/yfinance/main.svg?maxAge=1" alt="Travis-CI build status"></a>
+<a target="new" href="https://www.codefactor.io/repository/github/ranaroussi/yfinance"><img border=0 src="https://www.codefactor.io/repository/github/ranaroussi/yfinance/badge" alt="CodeFactor"></a>
+<a target="new" href="https://github.com/ranaroussi/yfinance"><img border=0 src="https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60" alt="Star this repo"></a>
+<a target="new" href="https://twitter.com/aroussi"><img border=0 src="https://img.shields.io/twitter/follow/aroussi.svg?style=social&label=Follow&maxAge=60" alt="Follow me on twitter"></a>
 
 
 **yfinance** offers a threaded and Pythonic way to download market data from [Yahoo!Ⓡ finance](https://finance.yahoo.com).
