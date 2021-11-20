@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.67
+------
+- Added legal disclaimers to make sure people are aware that this library is not affiliated, endorsed, or vetted by Yahoo, Inc.
+
 0.1.66
 ------
 - Merged PR to allow yfinance to be pickled
