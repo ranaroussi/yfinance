@@ -5,7 +5,7 @@
 #### \*\*\* IMPORTANT LEGAL DISCLAIMER \*\*\*
 
 ---
-    
+
 **Yahoo!, Y!Finance, and Yahoo! finance are registered trademarks of
 Yahoo, Inc.**
 
@@ -17,7 +17,7 @@ intended for research and educational purposes.
 ([here](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm),
 [here](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html), and
 [here](https://policies.yahoo.com/us/en/yahoo/terms/index.htm)) **for
-detailes on your rights to use the actual data downloaded. Remember - the
+details on your rights to use the actual data downloaded. Remember - the
 Yahoo! finance API is intended for personal use only.**
 
 </td></tr></table>
