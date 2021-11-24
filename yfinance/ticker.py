@@ -139,6 +139,10 @@ class Ticker(TickerBase):
         return self.get_actions()
 
     @property
+    def shares(self):
+        return self.get_shares()
+
+    @property
     def info(self):
         return self.get_info()
 
