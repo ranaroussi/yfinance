@@ -62,6 +62,7 @@ class TickerBase():
         self._mutualfund_holders = None
         self._isin = None
         self._news = []
+        self._shares = None
 
         self._calendar = None
         self._expirations = {}
@@ -503,6 +504,17 @@ class TickerBase():
             except Exception:
                 pass
 
+        # shares outstanding
+        try:
+            shares = _pd.DataFrame(data['annualBasicAverageShares'])
+            shares['Year'] = shares['asOfDate'].agg(lambda x: int(x[:4]))
+            shares.set_index('Year', inplace=True)
+            shares.drop(columns=['dataId', 'asOfDate', 'periodType', 'currencyCode'], inplace=True)
+            shares.rename(columns={'reportedValue': "BasicShares"}, inplace=True)
+            self._shares = shares
+        except Exception:
+            pass
+
         # Analysis
         data = utils.get_json(ticker_url + '/analysis', proxy, self.session)
 
@@ -645,6 +657,13 @@ class TickerBase():
             actions = self._history[["Dividends", "Stock Splits"]]
             return actions[actions != 0].dropna(how='all').fillna(0)
         return []
+
+    def get_shares(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._shares
+        if as_dict:
+            return data.to_dict()
+        return data
 
     def get_isin(self, proxy=None):
         # *** experimental ***

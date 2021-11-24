@@ -107,6 +107,12 @@ def get_json(url, proxy=None, session=None):
         '(this)')[0].split(';\n}')[0].strip()
     data = _json.loads(json_str)[
         'context']['dispatcher']['stores']['QuoteSummaryStore']
+    # add data about Shares Outstanding for companies' tickers if they are available
+    try:
+        data['annualBasicAverageShares'] = _json.loads(json_str)[
+            'context']['dispatcher']['stores']['QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
+    except Exception:
+        pass
 
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
