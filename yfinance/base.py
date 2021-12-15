@@ -180,18 +180,23 @@ class TickerBase():
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
 
         session = self.session or _requests
-        data = session.get(
-            url=url,
-            params=params,
-            proxies=proxy,
-            headers=utils.user_agent_headers,
-            timeout=timeout
-        )
-        if "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
-        data = data.json()
+
+        try:
+            data = session.get(
+                url=url,
+                params=params,
+                proxies=proxy,
+                headers=utils.user_agent_headers,
+                timeout=timeout
+            )
+            if "Will be right back" in data.text or data is None:
+                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                                   "Our engineers are working quickly to resolve "
+                                   "the issue. Thank you for your patience.")
+
+            data = data.json()
+        except Exception:
+            pass
 
         # Work with errors
         debug_mode = True
