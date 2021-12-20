@@ -529,6 +529,43 @@ class TickerBase():
             except Exception:
                 pass
 
+        # Complementary key-statistics (currently fetching the important trailingPegRatio which is the value shown in the website)
+        res = {}
+        try:
+            my_headers = {'user-agent': 'curl/7.55.1', 'accept': 'application/json', 'content-type': 'application/json', 'referer': 'https://finance.yahoo.com/', 'cache-control': 'no-cache', 'connection': 'close'}
+            p = _re.compile(r'root\.App\.main = (.*);')
+            r = _requests.session().get('https://finance.yahoo.com/quote/{}/key-statistics?p={}'.format(self.ticker, self.ticker), headers=my_headers)
+            q_results = {}
+            my_qs_keys = ['pegRatio']  # QuoteSummaryStore
+            my_ts_keys = ['trailingPegRatio']  # , 'quarterlyPegRatio']  # QuoteTimeSeriesStore
+            
+            data = _json.loads(p.findall(r.text)[0])
+            key_stats = data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
+            q_results.setdefault(self.ticker, [])
+            for i in my_ts_keys:
+                # j=0
+                try:
+                    # res = {i: key_stats['timeSeries'][i][1]['reportedValue']['raw']}
+                    # We need to loop over multiple items, if they exist: 0,1,2,..
+                    zzz = key_stats['timeSeries'][i]
+                    for j in range(len(zzz)):
+                        if key_stats['timeSeries'][i][j]:
+                            res = {i: key_stats['timeSeries'][i][j]['reportedValue']['raw']}
+                            q_results[self.ticker].append(res)
+
+                # print(res)
+                # q_results[ticker].append(res)
+                except:
+                    q_results[ticker].append({i: np.nan})
+
+            res = {'Company': ticker}
+            q_results[ticker].append(res)
+        except Exception:
+            pass
+
+        if 'trailingPegRatio' in res:
+            self._info['trailingPegRatio'] = res['trailingPegRatio']
+            
         self._fundamentals = True
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
