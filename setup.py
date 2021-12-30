@@ -8,8 +8,8 @@
 
 from setuptools import setup, find_packages
 # from codecs import open
-# import io
-# from os import path
+import io
+from os import path
 
 # --- get version ---
 version = "unknown"
@@ -19,36 +19,18 @@ with open("yfinance/version.py") as f:
 # --- /get version ---
 
 
-# here = path.abspath(path.dirname(__file__))
+here = path.abspath(path.dirname(__file__))
 
-# # Get the long description from the README file
-# with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
-#     long_description = f.read()
+# Get the long description from the README file
+with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='yfinance',
     version=version,
     description='Download market data from Yahoo! Finance API',
-    long_description="""
-Download market data from Yahoo! Finance's API
-==============================================
-
-** IMPORTANT LEGAL DISCLAIMER **
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Yahoo!, Y!Finance, and Yahoo! finance are registered trademarks of Yahoo, Inc.**
-
-yfinance is **not** affiliated, endorsed, or vetted by Yahoo, Inc. It's an open-source tool that uses Yahoo's publicly available APIs, and is intended for research and educational purposes.
-
-**You should refer to Yahoo!'s terms of use** (`here <https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm>`_, `here <https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html>`_, and `here <https://policies.yahoo.com/us/en/yahoo/terms/index.htm>`_) **for detailes on your rights to use the actual data downloaded. Remember: the Yahoo! finance API is intended for personal use only.**
-
------
-
-For the latest docs, visit `https://github.com/ranaroussi/yfinance <https://github.com/ranaroussi/yfinance>`_.
-
-Thanks,
-- Ran
-    """,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/ranaroussi/yfinance',
     author='Ran Aroussi',
     author_email='ran@aroussi.com',
@@ -80,7 +62,7 @@ Thanks,
     keywords='pandas, yahoo finance, pandas datareader',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
     install_requires=['pandas>=0.24', 'numpy>=1.15',
-                      'requests>=2.20', 'multitasking>=0.0.7',
+                      'requests>=2.26', 'multitasking>=0.0.7',
                       'lxml>=4.5.1'],
     entry_points={
         'console_scripts': [
