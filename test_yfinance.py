@@ -50,6 +50,7 @@ class TestTicker(unittest.TestCase):
             ticker.sustainability
             ticker.options
             ticker.news
+            ticker.shares
 
     def test_holders(self):
         for ticker in tickers:
