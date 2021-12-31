@@ -197,7 +197,7 @@ class TickerBase():
 
             data = data.json()
         except Exception:
-            pass
+            data = None
 
         # Work with errors
         debug_mode = True
@@ -205,7 +205,7 @@ class TickerBase():
             debug_mode = kwargs["debug"]
 
         err_msg = "No data found for this date range, symbol may be delisted"
-        if "chart" in data and data["chart"]["error"]:
+        if data and "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
@@ -213,7 +213,7 @@ class TickerBase():
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
-        elif "chart" not in data or data["chart"]["result"] is None or \
+        elif not data or "chart" not in data or data["chart"]["result"] is None or \
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
