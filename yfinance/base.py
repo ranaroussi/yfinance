@@ -182,6 +182,8 @@ class TickerBase():
 
         session = self.session or _requests
 
+        data = None
+
         try:
             data = session.get(
                 url=url,
@@ -205,6 +207,14 @@ class TickerBase():
             debug_mode = kwargs["debug"]
 
         err_msg = "No data found for this date range, symbol may be delisted"
+
+        if data is None or not type(data) is dict or 'status_code' in data.keys():
+            shared._DFS[self.ticker] = utils.empty_df()
+            shared._ERRORS[self.ticker] = err_msg
+            if "many" not in kwargs and debug_mode:
+                print('- %s: %s' % (self.ticker, err_msg))
+            return utils.empty_df()
+
         if "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
