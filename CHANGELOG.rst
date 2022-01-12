@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.69
+------
+- Bug fixed - #920
+
 0.1.68
 ------
 - Upgraded requests dependency
