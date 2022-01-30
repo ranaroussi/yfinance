@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.70
+------
+- Bug fixed - Closes #937
+
 0.1.69
 ------
 - Bug fixed - #920
