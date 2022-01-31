@@ -44,6 +44,13 @@ from . import shared
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
+
+def _mktime(timetuple):
+    """
+    This is an implementation of time.mktime that works for Windows 10 even when dates before 1970 are used.
+    """
+    return _datetime.datetime(*timetuple[:6], tzinfo=_datetime.timezone.utc).timestamp()
+
 class TickerBase():
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
@@ -147,16 +154,16 @@ class TickerBase():
             if start is None:
                 start = -631159200
             elif isinstance(start, _datetime.datetime):
-                start = int(_time.mktime(start.timetuple()))
+                start = int(_mktime(start.timetuple()))
             else:
-                start = int(_time.mktime(
+                start = int(_mktime(
                     _time.strptime(str(start), '%Y-%m-%d')))
             if end is None:
                 end = int(_time.time())
             elif isinstance(end, _datetime.datetime):
-                end = int(_time.mktime(end.timetuple()))
+                end = int(_mktime(end.timetuple()))
             else:
-                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
+                end = int(_mktime(_time.strptime(str(end), '%Y-%m-%d')))
 
             params = {"period1": start, "period2": end}
         else:
