@@ -30,14 +30,14 @@ class Tickers():
     def __repr__(self):
         return 'yfinance.Tickers object <%s>' % ",".join(self.symbols)
 
-    def __init__(self, tickers):
+    def __init__(self, tickers, session=None):
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
         ticker_objects = {}
 
         for ticker in self.symbols:
-            ticker_objects[ticker] = Ticker(ticker)
+            ticker_objects[ticker] = Ticker(ticker, session=session)
 
         self.tickers = ticker_objects
         # self.tickers = _namedtuple(
