@@ -61,7 +61,7 @@ class Tickers():
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, proxy=None,
                  threads=True, group_by='column', progress=True,
-                 timeout=None, **kwargs):
+                 timeout=None, stop_on_error=True, **kwargs):
 
         data = multi.download(self.symbols,
                               start=start, end=end,
@@ -75,6 +75,7 @@ class Tickers():
                               threads=threads,
                               progress=progress,
                               timeout=timeout,
+                              stop_on_error=stop_on_error,
                               **kwargs)
 
         for symbol in self.symbols:

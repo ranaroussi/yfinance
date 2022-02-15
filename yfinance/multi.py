@@ -21,7 +21,11 @@
 
 from __future__ import print_function
 
+import concurrent
+import os
 import time as _time
+from concurrent.futures import ProcessPoolExecutor, as_completed, ThreadPoolExecutor
+
 import multitasking as _multitasking
 import pandas as _pd
 
@@ -32,7 +36,7 @@ from . import shared
 def download(tickers, start=None, end=None, actions=False, threads=True,
              group_by='column', auto_adjust=False, back_adjust=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=None, **kwargs):
+             proxy=None, rounding=False, timeout=None, stop_on_error=True, **kwargs):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -69,6 +73,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
+        stop_on_error: bool
+            Optional. If True, stops downloading if an error is encountered and throws an Exception
     """
 
     # create ticker list
@@ -98,18 +104,24 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     # download using threads
     if threads:
-        if threads is True:
-            threads = min([len(tickers), _multitasking.cpu_count() * 2])
-        _multitasking.set_max_threads(threads)
-        for i, ticker in enumerate(tickers):
-            _download_one_threaded(ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust,
-                                   progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding, timeout=timeout)
-        while len(shared._DFS) < len(tickers):
-            _time.sleep(0.01)
+        futures = []
+        with ThreadPoolExecutor(os.cpu_count() * 2) as executor:
+            for i, ticker in enumerate(tickers):
+
+                futures.append(executor.submit(_download_one_threaded, ticker, period=period, interval=interval,
+                                       start=start, end=end, prepost=prepost,
+                                       actions=actions, auto_adjust=auto_adjust,
+                                       back_adjust=back_adjust,
+                                       progress=(progress and i > 0), proxy=proxy,
+                                       rounding=rounding, timeout=timeout))
+        for future in as_completed(futures):
+            try:
+                count = future.result()
+            except Exception as exc:
+                if stop_on_error:
+                    raise exc
+                else:
+                    print("Encounters error but continuing: {}".format(exc))
 
     # download synchronously
     else:
@@ -178,7 +190,7 @@ def _realign_dfs():
             ~shared._DFS[key].index.duplicated(keep='last')]
 
 
-@_multitasking.task
+
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False,
                            actions=False, progress=True, period="max",
