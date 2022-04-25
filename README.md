@@ -80,7 +80,7 @@ msft.major_holders
 # show institutional holders
 msft.institutional_holders
 
-# show executives 
+# show executives (note: returns only executives for companies)
 msft.executives
 
 # show balance sheet

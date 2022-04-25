@@ -17,7 +17,7 @@ import yfinance as yf
 import unittest
 import os
 
-symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
+symbols = ['MSFT','IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
 
 class TestTicker(unittest.TestCase):
@@ -53,7 +53,6 @@ class TestTicker(unittest.TestCase):
             ticker.news
             ticker.shares
             ticker.executives
-            print(ticker.executives)
 
     def test_holders(self):
         for ticker in tickers:
