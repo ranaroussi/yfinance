@@ -20,9 +20,6 @@ import os
 symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
 
-os.environ['http_proxy'] = "http://gljet:Krakatau86!@10.185.190.100:8080"
-os.environ['https_proxy'] = "http://gljet:Krakatau86!@10.185.190.100:8080"
-
 class TestTicker(unittest.TestCase):
     def test_info_history(self):
         for ticker in tickers:
@@ -56,6 +53,7 @@ class TestTicker(unittest.TestCase):
             ticker.news
             ticker.shares
             ticker.executives
+            print(ticker.executives)
 
     def test_holders(self):
         for ticker in tickers:
