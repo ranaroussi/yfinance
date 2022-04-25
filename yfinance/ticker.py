@@ -119,6 +119,10 @@ class Ticker(TickerBase):
         return self.get_major_holders()
 
     @property
+    def executives(self):
+        return self.get_executives()
+
+    @property
     def institutional_holders(self):
         return self.get_institutional_holders()
 

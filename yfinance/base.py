@@ -386,7 +386,12 @@ class TickerBase():
             if '% Out' in self._mutualfund_holders:
                 self._mutualfund_holders['% Out'] = self._mutualfund_holders[
                     '% Out'].str.replace('%', '').astype(float) / 100
-
+        try:
+            resp = utils.get_html(ticker_url + '/profile', proxy, self.session)
+            profiles = _pd.read_html(resp)
+        except Exception:
+            profiles = []
+        self._excutives = profiles
         # sustainability
         d = {}
         try:
@@ -613,6 +618,13 @@ class TickerBase():
     def get_major_holders(self, proxy=None, as_dict=False, *args, **kwargs):
         self._get_fundamentals(proxy=proxy)
         data = self._major_holders
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_executives(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._excutives
         if as_dict:
             return data.to_dict()
         return data

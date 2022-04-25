@@ -15,10 +15,13 @@ Sanity check for most common library uses all working
 
 import yfinance as yf
 import unittest
+import os
 
 symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
 
+os.environ['http_proxy'] = "http://gljet:Krakatau86!@10.185.190.100:8080"
+os.environ['https_proxy'] = "http://gljet:Krakatau86!@10.185.190.100:8080"
 
 class TestTicker(unittest.TestCase):
     def test_info_history(self):
@@ -52,6 +55,7 @@ class TestTicker(unittest.TestCase):
             ticker.options
             ticker.news
             ticker.shares
+            ticker.executives
 
     def test_holders(self):
         for ticker in tickers:

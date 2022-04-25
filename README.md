@@ -80,6 +80,9 @@ msft.major_holders
 # show institutional holders
 msft.institutional_holders
 
+# show executives 
+msft.executives
+
 # show balance sheet
 msft.balance_sheet
 msft.quarterly_balance_sheet
