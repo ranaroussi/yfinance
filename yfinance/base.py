@@ -521,7 +521,9 @@ class TickerBase():
 
         # shares outstanding
         try:
-            shares = _pd.DataFrame(data['annualBasicAverageShares'])
+            # keep only years with non None data
+            available_shares = [shares_data for shares_data in data['annualBasicAverageShares'] if shares_data]
+            shares = _pd.DataFrame(available_shares)
             shares['Year'] = shares['asOfDate'].agg(lambda x: int(x[:4]))
             shares.set_index('Year', inplace=True)
             shares.drop(columns=['dataId', 'asOfDate', 'periodType', 'currencyCode'], inplace=True)
