@@ -334,6 +334,9 @@ class TickerBase():
             df.columns.name = ''
             df.index.name = 'Breakdown'
 
+            # rename incorrect yahoo key
+            df.rename(index={'treasuryStock': 'Gains Losses Not Affecting Retained Earnings'}, inplace=True)
+
             df.index = utils.camel2title(df.index)
             return df
 
