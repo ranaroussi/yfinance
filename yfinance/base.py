@@ -47,6 +47,7 @@ _ROOT_URL_ = 'https://finance.yahoo.com'
 
 class TickerBase():
     def __init__(self, ticker, session=None):
+        self._earnings_history = None
         self.ticker = ticker.upper()
         self.session = session
         self._history = None
@@ -794,6 +795,9 @@ class TickerBase():
         return self._news
 
     def get_earnings_history(self, proxy=None):
+        if self._earnings_history:
+            return self._earnings_history
+
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
@@ -816,8 +820,14 @@ class TickerBase():
         try:
             # read_html returns a list of pandas Dataframes of all the tables in `data`
             data = _pd.read_html(data)[0]
+            data.replace("-", _np.nan, inplace=True)
+
+            data['EPS Estimate'] = _pd.to_numeric(data['EPS Estimate'])
+            data['Reported EPS'] = _pd.to_numeric(data['Reported EPS'])
+            self._earnings_history = data
         # if no tables are found a ValueError is thrown
         except ValueError:
             print("Could not find data for {}.".format(self.ticker))
             return
         return data
+
