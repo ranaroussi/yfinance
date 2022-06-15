@@ -837,6 +837,8 @@ class TickerBase():
                 dates = data
             else:
                 dates = _pd.concat([dates, data], axis=0)
+        if dates is None:
+            raise Exception("No data found, symbol may be delisted")
         dates = dates.reset_index(drop=True)
 
         # Drop redundant columns
@@ -855,13 +857,12 @@ class TickerBase():
         # - split AM/PM from timezone
         tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
         tzinfo.columns = ["AM/PM","TZ"]
-        tzinfo["TZ"] = utils.standardize_timezones(tzinfo["TZ"])
         # - combine and parse
         dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
         dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
-        for i in range(dates.shape[0]):
-            tz_str = tzinfo["TZ"].iloc[i]
-            dates.loc[i,cn] = dates[cn].iloc[i].tz_localize(tz=tz_str)
+        # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
+        dates[cn] = dates[cn].dt.tz_localize(tz=self.info["exchangeTimezoneName"])
+
         dates = dates.set_index("Earnings Date")
 
         self._earnings_dates = dates
