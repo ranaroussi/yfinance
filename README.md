@@ -101,6 +101,9 @@ msft.recommendations
 # show next event (earnings, etc)
 msft.calendar
 
+# show all earnings dates
+msft.earnings_dates
+
 # show ISIN code - *experimental*
 # ISIN = International Securities Identification Number
 msft.isin

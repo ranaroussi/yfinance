@@ -211,3 +211,7 @@ class Ticker(TickerBase):
     @property
     def analysis(self):
         return self.get_analysis()
+
+    @property
+    def earnings_dates(self):
+        return self.get_earnings_dates()

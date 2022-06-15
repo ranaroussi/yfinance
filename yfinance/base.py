@@ -43,6 +43,7 @@ from . import shared
 
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
+_ROOT_URL_ = 'https://finance.yahoo.com'
 
 class TickerBase():
     def __init__(self, ticker, session=None):
@@ -66,6 +67,7 @@ class TickerBase():
 
         self._calendar = None
         self._expirations = {}
+        self._earnings_dates = None
 
         self._earnings = {
             "yearly": utils.empty_df(),
@@ -791,3 +793,51 @@ class TickerBase():
         # parse news
         self._news = data.get("news", [])
         return self._news
+
+    def get_earnings_dates(self, proxy=None):
+        if not self._earnings_dates is None:
+            return self._earnings_dates
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        page_size = 100 # YF caps at 100, don't go higher
+        page_offset = 0
+        dates = None
+        while True:
+            url = "{}/calendar/earnings?symbol={}&offset={}&size={}".format(_ROOT_URL_, self.ticker, page_offset, page_size)
+            page_offset += page_size
+
+            session = self.session or _requests
+            data = session.get(
+                url=url,
+                proxies=proxy,
+                headers=utils.user_agent_headers
+            ).text
+
+            if "Will be right back" in data:
+                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                                   "Our engineers are working quickly to resolve "
+                                   "the issue. Thank you for your patience.")
+
+            try:
+                data = _pd.read_html(data)[0]
+            except ValueError:
+                if page_offset == 0:
+                    ## Should not fail on first page
+                    print("Could not find earnings history data for {}.".format(self.ticker))
+                    return
+                else:
+                    break
+
+            if dates is None:
+                dates = data
+            else:
+                dates = _pd.concat([dates, data], axis=0)
+
+        self._earnings_dates = dates
+
+        return dates
