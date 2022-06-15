@@ -827,7 +827,7 @@ class TickerBase():
                 data = _pd.read_html(data)[0]
             except ValueError:
                 if page_offset == 0:
-                    ## Should not fail on first page
+                    # Should not fail on first page
                     print("Could not find earnings history data for {}.".format(self.ticker))
                     return
                 else:
@@ -837,6 +837,36 @@ class TickerBase():
                 dates = data
             else:
                 dates = _pd.concat([dates, data], axis=0)
+        dates = dates.reset_index(drop=True)
+
+        # Drop redundant columns
+        dates = dates.drop(["Symbol","Company"], axis=1)
+
+        # Convert types
+        dates["EPS Estimate"] = dates["EPS Estimate"].astype(float)
+        dates["Reported EPS"] = dates["Reported EPS"].astype(float)
+
+        cn = "Surprise(%)"
+        dates.loc[dates[cn]=="-", cn] = "0"
+        dates[cn] = dates[cn].astype(float)
+
+        # Parse earnings date string
+        cn = "Earnings Date"
+        # - remove AM/PM and timezone from date string
+        tzinfo = dates[cn].str.extract('([AP]M[a-zA-Z]*)$')
+        dates[cn] = dates[cn].replace(' [AP]M[a-zA-Z]*$', '', regex=True)
+        # - split AM/PM from timezone
+        tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
+        tzinfo.columns = ["AM/PM","TZ"]
+        # - handle non-standard timezones
+        tzinfo.loc[tzinfo["TZ"]=="EDT","TZ"] = "EST5EDT"
+        # - combine and parse
+        dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
+        dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
+        for i in range(dates.shape[0]):
+            tz_str = tzinfo["TZ"].iloc[i]
+            dates.loc[i,cn] = dates[cn].iloc[i].tz_localize(tz=tz_str)
+        dates = dates.set_index("Earnings Date")
 
         self._earnings_dates = dates
 
