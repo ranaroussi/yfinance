@@ -843,12 +843,9 @@ class TickerBase():
         dates = dates.drop(["Symbol","Company"], axis=1)
 
         # Convert types
-        dates["EPS Estimate"] = dates["EPS Estimate"].astype(float)
-        dates["Reported EPS"] = dates["Reported EPS"].astype(float)
-
-        cn = "Surprise(%)"
-        dates.loc[dates[cn]=="-", cn] = "0"
-        dates[cn] = dates[cn].astype(float)
+        for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
+            dates.loc[dates[cn]=='-', cn] = "NaN"
+            dates[cn] = dates[cn].astype(float)
 
         # Parse earnings date string
         cn = "Earnings Date"
@@ -858,8 +855,7 @@ class TickerBase():
         # - split AM/PM from timezone
         tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
         tzinfo.columns = ["AM/PM","TZ"]
-        # - handle non-standard timezones
-        tzinfo.loc[tzinfo["TZ"]=="EDT","TZ"] = "EST5EDT"
+        tzinfo["TZ"] = utils.standardize_timezones(tzinfo["TZ"])
         # - combine and parse
         dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
         dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
