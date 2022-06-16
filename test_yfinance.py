@@ -52,6 +52,8 @@ class TestTicker(unittest.TestCase):
             ticker.options
             ticker.news
             ticker.shares
+            ticker.earnings_history
+
 
     def test_holders(self):
         for ticker in tickers:
