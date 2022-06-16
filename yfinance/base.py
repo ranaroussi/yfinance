@@ -148,20 +148,22 @@ class TickerBase():
         """
 
         if start or period is None or period.lower() == "max":
-            if start is None:
-                start = -631159200
-            elif isinstance(start, _datetime.datetime):
-                start = int(_time.mktime(start.timetuple()))
-            else:
-                start = int(_time.mktime(
-                    _time.strptime(str(start), '%Y-%m-%d')))
             if end is None:
                 end = int(_time.time())
             elif isinstance(end, _datetime.datetime):
                 end = int(_time.mktime(end.timetuple()))
             else:
-                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
-
+                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d'))) 
+            if start is None:
+                if interval=="1m":
+                    start = end - 604800 # Subtract 7 days 
+                else:
+                    start = -631159200
+            elif isinstance(start, _datetime.datetime):
+                start = int(_time.mktime(start.timetuple()))
+            else:
+                start = int(_time.mktime(
+                    _time.strptime(str(start), '%Y-%m-%d')))
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
