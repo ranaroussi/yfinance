@@ -807,7 +807,7 @@ class TickerBase():
         return self._news
 
     def get_earnings_dates(self, proxy=None):
-        if self._earnings_dates:
+        if self._earnings_dates is not None:
             return self._earnings_dates
 
         # setup proxy in requests format
