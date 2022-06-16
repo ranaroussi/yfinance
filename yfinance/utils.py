@@ -33,7 +33,8 @@ except ImportError:
     import json as _json
 
 
-user_agent_headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+user_agent_headers = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
 def is_isin(string):
@@ -89,8 +90,9 @@ def empty_df(index=[]):
 
 
 def empty_earnings_dates_df():
-    empty = _pd.DataFrame(columns=["Symbol", "Company", "Earnings Date", 
-                                "EPS Estimate", "Reported EPS", "Surprise(%)"])
+    empty = _pd.DataFrame(
+        columns=["Symbol", "Company", "Earnings Date",
+                 "EPS Estimate", "Reported EPS", "Surprise(%)"])
     return empty
 
 
@@ -115,8 +117,9 @@ def get_json(url, proxy=None, session=None):
         'context']['dispatcher']['stores']['QuoteSummaryStore']
     # add data about Shares Outstanding for companies' tickers if they are available
     try:
-        data['annualBasicAverageShares'] = _json.loads(json_str)[
-            'context']['dispatcher']['stores']['QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
+        data['annualBasicAverageShares'] = _json.loads(
+            json_str)['context']['dispatcher']['stores'][
+                'QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
     except Exception:
         pass
 
@@ -203,8 +206,10 @@ def parse_quotes(data, tz=None):
 
 
 def parse_actions(data, tz=None):
-    dividends = _pd.DataFrame(columns=["Dividends"], index=_pd.DatetimeIndex([]))
-    splits = _pd.DataFrame(columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
+    dividends = _pd.DataFrame(
+        columns=["Dividends"], index=_pd.DatetimeIndex([]))
+    splits = _pd.DataFrame(
+        columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
 
     if "events" in data:
         if "dividends" in data["events"]:
