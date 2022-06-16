@@ -51,11 +51,11 @@ class Tickers():
                 timeout=None, **kwargs):
 
         return self.download(
-                period, interval,
-                start, end, prepost,
-                actions, auto_adjust, proxy,
-                threads, group_by, progress,
-                timeout, **kwargs)
+            period, interval,
+            start, end, prepost,
+            actions, auto_adjust, proxy,
+            threads, group_by, progress,
+            timeout, **kwargs)
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
@@ -85,3 +85,12 @@ class Tickers():
             data.sort_index(level=0, axis=1, inplace=True)
 
         return data
+
+    def news(self):
+        collection = {}
+        for ticker in self.symbols:
+            collection[ticker] = []
+            items = Ticker(ticker).news
+            for item in items:
+                collection[ticker].append(item)
+        return collection
