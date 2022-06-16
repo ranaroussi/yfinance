@@ -215,3 +215,7 @@ class Ticker(TickerBase):
     @property
     def earnings_history(self):
         return self.get_earnings_history()
+
+    @property
+    def earnings_dates(self):
+        return self.get_earnings_dates()

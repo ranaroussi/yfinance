@@ -88,6 +88,12 @@ def empty_df(index=[]):
     return empty
 
 
+def empty_earnings_dates_df():
+    empty = _pd.DataFrame(columns=["Symbol", "Company", "Earnings Date", 
+                                "EPS Estimate", "Reported EPS", "Surprise(%)"])
+    return empty
+
+
 def get_html(url, proxy=None, session=None):
     session = session or _requests
     html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
