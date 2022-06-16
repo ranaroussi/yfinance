@@ -26,7 +26,7 @@ import datetime as _datetime
 import requests as _requests
 import pandas as _pd
 import numpy as _np
-import zoneinfo as _zi
+import pytz as _tz
 import re as _re
 
 try:
@@ -159,7 +159,7 @@ class TickerBase():
                     end = _datetime.datetime.combine(end, _datetime.time(23, 59))
                 if isinstance(end, _datetime.datetime) and end.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    end = end.replace(tzinfo=_zi.ZoneInfo(self.info["exchangeTimezoneName"]))
+                    end = end.replace(tzinfo=_tz.timezone(self.info["exchangeTimezoneName"]))
                 print("end = {}".format(end))
                 end = int(end.timestamp())
             if start is None:
@@ -175,7 +175,7 @@ class TickerBase():
                     start = _datetime.datetime.combine(start, _datetime.time(0))
                 if isinstance(start, _datetime.datetime) and start.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    start = start.replace(tzinfo=_zi.ZoneInfo(self.info["exchangeTimezoneName"]))
+                    start = start.replace(tzinfo=_tz.timezone(self.info["exchangeTimezoneName"]))
                 start = int(start.timestamp())
             params = {"period1": start, "period2": end}
         else:
