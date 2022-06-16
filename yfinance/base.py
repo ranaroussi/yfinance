@@ -849,6 +849,9 @@ class TickerBase():
             dates.loc[dates[cn]=='-', cn] = "NaN"
             dates[cn] = dates[cn].astype(float)
 
+        # Convert % to range 0->1:
+        dates["Surprise(%)"] *= 0.01
+
         # Parse earnings date string
         cn = "Earnings Date"
         # - remove AM/PM and timezone from date string
