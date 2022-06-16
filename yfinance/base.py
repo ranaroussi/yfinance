@@ -43,9 +43,11 @@ from . import shared
 
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
+_ROOT_URL_ = 'https://finance.yahoo.com'
 
 class TickerBase():
     def __init__(self, ticker, session=None):
+        self._earnings_history = None
         self.ticker = ticker.upper()
         self.session = session
         self._history = None
@@ -791,3 +793,41 @@ class TickerBase():
         # parse news
         self._news = data.get("news", [])
         return self._news
+
+    def get_earnings_history(self, proxy=None):
+        if self._earnings_history:
+            return self._earnings_history
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        url = "{}/calendar/earnings?symbol={}".format(_ROOT_URL_, self.ticker)
+        session = self.session or _requests
+        data = session.get(
+            url=url,
+            proxies=proxy,
+            headers=utils.user_agent_headers
+        ).text
+
+        if "Will be right back" in data:
+            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                               "Our engineers are working quickly to resolve "
+                               "the issue. Thank you for your patience.")
+
+        try:
+            # read_html returns a list of pandas Dataframes of all the tables in `data`
+            data = _pd.read_html(data)[0]
+            data.replace("-", _np.nan, inplace=True)
+
+            data['EPS Estimate'] = _pd.to_numeric(data['EPS Estimate'])
+            data['Reported EPS'] = _pd.to_numeric(data['Reported EPS'])
+            self._earnings_history = data
+        # if no tables are found a ValueError is thrown
+        except ValueError:
+            print("Could not find data for {}.".format(self.ticker))
+            return
+        return data
+
