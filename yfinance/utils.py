@@ -87,9 +87,10 @@ def empty_df(index=[]):
     empty.index.name = 'Date'
     return empty
 
+
 def empty_earnings_dates_df():
-    empty = _pd.DataFrame(columns=["Symbol", "Company", "Earnings Date", "EPS Estimate", "Reported EPS", "Surprise(%)"])
-    # empty.index.name = 'Earnings Date'
+    empty = _pd.DataFrame(columns=["Symbol", "Company", "Earnings Date", 
+                                "EPS Estimate", "Reported EPS", "Surprise(%)"])
     return empty
 
 
