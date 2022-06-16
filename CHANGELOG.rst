@@ -1,6 +1,17 @@
 Change Log
 ===========
 
+0.1.71
+------
+- Added Tickers(…).news()
+- Return empty DF if YF missing earnings dates
+- Fix EPS % to 0->1
+- Fix timezone handling
+- Fix handling of missing data
+- Clean&format earnings_dates table
+- Add ``.get_earnings_dates()`` to retreive earnings calendar
+- Added ``.get_earnings_history()`` to fetch earnings data
+
 0.1.70
 ------
 - Bug fixed - Closes #937
