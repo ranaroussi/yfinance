@@ -26,6 +26,7 @@ import datetime as _datetime
 import requests as _requests
 import pandas as _pd
 import numpy as _np
+import zoneinfo as _zi
 import re as _re
 
 try:
@@ -150,20 +151,32 @@ class TickerBase():
         if start or period is None or period.lower() == "max":
             if end is None:
                 end = int(_time.time())
-            elif isinstance(end, _datetime.datetime):
-                end = int(_time.mktime(end.timetuple()))
             else:
-                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
+                # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+                if isinstance(end, str):
+                    end = _datetime.datetime.strptime(str(end)+" 23:59", '%Y-%m-%d %H:%S')
+                if isinstance(end, _datetime.date):
+                    end = _datetime.datetime.combine(end, _datetime.time(23, 59))
+                if isinstance(end, _datetime.datetime) and end.tzinfo is None:
+                    # Assume user is referring to exchange's timezone
+                    end = end.replace(tzinfo=_zi.ZoneInfo(self.info["exchangeTimezoneName"]))
+                print("end = {}".format(end))
+                end = int(end.timestamp())
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
-            elif isinstance(start, _datetime.datetime):
-                start = int(_time.mktime(start.timetuple()))
             else:
-                start = int(_time.mktime(
-                    _time.strptime(str(start), '%Y-%m-%d')))
+                # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+                if isinstance(start, str):
+                    start = _datetime.datetime.strptime(str(start), '%Y-%m-%d')
+                if isinstance(start, _datetime.date):
+                    start = _datetime.datetime.combine(start, _datetime.time(0))
+                if isinstance(start, _datetime.datetime) and start.tzinfo is None:
+                    # Assume user is referring to exchange's timezone
+                    start = start.replace(tzinfo=_zi.ZoneInfo(self.info["exchangeTimezoneName"]))
+                start = int(start.timestamp())
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
