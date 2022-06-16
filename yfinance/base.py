@@ -809,7 +809,6 @@ class TickerBase():
         dates = None
         while True:
             url = "{}/calendar/earnings?symbol={}&offset={}&size={}".format(_ROOT_URL_, self.ticker, page_offset, page_size)
-            page_offset += page_size
 
             session = self.session or _requests
             data = session.get(
@@ -828,15 +827,17 @@ class TickerBase():
             except ValueError:
                 if page_offset == 0:
                     # Should not fail on first page
-                    print("Could not find earnings history data for {}.".format(self.ticker))
-                    return
-                else:
-                    break
+                    if "Showing Earnings for:" in data:
+                        # Actually YF was successful, problem is company doesn't have earnings history
+                        dates = utils.empty_earnings_dates_df()
+                break
 
             if dates is None:
                 dates = data
             else:
                 dates = _pd.concat([dates, data], axis=0)
+            page_offset += page_size
+
         if dates is None:
             raise Exception("No data found, symbol may be delisted")
         dates = dates.reset_index(drop=True)
