@@ -45,9 +45,9 @@ _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
+
 class TickerBase():
     def __init__(self, ticker, session=None):
-        self._earnings_history = None
         self.ticker = ticker.upper()
         self.session = session
         self._history = None
@@ -68,6 +68,8 @@ class TickerBase():
 
         self._calendar = None
         self._expirations = {}
+        self._earnings_dates = None
+        self._earnings_history = None
 
         self._earnings = {
             "yearly": utils.empty_df(),
@@ -526,8 +528,10 @@ class TickerBase():
             shares = _pd.DataFrame(data['annualBasicAverageShares'])
             shares['Year'] = shares['asOfDate'].agg(lambda x: int(x[:4]))
             shares.set_index('Year', inplace=True)
-            shares.drop(columns=['dataId', 'asOfDate', 'periodType', 'currencyCode'], inplace=True)
-            shares.rename(columns={'reportedValue': "BasicShares"}, inplace=True)
+            shares.drop(columns=['dataId', 'asOfDate',
+                        'periodType', 'currencyCode'], inplace=True)
+            shares.rename(
+                columns={'reportedValue': "BasicShares"}, inplace=True)
             self._shares = shares
         except Exception:
             pass
@@ -551,22 +555,27 @@ class TickerBase():
                         if isinstance(colval, dict):
                             dict_cols.append(colname)
                             for k, v in colval.items():
-                                new_colname = colname + ' ' + utils.camel2title([k])[0]
+                                new_colname = colname + ' ' + \
+                                    utils.camel2title([k])[0]
                                 analysis.loc[idx, new_colname] = v
 
-                self._analysis = analysis[[c for c in analysis.columns if c not in dict_cols]]
+                self._analysis = analysis[[
+                    c for c in analysis.columns if c not in dict_cols]]
             except Exception:
                 pass
 
         # Complementary key-statistics (currently fetching the important trailingPegRatio which is the value shown in the website)
         res = {}
         try:
-            my_headers = {'user-agent': 'curl/7.55.1', 'accept': 'application/json', 'content-type': 'application/json', 'referer': 'https://finance.yahoo.com/', 'cache-control': 'no-cache', 'connection': 'close'}
+            my_headers = {'user-agent': 'curl/7.55.1', 'accept': 'application/json', 'content-type': 'application/json',
+                          'referer': 'https://finance.yahoo.com/', 'cache-control': 'no-cache', 'connection': 'close'}
             p = _re.compile(r'root\.App\.main = (.*);')
-            r = _requests.session().get('https://finance.yahoo.com/quote/{}/key-statistics?p={}'.format(self.ticker, self.ticker), headers=my_headers)
+            r = _requests.session().get('https://finance.yahoo.com/quote/{}/key-statistics?p={}'.format(self.ticker,
+                                                                                                        self.ticker), headers=my_headers)
             q_results = {}
             my_qs_keys = ['pegRatio']  # QuoteSummaryStore
-            my_ts_keys = ['trailingPegRatio']  # , 'quarterlyPegRatio']  # QuoteTimeSeriesStore
+            # , 'quarterlyPegRatio']  # QuoteTimeSeriesStore
+            my_ts_keys = ['trailingPegRatio']
 
             # Complementary key-statistics
             data = _json.loads(p.findall(r.text)[0])
@@ -580,7 +589,8 @@ class TickerBase():
                     zzz = key_stats['timeSeries'][i]
                     for j in range(len(zzz)):
                         if key_stats['timeSeries'][i][j]:
-                            res = {i: key_stats['timeSeries'][i][j]['reportedValue']['raw']}
+                            res = {i: key_stats['timeSeries']
+                                   [i][j]['reportedValue']['raw']}
                             q_results[self.ticker].append(res)
 
                 # print(res)
@@ -794,6 +804,87 @@ class TickerBase():
         self._news = data.get("news", [])
         return self._news
 
+    def get_earnings_dates(self, proxy=None):
+        if self._earnings_dates:
+            return self._earnings_dates
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        page_size = 100  # YF caps at 100, don't go higher
+        page_offset = 0
+        dates = None
+        while True:
+            url = "{}/calendar/earnings?symbol={}&offset={}&size={}".format(
+                _ROOT_URL_, self.ticker, page_offset, page_size)
+
+            session = self.session or _requests
+            data = session.get(
+                url=url,
+                proxies=proxy,
+                headers=utils.user_agent_headers
+            ).text
+
+            if "Will be right back" in data:
+                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                                   "Our engineers are working quickly to resolve "
+                                   "the issue. Thank you for your patience.")
+
+            try:
+                data = _pd.read_html(data)[0]
+            except ValueError:
+                if page_offset == 0:
+                    # Should not fail on first page
+                    if "Showing Earnings for:" in data:
+                        # Actually YF was successful, problem is company doesn't have earnings history
+                        dates = utils.empty_earnings_dates_df()
+                break
+
+            if dates is None:
+                dates = data
+            else:
+                dates = _pd.concat([dates, data], axis=0)
+            page_offset += page_size
+
+        if dates is None:
+            raise Exception("No data found, symbol may be delisted")
+        dates = dates.reset_index(drop=True)
+
+        # Drop redundant columns
+        dates = dates.drop(["Symbol", "Company"], axis=1)
+
+        # Convert types
+        for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
+            dates.loc[dates[cn] == '-', cn] = "NaN"
+            dates[cn] = dates[cn].astype(float)
+
+        # Convert % to range 0->1:
+        dates["Surprise(%)"] *= 0.01
+
+        # Parse earnings date string
+        cn = "Earnings Date"
+        # - remove AM/PM and timezone from date string
+        tzinfo = dates[cn].str.extract('([AP]M[a-zA-Z]*)$')
+        dates[cn] = dates[cn].replace(' [AP]M[a-zA-Z]*$', '', regex=True)
+        # - split AM/PM from timezone
+        tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
+        tzinfo.columns = ["AM/PM", "TZ"]
+        # - combine and parse
+        dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
+        dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
+        # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
+        dates[cn] = dates[cn].dt.tz_localize(
+            tz=self.info["exchangeTimezoneName"])
+
+        dates = dates.set_index("Earnings Date")
+
+        self._earnings_dates = dates
+
+        return dates
+
     def get_earnings_history(self, proxy=None):
         if self._earnings_history:
             return self._earnings_history
@@ -830,4 +921,3 @@ class TickerBase():
             print("Could not find data for {}.".format(self.ticker))
             return
         return data
-
