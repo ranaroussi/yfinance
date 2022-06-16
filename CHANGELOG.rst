@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.72
+------
+- bugfix 
+
 0.1.71
 ------
 - Added Tickers(…).news()
