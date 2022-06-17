@@ -311,13 +311,19 @@ class TickerBase():
                 quotes = quotes.iloc[0:quotes.shape[0]-1]
 
         # combine
-        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
-        df["Dividends"].fillna(0, inplace=True)
-        df["Stock Splits"].fillna(0, inplace=True)
+        df = quotes
+        if dividends.shape[0] > 0:
+            df = _pd.concat([df, dividends], axis=1, sort=True)
+            df["Dividends"].fillna(0, inplace=True)
+        if splits.shape[0] > 0:
+            df = _pd.concat([df, splits], axis=1, sort=True)
+            df["Stock splits"].fillna(0, inplace=True)
 
         # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(
-            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+        if df.index[0].tz == None:
+            # Yahoo may date already with timezone set (correctly)
+            df.index = df.index.tz_localize("UTC")
+        df = df.tz_convert(data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
