@@ -155,7 +155,7 @@ class TickerBase():
                 # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
                 if isinstance(end, str):
                     end = _datetime.datetime.strptime(str(end)+" 23:59", '%Y-%m-%d %H:%S')
-                if isinstance(end, _datetime.date):
+                if isinstance(end, _datetime.date) and not isinstance(end, _datetime.datetime):
                     end = _datetime.datetime.combine(end, _datetime.time(23, 59))
                 if isinstance(end, _datetime.datetime) and end.tzinfo is None:
                     # Assume user is referring to exchange's timezone
@@ -171,7 +171,7 @@ class TickerBase():
                 # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
                 if isinstance(start, str):
                     start = _datetime.datetime.strptime(str(start), '%Y-%m-%d')
-                if isinstance(start, _datetime.date):
+                if isinstance(start, _datetime.date) and not isinstance(start, _datetime.datetime):
                     start = _datetime.datetime.combine(start, _datetime.time(0))
                 if isinstance(start, _datetime.datetime) and start.tzinfo is None:
                     # Assume user is referring to exchange's timezone
