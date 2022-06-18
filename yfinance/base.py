@@ -306,10 +306,7 @@ class TickerBase():
         elif params["interval"] == "1h":
             pass
         else:
-            df.index = _pd.to_datetime(df.index.date)
-            if tz is not None:
-                df.index = df.index.tz_localize(tz)
-            df.index.name = "Date"
+            df.index.name = "Datetime"
 
         # duplicates and missing rows cleanup
         df.dropna(how='all', inplace=True)
