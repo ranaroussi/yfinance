@@ -137,7 +137,7 @@ class TickerBase():
                 Optional. Default is False = precision suggested by Yahoo!
             tz: str
                 Optional timezone locale for dates.
-                (default data is returned as non-localized dates)
+                (default dates returned in exchange timezone)
             timeout: None or float
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
@@ -250,7 +250,7 @@ class TickerBase():
 
         # parse quotes
         try:
-            quotes = utils.parse_quotes(data["chart"]["result"][0], tz)
+            quotes = utils.parse_quotes(data["chart"]["result"][0])
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
@@ -301,7 +301,7 @@ class TickerBase():
         quotes.dropna(inplace=True)
 
         # actions
-        dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
+        dividends, splits = utils.parse_actions(data["chart"]["result"][0])
 
         # Yahoo bug fix - it often appends latest price even if after end date
         if end and not quotes.empty:
@@ -318,21 +318,18 @@ class TickerBase():
             df = _pd.concat([df, splits], axis=1, sort=True)
             df["Stock splits"].fillna(0, inplace=True)
 
-        # index eod/intraday
-        if df.index[0].tz == None:
-            # Yahoo may date already with timezone set (correctly)
-            df.index = df.index.tz_localize("UTC")
-        df = df.tz_convert(data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+        # establish timezone
+        df.index = df.index.tz_localize("UTC")
+        if tz is None:
+            tz = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        df = df.tz_convert(tz)
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
         elif params["interval"] == "1h":
             pass
         else:
-            df.index = _pd.to_datetime(df.index.date)
-            if tz is not None:
-                df.index = df.index.tz_localize(tz)
-            df.index.name = "Date"
+            df.index.name = "Datetime"
 
         # duplicates and missing rows cleanup
         df.dropna(how='all', inplace=True)

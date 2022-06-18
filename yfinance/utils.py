@@ -176,7 +176,7 @@ def back_adjust(data):
     return df[["Open", "High", "Low", "Close", "Volume"]]
 
 
-def parse_quotes(data, tz=None):
+def parse_quotes(data):
     timestamps = data["timestamp"]
     ohlc = data["indicators"]["quote"][0]
     volumes = ohlc["volume"]
@@ -199,13 +199,10 @@ def parse_quotes(data, tz=None):
     quotes.index = _pd.to_datetime(timestamps, unit="s")
     quotes.sort_index(inplace=True)
 
-    if tz is not None:
-        quotes.index = quotes.index.tz_localize(tz)
-
     return quotes
 
 
-def parse_actions(data, tz=None):
+def parse_actions(data):
     dividends = _pd.DataFrame(
         columns=["Dividends"], index=_pd.DatetimeIndex([]))
     splits = _pd.DataFrame(
@@ -218,8 +215,6 @@ def parse_actions(data, tz=None):
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
-            if tz is not None:
-                dividends.index = dividends.index.tz_localize(tz)
 
             dividends.columns = ["Dividends"]
 
@@ -229,8 +224,6 @@ def parse_actions(data, tz=None):
             splits.set_index("date", inplace=True)
             splits.index = _pd.to_datetime(splits.index, unit="s")
             splits.sort_index(inplace=True)
-            if tz is not None:
-                splits.index = splits.index.tz_localize(tz)
             splits["Stock Splits"] = splits["numerator"] / \
                 splits["denominator"]
             splits = splits["Stock Splits"]
