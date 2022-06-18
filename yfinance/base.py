@@ -160,7 +160,6 @@ class TickerBase():
                 if isinstance(end, _datetime.datetime) and end.tzinfo is None:
                     # Assume user is referring to exchange's timezone
                     end = end.replace(tzinfo=_tz.timezone(self.info["exchangeTimezoneName"]))
-                print("end = {}".format(end))
                 end = int(end.timestamp())
             if start is None:
                 if interval == "1m":
