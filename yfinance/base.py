@@ -313,10 +313,14 @@ class TickerBase():
         df = quotes
         if dividends.shape[0] > 0:
             df = _pd.concat([df, dividends], axis=1, sort=True)
-            df["Dividends"].fillna(0, inplace=True)
+        else:
+            df["Dividends"] = _np.nan
+        df["Dividends"].fillna(0, inplace=True)
         if splits.shape[0] > 0:
             df = _pd.concat([df, splits], axis=1, sort=True)
-            df["Stock splits"].fillna(0, inplace=True)
+        else:
+            df["Stock splits"] = _np.nan
+        df["Stock splits"].fillna(0, inplace=True)
 
         # establish timezone
         df.index = df.index.tz_localize("UTC")
