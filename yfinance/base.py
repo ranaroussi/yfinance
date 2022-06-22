@@ -159,7 +159,11 @@ class TickerBase():
                     end = _datetime.datetime.combine(end, _datetime.time(23, 59))
                 if isinstance(end, _datetime.datetime) and end.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    end = end.replace(tzinfo=_tz.timezone(self.info["exchangeTimezoneName"]))
+                    tz = utils.cache_lookup_tkr_tz(self.ticker)
+                    if tz is None:
+                        tz = self.info["exchangeTimezoneName"]
+                        utils.cache_store_tkr_tz(self.ticker, tz)
+                    end = end.replace(tzinfo=_tz.timezone(tz))
                 end = int(end.timestamp())
             if start is None:
                 if interval == "1m":
@@ -174,7 +178,11 @@ class TickerBase():
                     start = _datetime.datetime.combine(start, _datetime.time(0))
                 if isinstance(start, _datetime.datetime) and start.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    start = start.replace(tzinfo=_tz.timezone(self.info["exchangeTimezoneName"]))
+                    tz = utils.cache_lookup_tkr_tz(self.ticker)
+                    if tz is None:
+                        tz = self.info["exchangeTimezoneName"]
+                        utils.cache_store_tkr_tz(self.ticker, tz)
+                    start = start.replace(tzinfo=_tz.timezone(tz))
                 start = int(start.timestamp())
             params = {"period1": start, "period2": end}
         else:
