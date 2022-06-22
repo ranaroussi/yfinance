@@ -26,6 +26,8 @@ import re as _re
 import pandas as _pd
 import numpy as _np
 import sys as _sys
+import os as _os
+import appdirs as _ad
 
 try:
     import ujson as _json
@@ -279,3 +281,37 @@ class ProgressBar:
 
     def __str__(self):
         return str(self.prog_bar)
+
+
+# Simple file cache of ticker->timezone:
+def get_cache_dirpath():
+    return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+def cache_lookup_tkr_tz(tkr):
+    fp = _os.path.join(get_cache_dirpath(), "tkr-tz.csv")
+    if not _os.path.isfile(fp):
+        return None
+
+    df = _pd.read_csv(fp)
+    f = df["Ticker"] == tkr
+    if sum(f) == 0:
+        return None
+
+    return df["Tz"][f].iloc[0]
+def cache_store_tkr_tz(tkr,tz):
+    df = _pd.DataFrame({"Ticker":[tkr], "Tz":[tz]})
+
+    dp = get_cache_dirpath()
+    if not _os.path.isdir(dp):
+        _os.makedirs(dp)
+    fp = _os.path.join(dp, "tkr-tz.csv")
+    if not _os.path.isfile(fp):
+        df.to_csv(fp, index=False)
+        return
+
+    df_all = _pd.read_csv(fp)
+    f = df_all["Ticker"]==tkr
+    if sum(f) > 0:
+        raise Exception("Tkr {} tz already in cache".format(tkr))
+
+    _pd.concat([df_all,df]).to_csv(fp, index=False)
+
