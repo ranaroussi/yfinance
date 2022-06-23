@@ -153,15 +153,17 @@ class TickerBase():
                 end = int(_time.time())
             else:
                 # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+                # - if time not set, set to midnight aka 00:00 next day
                 if isinstance(end, str):
-                    end = _datetime.datetime.strptime(str(end)+" 23:59", '%Y-%m-%d %H:%S')
+                    end = _datetime.datetime.strptime(str(end), '%Y-%m-%d')+_datetime.timedelta(days=1)
                 if isinstance(end, _datetime.date) and not isinstance(end, _datetime.datetime):
-                    end = _datetime.datetime.combine(end, _datetime.time(23, 59))
+                    end = _datetime.datetime.combine(end, _datetime.time(0))+_datetime.timedelta(days=1)
                 if isinstance(end, _datetime.datetime) and end.tzinfo is None:
                     # Assume user is referring to exchange's timezone
                     tz = utils.cache_lookup_tkr_tz(self.ticker)
                     if tz is None:
                         tz = self.info["exchangeTimezoneName"]
+                        # info fetch is relatively slow so cache timezone
                         utils.cache_store_tkr_tz(self.ticker, tz)
                     end = end.replace(tzinfo=_tz.timezone(tz))
                 end = int(end.timestamp())
@@ -181,6 +183,7 @@ class TickerBase():
                     tz = utils.cache_lookup_tkr_tz(self.ticker)
                     if tz is None:
                         tz = self.info["exchangeTimezoneName"]
+                        # info fetch is relatively slow so cache timezone
                         utils.cache_store_tkr_tz(self.ticker, tz)
                     start = start.replace(tzinfo=_tz.timezone(tz))
                 start = int(start.timestamp())
