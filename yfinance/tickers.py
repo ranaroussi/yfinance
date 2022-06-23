@@ -30,14 +30,14 @@ class Tickers():
     def __repr__(self):
         return 'yfinance.Tickers object <%s>' % ",".join(self.symbols)
 
-    def __init__(self, tickers):
+    def __init__(self, tickers, session=None):
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
         ticker_objects = {}
 
         for ticker in self.symbols:
-            ticker_objects[ticker] = Ticker(ticker)
+            ticker_objects[ticker] = Ticker(ticker, session=session)
 
         self.tickers = ticker_objects
         # self.tickers = _namedtuple(
@@ -51,11 +51,11 @@ class Tickers():
                 timeout=None, **kwargs):
 
         return self.download(
-                period, interval,
-                start, end, prepost,
-                actions, auto_adjust, proxy,
-                threads, group_by, progress,
-                timeout, **kwargs)
+            period, interval,
+            start, end, prepost,
+            actions, auto_adjust, proxy,
+            threads, group_by, progress,
+            timeout, **kwargs)
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
@@ -85,3 +85,12 @@ class Tickers():
             data.sort_index(level=0, axis=1, inplace=True)
 
         return data
+
+    def news(self):
+        collection = {}
+        for ticker in self.symbols:
+            collection[ticker] = []
+            items = Ticker(ticker).news
+            for item in items:
+                collection[ticker].append(item)
+        return collection
