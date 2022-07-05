@@ -165,7 +165,7 @@ class TickerBase():
                         tz = self.info["exchangeTimezoneName"]
                         # info fetch is relatively slow so cache timezone
                         utils.cache_store_tkr_tz(self.ticker, tz)
-                    end = end.replace(tzinfo=_tz.timezone(tz))
+                    end = _tz.timezone(tz).localize(end)
                 end = int(end.timestamp())
             if start is None:
                 if interval == "1m":
@@ -185,7 +185,7 @@ class TickerBase():
                         tz = self.info["exchangeTimezoneName"]
                         # info fetch is relatively slow so cache timezone
                         utils.cache_store_tkr_tz(self.ticker, tz)
-                    start = start.replace(tzinfo=_tz.timezone(tz))
+                    start = _tz.timezone(tz).localize(start)
                 start = int(start.timestamp())
             params = {"period1": start, "period2": end}
         else:
