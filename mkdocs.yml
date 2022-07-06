@@ -1,0 +1,19 @@
+# site_name: My Docs
+
+# # mkdocs.yml
+# theme:
+#   name: "material"
+
+# plugins:
+# - search
+# - mkdocstrings
+
+# nav:
+#   - Introduction: 'index.md'
+#   - Installation: 'installation.md'
+#   - Quick Start: 'quickstart.md'
+#   # - Ticker: 'Ticker.md'
+#   - TickerBase: 'TickerBase.md'
+#   # - Tickers: 'Tickers.md'
+#   - utils: 'utils.md'
+#   - multi: 'multi.md'

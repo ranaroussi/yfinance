@@ -3,3 +3,9 @@ yfinance/__pycache__/*
 dist
 yfinance.egg-info
 *.pyc
+.coverage
+.vscode/
+build/
+*.html
+*.css
+*.png

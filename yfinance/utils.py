@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Yahoo! Finance market data downloader (+fix for Pandas Datareader)
+# yfinance - market data downloader
 # https://github.com/ranaroussi/yfinance
 #
 # Copyright 2017-2019 Ran Aroussi
@@ -26,12 +26,59 @@ import re as _re
 import pandas as _pd
 import numpy as _np
 import sys as _sys
-import re as _re
 
 try:
     import ujson as _json
 except ImportError:
     import json as _json
+
+
+user_agent_headers = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+
+
+def is_isin(string):
+    return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9]{1})$", string))
+
+
+def get_all_by_isin(isin, proxy=None, session=None):
+    if not(is_isin(isin)):
+        raise ValueError("Invalid ISIN number")
+
+    from .base import _BASE_URL_
+    session = session or _requests
+    url = "{}/v1/finance/search?q={}".format(_BASE_URL_, isin)
+    data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
+    try:
+        data = data.json()
+        ticker = data.get('quotes', [{}])[0]
+        return {
+            'ticker': {
+                'symbol': ticker['symbol'],
+                'shortname': ticker['shortname'],
+                'longname': ticker['longname'],
+                'type': ticker['quoteType'],
+                'exchange': ticker['exchDisp'],
+            },
+            'news': data.get('news', [])
+        }
+    except Exception:
+        return {}
+
+
+def get_ticker_by_isin(isin, proxy=None, session=None):
+    data = get_all_by_isin(isin, proxy, session)
+    return data.get('ticker', {}).get('symbol', '')
+
+
+def get_info_by_isin(isin, proxy=None, session=None):
+    data = get_all_by_isin(isin, proxy, session)
+    return data.get('ticker', {})
+
+
+def get_news_by_isin(isin, proxy=None, session=None):
+    data = get_all_by_isin(isin, proxy, session)
+    return data.get('news', {})
 
 
 def empty_df(index=[]):
@@ -42,11 +89,25 @@ def empty_df(index=[]):
     return empty
 
 
-def get_json(url, proxy=None):
-    html = _requests.get(url=url, proxies=proxy).text
+def empty_earnings_dates_df():
+    empty = _pd.DataFrame(
+        columns=["Symbol", "Company", "Earnings Date",
+                 "EPS Estimate", "Reported EPS", "Surprise(%)"])
+    return empty
+
+
+def get_html(url, proxy=None, session=None):
+    session = session or _requests
+    html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
+    return html
+
+
+def get_json(url, proxy=None, session=None):
+    session = session or _requests
+    html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
 
     if "QuoteSummaryStore" not in html:
-        html = _requests.get(url=url, proxies=proxy).text
+        html = session.get(url=url, proxies=proxy).text
         if "QuoteSummaryStore" not in html:
             return {}
 
@@ -54,6 +115,13 @@ def get_json(url, proxy=None):
         '(this)')[0].split(';\n}')[0].strip()
     data = _json.loads(json_str)[
         'context']['dispatcher']['stores']['QuoteSummaryStore']
+    # add data about Shares Outstanding for companies' tickers if they are available
+    try:
+        data['annualBasicAverageShares'] = _json.loads(
+            json_str)['context']['dispatcher']['stores'][
+                'QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
+    except Exception:
+        pass
 
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
@@ -64,7 +132,7 @@ def get_json(url, proxy=None):
 
 
 def camel2title(o):
-    return [_re.sub("([a-z])([A-Z])", "\g<1> \g<2>", i).title() for i in o]
+    return [_re.sub("([a-z])([A-Z])", r"\g<1> \g<2>", i).title() for i in o]
 
 
 def auto_adjust(data):
@@ -138,8 +206,10 @@ def parse_quotes(data, tz=None):
 
 
 def parse_actions(data, tz=None):
-    dividends = _pd.DataFrame(columns=["Dividends"])
-    splits = _pd.DataFrame(columns=["Stock Splits"])
+    dividends = _pd.DataFrame(
+        columns=["Dividends"], index=_pd.DatetimeIndex([]))
+    splits = _pd.DataFrame(
+        columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
 
     if "events" in data:
         if "dividends" in data["events"]:

@@ -1,13 +1,114 @@
 Change Log
 ===========
 
+0.1.72
+------
+- bugfix 
+
+0.1.71
+------
+- Added Tickers(…).news()
+- Return empty DF if YF missing earnings dates
+- Fix EPS % to 0->1
+- Fix timezone handling
+- Fix handling of missing data
+- Clean&format earnings_dates table
+- Add ``.get_earnings_dates()`` to retreive earnings calendar
+- Added ``.get_earnings_history()`` to fetch earnings data
+
+0.1.70
+------
+- Bug fixed - Closes #937
+
+0.1.69
+------
+- Bug fixed - #920
+
+0.1.68
+------
+- Upgraded requests dependency
+- Removed Python 3.5 support
+
+0.1.67
+------
+- Added legal disclaimers to make sure people are aware that this library is not affiliated, endorsed, or vetted by Yahoo, Inc.
+
+0.1.66
+------
+- Merged PR to allow yfinance to be pickled
+
+0.1.65
+------
+- Merged PRs to fix some bugs
+- Added lookup by ISIN ``utils.get_all_by_isin(...)``, ``utils.get_ticker_by_isin(...)``, ``utils.get_info_by_isin(...)``, ``utils.get_news_by_isin(...)``
+- ``yf.Ticker``, ``yf.Tickers``, and ``yf.download`` will auto-detect ISINs and convert them to tickers
+- Propagating timeout parameter through code, setting request.get(timeout)
+- Adds ``Ticker.analysis`` and ``Ticker.get_analysis(...)``
+
+0.1.64
+------
+- Merged PRs to fix some bugs
+- Added ``Ticker.stats()`` method
+- Added ``Ticker.news`` property
+- Providing topHoldings for ETFs
+- Replaceed drop duplicate prices with indexes
+- Added pre-market price to ``Ticker.info``
+
+
+0.1.63
+------
+- Duplicates and missing rows cleanup
+
+0.1.62
+------
+- Added UserAgent to all requests (via ```utils.user_agent_headers```)
+
+0.1.61
+------
+- Switched to using ```query2.finance.yahoo.com```, which used HTTP/1.1
+
+0.1.60
+------
+- Gracefully fail on misc operations (options, auto/back adjustments, etc)
+- Added financial data to ```info()```
+- Using session headers
+- Get price even if open price not available
+- Argument added for silencing error printing
+- Merged PRs to fix some bugs
+
+0.1.59
+------
+- Added custom requests session instance support in holders
+
+0.1.58
+------
+- Allow specifying a custom requests session instance
+
+0.1.57
+------
+- Added Conversion rate hint using 'financialCurrency' property in earnings
+- Add important try+catch statements
+- Fixed issue with 1 hour interval
+- Merged PRs to fix some bugs
+- Fixed issue with special characters in tickers
+
+0.1.56
+------
+- Updated numpy version
+- Merged PRs to fix some bugs
+
+0.1.55
+------
+- Fixed institutional investors and mutual fund holders issue (#459)
+- Fix for UTC timestamps in options chains (#429)
+
 0.1.54
 ------
 - ISIN lookup working with intl. tickers
 
 0.1.53
 ------
-- Added `Ticker.isin` + `Ticker.get_isin(...)`. This is still experimental. Do not rely on it for production.
+- Added ``Ticker.isin`` + ``Ticker.get_isin(...)``. This is still experimental. Do not rely on it for production.
 - Bug fixed: holders were always returning results for MSFT
 
 0.1.52
@@ -16,24 +117,24 @@ Change Log
 
 0.1.51
 ------
-- Added holdings data (`Ticker.major_holders` and `Ticker.institutional_holders`)
-- Added logo url to `Ticker.info`
+- Added holdings data (``Ticker.major_holders`` and ``Ticker.institutional_holders``)
+- Added logo url to ``Ticker.info``
 - Handling different date formats in fundamentals
 - Faster JSON parsing using regex
 - Trying to re-download JSON twice before giving up
 - Using ujson instead of json if installed
-- Fixed (more) `ticker.info` issues
+- Fixed (more) ``ticker.info`` issues
 - Misc bugfixes
 
 0.1.50
 ------
-- Fixed `ticker.info` issues
+- Fixed ``ticker.info`` issues
 - Handle sustainability index error
 - Added test script based on @GregoryMorse's pull request
 
 0.1.49
 ------
-- Fixed `elementwise comparison`` warning
+- Fixed ``elementwise comparison`` warning
 
 0.1.48
 ------

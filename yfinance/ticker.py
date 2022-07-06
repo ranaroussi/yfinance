@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Yahoo! Finance market data downloader (+fix for Pandas Datareader)
+# yfinance - market data downloader
 # https://github.com/ranaroussi/yfinance
 #
 # Copyright 2017-2019 Ran Aroussi
@@ -31,6 +31,7 @@ import pandas as _pd
 # import re as _re
 from collections import namedtuple as _namedtuple
 
+from . import utils
 from .base import TickerBase
 
 
@@ -53,13 +54,17 @@ class Ticker(TickerBase):
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        r = _requests.get(url=url, proxies=proxy).json()
-        if r['optionChain']['result']:
+        r = _requests.get(
+            url=url,
+            proxies=proxy,
+            headers=utils.user_agent_headers
+        ).json()
+        if len(r.get('optionChain', {}).get('result', [])) > 0:
             for exp in r['optionChain']['result'][0]['expirationDates']:
-                self._expirations[_datetime.datetime.fromtimestamp(
+                self._expirations[_datetime.datetime.utcfromtimestamp(
                     exp).strftime('%Y-%m-%d')] = exp
-            return r['optionChain']['result'][0]['options'][0]
-        return {}
+            opt = r['optionChain']['result'][0].get('options', [])
+            return opt[0] if len(opt) > 0 else []
 
     def _options2df(self, opt, tz=None):
         data = _pd.DataFrame(opt).reindex(columns=[
@@ -79,9 +84,9 @@ class Ticker(TickerBase):
             'currency'])
 
         data['lastTradeDate'] = _pd.to_datetime(
-            data['lastTradeDate'], unit='s')
+            data['lastTradeDate'], unit='s', utc=True)
         if tz is not None:
-            data['lastTradeDate'] = data['lastTradeDate'].tz_localize(tz)
+            data['lastTradeDate'] = data['lastTradeDate'].dt.tz_convert(tz)
         return data
 
     def option_chain(self, date=None, proxy=None, tz=None):
@@ -118,8 +123,8 @@ class Ticker(TickerBase):
         return self.get_institutional_holders()
 
     @property
-    def dividends(self):
-        return self.get_dividends()
+    def mutualfund_holders(self):
+        return self.get_mutualfund_holders()
 
     @property
     def dividends(self):
@@ -132,6 +137,10 @@ class Ticker(TickerBase):
     @property
     def actions(self):
         return self.get_actions()
+
+    @property
+    def shares(self):
+        return self.get_shares()
 
     @property
     def info(self):
@@ -194,3 +203,19 @@ class Ticker(TickerBase):
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
+
+    @property
+    def news(self):
+        return self.get_news()
+
+    @property
+    def analysis(self):
+        return self.get_analysis()
+
+    @property
+    def earnings_history(self):
+        return self.get_earnings_history()
+
+    @property
+    def earnings_dates(self):
+        return self.get_earnings_dates()
