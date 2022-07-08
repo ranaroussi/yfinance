@@ -324,7 +324,7 @@ class TickerBase():
 
     # ------------------------
 
-    def _get_fundamentals(self, kind=None, proxy=None):
+    def _get_fundamentals(self, proxy=None):
         def cleanup(data):
             df = _pd.DataFrame(data).drop(columns=['maxAge'])
             for col in df.columns:
