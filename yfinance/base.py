@@ -292,6 +292,30 @@ class TickerBase():
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
 
+        # Fix bug in weekly data. If market is open today then Yahoo MAY return 
+        # todays data as a separate row from rest-of-week in above row. 
+        # Seems to depend on what exchange e.g. crypto OK.
+        # Fix = merge them together
+        n = quotes.shape[0]
+        if interval=="1wk" and n > 1:
+            if (quotes.index[n-1] - quotes.index[n-2]) <= _datetime.timedelta(days=5):
+                # Last two rows are within same week
+                idx1 = quotes.index[n-1]
+                idx2 = quotes.index[n-2]
+                # quotes.loc[idx2,"Open"] # Leave
+                quotes.loc[idx2,"High"] = max(quotes["High"][n-1], quotes["High"][n-2])
+                quotes.loc[idx2,"Low"] = min(quotes["Low"][n-1], quotes["Low"][n-2])
+                quotes.loc[idx2,"Close"] = quotes["Close"][n-1]
+                if "Adj High" in quotes.columns:
+                    quotes.loc[idx2,"Adj High"] = max(quotes["Adj High"][n-1], quotes["Adj High"][n-2])
+                if "Adj Low" in quotes.columns:
+                    quotes.loc[idx2,"Adj Low"] = min(quotes["Adj Low"][n-1], quotes["Adj Low"][n-2])
+                if "Adj Close" in quotes.columns:
+                    quotes.loc[idx2,"Adj Close"] = quotes["Adj Close"][n-1]
+                quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
+                quotes = quotes.iloc[0:n-1]
+                n = quotes.shape[0]
+
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
         df["Dividends"].fillna(0, inplace=True)
