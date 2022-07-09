@@ -297,14 +297,77 @@ class TickerBase():
             if quotes.index[quotes.shape[0]-1] > endDt:
                 quotes = quotes.iloc[0:quotes.shape[0]-1]
 
-        # combine
-        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
-        df["Dividends"].fillna(0, inplace=True)
-        df["Stock Splits"].fillna(0, inplace=True)
-
-        # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(
-            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+        # Combine, but carefully
+        # - prepare datetimes:
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
+        dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
+        splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
+        if params["interval"] in ["1w","1wk"]:
+            quotes.index = _pd.to_datetime(quotes.index.date)
+            dividends.index = _pd.to_datetime(dividends.index.date)
+            splits.index = _pd.to_datetime(splits.index.date)
+        #
+        df = quotes
+        if actions:
+            df = df.sort_index()
+            if dividends.shape[0] > 0:
+                if interval == "1wk" and dividends.shape[0] > 0:
+                    dividends.index = [dt-_datetime.timedelta(days=dt.weekday()) for dt in dividends.index]
+                df = df.join(dividends)
+                f_na = df["Dividends"].isna()
+                if sum(~f_na) < dividends.shape[0]:
+                    # Dividend data was lost. Manually fix index and try again
+                    df = df.drop("Dividends",axis=1)
+                    new_index = []
+                    for i in range(dividends.shape[0]):
+                        dt_d = dividends.index[i]
+                        if dt_d in df.index:
+                            new_index.append(dt_d) ; continue
+                        # Found a bad index date
+                        fixed = False
+                        for j in range(df.shape[0]):
+                            dt_j = df.index[j]
+                            if dt_d >= dt_j:
+                                dt_d = dt_j ; fixed = True ; break
+                        if not fixed:
+                            raise Exception("Dividends table contains data {} that failed to map to row in prices table".format(dt_d))
+                        new_index.append(dt_d)
+                    dividends.index = new_index
+                    df = df.join(dividends)
+                f_na = df["Dividends"].isna()
+                df.loc[f_na,"Dividends"] = 0
+            else:
+                df["Dividends"] = 0.0
+            #
+            if splits.shape[0] > 0:
+                if interval == "1wk" and splits.shape[0] > 0:
+                    splits.index = [dt-_datetime.timedelta(days=dt.weekday()) for dt in splits.index]
+                df = df.join(splits)
+                f_na = df["Splits"].isna()
+                if sum(~f_na) < splits.shape[0]:
+                    # Splits data was lost. Manually fix index and try again
+                    df = df.drop("Splits",axis=1)
+                    new_index = []
+                    for i in range(splits.shape[0]):
+                        dt_d = splits.index[i]
+                        if dt_d in df.index:
+                            new_index.append(dt_d) ; continue
+                        # Found a bad index date
+                        fixed = False
+                        for j in range(df.shape[0]):
+                            dt_j = df.index[j]
+                            if dt_d >= dt_j:
+                                dt_d = dt_j ; fixed = True ; break
+                        if not fixed:
+                            raise Exception("Splits table contains data {} that failed to map to row in prices table".format(dt_d))
+                        new_index.append(dt_d)
+                    splits.index = new_index
+                    df = df.join(splits)
+                f_na = df["Splits"].isna()
+                df.loc[f_na,"Splits"] = 0
+            else:
+                df["Splits"] = 0.0
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
