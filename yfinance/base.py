@@ -315,6 +315,13 @@ class TickerBase():
                 quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
                 quotes = quotes.iloc[0:n-1]
                 n = quotes.shape[0]
+        # Similar bug in daily data, except most data is simply duplicated
+        # - exception is volume, *slightly* different on final row (and matches website)
+        if interval=="1d" and n > 1:
+            if quotes.index[n-1].date() == quotes.index[n-2].date():
+                # Last two rows are on same day. Drop second-to-last row
+                quotes = quotes.drop(quotes.index[n-2])
+                n = quotes.shape[0]
 
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
