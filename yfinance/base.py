@@ -23,10 +23,10 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
+import pytz as _tz
 import requests as _requests
 import pandas as _pd
 import numpy as _np
-import pytz as _tz
 import re as _re
 
 try:
@@ -160,12 +160,12 @@ class TickerBase():
                     end = _datetime.datetime.combine(end, _datetime.time(0))+_datetime.timedelta(days=1)
                 if isinstance(end, _datetime.datetime) and end.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    tz = utils.cache_lookup_tkr_tz(self.ticker)
-                    if tz is None:
-                        tz = self.info["exchangeTimezoneName"]
+                    tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
+                    if tkr_tz is None:
+                        tkr_tz = self.info["exchangeTimezoneName"]
                         # info fetch is relatively slow so cache timezone
-                        utils.cache_store_tkr_tz(self.ticker, tz)
-                    end = _tz.timezone(tz).localize(end)
+                        utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+                    end = _tz.timezone(tkr_tz).localize(end)
                 end = int(end.timestamp())
             if start is None:
                 if interval == "1m":
@@ -180,12 +180,12 @@ class TickerBase():
                     start = _datetime.datetime.combine(start, _datetime.time(0))
                 if isinstance(start, _datetime.datetime) and start.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    tz = utils.cache_lookup_tkr_tz(self.ticker)
-                    if tz is None:
-                        tz = self.info["exchangeTimezoneName"]
+                    tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
+                    if tkr_tz is None:
+                        tkr_tz = self.info["exchangeTimezoneName"]
                         # info fetch is relatively slow so cache timezone
-                        utils.cache_store_tkr_tz(self.ticker, tz)
-                    start = _tz.timezone(tz).localize(start)
+                        utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+                    start = _tz.timezone(tkr_tz).localize(start)
                 start = int(start.timestamp())
             params = {"period1": start, "period2": end}
         else:
@@ -321,30 +321,21 @@ class TickerBase():
                 quotes = quotes.iloc[0:quotes.shape[0]-1]
 
         # combine
-        df = quotes
-        if dividends.shape[0] > 0:
-            df = _pd.concat([df, dividends], axis=1, sort=True)
-        else:
-            df["Dividends"] = _np.nan
+        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
         df["Dividends"].fillna(0, inplace=True)
-        if splits.shape[0] > 0:
-            df = _pd.concat([df, splits], axis=1, sort=True)
-        else:
-            df["Stock Splits"] = _np.nan
         df["Stock Splits"].fillna(0, inplace=True)
 
-        # establish timezone
-        df.index = df.index.tz_localize("UTC")
-        if tz is None:
-            tz = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-        df = df.tz_convert(tz)
+        # index eod/intraday
+        df.index = df.index.tz_localize("UTC").tz_convert(
+            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
-        if params["interval"][-1] == "m":
-            df.index.name = "Datetime"
-        elif params["interval"] == "1h":
-            pass
+        if params["interval"] in ["1d","1w","1wk"]:
+            df.index = _pd.to_datetime(df.index.date)
+            df.index.name = "Date"
         else:
             df.index.name = "Datetime"
+            if not tz is None:
+                df.index = df.index.tz_convert(tz)
 
         # duplicates and missing rows cleanup
         df.dropna(how='all', inplace=True)
