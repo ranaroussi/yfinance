@@ -286,6 +286,12 @@ class TickerBase():
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
 
+        # Yahoo bug fix - it often appends latest price even if after end date
+        if quotes.shape[0] > 0:
+            endDt = _pd.to_datetime(_datetime.datetime.fromtimestamp(end))
+            if quotes.index[quotes.shape[0]-1] > endDt:
+                quotes = quotes.iloc[0:quotes.shape[0]-1]
+
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
         df["Dividends"].fillna(0, inplace=True)
