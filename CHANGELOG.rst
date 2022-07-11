@@ -1,9 +1,13 @@
 Change Log
 ===========
 
+0.1.73
+------
+- Merged several PR that fixed misc issues
+
 0.1.72
 ------
-- bugfix 
+- Misc bugfixs
 
 0.1.71
 ------
