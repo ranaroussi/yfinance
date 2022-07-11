@@ -65,7 +65,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         rounding: bool
             Optional. Round values to 2 decimal places?
         show_errors: bool
-            Optional. Doesn't print errors if True
+            Optional. Doesn't print errors if False
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
