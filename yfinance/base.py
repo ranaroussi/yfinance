@@ -153,10 +153,10 @@ class TickerBase():
             elif isinstance(end, _datetime.datetime):
                 end = int(_time.mktime(end.timetuple()))
             else:
-                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d'))) 
+                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
             if start is None:
-                if interval=="1m":
-                    start = end - 604800 # Subtract 7 days 
+                if interval == "1m":
+                    start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
             elif isinstance(start, _datetime.datetime):
@@ -187,7 +187,6 @@ class TickerBase():
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
 
         session = self.session or _requests
-
         data = None
 
         try:
@@ -293,7 +292,7 @@ class TickerBase():
         dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
 
         # Yahoo bug fix - it often appends latest price even if after end date
-        if quotes.shape[0] > 0:
+        if end and not quotes.empty:
             endDt = _pd.to_datetime(_datetime.datetime.fromtimestamp(end))
             if quotes.index[quotes.shape[0]-1] > endDt:
                 quotes = quotes.iloc[0:quotes.shape[0]-1]

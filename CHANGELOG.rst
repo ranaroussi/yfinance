@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.74
+------
+- Fixed bug introduced in 0.1.73 (sorry :/)
+
 0.1.73
 ------
 - Merged several PR that fixed misc issues
