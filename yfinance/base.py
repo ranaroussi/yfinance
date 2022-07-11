@@ -385,9 +385,6 @@ class TickerBase():
 
         self._history = df.copy()
 
-        if not actions:
-            df.drop(columns=["Dividends", "Stock Splits"], inplace=True)
-
         return df
 
     # ------------------------
