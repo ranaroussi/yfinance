@@ -344,10 +344,10 @@ class TickerBase():
                 if interval == "1wk" and splits.shape[0] > 0:
                     splits.index = [dt-_datetime.timedelta(days=dt.weekday()) for dt in splits.index]
                 df = df.join(splits)
-                f_na = df["Splits"].isna()
+                f_na = df["Stock Splits"].isna()
                 if sum(~f_na) < splits.shape[0]:
                     # Splits data was lost. Manually fix index and try again
-                    df = df.drop("Splits",axis=1)
+                    df = df.drop("Stock Splits",axis=1)
                     new_index = []
                     for i in range(splits.shape[0]):
                         dt_d = splits.index[i]
@@ -364,10 +364,10 @@ class TickerBase():
                         new_index.append(dt_d)
                     splits.index = new_index
                     df = df.join(splits)
-                f_na = df["Splits"].isna()
-                df.loc[f_na,"Splits"] = 0
+                f_na = df["Stock Splits"].isna()
+                df.loc[f_na,"Stock Splits"] = 0
             else:
-                df["Splits"] = 0.0
+                df["Stock Splits"] = 0.0
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
