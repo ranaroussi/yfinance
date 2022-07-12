@@ -159,11 +159,7 @@ class TickerBase():
                     end = _datetime.datetime.combine(end, _datetime.time(0))
                 if isinstance(end, _datetime.datetime) and end.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
-                    if tkr_tz is None:
-                        tkr_tz = self.info["exchangeTimezoneName"]
-                        # info fetch is relatively slow so cache timezone
-                        utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+                    tkr_tz = self._get_ticker_tz()
                     end = _tz.timezone(tkr_tz).localize(end)
                 end = int(end.timestamp())
             if start is None:
@@ -179,11 +175,7 @@ class TickerBase():
                     start = _datetime.datetime.combine(start, _datetime.time(0))
                 if isinstance(start, _datetime.datetime) and start.tzinfo is None:
                     # Assume user is referring to exchange's timezone
-                    tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
-                    if tkr_tz is None:
-                        tkr_tz = self.info["exchangeTimezoneName"]
-                        # info fetch is relatively slow so cache timezone
-                        utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+                    tkr_tz = self._get_ticker_tz()
                     start = _tz.timezone(tkr_tz).localize(start)
                 start = int(start.timestamp())
             params = {"period1": start, "period2": end}
@@ -329,7 +321,7 @@ class TickerBase():
             data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
         if params["interval"] in ["1d","1w","1wk"]:
-            df.index = _pd.to_datetime(df.index.date).tz_localize("UTC")
+            df.index = _pd.to_datetime(df.index.date).tz_localize(self._get_ticker_tz())
             df.index.name = "Date"
         else:
             df.index.name = "Datetime"
@@ -348,6 +340,14 @@ class TickerBase():
         return df
 
     # ------------------------
+
+    def _get_ticker_tz(self):
+        tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
+        if tkr_tz is None:
+            tkr_tz = self.info["exchangeTimezoneName"]
+            # info fetch is relatively slow so cache timezone
+            utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+        return tkr_tz
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
