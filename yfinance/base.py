@@ -329,12 +329,12 @@ class TickerBase():
             data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
         if params["interval"] in ["1d","1w","1wk"]:
-            df.index = _pd.to_datetime(df.index.date)
+            df.index = _pd.to_datetime(df.index.date).tz_localize("UTC")
             df.index.name = "Date"
         else:
             df.index.name = "Datetime"
-            if not tz is None:
-                df.index = df.index.tz_convert(tz)
+        if not tz is None:
+            df.index = df.index.tz_convert(tz)
 
         # duplicates and missing rows cleanup
         df.dropna(how='all', inplace=True)
