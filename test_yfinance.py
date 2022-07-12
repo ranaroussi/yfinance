@@ -15,10 +15,10 @@ Sanity check for most common library uses all working
 
 import yfinance as yf
 import unittest
+import os
 
-symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
+symbols = ['MSFT','IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]
-
 
 class TestTicker(unittest.TestCase):
     def test_info_history(self):
@@ -52,6 +52,7 @@ class TestTicker(unittest.TestCase):
             ticker.options
             ticker.news
             ticker.shares
+            ticker.executives
             ticker.earnings_history
             ticker.earnings_dates
 
