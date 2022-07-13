@@ -149,8 +149,8 @@ class TickerBase():
         """
 
         if (not period is None) and ((not start is None) or (not end is None)):
-                print("WARNING: Cannot combine 'period' with 'start'/'end' so ignoring your dates")
-                start = None ; end = None
+            print("WARNING: Cannot combine 'period' with 'start'/'end' so ignoring your dates")
+            start = None ; end = None
         if period is None and start is None and end is None:
             # Manually handle 'period' default because need to know if user set period="1mo"
             period = "1mo"
