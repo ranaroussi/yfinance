@@ -147,6 +147,9 @@ class TickerBase():
                     error message printing to console.
         """
 
+        if not period is None and ((not start is None) or (not end is None)):
+            raise Exception("Don't set both 'period' and 'start'/'end', is nonsense. Either period or dates.")
+
         if start or period is None or period.lower() == "max":
             if end is None:
                 end = int(_time.time())
