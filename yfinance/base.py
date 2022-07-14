@@ -54,6 +54,7 @@ class TickerBase():
         self._history = None
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
+        self._tz = None
 
         self._fundamentals = False
         self._info = None
@@ -342,11 +343,16 @@ class TickerBase():
     # ------------------------
 
     def _get_ticker_tz(self):
+        if not self._tz is None:
+            return self._tz
+
         tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
         if tkr_tz is None:
             tkr_tz = self.info["exchangeTimezoneName"]
             # info fetch is relatively slow so cache timezone
             utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+
+        self._tz = tkr_tz
         return tkr_tz
 
     def _get_info(self, proxy=None):
