@@ -106,7 +106,7 @@ class TickerBase():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False,
+                auto_adjust=True, back_adjust=False, keepna=False,
                 proxy=None, rounding=False, tz=None, timeout=None, **kwargs):
         """
         :Parameters:
@@ -129,6 +129,9 @@ class TickerBase():
                 Adjust all OHLC automatically? Default is True
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
+            keepna: bool
+                Keep NaN rows returned by Yahoo?
+                Default is False
             proxy: str
                 Optional. Proxy server URL scheme. Default is None
             rounding: bool
@@ -286,7 +289,8 @@ class TickerBase():
                 "chart"]["result"][0]["meta"]["priceHint"])
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
-        quotes.dropna(inplace=True)
+        if not keepna:
+            quotes.dropna(inplace=True)
 
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
