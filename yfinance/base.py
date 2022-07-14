@@ -242,7 +242,7 @@ class TickerBase():
             # Yahoo bug fix - it often appends latest price even if after end date
             if end and not quotes.empty:
                 endDt = _pd.to_datetime(_datetime.datetime.fromtimestamp(end))
-                if quotes.index[quotes.shape[0]-1] > endDt:
+                if quotes.index[quotes.shape[0]-1] >= endDt:
                     quotes = quotes.iloc[0:quotes.shape[0]-1]
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
