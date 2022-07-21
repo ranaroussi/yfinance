@@ -214,15 +214,15 @@ class TickerBase():
 
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
-        if (data is None) or (not type(data) is dict) or ('status_code' in data):
+        if data is None or not type(data) is dict or 'status_code' in data.keys():
             err_msg += "(Yahoo status_code = {})".format(data["status_code"])
             fail = True
-        elif ("chart" in data) and (data["chart"]["error"]):
+        elif "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             fail = True
-        elif (not "chart" in data) or (result is None) or (not result):
+        elif not "chart" in data or result is None or not result:
             fail = True
-        elif (not period is None) and (not "timestamp" in result[0]) and (not period in result[0]["meta"]["validRanges"]):
+        elif not period is None and not "timestamp" in result[0] and not period in result[0]["meta"]["validRanges"]:
             # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
             err_msg = "Period '{}' is invalid, must be one of {}".format(period, result[0]["meta"]["validRanges"])
             fail = True
