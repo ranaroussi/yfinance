@@ -230,7 +230,7 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
+                raise Exception('%s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
 
         # parse quotes
@@ -240,7 +240,7 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
+                raise Exception('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
@@ -276,7 +276,7 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
+                raise Exception('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
             quotes = _np.round(quotes, data[
