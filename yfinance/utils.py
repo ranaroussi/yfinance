@@ -26,6 +26,7 @@ import re as _re
 import pandas as _pd
 import numpy as _np
 import sys as _sys
+import datetime as _datetime
 
 try:
     import ujson as _json
@@ -236,6 +237,72 @@ def parse_actions(data, tz=None):
             splits = splits[["Stock Splits"]]
 
     return dividends, splits
+
+
+def safe_merge_multiDay_dfs(df_main, df_sub, interval):
+    # Carefully merge 'df_sub' onto 'df_main' where interval is weekly or monthly.
+    # Then if df_sub.index contains dates missing from df_main.index, 
+    # fix is to shift those dates to start of week/month
+
+    if not interval in ["1wk","1mo"]:
+        raise Exception("safe_merge_multiDay_dfs() is specifically for weekly/monthly data, not {}".format(interval))
+
+    if df_sub.shape[0] == 0:
+        raise Exception("No data to merge")
+    
+    df_sub_backup = df_sub.copy()
+    data_cols = [c for c in df_sub.columns if not c in df_main]
+    if len(data_cols) > 1:
+        raise Exception("Expected 1 data col")
+    data_col = data_cols[0]
+
+    df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if not data_lost:
+        return df
+    # Lost data during join(). Backdate all df_sub.index dates to start of week/month
+    if interval == "1wk":
+        new_index = [dt-_datetime.timedelta(days=dt.weekday()) for dt in df_sub.index]
+    elif interval == "1mo":
+        new_index = [dt-_datetime.timedelta(days=dt.day-1) for dt in df_sub.index]
+    # Hopefully new_index doesn't contain duplicate dates, could be tricky to resolve 
+    # if dividends and splits happened in same interval
+    df_sub.set_index(df_sub.index, verify_integrity=True)
+    df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if not data_lost:
+        return df
+    # Lost data during join(). Manually check each df_sub.index date against df_main.index to
+    # find matching week/month
+    df_sub = df_sub_backup.copy()
+    new_index = []
+    for i in range(df_sub.shape[0]):
+        dt_sub_i = df_sub.index[i]
+        if dt_sub_i in df_main.index:
+            new_index.append(dt_sub_i) ; continue
+        # Found a bad index date, need to search for near-match in df_main (same week/month)
+        fixed = False
+        for j in range(df_main.shape[0]-1):
+            dt_main_j0 = df_main.index[j]
+            dt_main_j1 = df_main.index[j+1]
+            if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
+                dt_sub_i = dt_main_j0 ; fixed = True ; break
+        if not fixed:
+            raise Exception("df_sub table contains data {} that failed to map to row in main table".format(dt_d))
+        new_index.append(dt_sub_i)
+    df_sub.index = new_index
+    df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if data_lost:
+        raise Exception("Lost data during merge despite all attempts to align data")
+
+    return df
 
 
 class ProgressBar:
