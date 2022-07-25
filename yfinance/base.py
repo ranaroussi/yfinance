@@ -308,7 +308,7 @@ class TickerBase():
             dt2 = quotes.index[n-2].tz_localize("UTC").tz_convert(tz_exchange)
             if interval in ["1wk", "1mo"]:
                 if interval == "1wk":
-                    last_rows_same_interval = (dt1-dt2 <= _datetime.timedelta(days=5)) and (dt1.weekday()>dt2.weekday())
+                    last_rows_same_interval = (dt1-dt2 <= _datetime.timedelta(days=5)) and (dt1.weekday()>=dt2.weekday())
                 else:
                     last_rows_same_interval = dt1.month==dt2.month
                 if last_rows_same_interval:
