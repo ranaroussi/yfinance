@@ -315,14 +315,16 @@ class TickerBase():
                     # Last two rows are within same interval
                     idx1 = quotes.index[n-1]
                     idx2 = quotes.index[n-2]
-                    # quotes.loc[idx2,"Open"] # Leave
-                    quotes.loc[idx2,"High"] = max(quotes["High"][n-1], quotes["High"][n-2])
-                    quotes.loc[idx2,"Low"] = min(quotes["Low"][n-1], quotes["Low"][n-2])
+                    if _np.isnan(quotes.loc[idx2,"Open"]):
+                        quotes.loc[idx2,"Open"] = quotes["Open"][n-1]
+					# Note: _np.nanmax() ignores NaNs
+                    quotes.loc[idx2,"High"] = _np.nanmax([quotes["High"][n-1], quotes["High"][n-2]])
+                    quotes.loc[idx2,"Low"] = _np.nanmin([quotes["Low"][n-1], quotes["Low"][n-2]])
                     quotes.loc[idx2,"Close"] = quotes["Close"][n-1]
                     if "Adj High" in quotes.columns:
-                        quotes.loc[idx2,"Adj High"] = max(quotes["Adj High"][n-1], quotes["Adj High"][n-2])
+                        quotes.loc[idx2,"Adj High"] = _np.nanmax([quotes["Adj High"][n-1], quotes["Adj High"][n-2]])
                     if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2,"Adj Low"] = min(quotes["Adj Low"][n-1], quotes["Adj Low"][n-2])
+                        quotes.loc[idx2,"Adj Low"] = _np.nanmin([quotes["Adj Low"][n-1], quotes["Adj Low"][n-2]])
                     if "Adj Close" in quotes.columns:
                         quotes.loc[idx2,"Adj Close"] = quotes["Adj Close"][n-1]
                     quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
