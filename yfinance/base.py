@@ -312,14 +312,14 @@ class TickerBase():
         if actions:
             df = df.sort_index()
             if dividends.shape[0] > 0:
-                df = utils.safe_merge_multiDay_dfs(df, dividends, interval)
+                df = utils.safe_merge_dfs(df, dividends, interval)
                 f_na = df["Dividends"].isna()
                 df.loc[f_na,"Dividends"] = 0
             else:
                 df["Dividends"] = 0.0
             #
             if splits.shape[0] > 0:
-                df = utils.safe_merge_multiDay_dfs(df, splits, interval)
+                df = utils.safe_merge_dfs(df, splits, interval)
                 f_na = df["Stock Splits"].isna()
                 df.loc[f_na,"Stock Splits"] = 0
             else:

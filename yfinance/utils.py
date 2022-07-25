@@ -239,13 +239,11 @@ def parse_actions(data, tz=None):
     return dividends, splits
 
 
-def safe_merge_multiDay_dfs(df_main, df_sub, interval):
-    # Carefully merge 'df_sub' onto 'df_main' where interval is weekly or monthly.
-    # Then if df_sub.index contains dates missing from df_main.index, 
-    # fix is to shift those dates to start of week/month
-
-    if not interval in ["1wk","1mo"]:
-        raise Exception("safe_merge_multiDay_dfs() is specifically for weekly/monthly data, not {}".format(interval))
+def safe_merge_dfs(df_main, df_sub, interval):
+    # Carefully merge 'df_sub' onto 'df_main'
+    # If naive merge fails, try again with reindexing df_sub:
+    # 1) if interval is weekly or monthly, then try with index set to start of week/month
+    # 2) if still failing then manually search through df_main.index to reindex df_sub
 
     if df_sub.shape[0] == 0:
         raise Exception("No data to merge")
@@ -262,28 +260,31 @@ def safe_merge_multiDay_dfs(df_main, df_sub, interval):
     data_lost = sum(~f_na) < df_sub.shape[0]
     if not data_lost:
         return df
-    # Lost data during join(). Backdate all df_sub.index dates to start of week/month
-    if interval == "1wk":
-        new_index = [dt-_datetime.timedelta(days=dt.weekday()) for dt in df_sub.index]
-    elif interval == "1mo":
-        new_index = [dt-_datetime.timedelta(days=dt.day-1) for dt in df_sub.index]
-    # Hopefully new_index doesn't contain duplicate dates, could be tricky to resolve 
-    # if dividends and splits happened in same interval
-    df_sub.set_index(df_sub.index, verify_integrity=True)
-    df = df_main.join(df_sub)
+    # Lost data during join()
+    if interval in ["1wk","1mo"]:
+        # Backdate all df_sub.index dates to start of week/month
+        if interval == "1wk":
+            new_index = [dt-_datetime.timedelta(days=dt.weekday()) for dt in df_sub.index]
+        elif interval == "1mo":
+            new_index = [dt-_datetime.timedelta(days=dt.day-1) for dt in df_sub.index]
+        if len(new_index) != len(set(new_index)):
+            print("new_index:")
+            print(new_index)
+            raise Exception("New index contains duplicates")
+        df_sub.index = new_index
+        df = df_main.join(df_sub)
 
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if not data_lost:
         return df
     # Lost data during join(). Manually check each df_sub.index date against df_main.index to
-    # find matching week/month
+    # find matching interval
     df_sub = df_sub_backup.copy()
-    new_index = []
-    for i in range(df_sub.shape[0]):
+    for i in _np.where(f_na)[0]:
         dt_sub_i = df_sub.index[i]
         if dt_sub_i in df_main.index:
-            new_index.append(dt_sub_i) ; continue
+            new_index[i] = dt_sub_i ; continue
         # Found a bad index date, need to search for near-match in df_main (same week/month)
         fixed = False
         for j in range(df_main.shape[0]-1):
@@ -292,8 +293,27 @@ def safe_merge_multiDay_dfs(df_main, df_sub, interval):
             if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
                 dt_sub_i = dt_main_j0 ; fixed = True ; break
         if not fixed:
-            raise Exception("df_sub table contains data {} that failed to map to row in main table".format(dt_d))
-        new_index.append(dt_sub_i)
+            last_main_dt = df_main.index[df_main.shape[0]-1]
+            diff = dt_sub_i - last_main_dt
+            if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1wk" and last_main_dt.week == dt_sub_i.week:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
+                dt_sub_i = last_main_dt ; fixed = True
+            else:
+                td = _pd.to_datetime(interval)
+                if (dt_sub_i-last_main_dt) < td:
+                    dt_sub_i = last_main_dt ; fixed = True
+        if not fixed:
+            raise Exception("df_sub table contains row that failed to map to row in main table")
+        new_index[i] = dt_sub_i
+    if len(new_index) != len(set(new_index)):
+        print("new_index:")
+        print(new_index)
+        raise Exception("New index contains duplicates")
     df_sub.index = new_index
     df = df_main.join(df_sub)
 
