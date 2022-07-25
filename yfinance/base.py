@@ -317,7 +317,7 @@ class TickerBase():
                     idx2 = quotes.index[n-2]
                     if _np.isnan(quotes.loc[idx2,"Open"]):
                         quotes.loc[idx2,"Open"] = quotes["Open"][n-1]
-					# Note: _np.nanmax() ignores NaNs
+                    # Note: _np.nanmax() ignores NaNs
                     quotes.loc[idx2,"High"] = _np.nanmax([quotes["High"][n-1], quotes["High"][n-2]])
                     quotes.loc[idx2,"Low"] = _np.nanmin([quotes["Low"][n-1], quotes["Low"][n-2]])
                     quotes.loc[idx2,"Close"] = quotes["Close"][n-1]
