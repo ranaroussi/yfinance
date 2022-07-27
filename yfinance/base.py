@@ -322,7 +322,14 @@ class TickerBase():
             data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
         if params["interval"] in ["1d","1w","1wk"]:
-            df.index = _pd.to_datetime(df.index.date).tz_localize(self._get_ticker_tz())
+            # These intervals should start at time 00:00. But for some combinations of date and timezone, 
+            # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
+            # The clue is (a) minutes=0 and (b) hour near 0. 
+            # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
+            new_index = df.index.date
+            f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22,23]))
+            new_index[f_pre_midnight] += _datetime.timedelta(days=1)
+            df.index = _pd.to_datetime(new_index).tz_localize(self._get_ticker_tz())
             df.index.name = "Date"
         else:
             df.index.name = "Datetime"
