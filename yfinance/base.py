@@ -303,7 +303,8 @@ class TickerBase():
         quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
         dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
         splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
-        if params["interval"] in ["1w","1wk"]:
+        if params["interval"] in ["1d","1w","1wk"]:
+            # Converting datetime->date should improve merge performance
             quotes.index = _pd.to_datetime(quotes.index.date)
             dividends.index = _pd.to_datetime(dividends.index.date)
             splits.index = _pd.to_datetime(splits.index.date)
