@@ -281,7 +281,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     # Lost data during join(). Manually check each df_sub.index date against df_main.index to
     # find matching interval
     df_sub = df_sub_backup.copy()
-    for i in _np.where(f_na)[0]:
+    for i in range(df_sub.shape[0]):
         dt_sub_i = df_sub.index[i]
         if dt_sub_i in df_main.index:
             new_index[i] = dt_sub_i ; continue
