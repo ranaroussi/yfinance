@@ -71,18 +71,10 @@ class TickerBase():
         self._earnings_dates = None
         self._earnings_history = None
 
-        self._earnings = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._financials = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._balancesheet = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._cashflow = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
+        self._earnings = None
+        self._financials = None
+        self._balancesheet = None
+        self._cashflow = None
 
         # accept isin as ticker
         if utils.is_isin(self.ticker):
@@ -496,6 +488,9 @@ class TickerBase():
         data = utils.get_json(ticker_url + '/financials', proxy, self.session)
 
         # generic patterns
+        self._cashflow = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._balancesheet = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._financials = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
         for key in (
             (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
             (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
@@ -520,6 +515,7 @@ class TickerBase():
             try:
                 earnings = data['earnings']['financialsChart']
                 earnings['financialCurrency'] = 'USD' if 'financialCurrency' not in data['earnings'] else data['earnings']['financialCurrency']
+                self._earnings = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
                 self._earnings['financialCurrency'] = earnings['financialCurrency']
                 df = _pd.DataFrame(earnings['yearly']).set_index('date')
                 df.columns = utils.camel2title(df.columns)
