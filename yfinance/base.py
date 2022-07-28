@@ -205,7 +205,6 @@ class TickerBase():
             data = data.json()
         except Exception:
             pass
-        result = data["chart"]["result"]
 
         # Work with errors
         debug_mode = True
@@ -220,11 +219,11 @@ class TickerBase():
         elif "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             fail = True
-        elif not "chart" in data or result is None or not result:
+        elif not "chart" in data or data["chart"]["result"] is None or not data["chart"]["result"]:
             fail = True
-        elif not period is None and not "timestamp" in result[0] and not period in result[0]["meta"]["validRanges"]:
+        elif not period is None and not "timestamp" in data["chart"]["result"][0] and not period in data["chart"]["result"][0]["meta"]["validRanges"]:
             # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
-            err_msg = "Period '{}' is invalid, must be one of {}".format(period, result[0]["meta"]["validRanges"])
+            err_msg = "Period '{}' is invalid, must be one of {}".format(period, data["chart"]["result"][0]["meta"]["validRanges"])
             fail = True
         if fail:
             shared._DFS[self.ticker] = utils.empty_df()
@@ -235,7 +234,7 @@ class TickerBase():
 
         # parse quotes
         try:
-            quotes = utils.parse_quotes(result[0], tz)
+            quotes = utils.parse_quotes(data["chart"]["result"][0], tz)
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
@@ -286,7 +285,7 @@ class TickerBase():
         quotes.dropna(inplace=True)
 
         # actions
-        dividends, splits = utils.parse_actions(result[0], tz)
+        dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
 
         # Yahoo bug fix - it often appends latest price even if after end date
         if end and not quotes.empty:
@@ -301,7 +300,7 @@ class TickerBase():
 
         # index eod/intraday
         df.index = df.index.tz_localize("UTC").tz_convert(
-            result[0]["meta"]["exchangeTimezoneName"])
+            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
 
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
