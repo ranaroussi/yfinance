@@ -153,32 +153,40 @@ class TickerBase():
             if end is None:
                 end = int(_time.time())
             else:
-                # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
-                if isinstance(end, str):
-                    end = _datetime.datetime.strptime(str(end), '%Y-%m-%d')
-                if isinstance(end, _datetime.date) and not isinstance(end, _datetime.datetime):
-                    end = _datetime.datetime.combine(end, _datetime.time(0))
-                if isinstance(end, _datetime.datetime) and end.tzinfo is None:
-                    # Assume user is referring to exchange's timezone
-                    tkr_tz = self._get_ticker_tz()
-                    end = _tz.timezone(tkr_tz).localize(end)
-                end = int(end.timestamp())
+                if isinstance(end, int):
+                    ## Should already be epoch, test with conversion:
+                    end_dt = _datetime.datetime.fromtimestamp(end)
+                else:
+                    # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+                    if isinstance(end, str):
+                        end = _datetime.datetime.strptime(str(end), '%Y-%m-%d')
+                    if isinstance(end, _datetime.date) and not isinstance(end, _datetime.datetime):
+                        end = _datetime.datetime.combine(end, _datetime.time(0))
+                    if isinstance(end, _datetime.datetime) and end.tzinfo is None:
+                        # Assume user is referring to exchange's timezone
+                        tkr_tz = self._get_ticker_tz()
+                        end = _tz.timezone(tkr_tz).localize(end)
+                    end = int(end.timestamp())
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
             else:
-                # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
-                if isinstance(start, str):
-                    start = _datetime.datetime.strptime(str(start), '%Y-%m-%d')
-                if isinstance(start, _datetime.date) and not isinstance(start, _datetime.datetime):
-                    start = _datetime.datetime.combine(start, _datetime.time(0))
-                if isinstance(start, _datetime.datetime) and start.tzinfo is None:
-                    # Assume user is referring to exchange's timezone
-                    tkr_tz = self._get_ticker_tz()
-                    start = _tz.timezone(tkr_tz).localize(start)
-                start = int(start.timestamp())
+                if isinstance(start, int):
+                    ## Should already be epoch, test with conversion:
+                    start_dt = _datetime.datetime.fromtimestamp(start)
+                else:
+                    # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+                    if isinstance(start, str):
+                        start = _datetime.datetime.strptime(str(start), '%Y-%m-%d')
+                    if isinstance(start, _datetime.date) and not isinstance(start, _datetime.datetime):
+                        start = _datetime.datetime.combine(start, _datetime.time(0))
+                    if isinstance(start, _datetime.datetime) and start.tzinfo is None:
+                        # Assume user is referring to exchange's timezone
+                        tkr_tz = self._get_ticker_tz()
+                        start = _tz.timezone(tkr_tz).localize(start)
+                    start = int(start.timestamp())
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
