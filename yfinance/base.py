@@ -313,6 +313,12 @@ class TickerBase():
         if actions:
             df = df.sort_index()
             if dividends.shape[0] > 0:
+                # Discard from dividends any rows that fall outside of quotes intervals
+                dividends = dividends[dividends.index >= quotes.index[0]]
+                last_main_dt = quotes.index[-1]
+                last_main_dt_end = last_main_dt + utils.interval_to_timedelta(interval)
+                dividends = dividends[dividends.index < last_main_dt_end]
+
                 df = utils.safe_merge_dfs(df, dividends, interval)
                 f_na = df["Dividends"].isna()
                 df.loc[f_na,"Dividends"] = 0
@@ -320,6 +326,12 @@ class TickerBase():
                 df["Dividends"] = 0.0
             #
             if splits.shape[0] > 0:
+                # Discard from splits any rows that fall outside of quotes intervals
+                splits = splits[splits.index >= quotes.index[0]]
+                last_main_dt = quotes.index[-1]
+                last_main_dt_end = last_main_dt + utils.interval_to_timedelta(interval)
+                splits = splits[splits.index < last_main_dt_end]
+
                 df = utils.safe_merge_dfs(df, splits, interval)
                 f_na = df["Stock Splits"].isna()
                 df.loc[f_na,"Stock Splits"] = 0
