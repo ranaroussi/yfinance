@@ -213,7 +213,9 @@ class TickerBase():
 
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
-        if data is None or not type(data) is dict or 'status_code' in data.keys():
+        if data is None or not type(data) is dict:
+            fail = True
+        elif type(data) is dict and 'status_code' in data.keys():
             err_msg += "(Yahoo status_code = {})".format(data["status_code"])
             fail = True
         elif "chart" in data and data["chart"]["error"]:
