@@ -27,7 +27,6 @@ import pandas as _pd
 import numpy as _np
 import sys as _sys
 import datetime as _datetime
-import dateutil as _dateutil
 
 try:
     import ujson as _json
@@ -238,40 +237,6 @@ def parse_actions(data, tz=None):
             splits = splits[["Stock Splits"]]
 
     return dividends, splits
-
-
-def interval_to_timedelta(interval):
-    if interval == "1mo":
-        td = _dateutil.relativedelta(months=1)
-    elif interval == "3mo":
-        td = _dateutil.relativedelta(months=3)
-    elif interval == "1wk":
-        td = _datetime.timedelta(days=7)
-    elif interval == "5d":
-        td = _datetime.timedelta(days=5)
-    elif interval == "1d":
-        td = _datetime.timedelta(days=1)
-    elif interval == "1h":
-        td = _datetime.timedelta(minutes=60)
-    elif interval == "90m":
-        td = _datetime.timedelta(minutes=90)
-    elif interval == "90m":
-        td = _datetime.timedelta(minutes=90)
-    elif interval == "60m":
-        td = _datetime.timedelta(minutes=60)
-    elif interval == "30m":
-        td = _datetime.timedelta(minutes=30)
-    elif interval == "15m":
-        td = _datetime.timedelta(minutes=15)
-    elif interval == "5m":
-        td = _datetime.timedelta(minutes=5)
-    elif interval == "2m":
-        td = _datetime.timedelta(minutes=2)
-    elif interval == "1m":
-        td = _datetime.timedelta(minutes=1)
-    else:
-        raise Exception("Cannot map interval '{}' to timedelta".format(interval))
-    return td
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
