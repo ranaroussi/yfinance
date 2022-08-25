@@ -254,6 +254,21 @@ def safe_merge_dfs(df_main, df_sub, interval):
         raise Exception("Expected 1 data col")
     data_col = data_cols[0]
 
+    # Discard out-of-range events
+    df_sub = df_sub[df_sub.index >= df_main.index[0]]
+    df_sub_last_dt = df_sub.index[-1]
+    df_main_last_dt = df_main.index[-1]
+    if interval == "1mo" and df_sub_last_dt>df_main_last_dt and df_sub_last_dt.month != df_main_last_dt.month:
+        df_sub = df_sub.drop(df_sub.index[-1])
+    elif interval in ["1wk","5d"] and df_sub_last_dt>df_main_last_dt and df_sub_last_dt.week != df_main_last_dt.week:
+        df_sub = df_sub.drop(df_sub.index[-1])
+    elif interval == "1d" and df_sub_last_dt>df_main_last_dt and df_sub_last_dt.day != df_main_last_dt.day:
+        print("here")
+        df_sub = df_sub.drop(df_sub.index[-1])
+    if df_sub.shape[0] == 0:
+        # raise Exception("No data to merge after pruning out-of-range")
+        return df_main
+
     df = df_main.join(df_sub)
 
     f_na = df[data_col].isna()
@@ -305,7 +320,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
                 dt_sub_i = last_main_dt ; fixed = True
             else:
-                td = _pd.to_datetime(interval)
+                td = _pd.to_timedelta(interval)
                 if (dt_sub_i-last_main_dt) < td:
                     dt_sub_i = last_main_dt ; fixed = True
         if not fixed:

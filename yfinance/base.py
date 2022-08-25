@@ -313,20 +313,16 @@ class TickerBase():
         if actions:
             df = df.sort_index()
             if dividends.shape[0] > 0:
-                # Discard dividends that occurred before quotes
-                dividends = dividends[dividends.index >= quotes.index[0]]
-
                 df = utils.safe_merge_dfs(df, dividends, interval)
+            if "Dividends" in df.columns:
                 f_na = df["Dividends"].isna()
                 df.loc[f_na,"Dividends"] = 0
             else:
                 df["Dividends"] = 0.0
             #
             if splits.shape[0] > 0:
-                # Discard splits that occurred before quotes
-                splits = splits[splits.index >= quotes.index[0]]
-
                 df = utils.safe_merge_dfs(df, splits, interval)
+            if "Stock Splits" in df.columns:
                 f_na = df["Stock Splits"].isna()
                 df.loc[f_na,"Stock Splits"] = 0
             else:
