@@ -254,19 +254,23 @@ def safe_merge_dfs(df_main, df_sub, interval):
         raise Exception("Expected 1 data col")
     data_col = data_cols[0]
 
-    # Discard out-of-range events
+    # Discard last row in 'df_sub' if significantly after last row in df_main.
+    # Size of difference depends on interval.
     df_sub = df_sub[df_sub.index >= df_main.index[0]]
     df_sub_last_dt = df_sub.index[-1]
     df_main_last_dt = df_main.index[-1]
-    if interval == "1mo" and df_sub_last_dt>df_main_last_dt and df_sub_last_dt.month != df_main_last_dt.month:
-        df_sub = df_sub.drop(df_sub.index[-1])
-    elif interval in ["1wk","5d"] and df_sub_last_dt>df_main_last_dt and df_sub_last_dt.week != df_main_last_dt.week:
-        df_sub = df_sub.drop(df_sub.index[-1])
-    elif interval == "1d" and df_sub_last_dt>df_main_last_dt and df_sub_last_dt.day != df_main_last_dt.day:
-        df_sub = df_sub.drop(df_sub.index[-1])
-    if df_sub.shape[0] == 0:
-        # raise Exception("No data to merge after pruning out-of-range")
-        return df_main
+    if df_sub_last_dt > df_main_last_dt:
+        if interval == "1mo" and df_sub_last_dt.month != df_main_last_dt.month:
+            df_sub = df_sub.drop(df_sub.index[-1])
+        elif interval in ["1wk","5d"] and df_sub_last_dt.week != df_main_last_dt.week:
+            df_sub = df_sub.drop(df_sub.index[-1])
+        elif interval == "1d" and df_sub_last_dt.date() > df_main_last_dt.date():
+            df_sub = df_sub.drop(df_sub.index[-1])
+        elif (interval.endswith('h') or interval.endswith('m')) and (df_sub_last_dt.date() > df_main_last_dt.date()):
+            df_sub = df_sub.drop(df_sub.index[-1])
+        if df_sub.shape[0] == 0:
+            # raise Exception("No data to merge after pruning out-of-range")
+            return df_main
 
     df = df_main.join(df_sub)
 
