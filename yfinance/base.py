@@ -291,52 +291,15 @@ class TickerBase():
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
 
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+
         # Yahoo bug fix - it often appends latest price even if after end date
         if end and not quotes.empty:
             endDt = _pd.to_datetime(_datetime.datetime.fromtimestamp(end))
             if quotes.index[quotes.shape[0]-1] > endDt:
                 quotes = quotes.iloc[0:quotes.shape[0]-1]
 
-        # Yahoo bug fix. If market is open today then Yahoo normally returns 
-        # todays data as a separate row from rest-of-interval in above row. 
-        # Seems to depend on what exchange e.g. crypto OK.
-        # Fix = merge them together
-        n = quotes.shape[0]
-        if n > 1:
-            tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-            dt1 = quotes.index[n-1].tz_localize("UTC").tz_convert(tz_exchange)
-            dt2 = quotes.index[n-2].tz_localize("UTC").tz_convert(tz_exchange)
-            if interval in ["1wk", "1mo"]:
-                if interval == "1wk":
-                    last_rows_same_interval = (dt1-dt2 <= _datetime.timedelta(days=5)) and (dt1.weekday()>=dt2.weekday())
-                else:
-                    last_rows_same_interval = dt1.month==dt2.month
-                if last_rows_same_interval:
-                    # Last two rows are within same interval
-                    idx1 = quotes.index[n-1]
-                    idx2 = quotes.index[n-2]
-                    if _np.isnan(quotes.loc[idx2,"Open"]):
-                        quotes.loc[idx2,"Open"] = quotes["Open"][n-1]
-                    # Note: _np.nanmax() ignores NaNs
-                    quotes.loc[idx2,"High"] = _np.nanmax([quotes["High"][n-1], quotes["High"][n-2]])
-                    quotes.loc[idx2,"Low"] = _np.nanmin([quotes["Low"][n-1], quotes["Low"][n-2]])
-                    quotes.loc[idx2,"Close"] = quotes["Close"][n-1]
-                    if "Adj High" in quotes.columns:
-                        quotes.loc[idx2,"Adj High"] = _np.nanmax([quotes["Adj High"][n-1], quotes["Adj High"][n-2]])
-                    if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2,"Adj Low"] = _np.nanmin([quotes["Adj Low"][n-1], quotes["Adj Low"][n-2]])
-                    if "Adj Close" in quotes.columns:
-                        quotes.loc[idx2,"Adj Close"] = quotes["Adj Close"][n-1]
-                    quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
-                    quotes = quotes.iloc[0:n-1]
-                    n = quotes.shape[0]
-            # Similar bug in daily data, except most data is simply duplicated
-            # - exception is volume, *slightly* different on final row (and matches website)
-            elif interval=="1d":
-                if dt1.date() == dt2.date():
-                    # Last two rows are on same day. Drop second-to-last row
-                    quotes = quotes.drop(quotes.index[n-2])
-                    n = quotes.shape[0]
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
 
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
