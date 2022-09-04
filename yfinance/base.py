@@ -150,14 +150,14 @@ class TickerBase():
             if end is None:
                 end = int(_time.time())
             else:
-                end = self._parse_user_dt(end)
+                end = utils._parse_user_dt(end, self._get_ticker_tz())
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
             else:
-                start = self._parse_user_dt(start)
+                start = utils._parse_user_dt(start, self._get_ticker_tz())
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
@@ -336,23 +336,6 @@ class TickerBase():
 
         self._tz = tkr_tz
         return tkr_tz
-
-    def _parse_user_dt(self, dt):
-        if isinstance(dt, int):
-            ## Should already be epoch, test with conversion:
-            _datetime.datetime.fromtimestamp(dt)
-        else:
-            # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
-            if isinstance(dt, str):
-                dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
-            if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
-                dt = _datetime.datetime.combine(dt, _datetime.time(0))
-            if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
-                # Assume user is referring to exchange's timezone
-                tkr_tz = self._get_ticker_tz()
-                dt = _tz.timezone(tkr_tz).localize(dt)
-            dt = int(dt.timestamp())
-        return dt
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
