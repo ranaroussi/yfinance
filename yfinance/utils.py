@@ -254,6 +254,28 @@ def safe_merge_dfs(df_main, df_sub, interval):
         raise Exception("Expected 1 data col")
     data_col = data_cols[0]
 
+    def _reindex_events(df, new_index, data_col_name):
+        if len(new_index) == len(set(new_index)):
+            # No duplicates, easy
+            df.index = new_index
+            return df
+
+        df["_NewIndex"] = new_index
+        # Duplicates present within periods but can aggregate
+        if data_col_name == "Dividends":
+            # Add
+            df = df.groupby("_NewIndex").sum()
+            df.index.name = None
+        elif data_col_name == "Stock Splits":
+            # Product
+            df = df.groupby("_NewIndex").prod()
+            df.index.name = None
+        else:
+            raise Exception("New index contains duplicates but unsure how to aggregate for '{}'".format(data_col_name))
+        if "_NewIndex" in df.columns:
+            df = df.drop("_NewIndex",axis=1)
+        return df
+
     # Discard last row in 'df_sub' if significantly after last row in df_main.
     # Size of difference depends on interval.
     df_sub = df_sub[df_sub.index >= df_main.index[0]]
@@ -279,17 +301,15 @@ def safe_merge_dfs(df_main, df_sub, interval):
     if not data_lost:
         return df
     # Lost data during join()
-    if interval in ["1wk","1mo"]:
+    if interval in ["1wk","1mo","3mo"]:
         # Backdate all df_sub.index dates to start of week/month
         if interval == "1wk":
-            new_index = [dt-_datetime.timedelta(days=dt.weekday()) for dt in df_sub.index]
+            new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
         elif interval == "1mo":
-            new_index = [dt-_datetime.timedelta(days=dt.day-1) for dt in df_sub.index]
-        if len(new_index) != len(set(new_index)):
-            print("new_index:")
-            print(new_index)
-            raise Exception("New index contains duplicates")
-        df_sub.index = new_index
+            new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
+        elif interval == "3mo":
+            new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
+        df_sub = _reindex_events(df_sub, new_index, data_col)
         df = df_main.join(df_sub)
 
     f_na = df[data_col].isna()
@@ -316,6 +336,8 @@ def safe_merge_dfs(df_main, df_sub, interval):
             diff = dt_sub_i - last_main_dt
             if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
                 dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
+                dt_sub_i = last_main_dt ; fixed = True
             elif interval == "1wk" and last_main_dt.week == dt_sub_i.week:
                 dt_sub_i = last_main_dt ; fixed = True
             elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
@@ -329,11 +351,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
         if not fixed:
             raise Exception("df_sub table contains row that failed to map to row in main table")
         new_index[i] = dt_sub_i
-    if len(new_index) != len(set(new_index)):
-        print("new_index:")
-        print(new_index)
-        raise Exception("New index contains duplicates")
-    df_sub.index = new_index
+    df_sub = _reindex_events(df_sub, new_index, data_col)
     df = df_main.join(df_sub)
 
     f_na = df[data_col].isna()
