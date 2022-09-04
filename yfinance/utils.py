@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+import datetime as _datetime
 import requests as _requests
 import re as _re
 import pandas as _pd
@@ -231,6 +232,19 @@ def parse_actions(data):
             splits = splits["Stock Splits"]
 
     return dividends, splits
+
+
+def fix_Yahoo_dst_issue(df, interval):
+    if interval in ["1d","1w","1wk"]:
+        # These intervals should start at time 00:00. But for some combinations of date and timezone, 
+        # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
+        # The clue is (a) minutes=0 and (b) hour near 0. 
+        # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
+        f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22,23]))
+        dst_error_hours = _np.array([0]*df.shape[0])
+        dst_error_hours[f_pre_midnight] = 24-df.index[f_pre_midnight].hour
+        df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
+    return df
 
 
 class ProgressBar:
