@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import datetime as _datetime
+import pytz as _tz
 import requests as _requests
 import re as _re
 import pandas as _pd
@@ -136,6 +137,23 @@ def get_json(url, proxy=None, session=None):
 
 def camel2title(o):
     return [_re.sub("([a-z])([A-Z])", r"\g<1> \g<2>", i).title() for i in o]
+
+
+def _parse_user_dt(dt, exchange_tz):
+    if isinstance(dt, int):
+        ## Should already be epoch, test with conversion:
+        _datetime.datetime.fromtimestamp(dt)
+    else:
+        # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+        if isinstance(dt, str):
+            dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
+        if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
+            dt = _datetime.datetime.combine(dt, _datetime.time(0))
+        if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
+            # Assume user is referring to exchange's timezone
+            dt = _tz.timezone(exchange_tz).localize(dt)
+        dt = int(dt.timestamp())
+    return dt
 
 
 def auto_adjust(data):
