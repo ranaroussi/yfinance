@@ -109,7 +109,7 @@ class TickerBase():
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False,
-                proxy=None, rounding=False, tz=None, timeout=None, **kwargs):
+                proxy=None, rounding=False, timeout=None, **kwargs):
         """
         :Parameters:
             period : str
@@ -136,9 +136,6 @@ class TickerBase():
             rounding: bool
                 Round values to 2 decimal places?
                 Optional. Default is False = precision suggested by Yahoo!
-            tz: str
-                Optional timezone locale for dates.
-                (default dates returned in exchange timezone)
             timeout: None or float
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
@@ -153,40 +150,14 @@ class TickerBase():
             if end is None:
                 end = int(_time.time())
             else:
-                if isinstance(end, int):
-                    ## Should already be epoch, test with conversion:
-                    end_dt = _datetime.datetime.fromtimestamp(end)
-                else:
-                    # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
-                    if isinstance(end, str):
-                        end = _datetime.datetime.strptime(str(end), '%Y-%m-%d')
-                    if isinstance(end, _datetime.date) and not isinstance(end, _datetime.datetime):
-                        end = _datetime.datetime.combine(end, _datetime.time(0))
-                    if isinstance(end, _datetime.datetime) and end.tzinfo is None:
-                        # Assume user is referring to exchange's timezone
-                        tkr_tz = self._get_ticker_tz()
-                        end = _tz.timezone(tkr_tz).localize(end)
-                    end = int(end.timestamp())
+                end = self._parse_user_dt(end)
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
             else:
-                if isinstance(start, int):
-                    ## Should already be epoch, test with conversion:
-                    start_dt = _datetime.datetime.fromtimestamp(start)
-                else:
-                    # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
-                    if isinstance(start, str):
-                        start = _datetime.datetime.strptime(str(start), '%Y-%m-%d')
-                    if isinstance(start, _datetime.date) and not isinstance(start, _datetime.datetime):
-                        start = _datetime.datetime.combine(start, _datetime.time(0))
-                    if isinstance(start, _datetime.datetime) and start.tzinfo is None:
-                        # Assume user is referring to exchange's timezone
-                        tkr_tz = self._get_ticker_tz()
-                        start = _tz.timezone(tkr_tz).localize(start)
-                    start = int(start.timestamp())
+                start = self._parse_user_dt(start)
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
@@ -314,6 +285,8 @@ class TickerBase():
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
 
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+
         # Yahoo bug fix - it often appends latest price even if after end date
         if end and not quotes.empty:
             endDt = _pd.to_datetime(_datetime.datetime.fromtimestamp(end))
@@ -326,23 +299,17 @@ class TickerBase():
         df["Stock Splits"].fillna(0, inplace=True)
 
         # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(
-            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+        df.index = df.index.tz_localize("UTC").tz_convert(tz_exchange)
 
-        if params["interval"] in ["1d","1w","1wk"]:
-            # These intervals should start at time 00:00. But for some combinations of date and timezone, 
-            # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
-            # The clue is (a) minutes=0 and (b) hour near 0. 
-            # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
-            new_index = df.index.date
-            f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22,23]))
-            new_index[f_pre_midnight] += _datetime.timedelta(days=1)
-            df.index = _pd.to_datetime(new_index).tz_localize(self._get_ticker_tz())
-            df.index.name = "Date"
-        else:
+        df = utils.fix_Yahoo_dst_issue(df, params["interval"])
+            
+        if params["interval"][-1] == "m":
             df.index.name = "Datetime"
-        if not tz is None:
-            df.index = df.index.tz_convert(tz)
+        elif params["interval"] == "1h":
+            pass
+        else:
+            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange)
+            df.index.name = "Date"
 
         # duplicates and missing rows cleanup
         df.dropna(how='all', inplace=True)
@@ -369,6 +336,23 @@ class TickerBase():
 
         self._tz = tkr_tz
         return tkr_tz
+
+    def _parse_user_dt(self, dt):
+        if isinstance(dt, int):
+            ## Should already be epoch, test with conversion:
+            _datetime.datetime.fromtimestamp(dt)
+        else:
+            # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+            if isinstance(dt, str):
+                dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
+            if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
+                dt = _datetime.datetime.combine(dt, _datetime.time(0))
+            if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
+                # Assume user is referring to exchange's timezone
+                tkr_tz = self._get_ticker_tz()
+                dt = _tz.timezone(tkr_tz).localize(dt)
+            dt = int(dt.timestamp())
+        return dt
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
