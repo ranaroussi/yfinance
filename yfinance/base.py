@@ -291,40 +291,38 @@ class TickerBase():
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
 
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+
         # Yahoo bug fix - it often appends latest price even if after end date
         if end and not quotes.empty:
             endDt = _pd.to_datetime(_datetime.datetime.fromtimestamp(end))
             if quotes.index[quotes.shape[0]-1] > endDt:
                 quotes = quotes.iloc[0:quotes.shape[0]-1]
 
-        # Combine, but carefully
-        # - prepare datetimes:
-        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        # prepare index for combine:
         quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
-        dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
         splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
-        if params["interval"] in ["1d","1w","1wk"]:
+        dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
+        if params["interval"] in ["1d","1w","1wk","1mo","3mo"]:
             # Converting datetime->date should improve merge performance
             quotes.index = _pd.to_datetime(quotes.index.date)
-            dividends.index = _pd.to_datetime(dividends.index.date)
             splits.index = _pd.to_datetime(splits.index.date)
-        #
+            dividends.index = _pd.to_datetime(dividends.index.date)
+
+        # combine
         df = quotes
         if actions:
             df = df.sort_index()
             if dividends.shape[0] > 0:
                 df = utils.safe_merge_dfs(df, dividends, interval)
             if "Dividends" in df.columns:
-                f_na = df["Dividends"].isna()
-                df.loc[f_na,"Dividends"] = 0
+                df.loc[df["Dividends"].isna(),"Dividends"] = 0
             else:
                 df["Dividends"] = 0.0
-            #
             if splits.shape[0] > 0:
                 df = utils.safe_merge_dfs(df, splits, interval)
             if "Stock Splits" in df.columns:
-                f_na = df["Stock Splits"].isna()
-                df.loc[f_na,"Stock Splits"] = 0
+                df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
             else:
                 df["Stock Splits"] = 0.0
 
@@ -333,9 +331,6 @@ class TickerBase():
         elif params["interval"] == "1h":
             pass
         else:
-            df.index = _pd.to_datetime(df.index.date)
-            if tz is not None:
-                df.index = df.index.tz_localize(tz)
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup

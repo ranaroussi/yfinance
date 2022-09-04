@@ -21,12 +21,12 @@
 
 from __future__ import print_function
 
+import datetime as _datetime
 import requests as _requests
 import re as _re
 import pandas as _pd
 import numpy as _np
 import sys as _sys
-import datetime as _datetime
 
 try:
     import ujson as _json
