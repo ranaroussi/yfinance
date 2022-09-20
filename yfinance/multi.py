@@ -30,7 +30,7 @@ from . import shared
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True,
-             group_by='column', auto_adjust=False, back_adjust=False,
+             group_by='column', auto_adjust=False, back_adjust=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
              proxy=None, rounding=False, timeout=None, **kwargs):
     """Download yahoo tickers
@@ -56,6 +56,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Default is False
         auto_adjust: bool
             Adjust all OHLC automatically? Default is False
+        keepna: bool
+            Keep NaN rows returned by Yahoo?
+            Default is False
         actions: bool
             Download dividend + stock splits data. Default is False
         threads: bool / int
@@ -105,7 +108,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust,
+                                   back_adjust=back_adjust, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
                                    rounding=rounding, timeout=timeout)
         while len(shared._DFS) < len(tickers):
@@ -117,7 +120,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, proxy=proxy,
+                                 back_adjust=back_adjust, keepna=keepna, proxy=proxy,
                                  rounding=rounding, timeout=timeout)
             shared._DFS[ticker.upper()] = data
             if progress:
@@ -183,11 +186,11 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           rounding=False, timeout=None):
+                           keepna=False, rounding=False, timeout=None):
 
     data = _download_one(ticker, start, end, auto_adjust, back_adjust,
                          actions, period, interval, prepost, proxy, rounding,
-                         timeout)
+                         keepna, timeout)
     shared._DFS[ticker.upper()] = data
     if progress:
         shared._PROGRESS_BAR.animate()
@@ -197,11 +200,11 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  timeout=None):
+                  keepna=False, timeout=None):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
                                   back_adjust=back_adjust, proxy=proxy,
-                                  rounding=rounding, many=True,
+                                  rounding=rounding, keepna=keepna, many=True,
                                   timeout=timeout)
