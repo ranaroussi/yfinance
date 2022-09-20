@@ -73,18 +73,10 @@ class TickerBase():
         self._earnings_dates = None
         self._earnings_history = None
 
-        self._earnings = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._financials = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._balancesheet = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._cashflow = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
+        self._earnings = None
+        self._financials = None
+        self._balancesheet = None
+        self._cashflow = None
 
         # accept isin as ticker
         if utils.is_isin(self.ticker):
@@ -108,7 +100,7 @@ class TickerBase():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False,
+                auto_adjust=True, back_adjust=False, keepna=False,
                 proxy=None, rounding=False, timeout=None, **kwargs):
         """
         :Parameters:
@@ -131,6 +123,9 @@ class TickerBase():
                 Adjust all OHLC automatically? Default is True
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
+            keepna: bool
+                Keep NaN rows returned by Yahoo?
+                Default is False
             proxy: str
                 Optional. Proxy server URL scheme. Default is None
             rounding: bool
@@ -233,6 +228,11 @@ class TickerBase():
         # parse quotes
         try:
             quotes = utils.parse_quotes(data["chart"]["result"][0])
+            # Yahoo bug fix - it often appends latest price even if after end date
+            if end and not quotes.empty:
+                endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+                if quotes.index[quotes.shape[0]-1] >= endDt:
+                    quotes = quotes.iloc[0:quotes.shape[0]-1]
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
@@ -280,18 +280,13 @@ class TickerBase():
                 "chart"]["result"][0]["meta"]["priceHint"])
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
-        quotes.dropna(inplace=True)
+        if not keepna:
+            quotes.dropna(inplace=True)
 
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
 
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-
-        # Yahoo bug fix - it often appends latest price even if after end date
-        if end and not quotes.empty:
-            endDt = _pd.to_datetime(_datetime.datetime.fromtimestamp(end))
-            if quotes.index[quotes.shape[0]-1] > endDt:
-                quotes = quotes.iloc[0:quotes.shape[0]-1]
 
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
@@ -521,6 +516,10 @@ class TickerBase():
         data = utils.get_json(ticker_url + '/financials', proxy, self.session)
 
         # generic patterns
+        self._earnings = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._cashflow = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._balancesheet = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._financials = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
         for key in (
             (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
             (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
