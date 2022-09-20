@@ -71,18 +71,10 @@ class TickerBase():
         self._earnings_dates = None
         self._earnings_history = None
 
-        self._earnings = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._financials = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._balancesheet = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
-        self._cashflow = {
-            "yearly": utils.empty_df(),
-            "quarterly": utils.empty_df()}
+        self._earnings = None
+        self._financials = None
+        self._balancesheet = None
+        self._cashflow = None
 
         # accept isin as ticker
         if utils.is_isin(self.ticker):
@@ -239,6 +231,11 @@ class TickerBase():
         # parse quotes
         try:
             quotes = utils.parse_quotes(data["chart"]["result"][0], tz)
+            # Yahoo bug fix - it often appends latest price even if after end date
+            if end and not quotes.empty:
+                endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+                if quotes.index[quotes.shape[0]-1] >= endDt:
+                    quotes = quotes.iloc[0:quotes.shape[0]-1]
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
@@ -510,6 +507,10 @@ class TickerBase():
         data = utils.get_json(ticker_url + '/financials', proxy, self.session)
 
         # generic patterns
+        self._earnings = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._cashflow = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._balancesheet = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._financials = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
         for key in (
             (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
             (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
