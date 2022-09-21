@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
+import pytz as _tz
 import requests as _requests
 import pandas as _pd
 import numpy as _np
@@ -53,6 +54,7 @@ class TickerBase():
         self._history = None
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
+        self._tz = None
 
         self._fundamentals = False
         self._info = None
@@ -99,7 +101,7 @@ class TickerBase():
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, keepna=False,
-                proxy=None, rounding=False, tz=None, timeout=None, **kwargs):
+                proxy=None, rounding=False, timeout=None, **kwargs):
         """
         :Parameters:
             period : str
@@ -129,9 +131,6 @@ class TickerBase():
             rounding: bool
                 Round values to 2 decimal places?
                 Optional. Default is False = precision suggested by Yahoo!
-            tz: str
-                Optional timezone locale for dates.
-                (default data is returned as non-localized dates)
             timeout: None or float
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
@@ -145,20 +144,15 @@ class TickerBase():
         if start or period is None or period.lower() == "max":
             if end is None:
                 end = int(_time.time())
-            elif isinstance(end, _datetime.datetime):
-                end = int(_time.mktime(end.timetuple()))
             else:
-                end = int(_time.mktime(_time.strptime(str(end), '%Y-%m-%d')))
+                end = utils._parse_user_dt(end, self._get_ticker_tz())
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
-            elif isinstance(start, _datetime.datetime):
-                start = int(_time.mktime(start.timetuple()))
             else:
-                start = int(_time.mktime(
-                    _time.strptime(str(start), '%Y-%m-%d')))
+                start = utils._parse_user_dt(start, self._get_ticker_tz())
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
@@ -233,7 +227,7 @@ class TickerBase():
 
         # parse quotes
         try:
-            quotes = utils.parse_quotes(data["chart"]["result"][0], tz)
+            quotes = utils.parse_quotes(data["chart"]["result"][0])
             # Yahoo bug fix - it often appends latest price even if after end date
             if end and not quotes.empty:
                 endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
@@ -290,7 +284,9 @@ class TickerBase():
             quotes.dropna(inplace=True)
 
         # actions
-        dividends, splits = utils.parse_actions(data["chart"]["result"][0], tz)
+        dividends, splits = utils.parse_actions(data["chart"]["result"][0])
+
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
@@ -298,17 +294,16 @@ class TickerBase():
         df["Stock Splits"].fillna(0, inplace=True)
 
         # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(
-            data["chart"]["result"][0]["meta"]["exchangeTimezoneName"])
+        df.index = df.index.tz_localize("UTC").tz_convert(tz_exchange)
 
+        df = utils.fix_Yahoo_dst_issue(df, params["interval"])
+            
         if params["interval"][-1] == "m":
             df.index.name = "Datetime"
         elif params["interval"] == "1h":
             pass
         else:
-            df.index = _pd.to_datetime(df.index.date)
-            if tz is not None:
-                df.index = df.index.tz_localize(tz)
+            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange)
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup
@@ -324,77 +319,36 @@ class TickerBase():
 
     # ------------------------
 
-    def _get_fundamentals(self, proxy=None):
-        def cleanup(data):
-            df = _pd.DataFrame(data).drop(columns=['maxAge'])
-            for col in df.columns:
-                df[col] = _np.where(
-                    df[col].astype(str) == '-', _np.nan, df[col])
+    def _get_ticker_tz(self):
+        if not self._tz is None:
+            return self._tz
 
-            df.set_index('endDate', inplace=True)
-            try:
-                df.index = _pd.to_datetime(df.index, unit='s')
-            except ValueError:
-                df.index = _pd.to_datetime(df.index)
-            df = df.T
-            df.columns.name = ''
-            df.index.name = 'Breakdown'
+        tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
+        if tkr_tz is None:
+            tkr_tz = self.info["exchangeTimezoneName"]
+            # info fetch is relatively slow so cache timezone
+            utils.cache_store_tkr_tz(self.ticker, tkr_tz)
 
-            # rename incorrect yahoo key
-            df.rename(index={'treasuryStock': 'Gains Losses Not Affecting Retained Earnings'}, inplace=True)
+        self._tz = tkr_tz
+        return tkr_tz
 
-            df.index = utils.camel2title(df.index)
-            return df
-
+    def _get_info(self, proxy=None):
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, dict) and "https" in proxy:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        if self._fundamentals:
+        if (self._info is None) or (self._sustainability is None) or (self._recommendations is None):
+            ## Need to fetch
+            pass
+        else:
             return
 
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
         data = utils.get_json(ticker_url, proxy, self.session)
-
-        # holders
-        try:
-            resp = utils.get_html(ticker_url + '/holders', proxy, self.session)
-            holders = _pd.read_html(resp)
-        except Exception:
-            holders = []
-
-        if len(holders) >= 3:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-            self._mutualfund_holders = holders[2]
-        elif len(holders) >= 2:
-            self._major_holders = holders[0]
-            self._institutional_holders = holders[1]
-        elif len(holders) >= 1:
-            self._major_holders = holders[0]
-
-        # self._major_holders = holders[0]
-        # self._institutional_holders = holders[1]
-
-        if self._institutional_holders is not None:
-            if 'Date Reported' in self._institutional_holders:
-                self._institutional_holders['Date Reported'] = _pd.to_datetime(
-                    self._institutional_holders['Date Reported'])
-            if '% Out' in self._institutional_holders:
-                self._institutional_holders['% Out'] = self._institutional_holders[
-                    '% Out'].str.replace('%', '').astype(float) / 100
-
-        if self._mutualfund_holders is not None:
-            if 'Date Reported' in self._mutualfund_holders:
-                self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
-                    self._mutualfund_holders['Date Reported'])
-            if '% Out' in self._mutualfund_holders:
-                self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                    '% Out'].str.replace('%', '').astype(float) / 100
 
         # sustainability
         d = {}
@@ -426,7 +380,7 @@ class TickerBase():
         except Exception:
             pass
 
-       # For ETFs, provide this valuable data: the top holdings of the ETF
+        # For ETFs, provide this valuable data: the top holdings of the ETF
         try:
             if 'topHoldings' in data:
                 self._info.update(data['topHoldings'])
@@ -486,6 +440,77 @@ class TickerBase():
                 'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
         except Exception:
             pass
+
+    def _get_fundamentals(self, proxy=None):
+        def cleanup(data):
+            df = _pd.DataFrame(data).drop(columns=['maxAge'])
+            for col in df.columns:
+                df[col] = _np.where(
+                    df[col].astype(str) == '-', _np.nan, df[col])
+
+            df.set_index('endDate', inplace=True)
+            try:
+                df.index = _pd.to_datetime(df.index, unit='s')
+            except ValueError:
+                df.index = _pd.to_datetime(df.index)
+            df = df.T
+            df.columns.name = ''
+            df.index.name = 'Breakdown'
+
+            # rename incorrect yahoo key
+            df.rename(index={'treasuryStock': 'Gains Losses Not Affecting Retained Earnings'}, inplace=True)
+
+            df.index = utils.camel2title(df.index)
+            return df
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        if self._fundamentals:
+            return
+
+        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
+
+        # holders
+        try:
+            resp = utils.get_html(ticker_url + '/holders', proxy, self.session)
+            holders = _pd.read_html(resp)
+        except Exception:
+            holders = []
+
+        if len(holders) >= 3:
+            self._major_holders = holders[0]
+            self._institutional_holders = holders[1]
+            self._mutualfund_holders = holders[2]
+        elif len(holders) >= 2:
+            self._major_holders = holders[0]
+            self._institutional_holders = holders[1]
+        elif len(holders) >= 1:
+            self._major_holders = holders[0]
+
+        # self._major_holders = holders[0]
+        # self._institutional_holders = holders[1]
+
+        if self._institutional_holders is not None:
+            if 'Date Reported' in self._institutional_holders:
+                self._institutional_holders['Date Reported'] = _pd.to_datetime(
+                    self._institutional_holders['Date Reported'])
+            if '% Out' in self._institutional_holders:
+                self._institutional_holders['% Out'] = self._institutional_holders[
+                    '% Out'].str.replace('%', '').astype(float) / 100
+
+        if self._mutualfund_holders is not None:
+            if 'Date Reported' in self._mutualfund_holders:
+                self._mutualfund_holders['Date Reported'] = _pd.to_datetime(
+                    self._mutualfund_holders['Date Reported'])
+            if '% Out' in self._mutualfund_holders:
+                self._mutualfund_holders['% Out'] = self._mutualfund_holders[
+                    '% Out'].str.replace('%', '').astype(float) / 100
+
+        self._get_info(proxy)
 
         # get fundamentals
         data = utils.get_json(ticker_url + '/financials', proxy, self.session)
@@ -620,14 +645,14 @@ class TickerBase():
         self._fundamentals = True
 
     def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy=proxy)
+        self._get_info(proxy)
         data = self._recommendations
         if as_dict:
             return data.to_dict()
         return data
 
     def get_calendar(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy=proxy)
+        self._get_info(proxy)
         data = self._calendar
         if as_dict:
             return data.to_dict()
@@ -657,14 +682,14 @@ class TickerBase():
             return data
 
     def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy=proxy)
+        self._get_info(proxy)
         data = self._info
         if as_dict:
             return data.to_dict()
         return data
 
     def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
-        self._get_fundamentals(proxy=proxy)
+        self._get_info(proxy)
         data = self._sustainability
         if as_dict:
             return data.to_dict()
