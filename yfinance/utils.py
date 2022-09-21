@@ -21,11 +21,15 @@
 
 from __future__ import print_function
 
+import datetime as _datetime
+import pytz as _tz
 import requests as _requests
 import re as _re
 import pandas as _pd
 import numpy as _np
 import sys as _sys
+import os as _os
+import appdirs as _ad
 
 try:
     import ujson as _json
@@ -135,6 +139,23 @@ def camel2title(o):
     return [_re.sub("([a-z])([A-Z])", r"\g<1> \g<2>", i).title() for i in o]
 
 
+def _parse_user_dt(dt, exchange_tz):
+    if isinstance(dt, int):
+        ## Should already be epoch, test with conversion:
+        _datetime.datetime.fromtimestamp(dt)
+    else:
+        # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+        if isinstance(dt, str):
+            dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
+        if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
+            dt = _datetime.datetime.combine(dt, _datetime.time(0))
+        if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
+            # Assume user is referring to exchange's timezone
+            dt = _tz.timezone(exchange_tz).localize(dt)
+        dt = int(dt.timestamp())
+    return dt
+
+
 def auto_adjust(data):
     df = data.copy()
     ratio = df["Close"] / df["Adj Close"]
@@ -176,7 +197,7 @@ def back_adjust(data):
     return df[["Open", "High", "Low", "Close", "Volume"]]
 
 
-def parse_quotes(data, tz=None):
+def parse_quotes(data):
     timestamps = data["timestamp"]
     ohlc = data["indicators"]["quote"][0]
     volumes = ohlc["volume"]
@@ -199,13 +220,10 @@ def parse_quotes(data, tz=None):
     quotes.index = _pd.to_datetime(timestamps, unit="s")
     quotes.sort_index(inplace=True)
 
-    if tz is not None:
-        quotes.index = quotes.index.tz_localize(tz)
-
     return quotes
 
 
-def parse_actions(data, tz=None):
+def parse_actions(data):
     dividends = _pd.DataFrame(
         columns=["Dividends"], index=_pd.DatetimeIndex([]))
     splits = _pd.DataFrame(
@@ -218,8 +236,6 @@ def parse_actions(data, tz=None):
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
-            if tz is not None:
-                dividends.index = dividends.index.tz_localize(tz)
 
             dividends.columns = ["Dividends"]
 
@@ -229,13 +245,24 @@ def parse_actions(data, tz=None):
             splits.set_index("date", inplace=True)
             splits.index = _pd.to_datetime(splits.index, unit="s")
             splits.sort_index(inplace=True)
-            if tz is not None:
-                splits.index = splits.index.tz_localize(tz)
             splits["Stock Splits"] = splits["numerator"] / \
                 splits["denominator"]
             splits = splits["Stock Splits"]
 
     return dividends, splits
+
+
+def fix_Yahoo_dst_issue(df, interval):
+    if interval in ["1d","1w","1wk"]:
+        # These intervals should start at time 00:00. But for some combinations of date and timezone, 
+        # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
+        # The clue is (a) minutes=0 and (b) hour near 0. 
+        # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
+        f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22,23]))
+        dst_error_hours = _np.array([0]*df.shape[0])
+        dst_error_hours[f_pre_midnight] = 24-df.index[f_pre_midnight].hour
+        df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
+    return df
 
 
 class ProgressBar:
@@ -286,3 +313,37 @@ class ProgressBar:
 
     def __str__(self):
         return str(self.prog_bar)
+
+
+# Simple file cache of ticker->timezone:
+def get_cache_dirpath():
+    return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+def cache_lookup_tkr_tz(tkr):
+    fp = _os.path.join(get_cache_dirpath(), "tkr-tz.csv")
+    if not _os.path.isfile(fp):
+        return None
+
+    df = _pd.read_csv(fp)
+    f = df["Ticker"] == tkr
+    if sum(f) == 0:
+        return None
+
+    return df["Tz"][f].iloc[0]
+def cache_store_tkr_tz(tkr,tz):
+    df = _pd.DataFrame({"Ticker":[tkr], "Tz":[tz]})
+
+    dp = get_cache_dirpath()
+    if not _os.path.isdir(dp):
+        _os.makedirs(dp)
+    fp = _os.path.join(dp, "tkr-tz.csv")
+    if not _os.path.isfile(fp):
+        df.to_csv(fp, index=False)
+        return
+
+    df_all = _pd.read_csv(fp)
+    f = df_all["Ticker"]==tkr
+    if sum(f) > 0:
+        raise Exception("Tkr {} tz already in cache".format(tkr))
+
+    _pd.concat([df_all,df]).to_csv(fp, index=False)
+
