@@ -288,6 +288,8 @@ class TickerBase():
 
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+
         # combine
         df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
         df["Dividends"].fillna(0, inplace=True)
