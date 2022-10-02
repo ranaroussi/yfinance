@@ -247,9 +247,132 @@ def parse_actions(data):
             splits.sort_index(inplace=True)
             splits["Stock Splits"] = splits["numerator"] / \
                 splits["denominator"]
-            splits = splits["Stock Splits"]
+            splits = splits[["Stock Splits"]]
 
     return dividends, splits
+
+
+def safe_merge_dfs(df_main, df_sub, interval):
+    # Carefully merge 'df_sub' onto 'df_main'
+    # If naive merge fails, try again with reindexing df_sub:
+    # 1) if interval is weekly or monthly, then try with index set to start of week/month
+    # 2) if still failing then manually search through df_main.index to reindex df_sub
+
+    if df_sub.shape[0] == 0:
+        raise Exception("No data to merge")
+    
+    df_sub_backup = df_sub.copy()
+    data_cols = [c for c in df_sub.columns if not c in df_main]
+    if len(data_cols) > 1:
+        raise Exception("Expected 1 data col")
+    data_col = data_cols[0]
+
+    def _reindex_events(df, new_index, data_col_name):
+        if len(new_index) == len(set(new_index)):
+            # No duplicates, easy
+            df.index = new_index
+            return df
+
+        df["_NewIndex"] = new_index
+        # Duplicates present within periods but can aggregate
+        if data_col_name == "Dividends":
+            # Add
+            df = df.groupby("_NewIndex").sum()
+            df.index.name = None
+        elif data_col_name == "Stock Splits":
+            # Product
+            df = df.groupby("_NewIndex").prod()
+            df.index.name = None
+        else:
+            raise Exception("New index contains duplicates but unsure how to aggregate for '{}'".format(data_col_name))
+        if "_NewIndex" in df.columns:
+            df = df.drop("_NewIndex",axis=1)
+        return df
+
+    # Discard last row in 'df_sub' if significantly after last row in df_main.
+    # Size of difference depends on interval.
+    df_sub = df_sub[df_sub.index >= df_main.index[0]]
+    df_sub_last_dt = df_sub.index[-1]
+    df_main_last_dt = df_main.index[-1]
+    if df_sub_last_dt > df_main_last_dt:
+        if interval == "1mo" and df_sub_last_dt.month != df_main_last_dt.month:
+            df_sub = df_sub.drop(df_sub.index[-1])
+        elif interval in ["1wk","5d"] and df_sub_last_dt.week != df_main_last_dt.week:
+            df_sub = df_sub.drop(df_sub.index[-1])
+        elif interval == "1d" and df_sub_last_dt.date() > df_main_last_dt.date():
+            df_sub = df_sub.drop(df_sub.index[-1])
+        elif (interval.endswith('h') or interval.endswith('m')) and (df_sub_last_dt.date() > df_main_last_dt.date()):
+            df_sub = df_sub.drop(df_sub.index[-1])
+        if df_sub.shape[0] == 0:
+            # raise Exception("No data to merge after pruning out-of-range")
+            return df_main
+
+    df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if not data_lost:
+        return df
+    # Lost data during join()
+    if interval in ["1wk","1mo","3mo"]:
+        # Backdate all df_sub.index dates to start of week/month
+        if interval == "1wk":
+            new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
+        elif interval == "1mo":
+            new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
+        elif interval == "3mo":
+            new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
+        df_sub = _reindex_events(df_sub, new_index, data_col)
+        df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if not data_lost:
+        return df
+    # Lost data during join(). Manually check each df_sub.index date against df_main.index to
+    # find matching interval
+    df_sub = df_sub_backup.copy()
+    new_index = [-1]*df_sub.shape[0]
+    for i in range(df_sub.shape[0]):
+        dt_sub_i = df_sub.index[i]
+        if dt_sub_i in df_main.index:
+            new_index[i] = dt_sub_i ; continue
+        # Found a bad index date, need to search for near-match in df_main (same week/month)
+        fixed = False
+        for j in range(df_main.shape[0]-1):
+            dt_main_j0 = df_main.index[j]
+            dt_main_j1 = df_main.index[j+1]
+            if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
+                dt_sub_i = dt_main_j0 ; fixed = True ; break
+        if not fixed:
+            last_main_dt = df_main.index[df_main.shape[0]-1]
+            diff = dt_sub_i - last_main_dt
+            if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1wk" and last_main_dt.week == dt_sub_i.week:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
+                dt_sub_i = last_main_dt ; fixed = True
+            else:
+                td = _pd.to_timedelta(interval)
+                if (dt_sub_i-last_main_dt) < td:
+                    dt_sub_i = last_main_dt ; fixed = True
+        if not fixed:
+            raise Exception("df_sub table contains row that failed to map to row in main table")
+        new_index[i] = dt_sub_i
+    df_sub = _reindex_events(df_sub, new_index, data_col)
+    df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if data_lost:
+        raise Exception("Lost data during merge despite all attempts to align data")
+
+    return df
 
 
 def fix_Yahoo_dst_issue(df, interval):
