@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-0.1.76
+0.1.77
 ------
 - Fix user experience bug #1078
 
