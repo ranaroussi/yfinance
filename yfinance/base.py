@@ -141,18 +141,38 @@ class TickerBase():
                     error message printing to console.
         """
 
+        # Work with errors
+        debug_mode = True
+        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
+            debug_mode = kwargs["debug"]
+
+        err_msg = "No data found for this date range, symbol may be delisted"
+
         if start or period is None or period.lower() == "max":
+            # Check can get TZ. Fail => probably delisted
+            try:
+                tz = self._get_ticker_tz()
+            except KeyError as e:
+                if "exchangeTimezoneName" in str(e):
+                    shared._DFS[self.ticker] = utils.empty_df()
+                    shared._ERRORS[self.ticker] = err_msg
+                    if "many" not in kwargs and debug_mode:
+                        print('- %s: %s' % (self.ticker, err_msg))
+                    return utils.empty_df()
+                else:
+                    raise
+
             if end is None:
                 end = int(_time.time())
             else:
-                end = utils._parse_user_dt(end, self._get_ticker_tz())
+                end = utils._parse_user_dt(end, tz)
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
             else:
-                start = utils._parse_user_dt(start, self._get_ticker_tz())
+                start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
@@ -194,13 +214,6 @@ class TickerBase():
             data = data.json()
         except Exception:
             pass
-
-        # Work with errors
-        debug_mode = True
-        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
-            debug_mode = kwargs["debug"]
-
-        err_msg = "No data found for this date range, symbol may be delisted"
 
         if data is None or not type(data) is dict or 'status_code' in data.keys():
             shared._DFS[self.ticker] = utils.empty_df()
