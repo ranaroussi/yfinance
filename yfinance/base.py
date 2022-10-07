@@ -165,14 +165,14 @@ class TickerBase():
             if end is None:
                 end = int(_time.time())
             else:
-                end = utils._parse_user_dt(end, self._get_ticker_tz())
+                end = utils._parse_user_dt(end, tz)
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
             else:
-                start = utils._parse_user_dt(start, self._get_ticker_tz())
+                start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
