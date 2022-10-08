@@ -163,32 +163,42 @@ class Ticker(TickerBase):
         return self.get_earnings(freq='quarterly')
 
     @property
-    def financials(self):
-        return self.get_financials()
+    def income_stmt(self):
+        return self.get_income_stmt()
+    @property
+    def income_stmt_legacy(self):
+        return self.get_income_stmt_legacy()
 
     @property
-    def quarterly_financials(self):
-        return self.get_financials(freq='quarterly')
+    def quarterly_income_stmt(self):
+        return self.get_income_stmt(freq='quarterly')
 
     @property
     def balance_sheet(self):
-        return self.get_balancesheet()
+        return self.get_balance_sheet()
+    @property
+    def balancesheet(self):
+        return self.get_balance_sheet()
+    @property
+    def balance_sheet_legacy(self):
+        return self.get_balance_sheet_legacy()
+    @property
+    def balancesheet_legacy(self):
+        return self.get_balance_sheet_legacy()
 
     @property
     def quarterly_balance_sheet(self):
-        return self.get_balancesheet(freq='quarterly')
-
-    @property
-    def balancesheet(self):
-        return self.get_balancesheet()
-
+        return self.get_balance_sheet(freq='quarterly')
     @property
     def quarterly_balancesheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.get_balance_sheet(freq='quarterly')
 
     @property
     def cashflow(self):
         return self.get_cashflow()
+    @property
+    def cashflow_legacy(self):
+        return self.get_cashflow_legacy()
 
     @property
     def quarterly_cashflow(self):
@@ -197,6 +207,22 @@ class Ticker(TickerBase):
     @property
     def sustainability(self):
         return self.get_sustainability()
+
+    @property
+    def current_recommendations(self):
+        return self.get_current_recommendations()
+
+    @property
+    def analyst_price_target(self):
+        return self.get_analyst_price_target()
+
+    @property
+    def revenue_forecasts(self):
+        return self.get_rev_forecast()
+
+    @property
+    def earnings_forecasts(self):
+        return self.get_earnings_forecast()
 
     @property
     def options(self):
