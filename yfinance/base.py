@@ -28,6 +28,7 @@ import requests as _requests
 import pandas as _pd
 import numpy as _np
 import re as _re
+from pprint import pprint
 
 try:
     from urllib.parse import quote as urlencode
@@ -45,6 +46,9 @@ from . import shared
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
+
+_DEV = False
+# _DEV = True
 
 
 class TickerBase():
@@ -576,81 +580,180 @@ class TickerBase():
             except Exception:
                 pass
 
+        if _DEV:
+            # Fetching using get_financials_time_series() missing TTM column so cannot completely replace git-shogg's method
+            annual_income_stmt_ts = utils.get_financials_time_series(self.ticker, "financials", "annual", ticker_url, proxy, self.session)
+            annual_balance_sheet_ts = utils.get_financials_time_series(self.ticker, "balance-sheet", "annual", ticker_url, proxy, self.session)
+            annual_cashflow_ts = utils.get_financials_time_series(self.ticker, "cash-flow", "annual", ticker_url, proxy, self.session)
+
+            qtr_income_stmt_ts = utils.get_financials_time_series(self.ticker, "financials", "quarterly", ticker_url, proxy, self.session)
+            qtr_balance_sheet_ts = utils.get_financials_time_series(self.ticker, "balance-sheet", "quarterly", ticker_url, proxy, self.session)
+            qtr_cashflow_ts = utils.get_financials_time_series(self.ticker, "cash-flow", "quarterly", ticker_url, proxy, self.session)
+
         #------------------ Income Statement ------------------ 
-        try:
-            # Grab the financial template store. This details the order in which the financials should be presented.
-            data = financials_data['context']['dispatcher']['stores']['FinancialTemplateStore']
-            financials_template_ttm_order, financials_template_annual_order, financials_level_detail = utils.build_template(data)
+        # try:
+        # Grab the financial template store. This details the order in which the financials should be presented.
+        data = financials_data['context']['dispatcher']['stores']['FinancialTemplateStore']
+        financials_template_ttm_order, financials_template_annual_order, financials_level_detail = utils.build_template(data)
 
-            # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
-            data = financials_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
-            TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
+        # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
+        data = financials_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
+        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
 
-            TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
-            Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
-            # Combine the raw financial details and the template
-            TTM = TTM.reindex(financials_template_ttm_order)
-            Annual = Annual.reindex(financials_template_annual_order)
-            # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
-            TTM.columns = ['TTM ' + str(col) for col in TTM.columns]
-            TTM.index = TTM.index.str.replace(r'trailing', '')
-            Annual.index = Annual.index.str.replace(r'annual','')
-            _income_statement = Annual.merge(TTM, left_index=True, right_index=True)
-            _income_statement.index = utils.camel2title(_income_statement.T)
-            _income_statement['level_detail'] = financials_level_detail 
-            _income_statement = _income_statement.set_index([_income_statement.index,'level_detail'])
-            _income_statement = _income_statement[sorted(_income_statement.columns, reverse=True)]
-            # _income_statement = _income_statement[[]]
-            self._income["yearly"] = _income_statement.dropna(how='all')
-        except Exception as e:
-            self._income["yearly"] = _pd.DataFrame()
+        TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
+        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+        # Combine the raw financial details and the template
+        TTM = TTM.reindex(financials_template_ttm_order)
+        Annual = Annual.reindex(financials_template_annual_order)
+
+        # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns]
+        TTM.index = TTM.index.str.replace(r'trailing', '')
+        Annual.index = Annual.index.str.replace(r'annual','')
+        _income_statement = Annual.merge(TTM, left_index=True, right_index=True)
+
+        if _DEV:
+            annual_scraped_keys = _income_statement.dropna(how="all").index.values
+
+            # First, compare not-nan rows against get_financials_time_series(), are same rows returned?
+            annual_ts_keys = annual_income_stmt_ts.index.values
+            missing_from_ts = set(annual_scraped_keys)-set(annual_ts_keys)
+            missing_from_scraped = set(annual_ts_keys)-set(annual_scraped_keys)
+            if len(missing_from_ts)>0:
+                print("") ; print("")
+                print("WARNING: These scraped keys missing from time-series annual income-stmt:")
+                print(_income_statement[_income_statement.index.isin(missing_from_ts)][sorted(_income_statement.columns, reverse=True)])
+            if len(missing_from_scraped)>0:
+                print("") ; print("")
+                print("WARNING: These time-series keys missing from scraped annual income-stmt. Normally they are present in Yahoo.com so why missing here?")
+                print(annual_income_stmt_ts[annual_income_stmt_ts.index.isin(missing_from_scraped)])
+
+            # Next, compare time-series quarterly against scraped annual to see if same MultiIndex can be used
+            qtr_ts_keys = qtr_income_stmt_ts.index.values
+            missing_from_annual = set(qtr_ts_keys)-set(annual_scraped_keys)
+            # Remove what already know is missing
+            missing_from_annual -= missing_from_scraped
+            if len(missing_from_annual) > 0:
+                print("WARNING: These keys in time-series quarterly income-stmt are MISSING from scraped annual, complicates table construction")
+                print(qtr_income_stmt_ts[qtr_income_stmt_ts.index.isin(missing_from_annual)])
+            else:
+                print("GREAT: Should be easy to fix quarterly income-stmt, just copy MultiIndex from annual (once you fix missing keys)")
+
+        _income_statement.index = utils.camel2title(_income_statement.T)
+        _income_statement['level_detail'] = financials_level_detail 
+        _income_statement = _income_statement.set_index([_income_statement.index,'level_detail'])
+        _income_statement = _income_statement[sorted(_income_statement.columns, reverse=True)]
+        _income_statement = _income_statement.dropna(how='all')
+        self._income["yearly"] = _income_statement
+        # except Exception as e:
+        #     self._income["yearly"] = _pd.DataFrame()
 
         #------------------ Balance Sheet ------------------ 
-        try:
-            balance_sheet_data = utils.get_json(ticker_url+'/balance-sheet', proxy, self.session)
-            data = balance_sheet_data['context']['dispatcher']['stores']['FinancialTemplateStore']
-            balance_sheet_template_ttm_order, balance_sheet_template_annual_order, balance_sheet_level_detail = utils.build_template(data)
+        # try:
+        balance_sheet_data = utils.get_json(ticker_url+'/balance-sheet', proxy, self.session)
+        data = balance_sheet_data['context']['dispatcher']['stores']['FinancialTemplateStore']
+        balance_sheet_template_ttm_order, balance_sheet_template_annual_order, balance_sheet_level_detail = utils.build_template(data)
 
-            data = balance_sheet_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
-            TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
+        data = balance_sheet_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']
+        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
 
-            Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
-            Annual = Annual.reindex(balance_sheet_template_annual_order)
-            Annual.index = Annual.index.str.replace(r'annual','')
-            Annual.index = utils.camel2title(Annual.T)
-            _balance_sheet = Annual
-            _balance_sheet['level_detail'] = balance_sheet_level_detail 
-            _balance_sheet = _balance_sheet.set_index([_balance_sheet.index,'level_detail'])
-            _balance_sheet = _balance_sheet[sorted(_balance_sheet.columns, reverse=True)]
-            self._balance_sheet["yearly"] = _balance_sheet.dropna(how='all')
-        except Exception as e:
-            self._balance_sheet["yearly"] = _pd.DataFrame()
+        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+        Annual = Annual.reindex(balance_sheet_template_annual_order)
+        Annual.index = Annual.index.str.replace(r'annual','')
+
+        if _DEV:
+            annual_scraped_keys = Annual.dropna(how="all").index.values
+
+            # First, compare not-nan rows against get_financials_time_series(), are same rows returned?
+            annual_ts_keys = annual_balance_sheet_ts.index.values
+            missing_from_ts = set(annual_scraped_keys)-set(annual_ts_keys)
+            missing_from_scraped = set(annual_ts_keys)-set(annual_scraped_keys)
+            if len(missing_from_ts)>0:
+                print("") ; print("")
+                print("WARNING: These scraped keys missing from time-series annual balance-sheet:")
+                print(Annual[Annual.index.isin(missing_from_ts)][sorted(Annual.columns, reverse=True)])
+            if len(missing_from_scraped)>0:
+                print("") ; print("")
+                print("WARNING: These time-series keys missing from scraped annual balance-sheet. Normally they are present in Yahoo.com so why missing here?")
+                print(annual_balance_sheet_ts[annual_balance_sheet_ts.index.isin(missing_from_scraped)])
+
+            # Next, compare time-series quarterly against scraped annual to see if same MultiIndex can be used
+            qtr_ts_keys = qtr_balance_sheet_ts.index.values
+            missing_from_annual = set(qtr_ts_keys)-set(annual_scraped_keys)
+            # Remove what already know is missing
+            missing_from_annual -= missing_from_scraped
+            if len(missing_from_annual) > 0:
+                print("") ; print("")
+                print("WARNING: These keys in time-series quarterly balance-sheet are MISSING from scraped annual, complicates table construction")
+                print(qtr_balance_sheet_ts[qtr_balance_sheet_ts.index.isin(missing_from_annual)])
+            else:
+                print("") ; print("")
+                print("GREAT: Should be easy to fix quarterly balance-sheet, just copy MultiIndex from annual (once you fix missing keys)")
+
+        Annual.index = utils.camel2title(Annual.T)
+        _balance_sheet = Annual
+        _balance_sheet['level_detail'] = balance_sheet_level_detail 
+        _balance_sheet = _balance_sheet.set_index([_balance_sheet.index,'level_detail'])
+        _balance_sheet = _balance_sheet[sorted(_balance_sheet.columns, reverse=True)]
+        self._balance_sheet["yearly"] = _balance_sheet.dropna(how='all')
+        # except Exception as e:
+        #     self._balance_sheet["yearly"] = _pd.DataFrame()
 
         #------------------ Cash Flow Statement ------------------ 
-        try:
-            cash_flow_data = utils.get_json(ticker_url+'/cash-flow', proxy, self.session)
-            data = cash_flow_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
-            cash_flow_template_ttm_order, cash_flow_template_annual_order, cash_flow_level_detail = utils.build_template(data)
+        # try:
+        cash_flow_data = utils.get_json(ticker_url+'/cash-flow', proxy, self.session)
+        data = cash_flow_data['context']['dispatcher']['stores']['FinancialTemplateStore']   # Grab the financial template store. This  details the order in which the financials should be presented.
+        cash_flow_template_ttm_order, cash_flow_template_annual_order, cash_flow_level_detail = utils.build_template(data)
 
-            data = cash_flow_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
-            TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
+        data = cash_flow_data['context']['dispatcher']['stores']['QuoteTimeSeriesStore'] # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
+        TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
 
-            TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
-            Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
-            # Combine the raw financial details and the template
-            TTM = TTM.reindex(cash_flow_template_ttm_order)
-            Annual = Annual.reindex(cash_flow_template_annual_order)
-            TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
-            TTM.index = TTM.index.str.replace(r'trailing', '')
-            Annual.index = Annual.index.str.replace(r'annual','')
-            _cash_flow_stmt = Annual.merge(TTM, left_index=True, right_index=True)
-            _cash_flow_stmt.index = utils.camel2title(_cash_flow_stmt.T)
-            _cash_flow_stmt['level_detail'] = cash_flow_level_detail 
-            _cash_flow_stmt = _cash_flow_stmt.set_index([_cash_flow_stmt.index,'level_detail'])
-            _cash_flow_stmt = _cash_flow_stmt[sorted(_cash_flow_stmt.columns, reverse=True)]
-            self._cashflow["yearly"] = _cash_flow_stmt.dropna(how='all')
-        except Exception as e:
-            self._cashflow["yearly"] = _pd.DataFrame()
+        TTM = _pd.DataFrame.from_dict(TTM_dicts).set_index("index")
+        Annual = _pd.DataFrame.from_dict(Annual_dicts).set_index("index")
+        # Combine the raw financial details and the template
+        TTM = TTM.reindex(cash_flow_template_ttm_order)
+        Annual = Annual.reindex(cash_flow_template_annual_order)
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        TTM.index = TTM.index.str.replace(r'trailing', '')
+        Annual.index = Annual.index.str.replace(r'annual','')
+        _cash_flow_stmt = Annual.merge(TTM, left_index=True, right_index=True)
+
+        if _DEV:
+            annual_scraped_keys = _cash_flow_stmt.dropna(how="all").index.values
+
+            # First, compare not-nan rows against get_financials_time_series(), are same rows returned?
+            annual_ts_keys = annual_cashflow_ts.index.values
+            missing_from_ts = set(annual_scraped_keys)-set(annual_ts_keys)
+            missing_from_scraped = set(annual_ts_keys)-set(annual_scraped_keys)
+            if len(missing_from_ts)>0:
+                print("") ; print("")
+                print("WARNING: These scraped keys missing from time-series annual cash-flow:")
+                print(_cash_flow_stmt[_cash_flow_stmt.index.isin(missing_from_ts)][sorted(_cash_flow_stmt.columns, reverse=True)])
+            if len(missing_from_scraped)>0:
+                print("") ; print("")
+                print("WARNING: These time-series keys missing from scraped annual cash-flow. Normally they are present in Yahoo.com so why missing here?")
+                print(annual_cashflow_ts[annual_cashflow_ts.index.isin(missing_from_scraped)])
+
+            # Next, compare time-series quarterly against scraped annual to see if same MultiIndex can be used
+            qtr_ts_keys = qtr_cashflow_ts.index.values
+            missing_from_annual = set(qtr_ts_keys)-set(annual_scraped_keys)
+            # Remove what already know is missing
+            missing_from_annual -= missing_from_scraped
+            if len(missing_from_annual) > 0:
+                print("") ; print("")
+                print("WARNING: These keys in time-series quarterly cash-flow are MISSING from scraped annual, complicates table construction")
+                print(qtr_cashflow_ts[qtr_cashflow_ts.index.isin(missing_from_annual)])
+            else:
+                print("") ; print("")
+                print("GREAT: Should be easy to fix quarterly cash-flow, just copy MultiIndex from annual (once you fix missing keys)")
+
+        _cash_flow_stmt.index = utils.camel2title(_cash_flow_stmt.T)
+        _cash_flow_stmt['level_detail'] = cash_flow_level_detail 
+        _cash_flow_stmt = _cash_flow_stmt.set_index([_cash_flow_stmt.index,'level_detail'])
+        _cash_flow_stmt = _cash_flow_stmt[sorted(_cash_flow_stmt.columns, reverse=True)]
+        self._cashflow["yearly"] = _cash_flow_stmt.dropna(how='all')
+        # except Exception as e:
+        #     self._cashflow["yearly"] = _pd.DataFrame()
 
         #------------------ Analysis Data/Analyst Forecasts ------------------
         try:
