@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+import time as _time
 import datetime as _datetime
 import pytz as _tz
 import requests as _requests
@@ -198,6 +199,78 @@ def retreive_financial_details(data):
         except Exception as e:
             pass
     return TTM_dicts, Annual_dicts
+
+
+def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, session=None):
+    acceptable_names = ["financials", "balance-sheet", "cash-flow"]
+    if not name in acceptable_names:
+        raise Exception("name '{}' must be one of: {}".format(name, acceptable_names))
+    acceptable_timestamps = ["annual", "quarterly"]
+    if not timescale  in acceptable_timestamps:
+        raise Exception("timescale '{}' must be one of: {}".format(timescale, acceptable_timestamps))
+
+    session = session or _requests
+
+    financials_data = get_json(ticker_url+'/'+name, proxy, session)
+
+    # Step 1: get the keys:
+    def _finditem1(key, obj):
+        values = []
+        if isinstance(obj,dict):
+            if key in obj.keys():
+                values.append(obj[key])
+            for k,v in obj.items():
+                values += _finditem1(key,v)
+        elif isinstance(obj,list):
+            for v in obj:
+                values += _finditem1(key,v)
+        return values
+    keys = _finditem1("key",financials_data['context']['dispatcher']['stores']['FinancialTemplateStore'])
+
+    # Step 2: construct url:
+    ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(ticker)
+    if len(keys) == 0:
+        raise Exception("Fetching keys failed")
+    # yr_url = ts_url_base + "&type=" + ",".join(["annual"+k for k in keys])
+    # qtr_url = ts_url_base + "&type=" + ",".join(["quarterly"+k for k in keys])
+    # url = qtr_url
+    url = ts_url_base + "&type=" + ",".join([timescale+k for k in keys])
+    # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
+    start_dt = _datetime.datetime(2016, 12, 31)
+    end = (_datetime.datetime.now() + _datetime.timedelta(days=366))
+    url += "&period1={}&period2={}".format(int(start_dt.timestamp()), int(end.timestamp()))
+
+    # Step 3: fetch and reshape data
+    json_str = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
+    json_data = _json.loads(json_str)
+    data_raw = json_data["timeseries"]["result"]
+    # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
+    for d in data_raw:
+        del d["meta"]
+
+    # Now reshape data into a table:
+    # Step 1: get columns and index:
+    timestamps = set()
+    data_unpacked = {}
+    for x in data_raw:
+        for k in x.keys():
+            if k=="timestamp":
+                timestamps.update(x[k])
+            else:
+                data_unpacked[k] = x[k]
+    timestamps = sorted(list(timestamps))
+    dates = _pd.to_datetime(timestamps, unit="s")
+    df = _pd.DataFrame(columns=dates, index=data_unpacked.keys())
+    for k,v in data_unpacked.items():
+        if df is None:
+            df = _pd.DataFrame(columns=dates, index=[k])
+        df.loc[k] = {_pd.Timestamp(x["asOfDate"]):x["reportedValue"]["raw"] for x in v}
+
+    df.index = df.index.str.replace("^"+timescale, "", regex=True)
+
+    df = df[sorted(df.columns, reverse=True)]
+
+    return df
 
 
 def camel2title(o):
