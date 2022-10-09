@@ -59,6 +59,7 @@ class TickerBase:
         self._isin = None
         self._news = []
         self._shares = None
+        self._shares_full = None
 
         self._earnings_dates = {}
 
@@ -1117,6 +1118,35 @@ class TickerBase:
         if as_dict:
             return data.to_dict()
         return data
+
+    def get_shares_full(self, proxy=None):
+        if self._shares_full is not None:
+            return self._shares_full
+
+        session = self.session or _requests
+
+        # Using this url without populating 'type' parameter returns full share count history
+        ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(self.ticker)
+        start_dt = _pd.Timestamp("1950-01-01")
+        shares_url = ts_url_base + "&period1={}&period2={}".format(int(start_dt.timestamp()), int(_time.time()))
+        json_str = session.get(url=shares_url, proxies=proxy, headers=utils.user_agent_headers).text
+        json_data = _json.loads(json_str)
+        # fail = False
+        # try:
+        #     fail = json_data["finance"]["error"]["code"] == "Bad Request"
+        # except:
+        #     pass
+        # if fail:
+        #     from pprint import pprint
+        #     print("shares_url:")
+        #     print(shares_url)
+        #     print("json_data:")
+        #     pprint(json_data)
+        #     raise Exception("Problem in json data")
+        shares_data = json_data["timeseries"]["result"]
+
+        self._shares_full = _pd.DataFrame(data={"count":shares_data[0]["shares_out"]}, index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
+        return self._shares_full
 
     def get_isin(self, proxy=None) -> Optional[str]:
         # *** experimental ***
