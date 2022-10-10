@@ -42,11 +42,3 @@ class TestPriceHistory(unittest.TestCase):
 
 if __name__ == '__main__':
 	unittest.main()
-
-	# Run tests sequentially:
-	import inspect
-	test_src = inspect.getsource(TestPriceHistory)
-	unittest.TestLoader.sortTestMethodsUsing = lambda _, x, y: (
-		test_src.index(f"def {x}") - test_src.index(f"def {y}")
-	)
-	unittest.main(verbosity=2)
