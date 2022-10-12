@@ -289,24 +289,6 @@ def safe_merge_dfs(df_main, df_sub, interval):
             df = df.drop("_NewIndex",axis=1)
         return df
 
-    # Discard last row in 'df_sub' if significantly after last row in df_main.
-    # Size of difference depends on interval.
-    df_sub = df_sub[df_sub.index >= df_main.index[0]]
-    df_sub_last_dt = df_sub.index[-1]
-    df_main_last_dt = df_main.index[-1]
-    if df_sub_last_dt > df_main_last_dt:
-        if interval == "1mo" and df_sub_last_dt.month != df_main_last_dt.month:
-            df_sub = df_sub.drop(df_sub.index[-1])
-        elif interval in ["1wk","5d"] and df_sub_last_dt.week != df_main_last_dt.week:
-            df_sub = df_sub.drop(df_sub.index[-1])
-        elif interval == "1d" and df_sub_last_dt.date() > df_main_last_dt.date():
-            df_sub = df_sub.drop(df_sub.index[-1])
-        elif (interval.endswith('h') or interval.endswith('m')) and (df_sub_last_dt.date() > df_main_last_dt.date()):
-            df_sub = df_sub.drop(df_sub.index[-1])
-        if df_sub.shape[0] == 0:
-            # raise Exception("No data to merge after pruning out-of-range")
-            return df_main
-
     df = df_main.join(df_sub)
 
     f_na = df[data_col].isna()
@@ -343,7 +325,12 @@ def safe_merge_dfs(df_main, df_sub, interval):
             dt_main_j0 = df_main.index[j]
             dt_main_j1 = df_main.index[j+1]
             if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
-                dt_sub_i = dt_main_j0 ; fixed = True ; break
+                fixed = True
+                if interval.endswith('h') or interval.endswith('m'):
+                    # Must also be same day
+                    fixed = (dt_main_j0.date() == dt_sub_i.date()) and (dt_sub_i.date() == dt_main_j1.date())
+                if fixed:
+                    dt_sub_i = dt_main_j0 ; break
         if not fixed:
             last_main_dt = df_main.index[df_main.shape[0]-1]
             diff = dt_sub_i - last_main_dt
@@ -359,10 +346,8 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 dt_sub_i = last_main_dt ; fixed = True
             else:
                 td = _pd.to_timedelta(interval)
-                if (dt_sub_i-last_main_dt) < td:
+                if (dt_sub_i>=last_main_dt) and (dt_sub_i-last_main_dt < td):
                     dt_sub_i = last_main_dt ; fixed = True
-        if not fixed:
-            raise Exception("df_sub table contains row that failed to map to row in main table")
         new_index[i] = dt_sub_i
     df_sub = _reindex_events(df_sub, new_index, data_col)
     df = df_main.join(df_sub)
@@ -370,7 +355,13 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        raise Exception("Lost data during merge despite all attempts to align data")
+        ## Not always possible to match events with trading, e.g. when released pre-market.
+        ## So have to append to bottom with nan prices.
+        f_missing = ~df_sub.index.isin(df.index)
+        df_sub_missing = df_sub[f_missing]
+        keys = set(["Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close", "Close"]).intersection(df.columns)
+        df_sub_missing[list(keys)] = _np.nan
+        df = _pd.concat([df, df_sub_missing], sort=True)
 
     return df
 
