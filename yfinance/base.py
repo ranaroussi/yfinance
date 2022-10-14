@@ -301,6 +301,8 @@ class TickerBase():
 
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+        
         # prepare index for combine:
         quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
         splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
