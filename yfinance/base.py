@@ -141,18 +141,38 @@ class TickerBase():
                     error message printing to console.
         """
 
+        # Work with errors
+        debug_mode = True
+        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
+            debug_mode = kwargs["debug"]
+
+        err_msg = "No data found for this date range, symbol may be delisted"
+
         if start or period is None or period.lower() == "max":
+            # Check can get TZ. Fail => probably delisted
+            try:
+                tz = self._get_ticker_tz()
+            except KeyError as e:
+                if "exchangeTimezoneName" in str(e):
+                    shared._DFS[self.ticker] = utils.empty_df()
+                    shared._ERRORS[self.ticker] = err_msg
+                    if "many" not in kwargs and debug_mode:
+                        print('- %s: %s' % (self.ticker, err_msg))
+                    return utils.empty_df()
+                else:
+                    raise
+
             if end is None:
                 end = int(_time.time())
             else:
-                end = utils._parse_user_dt(end, self._get_ticker_tz())
+                end = utils._parse_user_dt(end, tz)
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
             else:
-                start = utils._parse_user_dt(start, self._get_ticker_tz())
+                start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
@@ -194,13 +214,6 @@ class TickerBase():
             data = data.json()
         except Exception:
             pass
-
-        # Work with errors
-        debug_mode = True
-        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
-            debug_mode = kwargs["debug"]
-
-        err_msg = "No data found for this date range, symbol may be delisted"
 
         if data is None or not type(data) is dict or 'status_code' in data.keys():
             shared._DFS[self.ticker] = utils.empty_df()
@@ -289,14 +302,33 @@ class TickerBase():
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+        
+        # prepare index for combine:
+        quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
+        splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
+        dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
+        if params["interval"] in ["1d","1w","1wk","1mo","3mo"]:
+            # Converting datetime->date should improve merge performance
+            quotes.index = _pd.to_datetime(quotes.index.date)
+            splits.index = _pd.to_datetime(splits.index.date)
+            dividends.index = _pd.to_datetime(dividends.index.date)
 
         # combine
-        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
-        df["Dividends"].fillna(0, inplace=True)
-        df["Stock Splits"].fillna(0, inplace=True)
-
-        # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(tz_exchange)
+        df = quotes
+        if actions:
+            df = df.sort_index()
+            if dividends.shape[0] > 0:
+                df = utils.safe_merge_dfs(df, dividends, interval)
+            if "Dividends" in df.columns:
+                df.loc[df["Dividends"].isna(),"Dividends"] = 0
+            else:
+                df["Dividends"] = 0.0
+            if splits.shape[0] > 0:
+                df = utils.safe_merge_dfs(df, splits, interval)
+            if "Stock Splits" in df.columns:
+                df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
+            else:
+                df["Stock Splits"] = 0.0
 
         df = utils.fix_Yahoo_dst_issue(df, params["interval"])
             
@@ -305,7 +337,6 @@ class TickerBase():
         elif params["interval"] == "1h":
             pass
         else:
-            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange)
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup
@@ -313,9 +344,6 @@ class TickerBase():
         df = df[~df.index.duplicated(keep='first')]
 
         self._history = df.copy()
-
-        if not actions:
-            df.drop(columns=["Dividends", "Stock Splits"], inplace=True)
 
         return df
 
