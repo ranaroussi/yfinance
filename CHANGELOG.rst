@@ -1,6 +1,17 @@
 Change Log
 ===========
 
+0.1.77
+------
+- Fix user experience bug #1078
+
+0.1.75
+------
+- Fixed datetime-related issues: #1048
+- Add 'keepna' argument #1032
+- Speedup Ticker() creation #1042
+- Improve a bugfix #1033
+
 0.1.74
 ------
 - Fixed bug introduced in 0.1.73 (sorry :/)
