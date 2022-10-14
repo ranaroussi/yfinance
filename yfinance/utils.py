@@ -285,16 +285,15 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                 if "Adj Close" in quotes.columns:
                     quotes.loc[idx2,"Adj Close"] = quotes["Adj Close"][n-1]
                 quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
-                quotes = quotes.iloc[0:n-1]
-                n = quotes.shape[0]
-        
+                quotes = quotes.drop(quotes.index[n-1])
+
         # Similar bug in daily data except most data is simply duplicated
-        # - exception is volume, *slightly* different on final row (and matches website)
+        # - exception is volume, *slightly* greater on final row (and matches website)
         elif interval=="1d":
             if dt1.date() == dt2.date():
                 # Last two rows are on same day. Drop second-to-last row
                 quotes = quotes.drop(quotes.index[n-2])
-                n = quotes.shape[0]
+
     return quotes
 
 
