@@ -252,6 +252,51 @@ def parse_actions(data):
     return dividends, splits
 
 
+def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
+    # Yahoo bug fix. If market is open today then Yahoo normally returns 
+    # todays data as a separate row from rest-of week/month interval in above row. 
+    # Seems to depend on what exchange e.g. crypto OK.
+    # Fix = merge them together
+    n = quotes.shape[0]
+    if n > 1:
+        dt1 = quotes.index[n-1].tz_localize("UTC").tz_convert(tz_exchange)
+        dt2 = quotes.index[n-2].tz_localize("UTC").tz_convert(tz_exchange)
+        if interval in ["1wk", "1mo", "3mo"]:
+            if interval == "1wk":
+                last_rows_same_interval = dt1.year==dt2.year and dt1.week==dt2.week
+            elif interval == "1mo":
+                last_rows_same_interval = dt1.month==dt2.month
+            elif interval == "3mo":
+                last_rows_same_interval = dt1.year==dt2.year and dt1.quarter==dt2.quarter
+            if last_rows_same_interval:
+                # Last two rows are within same interval
+                idx1 = quotes.index[n-1]
+                idx2 = quotes.index[n-2]
+                if _np.isnan(quotes.loc[idx2,"Open"]):
+                    quotes.loc[idx2,"Open"] = quotes["Open"][n-1]
+                # Note: nanmax() & nanmin() ignores NaNs
+                quotes.loc[idx2,"High"] = _np.nanmax([quotes["High"][n-1], quotes["High"][n-2]])
+                quotes.loc[idx2,"Low"] = _np.nanmin([quotes["Low"][n-1], quotes["Low"][n-2]])
+                quotes.loc[idx2,"Close"] = quotes["Close"][n-1]
+                if "Adj High" in quotes.columns:
+                    quotes.loc[idx2,"Adj High"] = _np.nanmax([quotes["Adj High"][n-1], quotes["Adj High"][n-2]])
+                if "Adj Low" in quotes.columns:
+                    quotes.loc[idx2,"Adj Low"] = _np.nanmin([quotes["Adj Low"][n-1], quotes["Adj Low"][n-2]])
+                if "Adj Close" in quotes.columns:
+                    quotes.loc[idx2,"Adj Close"] = quotes["Adj Close"][n-1]
+                quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
+                quotes = quotes.drop(quotes.index[n-1])
+
+        # Similar bug in daily data except most data is simply duplicated
+        # - exception is volume, *slightly* greater on final row (and matches website)
+        elif interval=="1d":
+            if dt1.date() == dt2.date():
+                # Last two rows are on same day. Drop second-to-last row
+                quotes = quotes.drop(quotes.index[n-2])
+
+    return quotes
+
+
 def safe_merge_dfs(df_main, df_sub, interval):
     # Carefully merge 'df_sub' onto 'df_main'
     # If naive merge fails, try again with reindexing df_sub:
