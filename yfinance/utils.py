@@ -100,6 +100,16 @@ def build_template(data):
                                 template_ttm_order.append('trailing{}'.format(child3['key']))
                                 template_annual_order.append('annual{}'.format(child3['key']))
                                 level_detail.append(3)
+                                if 'children' in child3:
+                                    for child4 in child3['children']: # Level 4
+                                        template_ttm_order.append('trailing{}'.format(child4['key']))
+                                        template_annual_order.append('annual{}'.format(child4['key']))
+                                        level_detail.append(4)
+                                        if 'children' in child4:
+                                            for child5 in child4['children']: # Level 5
+                                                template_ttm_order.append('trailing{}'.format(child5['key']))
+                                                template_annual_order.append('annual{}'.format(child5['key']))
+                                                level_detail.append(5)
     return template_ttm_order, template_annual_order, level_detail
 
 def retreive_financial_details(data):
@@ -118,11 +128,14 @@ def retreive_financial_details(data):
                 time_series_dict = {}
                 time_series_dict['index'] = key
                 for each in data['timeSeries'][key]:    # Loop through the years
-                    time_series_dict[each['asOfDate']] = each['reportedValue']
+                    if each == None:
+                        continue
+                    else:
+                        time_series_dict[each['asOfDate']] = each['reportedValue']
                     # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
-                if each['periodType'] == 'TTM':
+                if 'trailing' in key:
                     TTM_dicts.append(time_series_dict)
-                elif each['periodType'] == '12M':
+                elif 'annual' in key:
                     Annual_dicts.append(time_series_dict)
         except Exception as e:
             pass

@@ -482,7 +482,7 @@ class TickerBase():
             TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
             TTM.index = TTM.index.str.replace(r'trailing', '')
             Annual.index = Annual.index.str.replace(r'annual','')
-            _income_statement = Annual.merge(TTM, left_index=True, right_index=True)
+            _income_statement = Annual.merge(TTM, how='outer',left_index=True, right_index=True)
             _income_statement.index = utils.camel2title(_income_statement.T)
             _income_statement['level_detail'] = financials_level_detail 
             _income_statement = _income_statement.set_index([_income_statement.index,'level_detail'])
@@ -527,7 +527,7 @@ class TickerBase():
             TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
             TTM.index = TTM.index.str.replace(r'trailing', '')
             Annual.index = Annual.index.str.replace(r'annual','')
-            _cash_flow_statement = Annual.merge(TTM, left_index=True, right_index=True)
+            _cash_flow_statement = Annual.merge(TTM, how='outer',left_index=True, right_index=True)
             _cash_flow_statement.index = utils.camel2title(_cash_flow_statement.T)
             _cash_flow_statement['level_detail'] = cash_flow_level_detail 
             _cash_flow_statement = _cash_flow_statement.set_index([_cash_flow_statement.index,'level_detail'])
