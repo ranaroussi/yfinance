@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# Yahoo! Finance market data downloader (+fix for Pandas Datareader)
+# yfinance - market data downloader
 # https://github.com/ranaroussi/yfinance
 
-"""Yahoo! Finance market data downloader (+fix for Pandas Datareader)"""
+"""yfinance - market data downloader"""
 
 from setuptools import setup, find_packages
 # from codecs import open
@@ -22,14 +22,15 @@ with open("yfinance/version.py") as f:
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
-with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
     name='yfinance',
     version=version,
-    description='Yahoo! Finance market data downloader',
+    description='Download market data from Yahoo! Finance API',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/ranaroussi/yfinance',
     author='Ran Aroussi',
     author_email='ran@aroussi.com',
@@ -52,7 +53,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
+        # 'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
@@ -60,12 +61,18 @@ setup(
     platforms=['any'],
     keywords='pandas, yahoo finance, pandas datareader',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
-    install_requires=['pandas>=0.24', 'numpy>=1.15',
-                      'requests>=2.20', 'multitasking>=0.0.7',
-                      'lxml>=4.5.1'],
+    install_requires=['pandas>=0.24.0', 'numpy>=1.15',
+                      'requests>=2.26', 'multitasking>=0.0.7',
+                      'lxml>=4.5.1', 'appdirs>=1.4.4'],
     entry_points={
         'console_scripts': [
             'sample=sample:main',
         ],
     },
 )
+
+print("""
+NOTE: yfinance is not affiliated, endorsed, or vetted by Yahoo, Inc.
+
+You should refer to Yahoo!'s terms of use for details on your rights
+to use the actual data downloaded.""")

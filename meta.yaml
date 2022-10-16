@@ -21,6 +21,7 @@ requirements:
     - requests >=2.21
     - multitasking >=0.0.7
     - lxml >=4.5.1
+    - appdirs >= 1.4.4
     - pip
     - python
 
@@ -30,6 +31,7 @@ requirements:
     - requests >=2.21
     - multitasking >=0.0.7
     - lxml >=4.5.1
+    - appdirs >= 1.4.4
     - python
 
 test:

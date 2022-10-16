@@ -1,9 +1,82 @@
 Change Log
 ===========
-0.1.64
+0.1.78
 ------
 - Updated the way in which the annual financial data is pieced together (income statement, balance sheet and cash flow statement) this now more accurately reflects what is presented in Yahoo Finance.
 - Added functionality to enable users to pull in detail from the Yahoo Finance Analysis page.
+
+0.1.77
+------
+- Fix user experience bug #1078
+
+0.1.75
+------
+- Fixed datetime-related issues: #1048
+- Add 'keepna' argument #1032
+- Speedup Ticker() creation #1042
+- Improve a bugfix #1033
+
+0.1.74
+------
+- Fixed bug introduced in 0.1.73 (sorry :/)
+
+0.1.73
+------
+- Merged several PR that fixed misc issues
+
+0.1.72
+------
+- Misc bugfixs
+
+0.1.71
+------
+- Added Tickers(…).news()
+- Return empty DF if YF missing earnings dates
+- Fix EPS % to 0->1
+- Fix timezone handling
+- Fix handling of missing data
+- Clean&format earnings_dates table
+- Add ``.get_earnings_dates()`` to retreive earnings calendar
+- Added ``.get_earnings_history()`` to fetch earnings data
+
+0.1.70
+------
+- Bug fixed - Closes #937
+
+0.1.69
+------
+- Bug fixed - #920
+
+0.1.68
+------
+- Upgraded requests dependency
+- Removed Python 3.5 support
+
+0.1.67
+------
+- Added legal disclaimers to make sure people are aware that this library is not affiliated, endorsed, or vetted by Yahoo, Inc.
+
+0.1.66
+------
+- Merged PR to allow yfinance to be pickled
+
+0.1.65
+------
+- Merged PRs to fix some bugs
+- Added lookup by ISIN ``utils.get_all_by_isin(...)``, ``utils.get_ticker_by_isin(...)``, ``utils.get_info_by_isin(...)``, ``utils.get_news_by_isin(...)``
+- ``yf.Ticker``, ``yf.Tickers``, and ``yf.download`` will auto-detect ISINs and convert them to tickers
+- Propagating timeout parameter through code, setting request.get(timeout)
+- Adds ``Ticker.analysis`` and ``Ticker.get_analysis(...)``
+
+0.1.64
+------
+- Merged PRs to fix some bugs
+- Added ``Ticker.stats()`` method
+- Added ``Ticker.news`` property
+- Providing topHoldings for ETFs
+- Replaceed drop duplicate prices with indexes
+- Added pre-market price to ``Ticker.info``
+
 
 0.1.63
 ------

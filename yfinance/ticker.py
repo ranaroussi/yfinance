@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Yahoo! Finance market data downloader (+fix for Pandas Datareader)
+# yfinance - market data downloader
 # https://github.com/ranaroussi/yfinance
 #
 # Copyright 2017-2019 Ran Aroussi
@@ -84,9 +84,9 @@ class Ticker(TickerBase):
             'currency'])
 
         data['lastTradeDate'] = _pd.to_datetime(
-            data['lastTradeDate'], unit='s')
+            data['lastTradeDate'], unit='s', utc=True)
         if tz is not None:
-            data['lastTradeDate'] = data['lastTradeDate'].tz_localize(tz)
+            data['lastTradeDate'] = data['lastTradeDate'].dt.tz_convert(tz)
         return data
 
     def option_chain(self, date=None, proxy=None, tz=None):
@@ -139,6 +139,10 @@ class Ticker(TickerBase):
         return self.get_actions()
 
     @property
+    def shares(self):
+        return self.get_shares()
+
+    @property
     def info(self):
         return self.get_info()
 
@@ -159,32 +163,40 @@ class Ticker(TickerBase):
         return self.get_earnings(freq='quarterly')
 
     @property
-    def income_statement(self):
-        return self.get_income_statement()
+    def income_stmt(self):
+        return self.get_income_stmt()
 
     @property
-    def quarterly_income_statement(self):
-        return self.get_quarterly_income_statement()
+    def income_stmt_legacy(self):
+        return self.get_income_stmt_legacy()
+
+    @property
+    def quarterly_income_stmt(self):
+        return self.get_income_stmt(freq='quarterly')
 
     @property
     def balance_sheet(self):
         return self.get_balance_sheet()
 
     @property
+    def balance_sheet_legacy(self):
+        return self.get_balance_sheet_legacy()
+
+    @property
     def quarterly_balance_sheet(self):
-        return self.get_quarterly_balance_sheet()
+        return self.get_balance_sheet(freq='quarterly')
 
     @property
-    def cash_flow_statement(self):
-        return self.get_cash_flow_statement()
+    def cashflow(self):
+        return self.get_cashflow()
 
     @property
-    def quarterly_cash_flow_statement(self):
-        return self.get_quarterly_cash_flow_statement()
+    def cashflow_legacy(self):
+        return self.get_cashflow_legacy()
 
     @property
-    def sustainability(self):
-        return self.get_sustainability()
+    def quarterly_cashflow(self):
+        return self.get_cashflow(freq='quarterly')
 
     @property
     def current_recommendations(self):
@@ -199,11 +211,31 @@ class Ticker(TickerBase):
         return self.get_rev_forecast()
 
     @property
-    def earnings_forecasts(self):
-        return self.get_earnings_forecast()
+    def sustainability(self):
+        return self.get_sustainability()
 
     @property
     def options(self):
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
+
+    @property
+    def news(self):
+        return self.get_news()
+
+    @property
+    def analysis(self):
+        return self.get_analysis()
+
+    @property
+    def earnings_history(self):
+        return self.get_earnings_history()
+
+    @property
+    def earnings_dates(self):
+        return self.get_earnings_dates()
+
+    @property
+    def earnings_forecasts(self):
+        return self.get_earnings_forecast()
