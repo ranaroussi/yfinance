@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Yahoo! Finance market data downloader (+fix for Pandas Datareader)
+# yfinance - market data downloader
 # https://github.com/ranaroussi/yfinance
 #
 # Copyright 2017-2019 Ran Aroussi
@@ -30,9 +30,9 @@ from . import shared
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True,
-             group_by='column', auto_adjust=False, back_adjust=False,
+             group_by='column', auto_adjust=False, back_adjust=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, **kwargs):
+             proxy=None, rounding=False, timeout=None, **kwargs):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -56,6 +56,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Default is False
         auto_adjust: bool
             Adjust all OHLC automatically? Default is False
+        keepna: bool
+            Keep NaN rows returned by Yahoo?
+            Default is False
         actions: bool
             Download dividend + stock splits data. Default is False
         threads: bool / int
@@ -65,12 +68,27 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         rounding: bool
             Optional. Round values to 2 decimal places?
         show_errors: bool
-            Optional. Doesn't print errors if True
+            Optional. Doesn't print errors if False
+        timeout: None or float
+            If not None stops waiting for a response after given number of
+            seconds. (Can also be a fraction of a second e.g. 0.01)
     """
 
     # create ticker list
     tickers = tickers if isinstance(
         tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
+
+    # accept isin as ticker
+    shared._ISINS = {}
+    _tickers_ = []
+    for ticker in tickers:
+        if utils.is_isin(ticker):
+            isin = ticker
+            ticker = utils.get_ticker_by_isin(ticker, proxy)
+            shared._ISINS[ticker] = isin
+        _tickers_.append(ticker)
+
+    tickers = _tickers_
 
     tickers = list(set([ticker.upper() for ticker in tickers]))
 
@@ -90,9 +108,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust,
+                                   back_adjust=back_adjust, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding)
+                                   rounding=rounding, timeout=timeout)
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
 
@@ -102,8 +120,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, proxy=proxy,
-                                 rounding=rounding)
+                                 back_adjust=back_adjust, keepna=keepna, proxy=proxy,
+                                 rounding=rounding, timeout=timeout)
             shared._DFS[ticker.upper()] = data
             if progress:
                 shared._PROGRESS_BAR.animate()
@@ -119,7 +137,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                          v for v in list(shared._ERRORS.items())]))
 
     if len(tickers) == 1:
-        return shared._DFS[tickers[0]]
+        ticker = tickers[0]
+        return shared._DFS[shared._ISINS.get(ticker, ticker)]
 
     try:
         data = _pd.concat(shared._DFS.values(), axis=1,
@@ -128,6 +147,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1,
                           keys=shared._DFS.keys())
+
+    # switch names back to isins if applicable
+    data.rename(columns=shared._ISINS, inplace=True)
 
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)
@@ -164,10 +186,11 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           rounding=False):
+                           keepna=False, rounding=False, timeout=None):
 
     data = _download_one(ticker, start, end, auto_adjust, back_adjust,
-                         actions, period, interval, prepost, proxy, rounding)
+                         actions, period, interval, prepost, proxy, rounding,
+                         keepna, timeout)
     shared._DFS[ticker.upper()] = data
     if progress:
         shared._PROGRESS_BAR.animate()
@@ -176,10 +199,12 @@ def _download_one_threaded(ticker, start=None, end=None,
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False,
                   actions=False, period="max", interval="1d",
-                  prepost=False, proxy=None, rounding=False):
+                  prepost=False, proxy=None, rounding=False,
+                  keepna=False, timeout=None):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
                                   back_adjust=back_adjust, proxy=proxy,
-                                  rounding=rounding, many=True)
+                                  rounding=rounding, keepna=keepna, many=True,
+                                  timeout=timeout)
