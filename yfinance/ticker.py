@@ -165,6 +165,7 @@ class Ticker(TickerBase):
     @property
     def income_stmt(self):
         return self.get_income_stmt()
+
     @property
     def income_stmt_legacy(self):
         return self.get_income_stmt_legacy()
@@ -176,26 +177,19 @@ class Ticker(TickerBase):
     @property
     def balance_sheet(self):
         return self.get_balance_sheet()
-    @property
-    def balancesheet(self):
-        return self.get_balance_sheet()
+
     @property
     def balance_sheet_legacy(self):
-        return self.get_balance_sheet_legacy()
-    @property
-    def balancesheet_legacy(self):
         return self.get_balance_sheet_legacy()
 
     @property
     def quarterly_balance_sheet(self):
         return self.get_balance_sheet(freq='quarterly')
-    @property
-    def quarterly_balancesheet(self):
-        return self.get_balance_sheet(freq='quarterly')
 
     @property
     def cashflow(self):
         return self.get_cashflow()
+
     @property
     def cashflow_legacy(self):
         return self.get_cashflow_legacy()
@@ -203,10 +197,6 @@ class Ticker(TickerBase):
     @property
     def quarterly_cashflow(self):
         return self.get_cashflow(freq='quarterly')
-
-    @property
-    def sustainability(self):
-        return self.get_sustainability()
 
     @property
     def current_recommendations(self):
@@ -221,8 +211,8 @@ class Ticker(TickerBase):
         return self.get_rev_forecast()
 
     @property
-    def earnings_forecasts(self):
-        return self.get_earnings_forecast()
+    def sustainability(self):
+        return self.get_sustainability()
 
     @property
     def options(self):
@@ -245,3 +235,7 @@ class Ticker(TickerBase):
     @property
     def earnings_dates(self):
         return self.get_earnings_dates()
+
+    @property
+    def earnings_forecasts(self):
+        return self.get_earnings_forecast()

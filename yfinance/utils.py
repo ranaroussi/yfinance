@@ -114,11 +114,6 @@ def get_json(url, proxy=None, session=None):
     session = session or _requests
     html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
 
-    # if "QuoteSummaryStore" not in html:
-    #     html = session.get(url=url, proxies=proxy).text
-    #     if "QuoteSummaryStore" not in html:
-    #         return {}
-
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
     # data = _json.loads(json_str)['context']['dispatcher']['stores']['QuoteSummaryStore']
@@ -147,32 +142,50 @@ def build_template(data):
     Returns:
         - template_annual_order: The order that annual figures should be listed in.
         - template_ttm_order: The order that TTM (Trailing Twelve Month) figures should be listed in.
+        - template_order: The order that quarterlies should be in (note that quarterlies have no pre-fix - hence why this is required).
         - level_detail: The level of each individual line item. E.g. for the "/financials" webpage, "Total Revenue" is a level 0 item and is the summation of "Operating Revenue" and "Excise Taxes" which are level 1 items.
    
     '''
     template_ttm_order = []   # Save the TTM (Trailing Twelve Months) ordering to an object.
     template_annual_order = []    # Save the annual ordering to an object.
+    template_order = [] # Save the ordering to an object (this can be utilized for quarterlies)
     level_detail = []   #Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
     for key in data['template']:    # Loop through the json to retreive the exact financial order whilst appending to the objects
         template_ttm_order.append('trailing{}'.format(key['key']))
         template_annual_order.append('annual{}'.format(key['key']))
+        template_order.append('{}'.format(key['key']))
         level_detail.append(0)
         if 'children' in key:
             for child1 in key['children']:  # Level 1
                 template_ttm_order.append('trailing{}'.format(child1['key']))
                 template_annual_order.append('annual{}'.format(child1['key']))
+                template_order.append('{}'.format(child1['key']))
                 level_detail.append(1)
                 if 'children' in child1:
                     for child2 in child1['children']:   # Level 2
                         template_ttm_order.append('trailing{}'.format(child2['key']))
                         template_annual_order.append('annual{}'.format(child2['key']))
+                        template_order.append('{}'.format(child2['key']))
                         level_detail.append(2)
                         if 'children' in child2:
                             for child3 in child2['children']:   # Level 3
                                 template_ttm_order.append('trailing{}'.format(child3['key']))
                                 template_annual_order.append('annual{}'.format(child3['key']))
+                                template_order.append('{}'.format(child3['key']))
                                 level_detail.append(3)
-    return template_ttm_order, template_annual_order, level_detail
+                                if 'children' in child3:
+                                    for child4 in child3['children']: # Level 4
+                                        template_ttm_order.append('trailing{}'.format(child4['key']))
+                                        template_annual_order.append('annual{}'.format(child4['key']))
+                                        template_order.append('{}'.format(child4['key']))
+                                        level_detail.append(4)
+                                        if 'children' in child4:
+                                            for child5 in child4['children']: # Level 5
+                                                template_ttm_order.append('trailing{}'.format(child5['key']))
+                                                template_annual_order.append('annual{}'.format(child5['key']))
+                                                template_order.append('{}'.format(child5['key']))
+                                                level_detail.append(5)
+    return template_ttm_order, template_annual_order, template_order, level_detail
 
 def retreive_financial_details(data):
     '''
@@ -190,16 +203,61 @@ def retreive_financial_details(data):
                 time_series_dict = {}
                 time_series_dict['index'] = key
                 for each in data['timeSeries'][key]:    # Loop through the years
-                    time_series_dict[each['asOfDate']] = each['reportedValue']
+                    if each == None:
+                        continue
+                    else:
+                        time_series_dict[each['asOfDate']] = each['reportedValue']
                     # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
-                if each['periodType'] == 'TTM':
+                if 'trailing' in key:
                     TTM_dicts.append(time_series_dict)
-                elif each['periodType'] == '12M':
+                elif 'annual' in key:
                     Annual_dicts.append(time_series_dict)
         except Exception as e:
             pass
     return TTM_dicts, Annual_dicts
 
+def format_annual_financial_statement(level_detail, annual_dicts, annual_order, ttm_dicts=None, ttm_order=None):
+    '''
+    format_annual_financial_statement formats any annual financial statement
+
+    Returns:
+        - _statement: A fully formatted annual financial statement in pandas dataframe.
+    '''
+    Annual = _pd.DataFrame.from_dict(annual_dicts).set_index("index")
+    Annual = Annual.reindex(annual_order)
+    Annual.index = Annual.index.str.replace(r'annual','')
+
+    if ttm_dicts != None or ttm_order != None:  # Balance sheet is the only financial statement with no ttm detail.
+        TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index")
+        TTM = TTM.reindex(ttm_order)
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        TTM.index = TTM.index.str.replace(r'trailing', '')
+        _statement = Annual.merge(TTM, left_index=True, right_index=True)
+    else:    
+        _statement = Annual
+    
+    _statement.index = camel2title(_statement.T)
+    _statement['level_detail'] = level_detail 
+    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement[sorted(_statement.columns, reverse=True)]
+    _statement = _statement.dropna(how='all')    
+    return _statement
+
+def format_quarterly_financial_statement(_statement, level_detail, order):
+    '''
+    format_quarterly_financial_statements formats any quarterly financial statement
+
+    Returns:
+        - _statement: A fully formatted annual financial statement in pandas dataframe.
+    '''
+    _statement = _statement.reindex(order)
+    _statement.index = camel2title(_statement.T)
+    _statement['level_detail'] = level_detail 
+    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement[sorted(_statement.columns, reverse=True)]
+    _statement = _statement.dropna(how='all')
+    _statement.columns = _pd.to_datetime(_statement.columns).date
+    return _statement
 
 def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, session=None):
     acceptable_names = ["financials", "balance-sheet", "cash-flow"]
