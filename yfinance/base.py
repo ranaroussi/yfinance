@@ -304,13 +304,34 @@ class TickerBase():
 
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
-        # combine
-        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
-        df["Dividends"].fillna(0, inplace=True)
-        df["Stock Splits"].fillna(0, inplace=True)
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+        
+        # prepare index for combine:
+        quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
+        splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
+        dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
+        if params["interval"] in ["1d","1w","1wk","1mo","3mo"]:
+            # Converting datetime->date should improve merge performance
+            quotes.index = _pd.to_datetime(quotes.index.date)
+            splits.index = _pd.to_datetime(splits.index.date)
+            dividends.index = _pd.to_datetime(dividends.index.date)
 
-        # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(tz_exchange)
+        # combine
+        df = quotes
+        if actions:
+            df = df.sort_index()
+            if dividends.shape[0] > 0:
+                df = utils.safe_merge_dfs(df, dividends, interval)
+            if "Dividends" in df.columns:
+                df.loc[df["Dividends"].isna(),"Dividends"] = 0
+            else:
+                df["Dividends"] = 0.0
+            if splits.shape[0] > 0:
+                df = utils.safe_merge_dfs(df, splits, interval)
+            if "Stock Splits" in df.columns:
+                df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
+            else:
+                df["Stock Splits"] = 0.0
 
         df = utils.fix_Yahoo_dst_issue(df, params["interval"])
             
@@ -319,7 +340,6 @@ class TickerBase():
         elif params["interval"] == "1h":
             pass
         else:
-            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange)
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup
@@ -328,8 +348,6 @@ class TickerBase():
 
         self._history = df.copy()
 
-        if not actions:
-            df.drop(columns=["Dividends", "Stock Splits"], inplace=True)
         return df
     
     def _get_ticker_tz(self):
