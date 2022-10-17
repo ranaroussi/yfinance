@@ -301,6 +301,12 @@ class TickerBase():
 
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
+        if end is not None:
+            endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+            if dividends is not None:
+                dividends = dividends[dividends.index<endDt]
+            if splits is not None:
+                splits = splits[splits.index<endDt]
 
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
@@ -312,9 +318,9 @@ class TickerBase():
         dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
         if params["interval"] in ["1d","1w","1wk","1mo","3mo"]:
             # Converting datetime->date should improve merge performance
-            quotes.index = _pd.to_datetime(quotes.index.date)
-            splits.index = _pd.to_datetime(splits.index.date)
-            dividends.index = _pd.to_datetime(dividends.index.date)
+            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange)
+            splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange)
+            dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange)
 
         # combine
         df = quotes
