@@ -554,10 +554,10 @@ class TickerBase():
         fin_data_quote = fin_data['QuoteSummaryStore']
 
         # generic patterns
-        self._earnings = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
+        self._earnings = {"yearly": _pd.DataFrame(), "quarterly": _pd.DataFrame()}
         self._financials = {}
         for name in ["income", "balance-sheet", "cash-flow"]:
-            self._financials[name] = {"yearly":utils.empty_df(), "quarterly":utils.empty_df()}
+            self._financials[name] = {"yearly":_pd.DataFrame(), "quarterly":_pd.DataFrame()}
         for name in ["income", "balance-sheet", "cash-flow"]:
             annual, qtr = self._create_financials_table(name, proxy)
             if annual is not None:
