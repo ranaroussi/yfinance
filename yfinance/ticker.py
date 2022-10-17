@@ -163,36 +163,48 @@ class Ticker(TickerBase):
         return self.get_earnings(freq='quarterly')
 
     @property
-    def financials(self):
-        return self.get_financials()
+    def income_stmt(self):
+        return self.get_income_stmt()
 
     @property
-    def quarterly_financials(self):
-        return self.get_financials(freq='quarterly')
+    def quarterly_income_stmt(self):
+        return self.get_income_stmt(freq='quarterly')
 
     @property
     def balance_sheet(self):
-        return self.get_balancesheet()
+        return self.get_balance_sheet()
 
     @property
     def quarterly_balance_sheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.get_balance_sheet(freq='quarterly')
 
     @property
     def balancesheet(self):
-        return self.get_balancesheet()
+        return self.balance_sheet
 
     @property
     def quarterly_balancesheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.quarterly_balance_sheet
 
     @property
     def cashflow(self):
-        return self.get_cashflow()
+        return self.get_cashflow(freq="yearly")
 
     @property
     def quarterly_cashflow(self):
         return self.get_cashflow(freq='quarterly')
+
+    @property
+    def recommendations_summary(self):
+        return self.get_recommendations_summary()
+
+    @property
+    def analyst_price_target(self):
+        return self.get_analyst_price_target()
+
+    @property
+    def revenue_forecasts(self):
+        return self.get_rev_forecast()
 
     @property
     def sustainability(self):
@@ -209,8 +221,8 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def analysis(self):
-        return self.get_analysis()
+    def earnings_trend(self):
+        return self.get_earnings_trend()
 
     @property
     def earnings_history(self):
@@ -219,3 +231,7 @@ class Ticker(TickerBase):
     @property
     def earnings_dates(self):
         return self.get_earnings_dates()
+
+    @property
+    def earnings_forecasts(self):
+        return self.get_earnings_forecast()
