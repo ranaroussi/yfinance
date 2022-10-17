@@ -21,7 +21,6 @@
 
 from __future__ import print_function
 
-import time as _time
 import datetime as _datetime
 import pytz as _tz
 import requests as _requests
@@ -107,33 +106,24 @@ def get_html(url, proxy=None, session=None):
     return html
 
 
-def get_json(url, proxy=None, session=None):
+def get_json_data_stores(url, proxy=None, session=None):
     '''
-    get_json returns a python dictionary of the store detail for yahoo finance web pages.
+    get_json_data_stores returns a python dictionary of the data stores in yahoo finance web page.
     '''
     session = session or _requests
     html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
 
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
-    # data = _json.loads(json_str)['context']['dispatcher']['stores']['QuoteSummaryStore']
-    data = _json.loads(json_str)
+    data = _json.loads(json_str)['context']['dispatcher']['stores']
 
-    # add data about Shares Outstanding for companies' tickers if they are available
-    try:
-        data['annualBasicAverageShares'] = _json.loads(
-            json_str)['context']['dispatcher']['stores'][
-                'QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
-    except Exception:
-        pass
-
-	## TODO: Why dumping and parsing again?
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
     new_data = _re.sub(
         r'\{[\'|\"]raw[\'|\"]:(.*?),(.*?)\}', r'\1', new_data)
 
     return _json.loads(new_data)
+
 
 def build_template(data):
     '''
@@ -187,6 +177,7 @@ def build_template(data):
                                                 level_detail.append(5)
     return template_ttm_order, template_annual_order, template_order, level_detail
 
+
 def retreive_financial_details(data):
     '''
     retreive_financial_details returns all of the available financial details under the "QuoteTimeSeriesStore" for any of the following three yahoo finance webpages: "/financials", "/cash-flow" and "/balance-sheet".
@@ -216,6 +207,7 @@ def retreive_financial_details(data):
             pass
     return TTM_dicts, Annual_dicts
 
+
 def format_annual_financial_statement(level_detail, annual_dicts, annual_order, ttm_dicts=None, ttm_order=None):
     '''
     format_annual_financial_statement formats any annual financial statement
@@ -243,6 +235,7 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
     _statement = _statement.dropna(how='all')    
     return _statement
 
+
 def format_quarterly_financial_statement(_statement, level_detail, order):
     '''
     format_quarterly_financial_statements formats any quarterly financial statement
@@ -259,6 +252,7 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
     _statement.columns = _pd.to_datetime(_statement.columns).date
     return _statement
 
+
 def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, session=None):
     acceptable_names = ["financials", "balance-sheet", "cash-flow"]
     if not name in acceptable_names:
@@ -269,7 +263,7 @@ def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, 
 
     session = session or _requests
 
-    financials_data = get_json(ticker_url+'/'+name, proxy, session)
+    financials_data = get_json_data_stores(ticker_url+'/'+name, proxy, session)
 
     # Step 1: get the keys:
     def _finditem1(key, obj):
@@ -283,15 +277,12 @@ def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, 
             for v in obj:
                 values += _finditem1(key,v)
         return values
-    keys = _finditem1("key",financials_data['context']['dispatcher']['stores']['FinancialTemplateStore'])
+    keys = _finditem1("key",financials_data['FinancialTemplateStore'])
 
     # Step 2: construct url:
     ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(ticker)
     if len(keys) == 0:
         raise Exception("Fetching keys failed")
-    # yr_url = ts_url_base + "&type=" + ",".join(["annual"+k for k in keys])
-    # qtr_url = ts_url_base + "&type=" + ",".join(["quarterly"+k for k in keys])
-    # url = qtr_url
     url = ts_url_base + "&type=" + ",".join([timescale+k for k in keys])
     # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
     start_dt = _datetime.datetime(2016, 12, 31)

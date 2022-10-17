@@ -49,13 +49,13 @@ class TestTicker(unittest.TestCase):
             ticker.quarterly_balance_sheet
             ticker.cashflow
             ticker.quarterly_cashflow
-            ticker.current_recommendations
+            ticker.recommendations_summary
             ticker.analyst_price_target
             ticker.revenue_forecasts
             ticker.sustainability
             ticker.options
             ticker.news
-            ticker.analysis
+            ticker.earnings_trend
             ticker.earnings_history
             ticker.earnings_dates
             ticker.earnings_forecasts

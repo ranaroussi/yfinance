@@ -70,6 +70,9 @@ msft.dividends
 # show splits
 msft.splits
 
+# show share count
+msft.shares
+
 # show income statement
 msft.income_stmt
 msft.quarterly_income_stmt
@@ -88,6 +91,9 @@ msft.major_holders
 # show institutional holders
 msft.institutional_holders
 
+# show mutualfund holders
+msft.mutualfund_holders
+
 # show earnings
 msft.earnings
 msft.quarterly_earnings
@@ -97,6 +103,12 @@ msft.sustainability
 
 # show analysts recommendations
 msft.recommendations
+msft.recommendations_summary
+# show analysts other work
+msft.analyst_price_target
+mfst.revenue_forecasts
+mfst.earnings_forecasts
+mfst.earnings_trend
 
 # show next event (earnings, etc)
 msft.calendar

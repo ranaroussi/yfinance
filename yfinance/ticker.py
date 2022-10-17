@@ -167,10 +167,6 @@ class Ticker(TickerBase):
         return self.get_income_stmt()
 
     @property
-    def income_stmt_legacy(self):
-        return self.get_income_stmt_legacy()
-
-    @property
     def quarterly_income_stmt(self):
         return self.get_income_stmt(freq='quarterly')
 
@@ -179,28 +175,28 @@ class Ticker(TickerBase):
         return self.get_balance_sheet()
 
     @property
-    def balance_sheet_legacy(self):
-        return self.get_balance_sheet_legacy()
-
-    @property
     def quarterly_balance_sheet(self):
         return self.get_balance_sheet(freq='quarterly')
 
     @property
-    def cashflow(self):
-        return self.get_cashflow()
+    def balancesheet(self):
+        return self.balance_sheet
 
     @property
-    def cashflow_legacy(self):
-        return self.get_cashflow_legacy()
+    def quarterly_balancesheet(self):
+        return self.quarterly_balance_sheet
+
+    @property
+    def cashflow(self):
+        return self.get_cashflow(freq="yearly")
 
     @property
     def quarterly_cashflow(self):
         return self.get_cashflow(freq='quarterly')
 
     @property
-    def current_recommendations(self):
-        return self.get_current_recommendations()
+    def recommendations_summary(self):
+        return self.get_recommendations_summary()
 
     @property
     def analyst_price_target(self):
@@ -225,8 +221,8 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def analysis(self):
-        return self.get_analysis()
+    def earnings_trend(self):
+        return self.get_earnings_trend()
 
     @property
     def earnings_history(self):
