@@ -70,23 +70,23 @@ msft.dividends
 # show splits
 msft.splits
 
-# show financials
-msft.financials
-msft.quarterly_financials
+# show income statement
+msft.income_stmt
+msft.quarterly_income_stmt
+
+# show balance sheet
+msft.balance_sheet
+msft.quarterly_balance_sheet
+
+# show cash flow statement
+msft.cashflow
+msft.quarterly_cashflow
 
 # show major holders
 msft.major_holders
 
 # show institutional holders
 msft.institutional_holders
-
-# show balance sheet
-msft.balance_sheet
-msft.quarterly_balance_sheet
-
-# show cashflow
-msft.cashflow
-msft.quarterly_cashflow
 
 # show earnings
 msft.earnings
