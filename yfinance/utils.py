@@ -216,6 +216,49 @@ def retreive_financial_details(data):
             pass
     return TTM_dicts, Annual_dicts
 
+def format_annual_financial_statement(level_detail, annual_dicts, annual_order, ttm_dicts=None, ttm_order=None):
+    '''
+    format_annual_financial_statement formats any annual financial statement
+
+    Returns:
+        - _statement: A fully formatted annual financial statement in pandas dataframe.
+    '''
+    Annual = _pd.DataFrame.from_dict(annual_dicts).set_index("index")
+    Annual = Annual.reindex(annual_order)
+    Annual.index = Annual.index.str.replace(r'annual','')
+
+    if ttm_dicts != None or ttm_order != None:  # Balance sheet is the only financial statement with no ttm detail.
+        TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index")
+        TTM = TTM.reindex(ttm_order)
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        TTM.index = TTM.index.str.replace(r'trailing', '')
+        _statement = Annual.merge(TTM, left_index=True, right_index=True)
+    else:    
+        _statement = Annual
+    
+    _statement.index = camel2title(_statement.T)
+    _statement['level_detail'] = level_detail 
+    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement[sorted(_statement.columns, reverse=True)]
+    _statement = _statement.dropna(how='all')    
+    return _statement
+
+def format_quarterly_financial_statement(_statement, level_detail, order):
+    '''
+    format_quarterly_financial_statements formats any quarterly financial statement
+
+    Returns:
+        - _statement: A fully formatted annual financial statement in pandas dataframe.
+    '''
+    _statement = _statement.reindex(order)
+    _statement.index = camel2title(_statement.T)
+    _statement['level_detail'] = level_detail 
+    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement[sorted(_statement.columns, reverse=True)]
+    _statement = _statement.dropna(how='all')
+    _statement.columns = _pd.to_datetime(_statement.columns).date
+    return _statement
+
 def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, session=None):
     acceptable_names = ["financials", "balance-sheet", "cash-flow"]
     if not name in acceptable_names:
