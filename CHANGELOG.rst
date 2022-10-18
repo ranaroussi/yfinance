@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.79
+------
+- Fix when Yahoo returns price=NaNs on dividend day
+
 0.1.78
 ------
 - Fix download() when different timezones #1085
