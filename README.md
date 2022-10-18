@@ -187,6 +187,11 @@ data = yf.download(  # or pdr.get_data_yahoo(...
         # (optional, default is '1d')
         interval = "1m",
 
+        # Whether to ignore timezone when aligning ticker data from 
+        # different timezones. Default is True. False may be useful for 
+        # minute/hourly data.
+        ignore_tz = False,
+
         # group by ticker (to access via data['SPY'])
         # (optional, default is 'column')
         group_by = 'ticker',
