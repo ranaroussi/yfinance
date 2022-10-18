@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.78
+------
+- Fix download() when different timezones #1085
+
 0.1.77
 ------
 - Fix user experience bug #1078
