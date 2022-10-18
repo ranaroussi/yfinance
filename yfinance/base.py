@@ -293,9 +293,6 @@ class TickerBase():
                 "chart"]["result"][0]["meta"]["priceHint"])
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
-        if not keepna:
-            quotes.dropna(inplace=True)
-
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
 
@@ -320,13 +317,13 @@ class TickerBase():
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup
-        df.dropna(how='all', inplace=True)
         df = df[~df.index.duplicated(keep='first')]
-
         self._history = df.copy()
-
         if not actions:
-            df.drop(columns=["Dividends", "Stock Splits"], inplace=True)
+            df = df.drop(columns=["Dividends", "Stock Splits"])
+        if not keepna:
+            mask_nan_or_zero = (df.isna()|(df==0)).all(axis=1)
+            df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
 
         return df
 
