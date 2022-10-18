@@ -29,7 +29,7 @@ from . import Ticker, utils
 from . import shared
 
 
-def download(tickers, start=None, end=None, actions=False, threads=True,
+def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=True, 
              group_by='column', auto_adjust=False, back_adjust=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
              proxy=None, rounding=False, timeout=None, **kwargs):
@@ -63,6 +63,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Download dividend + stock splits data. Default is False
         threads: bool / int
             How many threads to use for mass downloading. Default is True
+        ignore_tz: bool
+            When combining from different timezones, ignore that part of datetime.
+            Default is True
         proxy: str
             Optional. Proxy server URL scheme. Default is None
         rounding: bool
@@ -140,12 +143,17 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         ticker = tickers[0]
         return shared._DFS[shared._ISINS.get(ticker, ticker)]
 
+    if ignore_tz:
+        for tkr in shared._DFS.keys():
+            if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0]>0):
+                shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
+
     try:
-        data = _pd.concat(shared._DFS.values(), axis=1,
+        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys())
     except Exception:
         _realign_dfs()
-        data = _pd.concat(shared._DFS.values(), axis=1,
+        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys())
 
     # switch names back to isins if applicable
