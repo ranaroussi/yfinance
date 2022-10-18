@@ -43,6 +43,7 @@ import json as _json
 from . import shared
 
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
+_FUNDAMENTALS_BASE_URL_ = 'https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
@@ -552,6 +553,41 @@ class TickerBase():
                 except Exception:
                     pass
 
+        # EBIT fix
+        my_headers = {'user-agent': 'curl/7.55.1', 'accept': 'application/json', 'content-type': 'application/json',
+                      'referer': 'https://finance.yahoo.com/', 'cache-control': 'no-cache', 'connection': 'close'}
+
+        def parse_yahoo_api(r):
+            r = _json.loads(r)['timeseries']['result']
+            parsed = {}
+            for i in r:
+                i.pop('meta')
+                try:
+                    i.pop('timestamp')
+                except KeyError:
+                    pass
+                parsed.update(i)
+            return parsed
+
+        def getEbit(freq='yearly'):
+            if freq == 'yearly':
+                freq = 'annual'
+            else:
+                freq = 'quarterly'
+            r = _requests.get(_FUNDAMENTALS_BASE_URL_ + '{ticker}?symbol={ticker}&type={freq}EBIT&period1=0&period2={time}'.format(ticker=self.ticker, freq=freq, time=int(_time.time())), headers=my_headers).text
+            r = parse_yahoo_api(r)
+            result = []
+            for i in range(4):
+                try:
+                    result.append(r['{freq}EBIT'.format(freq=freq)][i]['reportedValue']['raw'])
+                except KeyError:
+                    result.append(_np.nan)
+            r.reverse()
+            return r
+
+        self._financials['yearly'].loc['Ebit', :] = getEbit()
+        self._financials['quarterly'].loc['Ebit', :] = getEbit(freq='quarterly')
+
         # earnings
         if isinstance(data.get('earnings'), dict):
             try:
@@ -616,8 +652,6 @@ class TickerBase():
         # Complementary key-statistics (currently fetching the important trailingPegRatio which is the value shown in the website)
         res = {}
         try:
-            my_headers = {'user-agent': 'curl/7.55.1', 'accept': 'application/json', 'content-type': 'application/json',
-                          'referer': 'https://finance.yahoo.com/', 'cache-control': 'no-cache', 'connection': 'close'}
             p = _re.compile(r'root\.App\.main = (.*);')
             r = _requests.session().get('https://finance.yahoo.com/quote/{}/key-statistics?p={}'.format(self.ticker,
                                                                                                         self.ticker), headers=my_headers)
