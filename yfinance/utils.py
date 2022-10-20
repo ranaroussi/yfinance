@@ -477,32 +477,29 @@ class ProgressBar:
 # Simple file cache of ticker->timezone:
 def get_cache_dirpath():
     return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+
 def cache_lookup_tkr_tz(tkr):
     fp = _os.path.join(get_cache_dirpath(), "tkr-tz.csv")
     if not _os.path.isfile(fp):
         return None
-
-    df = _pd.read_csv(fp)
-    f = df["Ticker"] == tkr
-    if sum(f) == 0:
+    df = _pd.read_csv(fp, index_col="Ticker")
+    if not tkr in df.index:
         return None
+    return df.loc[tkr,"Tz"]
 
-    return df["Tz"][f].iloc[0]
 def cache_store_tkr_tz(tkr,tz):
-    df = _pd.DataFrame({"Ticker":[tkr], "Tz":[tz]})
-
     dp = get_cache_dirpath()
     if not _os.path.isdir(dp):
         _os.makedirs(dp)
     fp = _os.path.join(dp, "tkr-tz.csv")
     if not _os.path.isfile(fp):
-        df.to_csv(fp, index=False)
+        df = _pd.DataFrame({"Tz":[tz]}, index=[tkr])
+        df.index.name = "Ticker"
+        df.to_csv(fp)
         return
 
-    df_all = _pd.read_csv(fp)
-    f = df_all["Ticker"]==tkr
-    if sum(f) > 0:
+    df = _pd.read_csv(fp, index_col="Ticker")
+    if tkr in df.index:
         raise Exception("Tkr {} tz already in cache".format(tkr))
-
-    _pd.concat([df_all,df]).to_csv(fp, index=False)
-
+    df.loc[tkr,"Tz"] = tz
+    df.to_csv(fp)
