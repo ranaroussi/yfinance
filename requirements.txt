@@ -3,3 +3,4 @@ numpy>=1.16.5
 requests>=2.26
 multitasking>=0.0.7
 lxml>=4.5.1
+appdirs>=1.4.4
