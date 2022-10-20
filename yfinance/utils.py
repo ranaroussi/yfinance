@@ -490,24 +490,31 @@ def cache_lookup_tkr_tz(tkr):
         return None
     return df.loc[tkr,"Tz"]
 
-def cache_store_tkr_tz(tkr,tz):
-    cache_mutex.acquire()
-
+def cache_store_tkr_tz(tkr, tz):
     dp = get_cache_dirpath()
-    if not _os.path.isdir(dp):
-        _os.makedirs(dp)
     fp = _os.path.join(dp, "tkr-tz.csv")
 
-    if not _os.path.isfile(fp):
+    cache_mutex.acquire()
+
+    if not _os.path.isdir(dp):
+        _os.makedirs(dp)
+    if (not _os.path.isfile(fp)) and (tz is not None):
+        # Initialise CSV file with first entry
         df = _pd.DataFrame({"Tz":[tz]}, index=[tkr])
         df.index.name = "Ticker"
         df.to_csv(fp)
-        
+
     else:
         df = _pd.read_csv(fp, index_col="Ticker")
-        if tkr in df.index:
-            raise Exception("Tkr {} tz already in cache".format(tkr))
-        df.loc[tkr,"Tz"] = tz
-        df.to_csv(fp)
+        if tz is None:
+            # Delete if in cache:
+            if tkr in df.index:
+                df = df.drop(tkr)
+                df.to_csv(fp)
+        else:
+            if tkr in df.index:
+                raise Exception("Tkr {} tz already in cache".format(tkr))
+            df.loc[tkr,"Tz"] = tz
+            df.to_csv(fp)
 
     cache_mutex.release()
