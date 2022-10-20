@@ -548,10 +548,10 @@ class TickerBase():
         fin_data_quote = fin_data['QuoteSummaryStore']
 
         # generic patterns
-        self._earnings = {"yearly": utils.pd.DataFrame(), "quarterly": utils.pd.DataFrame()}
+        self._earnings = {"yearly": utils._pd.DataFrame(), "quarterly": utils._pd.DataFrame()}
         self._financials = {}
         for name in ["income", "balance-sheet", "cash-flow"]:
-            self._financials[name] = {"yearly":utils.pd.DataFrame(), "quarterly":utils.pd.DataFrame()}
+            self._financials[name] = {"yearly":utils._pd.DataFrame(), "quarterly":utils._pd.DataFrame()}
         for name in ["income", "balance-sheet", "cash-flow"]:
             annual, qtr = self._create_financials_table(name, proxy)
             if annual is not None:
@@ -719,6 +719,7 @@ class TickerBase():
             TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
 
             if name == "balance-sheet":
+                # Note: balance sheet is the only financial statement with no ttm detail
                 _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order)
             else:
                 _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order, TTM_dicts, template_ttm_order)

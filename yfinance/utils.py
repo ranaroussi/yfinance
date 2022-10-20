@@ -219,7 +219,8 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
     Annual = Annual.reindex(annual_order)
     Annual.index = Annual.index.str.replace(r'annual','')
 
-    if ttm_dicts != None or ttm_order != None:  # Balance sheet is the only financial statement with no ttm detail.
+    # Note: balance sheet is the only financial statement with no ttm detail
+    if (ttm_dicts not in [[], None]) and (ttm_order not in [[], None]):
         TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index")
         TTM = TTM.reindex(ttm_order)
         TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
