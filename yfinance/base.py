@@ -150,17 +150,14 @@ class TickerBase():
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            try:
-                tz = self._get_ticker_tz()
-            except KeyError as e:
-                if "exchangeTimezoneName" in str(e):
-                    shared._DFS[self.ticker] = utils.empty_df()
-                    shared._ERRORS[self.ticker] = err_msg
-                    if "many" not in kwargs and debug_mode:
-                        print('- %s: %s' % (self.ticker, err_msg))
-                    return utils.empty_df()
-                else:
-                    raise
+            tz = self._get_ticker_tz()
+            if tz is None:
+                # Every valid ticker has a timezone. Missing = problem
+                shared._DFS[self.ticker] = utils.empty_df()
+                shared._ERRORS[self.ticker] = err_msg
+                if "many" not in kwargs and debug_mode:
+                    print('- %s: %s' % (self.ticker, err_msg))
+                return utils.empty_df()
 
             if end is None:
                 end = int(_time.time())
@@ -353,14 +350,27 @@ class TickerBase():
         if not self._tz is None:
             return self._tz
 
-        tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
-        if tkr_tz is None:
-            tkr_tz = self.info["exchangeTimezoneName"]
-            # info fetch is relatively slow so cache timezone
-            utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+        tz = utils.cache_lookup_tkr_tz(self.ticker)
 
-        self._tz = tkr_tz
-        return tkr_tz
+        if tz is not None:
+            if not isinstance(tz, str):
+                # Force a re-fetch
+                tz = None
+
+        if tz is None:
+            if not 'exchangeTimezoneName' in self.info:
+                return None
+            tz = self.info["exchangeTimezoneName"]
+
+            if not isinstance(tz, str):
+                tz = None
+
+            if tz is not None:
+                # info fetch is relatively slow so cache timezone
+                utils.cache_store_tkr_tz(self.ticker, tz)
+
+        self._tz = tz
+        return tz
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
