@@ -353,18 +353,29 @@ class TickerBase():
         tz = utils.cache_lookup_tkr_tz(self.ticker)
 
         if tz is not None:
-            if not isinstance(tz, str):
-                # Force a re-fetch
+            invalid_value = not isinstance(tz, str)
+            if not invalid_value:
+                try:
+                    _tz.timezone(tz)
+                except:
+                    invalid_value = True
+
+            if invalid_value:
+                # Clear from cache and force re-fetch
+                utils.cache_store_tkr_tz(self.ticker, None)
                 tz = None
 
         if tz is None:
             if not 'exchangeTimezoneName' in self.info:
                 return None
             tz = self.info["exchangeTimezoneName"]
-
             if not isinstance(tz, str):
                 tz = None
-
+            else:
+                try:
+                    _tz.timezone(tz)
+                except:
+                    tz = None
             if tz is not None:
                 # info fetch is relatively slow so cache timezone
                 utils.cache_store_tkr_tz(self.ticker, tz)
