@@ -139,24 +139,32 @@ class TickerBase():
                 debug: bool
                     Optional. If passed as False, will suppress
                     error message printing to console.
+                raise_errors: bool
+                    Optional. If True, then raise errors as
+                    exceptions instead of printing to console.
         """
 
         # Work with errors
         debug_mode = True
         if "debug" in kwargs and isinstance(kwargs["debug"], bool):
             debug_mode = kwargs["debug"]
-
-        err_msg = "No data found for this date range, symbol may be delisted"
+        raise_errors = False
+        if "raise_errors" in kwargs and isinstance(kwargs["raise_errors"], bool):
+            raise_errors = kwargs["raise_errors"]
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
             tz = self._get_ticker_tz()
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
+                err_msg = "No timezone found, symbol certainly delisted"
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg
                 if "many" not in kwargs and debug_mode:
-                    print('- %s: %s' % (self.ticker, err_msg))
+                    if raise_errors:
+                        raise Exception('%s: %s' % (self.ticker, err_msg))
+                    else:
+                        print('- %s: %s' % (self.ticker, err_msg))
                 return utils.empty_df()
 
             if end is None:
@@ -212,28 +220,31 @@ class TickerBase():
         except Exception:
             pass
 
-        if data is None or not type(data) is dict or 'status_code' in data.keys():
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return utils.empty_df()
-
-        if "chart" in data and data["chart"]["error"]:
+        err_msg = "No data found for this date range, symbol may be delisted"
+        fail = False
+        if data is None or not type(data) is dict:
+            fail = True
+        elif type(data) is dict and 'status_code' in data.keys():
+            err_msg += "(Yahoo status_code = {})".format(data["status_code"])
+            fail = True
+        elif "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
+            fail = True
+        elif not "chart" in data or data["chart"]["result"] is None or not data["chart"]["result"]:
+            fail = True
+        elif not period is None and not "timestamp" in data["chart"]["result"][0] and not period in data["chart"]["result"][0]["meta"]["validRanges"]:
+            # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
+            err_msg = "Period '{}' is invalid, must be one of {}".format(period, data["chart"]["result"][0]["meta"]["validRanges"])
+            fail = True
+        if fail:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return shared._DFS[self.ticker]
-
-        elif "chart" not in data or data["chart"]["result"] is None or \
-                not data["chart"]["result"]:
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return shared._DFS[self.ticker]
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
+            return utils.empty_df()
 
         # parse quotes
         try:
@@ -247,7 +258,10 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
@@ -283,7 +297,10 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
             quotes = _np.round(quotes, data[
