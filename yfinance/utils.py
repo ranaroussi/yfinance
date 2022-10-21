@@ -349,6 +349,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
         elif interval == "3mo":
             new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
+        new_index = new_index.tz_localize(df.index.tz)
         df_sub = _reindex_events(df_sub, new_index, data_col)
         df = df_main.join(df_sub)
 
@@ -383,13 +384,22 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 dt_sub_i = last_main_dt ; fixed = True
             elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
                 dt_sub_i = last_main_dt ; fixed = True
-            elif interval == "1wk" and last_main_dt.week == dt_sub_i.week:
-                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1wk":
+                if last_main_dt.week == dt_sub_i.week:
+                    dt_sub_i = last_main_dt ; fixed = True
+                elif (dt_sub_i>=last_main_dt) and (dt_sub_i-last_main_dt < _datetime.timedelta(weeks=1)):
+                    # With some specific start dates (e.g. around early Jan), Yahoo
+                    # messes up start-of-week, is Saturday not Monday. So check
+                    # if same week another way
+                    dt_sub_i = last_main_dt ; fixed = True
+
+                if fixed:
+                    print("Mapped {} -> {}".format(df_sub.index[i], dt_sub_i))
             elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
                 dt_sub_i = last_main_dt ; fixed = True
             elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
                 dt_sub_i = last_main_dt ; fixed = True
-            else:
+            elif interval.endswith('m') or interval.endswith('h'):
                 td = _pd.to_timedelta(interval)
                 if (dt_sub_i>=last_main_dt) and (dt_sub_i-last_main_dt < td):
                     dt_sub_i = last_main_dt ; fixed = True
@@ -402,11 +412,15 @@ def safe_merge_dfs(df_main, df_sub, interval):
     if data_lost:
         ## Not always possible to match events with trading, e.g. when released pre-market.
         ## So have to append to bottom with nan prices.
-        f_missing = ~df_sub.index.isin(df.index)
-        df_sub_missing = df_sub[f_missing]
-        keys = set(["Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close", "Close"]).intersection(df.columns)
-        df_sub_missing[list(keys)] = _np.nan
-        df = _pd.concat([df, df_sub_missing], sort=True)
+        ## But should only be impossible with intra-day price data.
+        if interval.endswith('m') or interval.endswith('h'):
+            f_missing = ~df_sub.index.isin(df.index)
+            df_sub_missing = df_sub[f_missing]
+            keys = set(["Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close", "Close"]).intersection(df.columns)
+            df_sub_missing[list(keys)] = _np.nan
+            df = _pd.concat([df, df_sub_missing], sort=True)
+        else:
+            raise Exception("Lost data during merge despite all attempts to align data (see above)")
 
     return df
 
