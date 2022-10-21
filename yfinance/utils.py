@@ -392,9 +392,6 @@ def safe_merge_dfs(df_main, df_sub, interval):
                     # messes up start-of-week, is Saturday not Monday. So check
                     # if same week another way
                     dt_sub_i = last_main_dt ; fixed = True
-
-                if fixed:
-                    print("Mapped {} -> {}".format(df_sub.index[i], dt_sub_i))
             elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
                 dt_sub_i = last_main_dt ; fixed = True
             elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
