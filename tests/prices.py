@@ -75,12 +75,15 @@ class TestPriceHistory(unittest.TestCase):
 		# TASE dividend release pre-market, doesn't merge nicely with intra-day data so check still present
 
 		tkr = "ICL.TA"
-		start_d = _dt.date.today() - _dt.timedelta(days=365)
+		# tkr = "ESLT.TA"
+		# tkr = "ONE.TA"
+		# tkr = "MGDL.TA"
+		start_d = _dt.date.today() - _dt.timedelta(days=60)
 		end_d = None
 		df_daily = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1d", actions=True)
 		df_daily_divs = df_daily["Dividends"][df_daily["Dividends"]!=0]
 		if df_daily_divs.shape[0]==0:
-			self.skipTest("Skipping test_intraDayWithEvents() because 'ICL.TA' has no dividend in last 12 months")
+			self.skipTest("Skipping test_intraDayWithEvents() because 'ICL.TA' has no dividend in last 60 days")
 		
 		last_div_date = df_daily_divs.index[-1]
 		start_d = last_div_date.date()
