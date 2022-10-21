@@ -313,7 +313,9 @@ class TickerBase():
         elif params["interval"] == "1h":
             pass
         else:
-            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange)
+            # If a midnight is during DST transition hour when clocks roll back, 
+            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
+            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange, ambiguous=True)
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup
