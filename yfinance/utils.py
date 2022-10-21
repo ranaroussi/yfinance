@@ -31,6 +31,9 @@ import sys as _sys
 import os as _os
 import appdirs as _ad
 
+from threading import Lock
+cache_mutex = Lock()
+
 try:
     import ujson as _json
 except ImportError:
@@ -477,32 +480,41 @@ class ProgressBar:
 # Simple file cache of ticker->timezone:
 def get_cache_dirpath():
     return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+
 def cache_lookup_tkr_tz(tkr):
     fp = _os.path.join(get_cache_dirpath(), "tkr-tz.csv")
     if not _os.path.isfile(fp):
         return None
-
-    df = _pd.read_csv(fp)
-    f = df["Ticker"] == tkr
-    if sum(f) == 0:
+    df = _pd.read_csv(fp, index_col="Ticker")
+    if not tkr in df.index:
         return None
+    return df.loc[tkr,"Tz"]
 
-    return df["Tz"][f].iloc[0]
-def cache_store_tkr_tz(tkr,tz):
-    df = _pd.DataFrame({"Ticker":[tkr], "Tz":[tz]})
-
+def cache_store_tkr_tz(tkr, tz):
     dp = get_cache_dirpath()
+    fp = _os.path.join(dp, "tkr-tz.csv")
+
+    cache_mutex.acquire()
+
     if not _os.path.isdir(dp):
         _os.makedirs(dp)
-    fp = _os.path.join(dp, "tkr-tz.csv")
-    if not _os.path.isfile(fp):
-        df.to_csv(fp, index=False)
-        return
+    if (not _os.path.isfile(fp)) and (tz is not None):
+        # Initialise CSV file with first entry
+        df = _pd.DataFrame({"Tz":[tz]}, index=[tkr])
+        df.index.name = "Ticker"
+        df.to_csv(fp)
 
-    df_all = _pd.read_csv(fp)
-    f = df_all["Ticker"]==tkr
-    if sum(f) > 0:
-        raise Exception("Tkr {} tz already in cache".format(tkr))
+    else:
+        df = _pd.read_csv(fp, index_col="Ticker")
+        if tz is None:
+            # Delete if in cache:
+            if tkr in df.index:
+                df = df.drop(tkr)
+                df.to_csv(fp)
+        else:
+            if tkr in df.index:
+                raise Exception("Tkr {} tz already in cache".format(tkr))
+            df.loc[tkr,"Tz"] = tz
+            df.to_csv(fp)
 
-    _pd.concat([df_all,df]).to_csv(fp, index=False)
-
+    cache_mutex.release()
