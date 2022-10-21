@@ -169,5 +169,15 @@ class TestPriceHistory(unittest.TestCase):
 				print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
 				raise
 
+
+	def test_tz_dst_ambiguous(self):
+		# Reproduce issue #1100
+
+		try:
+			yf.Ticker("ESLT.TA").history(start="2002-10-06", end="2002-10-09", interval="1d")
+		except _tz.exceptions.AmbiguousTimeError:
+			raise Exception("Ambiguous DST issue not resolved")
+
+
 if __name__ == '__main__':
 	unittest.main()
