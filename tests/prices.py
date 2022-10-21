@@ -12,6 +12,7 @@ class TestPriceHistory(unittest.TestCase):
 	def tearDown(self):
 		pass
 
+
 	def test_duplicatingDaily(self):
 		tkrs = []
 		tkrs.append("IMP.JO")
@@ -43,6 +44,7 @@ class TestPriceHistory(unittest.TestCase):
 		if not test_run:
 			self.skipTest("Skipping test_duplicatingDaily() because only expected to fail just after market close")
 
+
 	def test_duplicatingWeekly(self):
 		tkrs = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 		test_run = False
@@ -68,14 +70,27 @@ class TestPriceHistory(unittest.TestCase):
 		if not test_run:
 			self.skipTest("Skipping test_duplicatingWeekly() because not possible to fail Monday/weekend")
 
+
 	def test_intraDayWithEvents(self):
-		# Dividend release pre-market, doesn't merge nicely with intra-day data, so
-		# check still present
-		tkr = "ESLT.TA"
-		start_d = "2022-10-06"
-		end_d = "2022-10-07"
-		df1 = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="15m", prepost=True, actions=True)
-		self.assertTrue((df1["Dividends"]!=0.0).any())
+		# TASE dividend release pre-market, doesn't merge nicely with intra-day data so check still present
+
+		tkr = "ICL.TA"
+		# tkr = "ESLT.TA"
+		# tkr = "ONE.TA"
+		# tkr = "MGDL.TA"
+		start_d = _dt.date.today() - _dt.timedelta(days=60)
+		end_d = None
+		df_daily = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1d", actions=True)
+		df_daily_divs = df_daily["Dividends"][df_daily["Dividends"]!=0]
+		if df_daily_divs.shape[0]==0:
+			self.skipTest("Skipping test_intraDayWithEvents() because 'ICL.TA' has no dividend in last 60 days")
+		
+		last_div_date = df_daily_divs.index[-1]
+		start_d = last_div_date.date()
+		end_d = last_div_date.date() + _dt.timedelta(days=1)
+		df = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="15m", actions=True)
+		self.assertTrue((df["Dividends"]!=0.0).any())
+
 
 	def test_dailyWithEvents(self):
 		# Reproduce issue #521
@@ -108,6 +123,7 @@ class TestPriceHistory(unittest.TestCase):
 				print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
 				raise
 
+
 	def test_weeklyWithEvents(self):
 		# Reproduce issue #521
 		tkr1 = "QQQ"
@@ -139,6 +155,7 @@ class TestPriceHistory(unittest.TestCase):
 				print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
 				raise
 
+
 	def test_monthlyWithEvents(self):
 		tkr1 = "QQQ"
 		tkr2 = "GDX"
@@ -168,6 +185,16 @@ class TestPriceHistory(unittest.TestCase):
 				print("{}-with-events missing these dates: {}".format(tkr, missing_from_df1))
 				print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
 				raise
+
+
+	def test_tz_dst_ambiguous(self):
+		# Reproduce issue #1100
+
+		try:
+			yf.Ticker("ESLT.TA").history(start="2002-10-06", end="2002-10-09", interval="1d")
+		except _tz.exceptions.AmbiguousTimeError:
+			raise Exception("Ambiguous DST issue not resolved")
+
 
 if __name__ == '__main__':
 	unittest.main()
