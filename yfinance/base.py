@@ -298,6 +298,18 @@ class TickerBase():
 
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
+        if start is not None:
+            startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
+            if dividends is not None:
+                dividends = dividends[dividends.index>=startDt]
+            if splits is not None:
+                splits = splits[splits.index>=startDt]
+        if end is not None:
+            endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+            if dividends is not None:
+                dividends = dividends[dividends.index<endDt]
+            if splits is not None:
+                splits = splits[splits.index<endDt]
 
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
