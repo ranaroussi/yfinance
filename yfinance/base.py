@@ -328,21 +328,19 @@ class TickerBase():
             dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True)
 
         # combine
-        df = quotes
-        if actions:
-            df = df.sort_index()
-            if dividends.shape[0] > 0:
-                df = utils.safe_merge_dfs(df, dividends, interval)
-            if "Dividends" in df.columns:
-                df.loc[df["Dividends"].isna(),"Dividends"] = 0
-            else:
-                df["Dividends"] = 0.0
-            if splits.shape[0] > 0:
-                df = utils.safe_merge_dfs(df, splits, interval)
-            if "Stock Splits" in df.columns:
-                df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
-            else:
-                df["Stock Splits"] = 0.0
+        df = quotes.sort_index()
+        if dividends.shape[0] > 0:
+            df = utils.safe_merge_dfs(df, dividends, interval)
+        if "Dividends" in df.columns:
+            df.loc[df["Dividends"].isna(),"Dividends"] = 0
+        else:
+            df["Dividends"] = 0.0
+        if splits.shape[0] > 0:
+            df = utils.safe_merge_dfs(df, splits, interval)
+        if "Stock Splits" in df.columns:
+            df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
+        else:
+            df["Stock Splits"] = 0.0
 
         df = utils.fix_Yahoo_dst_issue(df, params["interval"])
             
@@ -358,6 +356,9 @@ class TickerBase():
         df = df[~df.index.duplicated(keep='first')]
 
         self._history = df.copy()
+
+        if not actions:
+            df = df.drop(["Dividends", "Stock Splits"], axis=1)
 
         return df
 
