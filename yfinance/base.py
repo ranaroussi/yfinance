@@ -290,11 +290,20 @@ class TickerBase():
                 "chart"]["result"][0]["meta"]["priceHint"])
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
-        if not keepna:
-            quotes.dropna(inplace=True)
-
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
+        if start is not None:
+            startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
+            if dividends is not None:
+                dividends = dividends[dividends.index>=startDt]
+            if splits is not None:
+                splits = splits[splits.index>=startDt]
+        if end is not None:
+            endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+            if dividends is not None:
+                dividends = dividends[dividends.index<endDt]
+            if splits is not None:
+                splits = splits[splits.index<endDt]
 
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
@@ -305,27 +314,27 @@ class TickerBase():
         splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
         dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
         if params["interval"] in ["1d","1w","1wk","1mo","3mo"]:
-            # Converting datetime->date should improve merge performance
-            quotes.index = _pd.to_datetime(quotes.index.date)
-            splits.index = _pd.to_datetime(splits.index.date)
-            dividends.index = _pd.to_datetime(dividends.index.date)
+            # Converting datetime->date should improve merge performance.
+            # If localizing a midnight during DST transition hour when clocks roll back, 
+            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
+            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True)
+            splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True)
+            dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True)
 
         # combine
-        df = quotes
-        if actions:
-            df = df.sort_index()
-            if dividends.shape[0] > 0:
-                df = utils.safe_merge_dfs(df, dividends, interval)
-            if "Dividends" in df.columns:
-                df.loc[df["Dividends"].isna(),"Dividends"] = 0
-            else:
-                df["Dividends"] = 0.0
-            if splits.shape[0] > 0:
-                df = utils.safe_merge_dfs(df, splits, interval)
-            if "Stock Splits" in df.columns:
-                df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
-            else:
-                df["Stock Splits"] = 0.0
+        df = quotes.sort_index()
+        if dividends.shape[0] > 0:
+            df = utils.safe_merge_dfs(df, dividends, interval)
+        if "Dividends" in df.columns:
+            df.loc[df["Dividends"].isna(),"Dividends"] = 0
+        else:
+            df["Dividends"] = 0.0
+        if splits.shape[0] > 0:
+            df = utils.safe_merge_dfs(df, splits, interval)
+        if "Stock Splits" in df.columns:
+            df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
+        else:
+            df["Stock Splits"] = 0.0
 
         df = utils.fix_Yahoo_dst_issue(df, params["interval"])
             
@@ -337,10 +346,13 @@ class TickerBase():
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup
-        df.dropna(how='all', inplace=True)
         df = df[~df.index.duplicated(keep='first')]
-
         self._history = df.copy()
+        if not actions:
+            df = df.drop(columns=["Dividends", "Stock Splits"])
+        if not keepna:
+            mask_nan_or_zero = (df.isna()|(df==0)).all(axis=1)
+            df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
 
         return df
 
