@@ -139,14 +139,14 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         print("\n".join(['- %s: %s' %
                          v for v in list(shared._ERRORS.items())]))
 
-    if len(tickers) == 1:
-        ticker = tickers[0]
-        return shared._DFS[shared._ISINS.get(ticker, ticker)]
-
     if ignore_tz:
         for tkr in shared._DFS.keys():
             if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0]>0):
                 shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
+
+    if len(tickers) == 1:
+        ticker = tickers[0]
+        return shared._DFS[shared._ISINS.get(ticker, ticker)]
 
     try:
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
