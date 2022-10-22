@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.80
+------
+- Fix `download(ignore_tz=True)` for single ticker #1097
+- Fix rare case of error "Cannot infer DST time" #1100
+
 0.1.79
 ------
 - Fix when Yahoo returns price=NaNs on dividend day
