@@ -30,6 +30,7 @@ import numpy as _np
 import sys as _sys
 import os as _os
 import appdirs as _ad
+import sqlite3
 
 from threading import Lock
 cache_mutex = Lock()
@@ -88,7 +89,9 @@ def get_news_by_isin(isin, proxy=None, session=None):
     return data.get('news', {})
 
 
-def empty_df(index=[]):
+def empty_df(index=None):
+    if index is None:
+        index = []
     empty = _pd.DataFrame(index=index, data={
         'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
         'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
@@ -489,43 +492,44 @@ class ProgressBar:
 
 
 # Simple file cache of ticker->timezone:
+class KVStore():
+
+    def __init__(self, filename):
+        self.conn = sqlite3.connect(filename, timeout=10, check_same_thread=False)
+        self.conn.execute('pragma journal_mode=wal')
+        self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT) without rowid')
+        self.conn.commit()
+
+    def get(self, key):
+        item = self.conn.execute('select value from "kv" where key=?', (key,))
+        if item:
+            return next(item, (None,))[0]
+
+    def set(self, key, value):
+        self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
+        self.conn.commit()
+
+    def delete(self, key):
+        self.conn.execute('delete from "kv" where key=?', (key,))
+        self.conn.commit()
+
+
 def get_cache_dirpath():
     return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
 
+
+tz_db = KVStore(_os.path.join(get_cache_dirpath(), "tkr-tz.db"))
+
+
 def cache_lookup_tkr_tz(tkr):
-    fp = _os.path.join(get_cache_dirpath(), "tkr-tz.csv")
-    if not _os.path.isfile(fp):
-        return None
-    df = _pd.read_csv(fp, index_col="Ticker")
-    if not tkr in df.index:
-        return None
-    return df.loc[tkr,"Tz"]
+    with cache_mutex:
+        return tz_db.get(tkr)
+
 
 def cache_store_tkr_tz(tkr, tz):
-    dp = get_cache_dirpath()
-    fp = _os.path.join(dp, "tkr-tz.csv")
-
-    cache_mutex.acquire()
-
-    if not _os.path.isdir(dp):
-        _os.makedirs(dp)
-    if (not _os.path.isfile(fp)) and (tz is not None):
-        # Initialise CSV file with first entry
-        df = _pd.DataFrame({"Tz":[tz]}, index=[tkr])
-        df.index.name = "Ticker"
-        df.to_csv(fp)
-
-    else:
-        df = _pd.read_csv(fp, index_col="Ticker")
+    with cache_mutex:
         if tz is None:
-            # Delete if in cache:
-            if tkr in df.index:
-                df = df.drop(tkr)
-                df.to_csv(fp)
-        else:
-            if tkr in df.index:
-                raise Exception("Tkr {} tz already in cache".format(tkr))
-            df.loc[tkr,"Tz"] = tz
-            df.to_csv(fp)
-
-    cache_mutex.release()
+            tz_db.delete(tkr)
+        elif tz_db.get(tkr) is not None:
+            raise Exception("Tkr {} tz already in cache".format(tkr))
+        return tz_db.set(tkr, tz)
