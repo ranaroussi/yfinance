@@ -424,6 +424,7 @@ class TickerBase():
                         mixups[idx]["Adj Factor"] = df.loc[idx,"Adj Close"]/df.loc[idx,"Close"]
                     else:
                         mixups[idx]["fields"].add(dc)
+        n_mixups = len(mixups)
 
         if len(mixups) > 0:
             # Problem with Yahoo's mixup is they calculate high & low after, so they can be corrupted.
@@ -489,8 +490,10 @@ class TickerBase():
                     if len(m["fields"])==0:
                         del mixups[idx]
 
+            n_fixed = n_mixups - len(mixups)
+            print("{}: fixed {} currency unit mixups in {} price data".format(self.ticker, n_fixed, interval))
             if len(mixups)>0:
-                print("WARNING: Failed to correct {} currency unit mixups".format(len(mixups)))
+                print("    ... and failed to correct {}".format(len(mixups)))
 
         return df
 
