@@ -532,4 +532,5 @@ def cache_store_tkr_tz(tkr, tz):
             tz_db.delete(tkr)
         elif tz_db.get(tkr) is not None:
             raise Exception("Tkr {} tz already in cache".format(tkr))
-        return tz_db.set(tkr, tz)
+        else:
+            tz_db.set(tkr, tz)
