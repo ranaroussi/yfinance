@@ -4,6 +4,7 @@ import unittest
 
 import datetime as _dt
 import pytz as _tz
+import numpy as _np
 
 class TestPriceHistory(unittest.TestCase):
 	def setUp(self):
@@ -194,6 +195,98 @@ class TestPriceHistory(unittest.TestCase):
 			yf.Ticker("ESLT.TA").history(start="2002-10-06", end="2002-10-09", interval="1d")
 		except _tz.exceptions.AmbiguousTimeError:
 			raise Exception("Ambiguous DST issue not resolved")
+
+
+	def test_repair_weekly(self):
+		# Sometimes, Yahoo returns prices 100x the correct value. 
+		# Suspect mixup between £/pence or $/cents etc.
+		# E.g. ticker PNL.L
+
+		tkr = "PNL.L"
+		start = "2020-01-01"
+		end = min(_dt.date.today(), _dt.date(2023,1,1))
+		dat = yf.Ticker(tkr)
+
+		data_cols = ["Low","High","Open","Close","Adj Close"]
+		df_bad = dat.history(start=start, end=end, interval="1wk", auto_adjust=False, repair=False)
+		f_outlier = _np.where(df_bad[data_cols]>1000.0)
+		indices = None
+		if len(f_outlier[0])==0:
+			self.skipTest("Skipping test_repair_weekly() because no price 100x errors to repair")
+
+		# Outliers detected
+		indices = []
+		for i in range(len(f_outlier[0])):
+			indices.append((f_outlier[0][i], f_outlier[1][i]))
+
+		df = dat.history(start=start, end=end, interval="1wk", auto_adjust=False, repair=True)
+
+		# First test - no errors left
+		df_data = df[data_cols].values
+		for i,j in indices:
+			try:
+				self.assertTrue(df_data[i,j] < 1000.0)
+			except:
+				print("Detected uncorrected error: idx={}, {}={}".format(df.index[i], data_cols[j], df_data[i,j]))
+				# print(df.iloc[i-1:i+2])
+				raise
+
+		# Second test - all differences should be either ~1x or ~100x
+		ratio = df_bad[data_cols].values/df[data_cols].values
+		ratio = ratio.round(2)
+		# - round near-100 ratio to 100:
+		f = ratio>90
+		ratio[f] = (ratio[f]/10).round().astype(int)*10 # round ratio to nearest 10
+		# - now test
+		f_100 = ratio==100
+		f_1 = ratio==1
+		self.assertTrue((f_100|f_1).all())
+
+
+	def test_repair_daily(self):
+		# Sometimes, Yahoo returns prices 100x the correct value. 
+		# Suspect mixup between £/pence or $/cents etc.
+		# E.g. ticker PNL.L
+
+		tkr = "PNL.L"
+		start = "2020-01-01"
+		end = min(_dt.date.today(), _dt.date(2023,1,1))
+		dat = yf.Ticker(tkr)
+
+		data_cols = ["Low","High","Open","Close","Adj Close"]
+		df_bad = dat.history(start=start, end=end, interval="1d", auto_adjust=False, repair=False)
+		f_outlier = _np.where(df_bad[data_cols]>1000.0)
+		indices = None
+		if len(f_outlier[0])==0:
+			self.skipTest("Skipping test_repair_daily() because no price 100x errors to repair")
+
+		# Outliers detected
+		indices = []
+		for i in range(len(f_outlier[0])):
+			indices.append((f_outlier[0][i], f_outlier[1][i]))
+
+		df = dat.history(start=start, end=end, interval="1d", auto_adjust=False, repair=True)
+
+		# First test - no errors left
+		df_data = df[data_cols].values
+		for i,j in indices:
+			try:
+				self.assertTrue(df_data[i,j] < 1000.0)
+			except:
+				print("Detected uncorrected error: idx={}, {}={}".format(df.index[i], data_cols[j], df_data[i,j]))
+				# print(df.iloc[i-1:i+2])
+				raise
+
+		# Second test - all differences should be either ~1x or ~100x
+		ratio = df_bad[data_cols].values/df[data_cols].values
+		ratio = ratio.round(2)
+		# - round near-100 ratio to 100:
+		f = ratio>90
+		ratio[f] = (ratio[f]/10).round().astype(int)*10 # round ratio to nearest 10
+		# - now test
+		f_100 = ratio==100
+		f_1 = ratio==1
+		self.assertTrue((f_100|f_1).all())
 
 
 if __name__ == '__main__':
