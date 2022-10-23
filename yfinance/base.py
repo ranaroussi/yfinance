@@ -29,6 +29,8 @@ import pandas as _pd
 import numpy as _np
 import re as _re
 
+from pytz import UnknownTimeZoneError
+
 try:
     from urllib.parse import quote as urlencode
 except ImportError:
@@ -381,36 +383,26 @@ class TickerBase():
 
         tz = utils.tz_cache.lookup(self.ticker)
 
-        if tz is not None:
-            invalid_value = not isinstance(tz, str)
-            if not invalid_value:
-                try:
-                    _tz.timezone(tz)
-                except:
-                    invalid_value = True
-
-            if invalid_value:
-                # Clear from cache and force re-fetch
-                utils.tz_cache.store(self.ticker, None)
-                tz = None
+        if tz and not utils.is_valid_timezone(tz):
+            # Clear from cache and force re-fetch
+            utils.tz_cache.store(self.ticker, None)
+            tz = None
 
         if tz is None:
-            if not 'exchangeTimezoneName' in self.info:
+            try:
+                tz = self.info["exchangeTimezoneName"]
+            except KeyError:
                 return None
-            tz = self.info["exchangeTimezoneName"]
-            if not isinstance(tz, str):
-                tz = None
-            else:
-                try:
-                    _tz.timezone(tz)
-                except:
-                    tz = None
-            if tz is not None:
+
+            if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
                 utils.tz_cache.store(self.ticker, tz)
+            else:
+                tz = None
 
         self._tz = tz
         return tz
+
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
@@ -419,10 +411,8 @@ class TickerBase():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        if (self._info is None) or (self._sustainability is None) or (self._recommendations is None):
-            ## Need to fetch
-            pass
-        else:
+        if None not in (self._info, self._sustainability, self._recommendations):
+            # No need to fetch
             return
 
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
