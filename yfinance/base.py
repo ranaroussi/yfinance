@@ -339,7 +339,11 @@ class TickerBase():
         if tkr_tz is None:
             tkr_tz = self.info["exchangeTimezoneName"]
             # info fetch is relatively slow so cache timezone
-            utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+            try:
+                utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+            except PermissionError:
+                # System probably read-only, so cannot cache
+                pass
 
         self._tz = tkr_tz
         return tkr_tz

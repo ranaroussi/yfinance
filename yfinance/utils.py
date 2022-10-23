@@ -316,8 +316,17 @@ class ProgressBar:
 
 
 # Simple file cache of ticker->timezone:
+_cache_dp = None
 def get_cache_dirpath():
-    return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+    if _cache_dp is None:
+        dp = _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+    else:
+        dp = _os.path.join(_cache_dp, "py-yfinance")
+    return dp
+def set_tz_cache_location(dp):
+    global _cache_dp
+    _cache_dp = dp
+
 def cache_lookup_tkr_tz(tkr):
     fp = _os.path.join(get_cache_dirpath(), "tkr-tz.csv")
     if not _os.path.isfile(fp):
