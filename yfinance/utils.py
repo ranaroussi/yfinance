@@ -262,6 +262,17 @@ def parse_actions(data):
     return dividends, splits
 
 
+def set_df_tz(df, interval, tz):
+    if df.index.tz is None:
+        df.index = df.index.tz_localize("UTC")
+    df.index = df.index.tz_convert(tz)
+    if interval in ["1d","1w","1wk","1mo","3mo"]:
+        # If localizing a midnight during DST transition hour when clocks roll back, 
+        # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
+        df.index = _pd.to_datetime(df.index.date).tz_localize(tz, ambiguous=True)
+    return df
+
+
 def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
     # Yahoo bug fix. If market is open today then Yahoo normally returns 
     # todays data as a separate row from rest-of week/month interval in above row. 
@@ -269,8 +280,13 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
     # Fix = merge them together
     n = quotes.shape[0]
     if n > 1:
-        dt1 = quotes.index[n-1].tz_localize("UTC").tz_convert(tz_exchange)
-        dt2 = quotes.index[n-2].tz_localize("UTC").tz_convert(tz_exchange)
+        dt1 = quotes.index[n-1]
+        dt2 = quotes.index[n-2]
+        if quotes.index.tz is None:
+            dt1 = dt1.tz_localize("UTC")
+            dt2 = dt2.tz_localize("UTC")
+        dt1 = dt1.tz_convert(tz_exchange)
+        dt2 = dt2.tz_convert(tz_exchange)
         if interval in ["1wk", "1mo", "3mo"]:
             if interval == "1wk":
                 last_rows_same_interval = dt1.year==dt2.year and dt1.week==dt2.week
