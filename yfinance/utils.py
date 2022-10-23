@@ -37,6 +37,8 @@ import atexit as _atexit
 
 from threading import Lock
 
+from pytz import UnknownTimeZoneError
+
 try:
     import ujson as _json
 except ImportError:
@@ -441,6 +443,13 @@ def fix_Yahoo_dst_issue(df, interval):
         dst_error_hours[f_pre_midnight] = 24-df.index[f_pre_midnight].hour
         df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
     return df
+
+def is_valid_timezone(tz: str) -> bool:
+    try:
+        _tz.timezone(tz)
+    except UnknownTimeZoneError:
+        return False
+    return True
 
 
 class ProgressBar:
