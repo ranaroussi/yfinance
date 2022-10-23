@@ -322,6 +322,7 @@ def get_cache_dirpath():
         dp = _os.path.join(_ad.user_cache_dir(), "py-yfinance")
     else:
         dp = _os.path.join(_cache_dp, "py-yfinance")
+    return dp
 def set_tz_cache_location(dp):
     global _cache_dp
     _cache_dp = dp
