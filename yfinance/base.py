@@ -379,7 +379,7 @@ class TickerBase():
         if not self._tz is None:
             return self._tz
 
-        tz = utils.cache_lookup_tkr_tz(self.ticker)
+        tz = utils.tz_cache.lookup(self.ticker)
 
         if tz is not None:
             invalid_value = not isinstance(tz, str)
@@ -391,7 +391,7 @@ class TickerBase():
 
             if invalid_value:
                 # Clear from cache and force re-fetch
-                utils.cache_store_tkr_tz(self.ticker, None)
+                utils.tz_cache.store(self.ticker, None)
                 tz = None
 
         if tz is None:
@@ -407,7 +407,7 @@ class TickerBase():
                     tz = None
             if tz is not None:
                 # info fetch is relatively slow so cache timezone
-                utils.cache_store_tkr_tz(self.ticker, tz)
+                utils.tz_cache.store(self.ticker, tz)
 
         self._tz = tz
         return tz
