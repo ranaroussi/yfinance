@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.81
+------
+- Fix unhandled tz-cache exception #1107
+
 0.1.80
 ------
 - Fix `download(ignore_tz=True)` for single ticker #1097
