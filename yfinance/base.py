@@ -287,6 +287,13 @@ class TickerBase():
             except Exception:
                 pass
 
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+
+        if repair:
+            # Do this before auto/back adjust
+            quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
+
+        # Auto/back adjust
         try:
             if auto_adjust:
                 quotes = utils.auto_adjust(quotes)
@@ -325,24 +332,14 @@ class TickerBase():
             if splits is not None:
                 splits = splits[splits.index<endDt]
 
-        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         
         # Process timezone
-        quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
-        splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
-        dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
-        if params["interval"] in ["1d","1w","1wk","1mo","3mo"]:
-            # Converting datetime->date should improve merge performance.
-            # If localizing a midnight during DST transition hour when clocks roll back, 
-            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True)
-            splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True)
-            dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True)
-
-        if repair:
-            quotes = self._fix_unit_mixups(quotes, interval)
+        quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
+        if splits is not None:
+            splits = utils.set_df_tz(splits, interval, tz_exchange)
+        if dividends is not None:
+            dividends = utils.set_df_tz(dividends, interval, tz_exchange)
 
         # Combine
         df = quotes.sort_index()
@@ -381,7 +378,7 @@ class TickerBase():
 
     # ------------------------
 
-    def _fix_unit_mixups(self, df, interval):
+    def _fix_unit_mixups(self, df, interval, tz_exchange):
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
         # Easy to detect and fix, just look for outliers = ~100x local median
@@ -392,11 +389,16 @@ class TickerBase():
             # Need multiple rows to confidently identify outliers
             return df
 
+        if df.index.tz is None:
+            df.index = df.index.tz_localize(tz_exchange)
+        else:
+            df.index = df.index.tz_convert(tz_exchange)
+
         # Only import scipy if users actually want function. To avoid
         # adding it to dependencies.
         from scipy import ndimage as _ndimage
 
-        data_cols = ["Open","High","Low","Close","Adj Close"]
+        data_cols = ["Open","High","Low","Close"]
         data_cols = [c for c in data_cols if c in df.columns]
         n = df.shape[0]
         median = _ndimage.median_filter(df[data_cols].values, size=(3,3), mode='mirror')
@@ -404,8 +406,6 @@ class TickerBase():
         if (median==0).any():
             raise Exception("median contains zeroes, why?")
         ratio = _np.zeros(median.shape)
-        # f = (median!=0)
-        # ratio[f] = df[data_cols].values[f]/median[f]
         ratio = df[data_cols].values/median
         # ratio_rounded = (ratio/5).round()*5 # round ratio to nearest 5
         ratio_rounded = (ratio/10).round()*10 # round ratio to nearest 10
@@ -421,7 +421,11 @@ class TickerBase():
                     idx = df.index[i]
                     if not idx in mixups:
                         mixups[idx] = {"data":df.loc[idx,data_cols], "fields":set([dc])}
-                        mixups[idx]["Adj Factor"] = df.loc[idx,"Adj Close"]/df.loc[idx,"Close"]
+                        try:
+                            mixups[idx]["Adj Factor"] = df.loc[idx,"Adj Close"]/df.loc[idx,"Close"]
+                        except:
+                            print(df.loc[idx])
+                            raise
                     else:
                         mixups[idx]["fields"].add(dc)
         n_mixups = len(mixups)
@@ -443,7 +447,8 @@ class TickerBase():
                 td_range = _datetime.timedelta(days=1)
 
             # This first pass will correct all errors in Open/Close/Adj Close columns.
-            # It will also *attempt* to correct Low/High columns, but if only can get price data.
+            # It will also *attempt* to correct Low/High columns, but only if can get price data.
+            # print("")
             for idx in sorted(list(mixups.keys())):
                 m = mixups[idx]
                 if "Low" in m["fields"] or "High" in m["fields"]:
@@ -458,6 +463,34 @@ class TickerBase():
                         pass
                     else:
                         df_fine = self.history(start=idx.date(), end=idx.date()+td_range, interval=sub_interval, auto_adjust=False)
+                        px_open = df_fine["Open"].iloc[0]
+                        px_close = df_fine["Open"].iloc[-1]
+                        px_low = df_fine["Low"].min()
+                        px_high = df_fine["High"].max()
+
+                        # First, check whether df_fine has different split-adjustment than df.
+                        # If it is different, then adjust df_fine to match df
+                        good_fields = list(set(data_cols)-m["fields"])
+                        median = df.loc[idx,good_fields].median()
+                        median_fine = _np.median(df_fine[good_fields].values)
+                        ratio = round(median/median_fine, 1)
+                        ratio_rcp = round(median_fine/median, 1)
+                        if ratio==1 and ratio_rcp==1:
+                            # Good!
+                            pass
+                        else:
+                            if ratio>1:
+                                # data has different split-adjustment than fine-grained data
+                                # Adjust fine-grained to match
+                                df_fine[data_cols] *= ratio
+                            elif ratio_rcp>1:
+                                # data has different split-adjustment than fine-grained data
+                                # Adjust fine-grained to match
+                                df_fine[data_cols] *= 1.0/ratio_rcp
+                            median_fine = _np.median(df_fine[good_fields].values)
+                            ratio = round(median/median_fine, 1)
+                            ratio_rcp = round(median_fine/median, 1)
+
                         if "High" in m["fields"]:
                             df.loc[idx, "High"] = df_fine["High"].min()
                             m["fields"].remove("High")
@@ -475,7 +508,7 @@ class TickerBase():
                     del mixups[idx]
 
             # This second pass will *crudely* "fix" any remaining errors in High/Low
-            # simply be ensuring they don't contradict e.g. Low = 100x High
+            # simply by ensuring they don't contradict e.g. Low = 100x High
             if len(mixups)>0:
                 for idx in sorted(list(mixups.keys())):
                     m = mixups[idx]
