@@ -22,6 +22,8 @@
 from __future__ import print_function
 
 import datetime as _datetime
+from typing import Dict, Union
+
 import pytz as _tz
 import requests as _requests
 import re as _re
@@ -30,10 +32,10 @@ import numpy as _np
 import sys as _sys
 import os as _os
 import appdirs as _ad
-import sqlite3
+import sqlite3 as _sqlite3
+import atexit as _atexit
 
 from threading import Lock
-cache_mutex = Lock()
 
 try:
     import ujson as _json
@@ -491,46 +493,85 @@ class ProgressBar:
         return str(self.prog_bar)
 
 
-# Simple file cache of ticker->timezone:
-class KVStore():
+class _KVStore:
+    """Simpel Sqlite backed key/value store, key and value are strings. Should be thread safe."""
 
     def __init__(self, filename):
-        self.conn = sqlite3.connect(filename, timeout=10, check_same_thread=False)
-        self.conn.execute('pragma journal_mode=wal')
-        self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT) without rowid')
-        self.conn.commit()
+        self._cache_mutex = Lock()
+        with self._cache_mutex:
+            self.conn = _sqlite3.connect(filename, timeout=10, check_same_thread=False)
+            self.conn.execute('pragma journal_mode=wal')
+            self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT) without rowid')
+            self.conn.commit()
+        _atexit.register(self.close)
 
-    def get(self, key):
+    def close(self):
+        if self.conn is not None:
+            with self._cache_mutex:
+                self.conn.close()
+                self.conn = None
+
+    def get(self, key: str) -> Union[str, None]:
+        """Get value for key if it exists else returns None"""
         item = self.conn.execute('select value from "kv" where key=?', (key,))
         if item:
             return next(item, (None,))[0]
 
-    def set(self, key, value):
-        self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
-        self.conn.commit()
+    def set(self, key: str, value) -> str:
+        with self._cache_mutex:
+            self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
+            self.conn.commit()
 
-    def delete(self, key):
-        self.conn.execute('delete from "kv" where key=?', (key,))
-        self.conn.commit()
+    def bulk_set(self, kvdata: Dict[str, str]):
+        records = tuple(i for i in kvdata.items())
+        with self._cache_mutex:
+            self.conn.executemany('replace into "kv" (key, value) values (?,?)', records)
+            self.conn.commit()
 
-
-def get_cache_dirpath():
-    return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
-
-
-tz_db = KVStore(_os.path.join(get_cache_dirpath(), "tkr-tz.db"))
-
-
-def cache_lookup_tkr_tz(tkr):
-    with cache_mutex:
-        return tz_db.get(tkr)
+    def delete(self, key: str):
+        with self._cache_mutex:
+            self.conn.execute('delete from "kv" where key=?', (key,))
+            self.conn.commit()
 
 
-def cache_store_tkr_tz(tkr, tz):
-    with cache_mutex:
+class _TzCache:
+    """Simple sqllite file cache of ticker->timezone"""
+
+    def __init__(self):
+        self._tz_db = None
+
+    def lookup(self, tkr):
+        return self.tz_db.get(tkr)
+
+    def store(self, tkr, tz):
         if tz is None:
-            tz_db.delete(tkr)
-        elif tz_db.get(tkr) is not None:
+            self.tz_db.delete(tkr)
+        elif self.tz_db.get(tkr) is not None:
             raise Exception("Tkr {} tz already in cache".format(tkr))
         else:
-            tz_db.set(tkr, tz)
+            self.tz_db.set(tkr, tz)
+
+    @property
+    def cache_dirpath(self):
+        return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+
+    @property
+    def tz_db(self):
+        # lazy init
+        if self._tz_db is None:
+            self._tz_db = _KVStore(_os.path.join(self.cache_dirpath, "tkr-tz.db"))
+            self._migrate_cache_tkr_tz()
+
+        return self._tz_db
+
+    def _migrate_cache_tkr_tz(self):
+        """Migrate contents from old ticker CSV-cache to SQLite db"""
+        fp = _os.path.join(self.cache_dirpath, "tkr-tz.csv")
+        if not _os.path.isfile(fp):
+            return None
+        df = _pd.read_csv(fp, index_col="Ticker")
+        self.tz_db.bulk_set(df.to_dict()['Tz'])
+        _os.remove(fp)
+
+
+tz_cache = _TzCache()
