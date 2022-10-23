@@ -517,7 +517,7 @@ class _KVStore:
         if item:
             return next(item, (None,))[0]
 
-    def set(self, key: str, value) -> str:
+    def set(self, key: str, value: str) -> str:
         with self._cache_mutex:
             self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
             self.conn.commit()
@@ -570,6 +570,7 @@ class _TzCache:
         if not _os.path.isfile(fp):
             return None
         df = _pd.read_csv(fp, index_col="Ticker")
+        print(df.to_dict()['Tz'])
         self.tz_db.bulk_set(df.to_dict()['Tz'])
         _os.remove(fp)
 
