@@ -559,6 +559,8 @@ class _TzCache:
     def tz_db(self):
         # lazy init
         if self._tz_db is None:
+            if not _os.path.isdir(self.cache_dirpath):
+                _os.makedirs(self.cache_dirpath)
             self._tz_db = _KVStore(_os.path.join(self.cache_dirpath, "tkr-tz.db"))
             self._migrate_cache_tkr_tz()
 
