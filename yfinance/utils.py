@@ -502,6 +502,10 @@ class ProgressBar:
         return str(self.prog_bar)
 
 
+# ---------------------------------
+# TimeZone cache related code
+# ---------------------------------
+
 class _KVStore:
     """Simpel Sqlite backed key/value store, key and value are strings. Should be thread safe."""
 
@@ -543,11 +547,28 @@ class _KVStore:
             self.conn.commit()
 
 
+class _TzCacheException(Exception):
+    pass
+
+
 class _TzCache:
-    """Simple sqllite file cache of ticker->timezone"""
+    """Simple sqlite file cache of ticker->timezone"""
 
     def __init__(self):
         self._tz_db = None
+        self._setup_cache_folder()
+
+    def _setup_cache_folder(self):
+        if not _os.path.isdir(self._db_dir):
+            try:
+                _os.makedirs(self._db_dir)
+            except OSError as err:
+                raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
+                                        .format(self._db_dir, err))
+
+        elif not (_os.access(self._db_dir, _os.R_OK) and _os.access(self._db_dir, _os.W_OK)):
+            raise _TzCacheException("Cannot read and write in TzCache folder: '{}'"
+                                    .format(self._db_dir, ))
 
     def lookup(self, tkr):
         return self.tz_db.get(tkr)
@@ -561,23 +582,22 @@ class _TzCache:
             self.tz_db.set(tkr, tz)
 
     @property
-    def cache_dirpath(self):
-        return _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+    def _db_dir(self):
+        global _cache_dir
+        return _os.path.join(_cache_dir, "py-yfinance")
 
     @property
     def tz_db(self):
         # lazy init
         if self._tz_db is None:
-            if not _os.path.isdir(self.cache_dirpath):
-                _os.makedirs(self.cache_dirpath)
-            self._tz_db = _KVStore(_os.path.join(self.cache_dirpath, "tkr-tz.db"))
+            self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
             self._migrate_cache_tkr_tz()
 
         return self._tz_db
 
     def _migrate_cache_tkr_tz(self):
         """Migrate contents from old ticker CSV-cache to SQLite db"""
-        fp = _os.path.join(self.cache_dirpath, "tkr-tz.csv")
+        fp = _os.path.join(self._db_dir, "tkr-tz.csv")
         if not _os.path.isfile(fp):
             return None
         df = _pd.read_csv(fp, index_col="Ticker")
@@ -586,4 +606,54 @@ class _TzCache:
         _os.remove(fp)
 
 
-tz_cache = _TzCache()
+class _TzCacheDummy:
+    """Dummy cache to use if tz cache is disabled"""
+
+    def lookup(self, tkr):
+        return None
+
+    def store(self, tkr, tz):
+        pass
+
+    @property
+    def tz_db(self):
+        return None
+
+
+def get_tz_cache():
+    """
+    Get the timezone cache, initializes it and creates cache folder if needed on first call.
+    If folder cannot be created for some reason it will fall back to initialize a
+    dummy cache with same interface as real cash.
+    """
+    # as this can be called from multiple threads, protect it.
+    with _cache_init_lock:
+        global _tz_cache
+        if _tz_cache is None:
+            try:
+                _tz_cache = _TzCache()
+            except _TzCacheException as err:
+                print("Failed to create TzCache, reason: {}".format(err))
+                print("TzCache will not be used.")
+                print("Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+                _tz_cache = _TzCacheDummy()
+
+        return _tz_cache
+
+
+_cache_dir = _ad.user_cache_dir()
+_cache_init_lock = Lock()
+_tz_cache = None
+
+
+def set_tz_cache_location(cache_dir: str):
+    """
+    Sets the path to create the "py-yfinance" cache folder in.
+    Useful if the default folder returned by "appdir.user_cache_dir()" is not writable.
+    Must be called before cache is used (that is, before fetching tickers).
+    :param cache_dir: Path to use for caches
+    :return: None
+    """
+    global _cache_dir, _tz_cache
+    assert _tz_cache is None, "Time Zone cache already initialized, setting path must be done before cache is created"
+    _cache_dir = cache_dir
