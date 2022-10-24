@@ -16,5 +16,5 @@ Upgrade using:
 
 Bug still there? Delete this content and submit your bug report here and provide the following, as best you can:
 
-• Simple code that reproduces your problem
-• The error message
+- Simple code that reproduces your problem
+- The error message
