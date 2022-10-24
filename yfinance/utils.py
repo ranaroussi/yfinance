@@ -597,7 +597,6 @@ class _TzCache:
         if not _os.path.isfile(fp):
             return None
         df = _pd.read_csv(fp, index_col="Ticker")
-        print(df.to_dict()['Tz'])
         self.tz_db.bulk_set(df.to_dict()['Tz'])
         _os.remove(fp)
 
