@@ -159,7 +159,7 @@ class TickerBase():
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            tz = self._get_ticker_tz()
+            tz = self._get_ticker_tz(proxy, timeout)
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
                 err_msg = "No timezone found, symbol certainly delisted"
@@ -533,7 +533,7 @@ class TickerBase():
         return df
 
 
-    def _get_ticker_tz(self):
+    def _get_ticker_tz(self, proxy=None, timeout=None):
         if not self._tz is None:
             return self._tz
 
@@ -545,10 +545,7 @@ class TickerBase():
             tz = None
 
         if tz is None:
-            try:
-                tz = self.info["exchangeTimezoneName"]
-            except KeyError:
-                return None
+            tz = self._fetch_ticker_tz(proxy, timeout)
 
             if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
@@ -558,6 +555,44 @@ class TickerBase():
 
         self._tz = tz
         return tz
+
+    def _fetch_ticker_tz(self, proxy=None, timeout=None):
+        # Query Yahoo for basic price data just to get returned timezone
+        
+        params = {"range":"1wk", "interval":"1d"}
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        # Getting data from json
+        url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
+
+        session = self.session or _requests
+        try:
+            data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
+            if "Will be right back" in data.text or data is None:
+                return None
+            data = data.json()
+        except Exception:
+            data = None
+
+        fail = False
+        if data is None or not type(data) is dict:
+            fail = True
+        elif type(data) is dict and 'status_code' in data.keys():
+            fail = True
+        elif not "chart" in data or data["chart"]["result"] is None or not data["chart"]["result"]:
+            fail = True
+        if fail:
+            return None
+
+        try:
+            return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        except:
+            return None
 
 
     def _get_info(self, proxy=None):
