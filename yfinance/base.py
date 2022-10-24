@@ -102,7 +102,7 @@ class TickerBase():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False, keepna=False,
+                auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=None, **kwargs):
         """
         :Parameters:
@@ -125,6 +125,9 @@ class TickerBase():
                 Adjust all OHLC automatically? Default is True
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
+            repair: bool
+                Detect currency unit 100x mixups and attempt repair
+                Default is False
             keepna: bool
                 Keep NaN rows returned by Yahoo?
                 Default is False
@@ -286,6 +289,13 @@ class TickerBase():
             except Exception:
                 pass
 
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+
+        if repair:
+            # Do this before auto/back adjust
+            quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
+
+        # Auto/back adjust
         try:
             if auto_adjust:
                 quotes = utils.auto_adjust(quotes)
@@ -324,23 +334,16 @@ class TickerBase():
             if splits is not None:
                 splits = splits[splits.index<endDt]
 
-        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         
-        # prepare index for combine:
-        quotes.index = quotes.index.tz_localize("UTC").tz_convert(tz_exchange)
-        splits.index = splits.index.tz_localize("UTC").tz_convert(tz_exchange)
-        dividends.index = dividends.index.tz_localize("UTC").tz_convert(tz_exchange)
-        if params["interval"] in ["1d","1w","1wk","1mo","3mo"]:
-            # Converting datetime->date should improve merge performance.
-            # If localizing a midnight during DST transition hour when clocks roll back, 
-            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True)
-            splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True)
-            dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True)
+        # Process timezone
+        quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
+        if splits is not None:
+            splits = utils.set_df_tz(splits, interval, tz_exchange)
+        if dividends is not None:
+            dividends = utils.set_df_tz(dividends, interval, tz_exchange)
 
-        # combine
+        # Combine
         df = quotes.sort_index()
         if dividends.shape[0] > 0:
             df = utils.safe_merge_dfs(df, dividends, interval)
@@ -376,6 +379,159 @@ class TickerBase():
         return df
 
     # ------------------------
+
+    def _fix_unit_mixups(self, df, interval, tz_exchange):
+        # Sometimes Yahoo returns few prices in cents/pence instead of $/£
+        # I.e. 100x bigger
+        # Easy to detect and fix, just look for outliers = ~100x local median
+
+        if df.shape[0] == 0:
+            return df
+        if df.shape[0] == 1:
+            # Need multiple rows to confidently identify outliers
+            return df
+
+        if df.index.tz is None:
+            df.index = df.index.tz_localize(tz_exchange)
+        else:
+            df.index = df.index.tz_convert(tz_exchange)
+
+        # Only import scipy if users actually want function. To avoid
+        # adding it to dependencies.
+        from scipy import ndimage as _ndimage
+
+        data_cols = ["Open","High","Low","Close"]
+        data_cols = [c for c in data_cols if c in df.columns]
+        n = df.shape[0]
+        median = _ndimage.median_filter(df[data_cols].values, size=(3,3), mode='mirror')
+
+        if (median==0).any():
+            raise Exception("median contains zeroes, why?")
+        ratio = _np.zeros(median.shape)
+        ratio = df[data_cols].values/median
+        # ratio_rounded = (ratio/5).round()*5 # round ratio to nearest 5
+        ratio_rounded = (ratio/10).round()*10 # round ratio to nearest 10
+        f = (ratio_rounded)==100
+
+        # Store each mixup:
+        mixups = {}
+        for j in range(len(data_cols)):
+            fj = f[:,j]
+            if fj.any():
+                dc = data_cols[j]
+                for i in _np.where(fj)[0]:
+                    idx = df.index[i]
+                    if not idx in mixups:
+                        mixups[idx] = {"data":df.loc[idx,data_cols], "fields":set([dc])}
+                        try:
+                            mixups[idx]["Adj Factor"] = df.loc[idx,"Adj Close"]/df.loc[idx,"Close"]
+                        except:
+                            print(df.loc[idx])
+                            raise
+                    else:
+                        mixups[idx]["fields"].add(dc)
+        n_mixups = len(mixups)
+
+        if len(mixups) > 0:
+            # Problem with Yahoo's mixup is they calculate high & low after, so they can be corrupted.
+            # If interval is weekly then can correct with daily. But if smaller intervals then 
+            # restricted to recent times:
+            # - daily = hourly restricted to last 730 days
+            sub_interval = None
+            td_range = None
+            if interval == "1wk":
+                # Correct by fetching week of daily data
+                sub_interval = "1d"
+                td_range = _datetime.timedelta(days=7)
+            elif interval == "1d":
+                # Correct by fetching day of hourly data
+                sub_interval = "1h"
+                td_range = _datetime.timedelta(days=1)
+
+            # This first pass will correct all errors in Open/Close/Adj Close columns.
+            # It will also *attempt* to correct Low/High columns, but only if can get price data.
+            # print("")
+            for idx in sorted(list(mixups.keys())):
+                m = mixups[idx]
+                if "Low" in m["fields"] or "High" in m["fields"]:
+                    # Need to recalculate Low or High so need more price data
+
+                    if td_range is None:
+                        raise Exception("was hoping this wouldn't happen")
+
+                    start = idx.date()
+                    if (_datetime.date.today()-start) > _datetime.timedelta(days=729):
+                        # Don't bother fetching more price data, Yahoo will reject
+                        pass
+                    else:
+                        df_fine = self.history(start=idx.date(), end=idx.date()+td_range, interval=sub_interval, auto_adjust=False)
+                        px_open = df_fine["Open"].iloc[0]
+                        px_close = df_fine["Open"].iloc[-1]
+                        px_low = df_fine["Low"].min()
+                        px_high = df_fine["High"].max()
+
+                        # First, check whether df_fine has different split-adjustment than df.
+                        # If it is different, then adjust df_fine to match df
+                        good_fields = list(set(data_cols)-m["fields"])
+                        median = df.loc[idx,good_fields].median()
+                        median_fine = _np.median(df_fine[good_fields].values)
+                        ratio = round(median/median_fine, 1)
+                        ratio_rcp = round(median_fine/median, 1)
+                        if ratio==1 and ratio_rcp==1:
+                            # Good!
+                            pass
+                        else:
+                            if ratio>1:
+                                # data has different split-adjustment than fine-grained data
+                                # Adjust fine-grained to match
+                                df_fine[data_cols] *= ratio
+                            elif ratio_rcp>1:
+                                # data has different split-adjustment than fine-grained data
+                                # Adjust fine-grained to match
+                                df_fine[data_cols] *= 1.0/ratio_rcp
+                            median_fine = _np.median(df_fine[good_fields].values)
+                            ratio = round(median/median_fine, 1)
+                            ratio_rcp = round(median_fine/median, 1)
+
+                        if "High" in m["fields"]:
+                            df.loc[idx, "High"] = df_fine["High"].min()
+                            m["fields"].remove("High")
+                        if "Low" in m["fields"]:
+                            df.loc[idx, "Low"] = df_fine["Low"].min()
+                            m["fields"].remove("Low")
+
+                for dc in m["fields"]-set(["Low","High"]):
+                    df.loc[idx, dc] *= 0.01
+                    if dc=="Close":
+                        df.loc[idx, "Adj Close"] = df.loc[idx, "Close"]*m["Adj Factor"]
+                    m["fields"].remove(dc)
+
+                if len(m["fields"])==0:
+                    del mixups[idx]
+
+            # This second pass will *crudely* "fix" any remaining errors in High/Low
+            # simply by ensuring they don't contradict e.g. Low = 100x High
+            if len(mixups)>0:
+                for idx in sorted(list(mixups.keys())):
+                    m = mixups[idx]
+                    row = df.loc[idx,["Open","Close"]]
+                    if "High" in m["fields"]:
+                        df.loc[idx,"High"] = row.max()
+                        m["fields"].remove("High")
+                    if "Low" in m["fields"]:
+                        df.loc[idx,"Low"] = row.min()
+                        m["fields"].remove("Low")
+
+                    if len(m["fields"])==0:
+                        del mixups[idx]
+
+            n_fixed = n_mixups - len(mixups)
+            print("{}: fixed {} currency unit mixups in {} price data".format(self.ticker, n_fixed, interval))
+            if len(mixups)>0:
+                print("    ... and failed to correct {}".format(len(mixups)))
+
+        return df
+
 
     def _get_ticker_tz(self):
         if not self._tz is None:
