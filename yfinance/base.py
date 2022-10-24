@@ -573,8 +573,6 @@ class TickerBase():
         session = self.session or _requests
         try:
             data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
-            if "Will be right back" in data.text or data is None:
-                return None
             data = data.json()
             return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
         except:
