@@ -558,7 +558,7 @@ class TickerBase():
 
     def _fetch_ticker_tz(self, proxy=None, timeout=None):
         # Query Yahoo for basic price data just to get returned timezone
-        
+
         params = {"range":"1wk", "interval":"1d"}
 
         # setup proxy in requests format
@@ -576,20 +576,6 @@ class TickerBase():
             if "Will be right back" in data.text or data is None:
                 return None
             data = data.json()
-        except Exception:
-            data = None
-
-        fail = False
-        if data is None or not type(data) is dict:
-            fail = True
-        elif type(data) is dict and 'status_code' in data.keys():
-            fail = True
-        elif not "chart" in data or data["chart"]["result"] is None or not data["chart"]["result"]:
-            fail = True
-        if fail:
-            return None
-
-        try:
             return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
         except:
             return None
