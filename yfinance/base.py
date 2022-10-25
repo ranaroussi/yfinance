@@ -29,6 +29,8 @@ import pandas as _pd
 import numpy as _np
 import re as _re
 
+from pytz import UnknownTimeZoneError
+
 try:
     from urllib.parse import quote as urlencode
 except ImportError:
@@ -100,8 +102,8 @@ class TickerBase():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False, keepna=False,
-                proxy=None, rounding=False, timeout=None, **kwargs):
+                auto_adjust=True, back_adjust=False, repair=False, keepna=False,
+                proxy=None, rounding=False, timeout=10, **kwargs):
         """
         :Parameters:
             period : str
@@ -123,6 +125,9 @@ class TickerBase():
                 Adjust all OHLC automatically? Default is True
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
+            repair: bool
+                Detect currency unit 100x mixups and attempt repair
+                Default is False
             keepna: bool
                 Keep NaN rows returned by Yahoo?
                 Default is False
@@ -134,33 +139,38 @@ class TickerBase():
             timeout: None or float
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
-                Default is None.
+                Default is 10 seconds.
             **kwargs: dict
                 debug: bool
                     Optional. If passed as False, will suppress
                     error message printing to console.
+                raise_errors: bool
+                    Optional. If True, then raise errors as
+                    exceptions instead of printing to console.
         """
 
         # Work with errors
         debug_mode = True
         if "debug" in kwargs and isinstance(kwargs["debug"], bool):
             debug_mode = kwargs["debug"]
-
-        err_msg = "No data found for this date range, symbol may be delisted"
+        raise_errors = False
+        if "raise_errors" in kwargs and isinstance(kwargs["raise_errors"], bool):
+            raise_errors = kwargs["raise_errors"]
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            try:
-                tz = self._get_ticker_tz()
-            except KeyError as e:
-                if "exchangeTimezoneName" in str(e):
-                    shared._DFS[self.ticker] = utils.empty_df()
-                    shared._ERRORS[self.ticker] = err_msg
-                    if "many" not in kwargs and debug_mode:
+            tz = self._get_ticker_tz(debug_mode, proxy, timeout)
+            if tz is None:
+                # Every valid ticker has a timezone. Missing = problem
+                err_msg = "No timezone found, symbol certainly delisted"
+                shared._DFS[self.ticker] = utils.empty_df()
+                shared._ERRORS[self.ticker] = err_msg
+                if "many" not in kwargs and debug_mode:
+                    if raise_errors:
+                        raise Exception('%s: %s' % (self.ticker, err_msg))
+                    else:
                         print('- %s: %s' % (self.ticker, err_msg))
-                    return utils.empty_df()
-                else:
-                    raise
+                return utils.empty_df()
 
             if end is None:
                 end = int(_time.time())
@@ -215,28 +225,31 @@ class TickerBase():
         except Exception:
             pass
 
-        if data is None or not type(data) is dict or 'status_code' in data.keys():
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return utils.empty_df()
-
-        if "chart" in data and data["chart"]["error"]:
+        err_msg = "No data found for this date range, symbol may be delisted"
+        fail = False
+        if data is None or not type(data) is dict:
+            fail = True
+        elif type(data) is dict and 'status_code' in data.keys():
+            err_msg += "(Yahoo status_code = {})".format(data["status_code"])
+            fail = True
+        elif "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
+            fail = True
+        elif not "chart" in data or data["chart"]["result"] is None or not data["chart"]["result"]:
+            fail = True
+        elif not period is None and not "timestamp" in data["chart"]["result"][0] and not period in data["chart"]["result"][0]["meta"]["validRanges"]:
+            # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
+            err_msg = "Period '{}' is invalid, must be one of {}".format(period, data["chart"]["result"][0]["meta"]["validRanges"])
+            fail = True
+        if fail:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return shared._DFS[self.ticker]
-
-        elif "chart" not in data or data["chart"]["result"] is None or \
-                not data["chart"]["result"]:
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
-            return shared._DFS[self.ticker]
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
+            return utils.empty_df()
 
         # parse quotes
         try:
@@ -250,7 +263,10 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
@@ -273,6 +289,17 @@ class TickerBase():
             except Exception:
                 pass
 
+        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+
+        # Note: ordering is important. If you change order, run the tests!
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+        quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
+        quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
+        if repair:
+            # Do this before auto/back adjust
+            quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
+
+        # Auto/back adjust
         try:
             if auto_adjust:
                 quotes = utils.auto_adjust(quotes)
@@ -286,7 +313,10 @@ class TickerBase():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if "many" not in kwargs and debug_mode:
-                print('- %s: %s' % (self.ticker, err_msg))
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
             quotes = _np.round(quotes, data[
@@ -295,27 +325,41 @@ class TickerBase():
 
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
+        if start is not None:
+            startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
+            if dividends is not None:
+                dividends = dividends[dividends.index>=startDt]
+            if splits is not None:
+                splits = splits[splits.index>=startDt]
+        if end is not None:
+            endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+            if dividends is not None:
+                dividends = dividends[dividends.index<endDt]
+            if splits is not None:
+                splits = splits[splits.index<endDt]
+        if splits is not None:
+            splits = utils.set_df_tz(splits, interval, tz_exchange)
+        if dividends is not None:
+            dividends = utils.set_df_tz(dividends, interval, tz_exchange)
 
-        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-
-        # combine
-        df = _pd.concat([quotes, dividends, splits], axis=1, sort=True)
-        df["Dividends"].fillna(0, inplace=True)
-        df["Stock Splits"].fillna(0, inplace=True)
-
-        # index eod/intraday
-        df.index = df.index.tz_localize("UTC").tz_convert(tz_exchange)
-
-        df = utils.fix_Yahoo_dst_issue(df, params["interval"])
-            
-        if params["interval"][-1] == "m":
-            df.index.name = "Datetime"
-        elif params["interval"] == "1h":
-            pass
+        # Combine
+        df = quotes.sort_index()
+        if dividends.shape[0] > 0:
+            df = utils.safe_merge_dfs(df, dividends, interval)
+        if "Dividends" in df.columns:
+            df.loc[df["Dividends"].isna(),"Dividends"] = 0
         else:
-            # If a midnight is during DST transition hour when clocks roll back, 
-            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange, ambiguous=True)
+            df["Dividends"] = 0.0
+        if splits.shape[0] > 0:
+            df = utils.safe_merge_dfs(df, splits, interval)
+        if "Stock Splits" in df.columns:
+            df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
+        else:
+            df["Stock Splits"] = 0.0
+
+        if params["interval"][-1] in ("m",'h'):
+            df.index.name = "Datetime"
+        else:
             df.index.name = "Date"
 
         # duplicates and missing rows cleanup
@@ -331,22 +375,215 @@ class TickerBase():
 
     # ------------------------
 
-    def _get_ticker_tz(self):
+    def _fix_unit_mixups(self, df, interval, tz_exchange):
+        # Sometimes Yahoo returns few prices in cents/pence instead of $/£
+        # I.e. 100x bigger
+        # Easy to detect and fix, just look for outliers = ~100x local median
+
+        if df.shape[0] == 0:
+            return df
+        if df.shape[0] == 1:
+            # Need multiple rows to confidently identify outliers
+            return df
+
+        if df.index.tz is None:
+            df.index = df.index.tz_localize(tz_exchange)
+        else:
+            df.index = df.index.tz_convert(tz_exchange)
+
+        # Only import scipy if users actually want function. To avoid
+        # adding it to dependencies.
+        from scipy import ndimage as _ndimage
+
+        data_cols = ["Open","High","Low","Close"]
+        data_cols = [c for c in data_cols if c in df.columns]
+        n = df.shape[0]
+        median = _ndimage.median_filter(df[data_cols].values, size=(3,3), mode='mirror')
+
+        if (median==0).any():
+            raise Exception("median contains zeroes, why?")
+        ratio = _np.zeros(median.shape)
+        ratio = df[data_cols].values/median
+        # ratio_rounded = (ratio/5).round()*5 # round ratio to nearest 5
+        ratio_rounded = (ratio/10).round()*10 # round ratio to nearest 10
+        f = (ratio_rounded)==100
+
+        # Store each mixup:
+        mixups = {}
+        for j in range(len(data_cols)):
+            fj = f[:,j]
+            if fj.any():
+                dc = data_cols[j]
+                for i in _np.where(fj)[0]:
+                    idx = df.index[i]
+                    if not idx in mixups:
+                        mixups[idx] = {"data":df.loc[idx,data_cols], "fields":set([dc])}
+                    else:
+                        mixups[idx]["fields"].add(dc)
+        n_mixups = len(mixups)
+
+        if len(mixups) > 0:
+            # Problem with Yahoo's mixup is they calculate high & low after, so they can be corrupted.
+            # If interval is weekly then can correct with daily. But if smaller intervals then 
+            # restricted to recent times:
+            # - daily = hourly restricted to last 730 days
+            sub_interval = None
+            td_range = None
+            if interval == "1wk":
+                # Correct by fetching week of daily data
+                sub_interval = "1d"
+                td_range = _datetime.timedelta(days=7)
+            elif interval == "1d":
+                # Correct by fetching day of hourly data
+                sub_interval = "1h"
+                td_range = _datetime.timedelta(days=1)
+            else:
+                print("WARNING: Have not implemented repair for '{}' interval. Contact developers".format(interval))
+                return df
+
+            # This first pass will correct all errors in Open/Close/Adj Close columns.
+            # It will also *attempt* to correct Low/High columns, but only if can get price data.
+            for idx in sorted(list(mixups.keys())):
+                m = mixups[idx]
+                # Although only some fields in row exhibit 100x error, normally the other fields are also corrupted, 
+                # so need to recalculate all fields in row.
+
+                if td_range is None:
+                    raise Exception("was hoping this wouldn't happen")
+
+                start = idx.date()
+                if sub_interval=="1h" and (_datetime.date.today()-start) > _datetime.timedelta(days=729):
+                    # Don't bother requesting more price data, Yahoo will reject
+                    pass
+                else:
+                    if sub_interval=="1h":
+                        df_fine = self.history(start=idx.date(), end=idx.date()+td_range, interval=sub_interval, auto_adjust=False)
+                    else:
+                        df_fine = self.history(start=idx.date()-td_range, end=idx.date()+td_range, interval=sub_interval, auto_adjust=False)
+
+                    # First, check whether df_fine has different split-adjustment than df.
+                    # If it is different, then adjust df_fine to match df
+                    good_fields = list(set(data_cols)-m["fields"])
+                    median = df.loc[idx,good_fields].median()
+                    median_fine = _np.median(df_fine[good_fields].values)
+                    ratio = round(median/median_fine, 1)
+                    ratio_rcp = round(median_fine/median, 1)
+                    if ratio==1 and ratio_rcp==1:
+                        # Good!
+                        pass
+                    else:
+                        if ratio>1:
+                            # data has different split-adjustment than fine-grained data
+                            # Adjust fine-grained to match
+                            df_fine[data_cols] *= ratio
+                        elif ratio_rcp>1:
+                            # data has different split-adjustment than fine-grained data
+                            # Adjust fine-grained to match
+                            df_fine[data_cols] *= 1.0/ratio_rcp
+                        median_fine = _np.median(df_fine[good_fields].values)
+                        ratio = round(median/median_fine, 1)
+                        ratio_rcp = round(median_fine/median, 1)
+
+                    if sub_interval != "1h":
+                        # dt_before_week = df_fine.index[df_fine.index.get_loc(idx)-1]
+                        df_last_week = df_fine[df_fine.index<idx]
+                        df_fine = df_fine[df_fine.index>=idx]
+
+                    if "High" in m["fields"]:
+                        df.loc[idx, "High"] = df_fine["High"].max()
+                        m["fields"].remove("High")
+                    if "Low" in m["fields"]:
+                        df.loc[idx, "Low"] = df_fine["Low"].min()
+                        m["fields"].remove("Low")
+                    if "Open" in m["fields"]:
+                        if sub_interval != "1h" and idx != df_fine.index[0]:
+                            # Exchange closed Monday. In this case, Yahoo sets Open to last week close
+                            df.loc[idx, "Open"] = df_last_week["Close"][-1]
+                            df.loc[idx, "Low"] = min(df.loc[idx, "Open"], df.loc[idx, "Low"])
+                        else:
+                            df.loc[idx, "Open"] = df_fine["Open"].iloc[0]
+                        m["fields"].remove("Open")
+                    if "Close" in m["fields"]:
+                        df.loc[idx, "Close"] = df_fine["Close"].iloc[-1]
+                        m["fields"].remove("Close")
+                        # Assume 'Adj Close' also corrupted, easier than detecting whether true
+                        df.loc[idx, "Adj Close"] = df_fine["Adj Close"].iloc[-1]
+
+                if len(m["fields"])==0:
+                    del mixups[idx]
+
+            # This second pass will *crudely* "fix" any remaining errors in High/Low
+            # simply by ensuring they don't contradict e.g. Low = 100x High
+            if len(mixups)>0:
+                for idx in sorted(list(mixups.keys())):
+                    m = mixups[idx]
+                    row = df.loc[idx,["Open","Close"]]
+                    if "High" in m["fields"]:
+                        df.loc[idx,"High"] = row.max()
+                        m["fields"].remove("High")
+                    if "Low" in m["fields"]:
+                        df.loc[idx,"Low"] = row.min()
+                        m["fields"].remove("Low")
+
+                    if len(m["fields"])==0:
+                        del mixups[idx]
+
+            n_fixed = n_mixups - len(mixups)
+            print("{}: fixed {} currency unit mixups in {} price data".format(self.ticker, n_fixed, interval))
+            if len(mixups)>0:
+                print("    ... and failed to correct {}".format(len(mixups)))
+
+        return df
+
+
+    def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if not self._tz is None:
             return self._tz
+        cache = utils.get_tz_cache()
+        tz = cache.lookup(self.ticker)
 
-        tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
-        if tkr_tz is None:
-            tkr_tz = self.info["exchangeTimezoneName"]
-            # info fetch is relatively slow so cache timezone
-            try:
-                utils.cache_store_tkr_tz(self.ticker, tkr_tz)
-            except PermissionError:
-                # System probably read-only, so cannot cache
-                pass
+        if tz and not utils.is_valid_timezone(tz):
+            # Clear from cache and force re-fetch
+            cache.store(self.ticker, None)
+            tz = None
 
-        self._tz = tkr_tz
-        return tkr_tz
+        if tz is None:
+            tz = self._fetch_ticker_tz(debug_mode, proxy, timeout)
+
+            if utils.is_valid_timezone(tz):
+                # info fetch is relatively slow so cache timezone
+                cache.store(self.ticker, tz)
+            else:
+                tz = None
+
+        self._tz = tz
+        return tz
+
+      
+    def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
+        # Query Yahoo for basic price data just to get returned timezone
+
+        params = {"range":"1d", "interval":"1d"}
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        # Getting data from json
+        url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
+
+        session = self.session or _requests
+        try:
+            data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
+            data = data.json()
+            return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        except Exception as e:
+            if debug_mode:
+                print("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
+            return None
+
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
@@ -355,10 +592,8 @@ class TickerBase():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        if (self._info is None) or (self._sustainability is None) or (self._recommendations is None):
-            ## Need to fetch
-            pass
-        else:
+        if (self._info is not None) or (self._sustainability is not None) or (self._recommendations):
+            # No need to fetch
             return
 
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
