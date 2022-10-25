@@ -579,9 +579,9 @@ class TickerBase():
             data = data.json()
             try:
                 return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-            except TypeError:
+            except TypeError as err:
                 if debug_mode:
-                    print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker,))
+                    print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
                     print("Got response: ")
                     print("-------------")
                     print(" {}".format(data))
