@@ -333,7 +333,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
         raise Exception("No data to merge")
     
     df_sub_backup = df_sub.copy()
-    data_cols = [c for c in df_sub.columns if not c in df_main]
+    data_cols = [c for c in df_sub.columns if c not in df_main]
     if len(data_cols) > 1:
         raise Exception("Expected 1 data col")
     data_col = data_cols[0]
@@ -459,6 +459,7 @@ def fix_Yahoo_dst_issue(df, interval):
         dst_error_hours[f_pre_midnight] = 24-df.index[f_pre_midnight].hour
         df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
     return df
+
 
 def is_valid_timezone(tz: str) -> bool:
     try:
