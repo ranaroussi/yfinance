@@ -2,12 +2,9 @@ from .context import yfinance as yf
 
 import unittest
 
-import requests_cache
-session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
-
 class TestTicker(unittest.TestCase):
 	def setUp(self):
-		self.session = session
+		pass
 
 	def tearDown(self):
 		pass
@@ -26,7 +23,7 @@ class TestTicker(unittest.TestCase):
 			yf.utils.tz_cache.store(tkr, None)
 
 			# Test:
-			dat = yf.Ticker(tkr, session=self.session)
+			dat = yf.Ticker(tkr)
 			tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
 
 			self.assertIsNotNone(tz)
