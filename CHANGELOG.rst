@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-0.1.82
+0.1.83
 ------
 - Reduce spam-effect of tz-fetch
 
