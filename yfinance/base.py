@@ -337,8 +337,8 @@ class TickerBase():
 
         tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
         if tkr_tz is None:
-            tkr_tz = self.info["exchangeTimezoneName"]
-            # info fetch is relatively slow so cache timezone
+            tkr_tz = self._fetch_ticker_tz(False, None, None)
+
             try:
                 utils.cache_store_tkr_tz(self.ticker, tkr_tz)
             except PermissionError:
@@ -347,6 +347,48 @@ class TickerBase():
 
         self._tz = tkr_tz
         return tkr_tz
+
+
+    def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
+        # Query Yahoo for basic price data just to get returned timezone
+
+        params = {"range":"1d", "interval":"1d"}
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        # Getting data from json
+        url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
+
+        session = self.session or _requests
+        try:
+            data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
+            data = data.json()
+        except Exception as e:
+            if debug_mode:
+                print("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
+            return None
+        else:
+            error = data.get('chart', {}).get('error', None)
+            if error:
+                # explicit error from yahoo API
+                if debug_mode:
+                    print("Got error from yahoo api for ticker {}, Error: {}".format(self.ticker, error))
+            else:
+                try:
+                    return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+                except Exception as err:
+                    if debug_mode:
+                        print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
+                        print("Got response: ")
+                        print("-------------")
+                        print(" {}".format(data))
+                        print("-------------")
+        return None
+
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
