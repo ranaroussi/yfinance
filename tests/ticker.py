@@ -20,7 +20,7 @@ class TestTicker(unittest.TestCase):
 		test_run = False
 		for tkr in tkrs:
 			# First step: remove ticker from tz-cache
-			yf.utils.tz_cache.store(tkr, None)
+			yf.utils.get_tz_cache().store(tkr, None)
 
 			# Test:
 			dat = yf.Ticker(tkr)
