@@ -375,7 +375,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
         elif interval == "3mo":
             new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
-        new_index = new_index.tz_localize(df.index.tz)
+        new_index = new_index.tz_localize(df.index.tz, ambiguous=True)
         df_sub = _reindex_events(df_sub, new_index, data_col)
         df = df_main.join(df_sub)
 
