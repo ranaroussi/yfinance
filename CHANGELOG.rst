@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.82
+------
+- Reduce spam-effect of tz-fetch
+
 0.1.81
 ------
 - Fix unhandled tz-cache exception #1107
