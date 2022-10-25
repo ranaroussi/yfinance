@@ -48,8 +48,6 @@ Yahoo! finance API is intended for personal use only.**
 
 The `Ticker` module, which allows you to access ticker data in a more Pythonic way:
 
-Note: yahoo finance datetimes are received as UTC.
-
 ```python
 import yfinance as yf
 
@@ -215,6 +213,18 @@ data = yf.download(  # or pdr.get_data_yahoo(...
         # (optional, default is None)
         proxy = None
     )
+```
+
+### Timezone cache store
+
+When fetching price data, all dates are localized to stock exchange timezone. 
+But timezone retrieval is relatively slow, so yfinance attemps to cache them 
+in your users cache folder. 
+You can direct cache to use a different location with `set_tz_cache_location()`:
+```python
+import yfinance as yf
+yf.set_tz_cache_location("custom/cache/location")
+...
 ```
 
 ### Managing Multi-Level Columns
