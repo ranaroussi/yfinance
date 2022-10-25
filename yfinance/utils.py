@@ -22,6 +22,8 @@
 from __future__ import print_function
 
 import datetime as _datetime
+from typing import Dict, Union
+
 import pytz as _tz
 import requests as _requests
 import re as _re
@@ -30,6 +32,12 @@ import numpy as _np
 import sys as _sys
 import os as _os
 import appdirs as _ad
+import sqlite3 as _sqlite3
+import atexit as _atexit
+
+from threading import Lock
+
+from pytz import UnknownTimeZoneError
 
 try:
     import ujson as _json
@@ -85,7 +93,9 @@ def get_news_by_isin(isin, proxy=None, session=None):
     return data.get('news', {})
 
 
-def empty_df(index=[]):
+def empty_df(index=None):
+    if index is None:
+        index = []
     empty = _pd.DataFrame(index=index, data={
         'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
         'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
@@ -247,9 +257,195 @@ def parse_actions(data):
             splits.sort_index(inplace=True)
             splits["Stock Splits"] = splits["numerator"] / \
                 splits["denominator"]
-            splits = splits["Stock Splits"]
+            splits = splits[["Stock Splits"]]
 
     return dividends, splits
+
+
+def set_df_tz(df, interval, tz):
+    if df.index.tz is None:
+        df.index = df.index.tz_localize("UTC")
+    df.index = df.index.tz_convert(tz)
+    if interval in ["1d","1w","1wk","1mo","3mo"]:
+        # If localizing a midnight during DST transition hour when clocks roll back, 
+        # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
+        df.index = _pd.to_datetime(df.index.date).tz_localize(tz, ambiguous=True)
+    return df
+
+
+def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
+    # Yahoo bug fix. If market is open today then Yahoo normally returns 
+    # todays data as a separate row from rest-of week/month interval in above row. 
+    # Seems to depend on what exchange e.g. crypto OK.
+    # Fix = merge them together
+    n = quotes.shape[0]
+    if n > 1:
+        dt1 = quotes.index[n-1]
+        dt2 = quotes.index[n-2]
+        if quotes.index.tz is None:
+            dt1 = dt1.tz_localize("UTC")
+            dt2 = dt2.tz_localize("UTC")
+        dt1 = dt1.tz_convert(tz_exchange)
+        dt2 = dt2.tz_convert(tz_exchange)
+        if interval in ["1wk", "1mo", "3mo"]:
+            if interval == "1wk":
+                last_rows_same_interval = dt1.year==dt2.year and dt1.week==dt2.week
+            elif interval == "1mo":
+                last_rows_same_interval = dt1.month==dt2.month
+            elif interval == "3mo":
+                last_rows_same_interval = dt1.year==dt2.year and dt1.quarter==dt2.quarter
+            if last_rows_same_interval:
+                # Last two rows are within same interval
+                idx1 = quotes.index[n-1]
+                idx2 = quotes.index[n-2]
+                if _np.isnan(quotes.loc[idx2,"Open"]):
+                    quotes.loc[idx2,"Open"] = quotes["Open"][n-1]
+                # Note: nanmax() & nanmin() ignores NaNs
+                quotes.loc[idx2,"High"] = _np.nanmax([quotes["High"][n-1], quotes["High"][n-2]])
+                quotes.loc[idx2,"Low"] = _np.nanmin([quotes["Low"][n-1], quotes["Low"][n-2]])
+                quotes.loc[idx2,"Close"] = quotes["Close"][n-1]
+                if "Adj High" in quotes.columns:
+                    quotes.loc[idx2,"Adj High"] = _np.nanmax([quotes["Adj High"][n-1], quotes["Adj High"][n-2]])
+                if "Adj Low" in quotes.columns:
+                    quotes.loc[idx2,"Adj Low"] = _np.nanmin([quotes["Adj Low"][n-1], quotes["Adj Low"][n-2]])
+                if "Adj Close" in quotes.columns:
+                    quotes.loc[idx2,"Adj Close"] = quotes["Adj Close"][n-1]
+                quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
+                quotes = quotes.drop(quotes.index[n-1])
+
+        # Similar bug in daily data except most data is simply duplicated
+        # - exception is volume, *slightly* greater on final row (and matches website)
+        elif interval=="1d":
+            if dt1.date() == dt2.date():
+                # Last two rows are on same day. Drop second-to-last row
+                quotes = quotes.drop(quotes.index[n-2])
+
+    return quotes
+
+
+def safe_merge_dfs(df_main, df_sub, interval):
+    # Carefully merge 'df_sub' onto 'df_main'
+    # If naive merge fails, try again with reindexing df_sub:
+    # 1) if interval is weekly or monthly, then try with index set to start of week/month
+    # 2) if still failing then manually search through df_main.index to reindex df_sub
+
+    if df_sub.shape[0] == 0:
+        raise Exception("No data to merge")
+    
+    df_sub_backup = df_sub.copy()
+    data_cols = [c for c in df_sub.columns if not c in df_main]
+    if len(data_cols) > 1:
+        raise Exception("Expected 1 data col")
+    data_col = data_cols[0]
+
+    def _reindex_events(df, new_index, data_col_name):
+        if len(new_index) == len(set(new_index)):
+            # No duplicates, easy
+            df.index = new_index
+            return df
+
+        df["_NewIndex"] = new_index
+        # Duplicates present within periods but can aggregate
+        if data_col_name == "Dividends":
+            # Add
+            df = df.groupby("_NewIndex").sum()
+            df.index.name = None
+        elif data_col_name == "Stock Splits":
+            # Product
+            df = df.groupby("_NewIndex").prod()
+            df.index.name = None
+        else:
+            raise Exception("New index contains duplicates but unsure how to aggregate for '{}'".format(data_col_name))
+        if "_NewIndex" in df.columns:
+            df = df.drop("_NewIndex",axis=1)
+        return df
+
+    df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if not data_lost:
+        return df
+    # Lost data during join()
+    if interval in ["1wk","1mo","3mo"]:
+        # Backdate all df_sub.index dates to start of week/month
+        if interval == "1wk":
+            new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
+        elif interval == "1mo":
+            new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
+        elif interval == "3mo":
+            new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
+        new_index = new_index.tz_localize(df.index.tz, ambiguous=True)
+        df_sub = _reindex_events(df_sub, new_index, data_col)
+        df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if not data_lost:
+        return df
+    # Lost data during join(). Manually check each df_sub.index date against df_main.index to
+    # find matching interval
+    df_sub = df_sub_backup.copy()
+    new_index = [-1]*df_sub.shape[0]
+    for i in range(df_sub.shape[0]):
+        dt_sub_i = df_sub.index[i]
+        if dt_sub_i in df_main.index:
+            new_index[i] = dt_sub_i ; continue
+        # Found a bad index date, need to search for near-match in df_main (same week/month)
+        fixed = False
+        for j in range(df_main.shape[0]-1):
+            dt_main_j0 = df_main.index[j]
+            dt_main_j1 = df_main.index[j+1]
+            if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
+                fixed = True
+                if interval.endswith('h') or interval.endswith('m'):
+                    # Must also be same day
+                    fixed = (dt_main_j0.date() == dt_sub_i.date()) and (dt_sub_i.date() == dt_main_j1.date())
+                if fixed:
+                    dt_sub_i = dt_main_j0 ; break
+        if not fixed:
+            last_main_dt = df_main.index[df_main.shape[0]-1]
+            diff = dt_sub_i - last_main_dt
+            if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1wk":
+                if last_main_dt.week == dt_sub_i.week:
+                    dt_sub_i = last_main_dt ; fixed = True
+                elif (dt_sub_i>=last_main_dt) and (dt_sub_i-last_main_dt < _datetime.timedelta(weeks=1)):
+                    # With some specific start dates (e.g. around early Jan), Yahoo
+                    # messes up start-of-week, is Saturday not Monday. So check
+                    # if same week another way
+                    dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
+                dt_sub_i = last_main_dt ; fixed = True
+            elif interval.endswith('m') or interval.endswith('h'):
+                td = _pd.to_timedelta(interval)
+                if (dt_sub_i>=last_main_dt) and (dt_sub_i-last_main_dt < td):
+                    dt_sub_i = last_main_dt ; fixed = True
+        new_index[i] = dt_sub_i
+    df_sub = _reindex_events(df_sub, new_index, data_col)
+    df = df_main.join(df_sub)
+
+    f_na = df[data_col].isna()
+    data_lost = sum(~f_na) < df_sub.shape[0]
+    if data_lost:
+        ## Not always possible to match events with trading, e.g. when released pre-market.
+        ## So have to append to bottom with nan prices.
+        ## But should only be impossible with intra-day price data.
+        if interval.endswith('m') or interval.endswith('h'):
+            f_missing = ~df_sub.index.isin(df.index)
+            df_sub_missing = df_sub[f_missing]
+            keys = set(["Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close", "Close"]).intersection(df.columns)
+            df_sub_missing[list(keys)] = _np.nan
+            df = _pd.concat([df, df_sub_missing], sort=True)
+        else:
+            raise Exception("Lost data during merge despite all attempts to align data (see above)")
+
+    return df
 
 
 def fix_Yahoo_dst_issue(df, interval):
@@ -263,6 +459,13 @@ def fix_Yahoo_dst_issue(df, interval):
         dst_error_hours[f_pre_midnight] = 24-df.index[f_pre_midnight].hour
         df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
     return df
+
+def is_valid_timezone(tz: str) -> bool:
+    try:
+        _tz.timezone(tz)
+    except UnknownTimeZoneError:
+        return False
+    return True
 
 
 class ProgressBar:
@@ -315,44 +518,157 @@ class ProgressBar:
         return str(self.prog_bar)
 
 
-# Simple file cache of ticker->timezone:
-_cache_dp = None
-def get_cache_dirpath():
-    if _cache_dp is None:
-        dp = _os.path.join(_ad.user_cache_dir(), "py-yfinance")
-    else:
-        dp = _os.path.join(_cache_dp, "py-yfinance")
-    return dp
-def set_tz_cache_location(dp):
-    global _cache_dp
-    _cache_dp = dp
+# ---------------------------------
+# TimeZone cache related code
+# ---------------------------------
 
-def cache_lookup_tkr_tz(tkr):
-    fp = _os.path.join(get_cache_dirpath(), "tkr-tz.csv")
-    if not _os.path.isfile(fp):
+class _KVStore:
+    """Simpel Sqlite backed key/value store, key and value are strings. Should be thread safe."""
+
+    def __init__(self, filename):
+        self._cache_mutex = Lock()
+        with self._cache_mutex:
+            self.conn = _sqlite3.connect(filename, timeout=10, check_same_thread=False)
+            self.conn.execute('pragma journal_mode=wal')
+            self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT) without rowid')
+            self.conn.commit()
+        _atexit.register(self.close)
+
+    def close(self):
+        if self.conn is not None:
+            with self._cache_mutex:
+                self.conn.close()
+                self.conn = None
+
+    def get(self, key: str) -> Union[str, None]:
+        """Get value for key if it exists else returns None"""
+        item = self.conn.execute('select value from "kv" where key=?', (key,))
+        if item:
+            return next(item, (None,))[0]
+
+    def set(self, key: str, value: str) -> str:
+        with self._cache_mutex:
+            self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
+            self.conn.commit()
+
+    def bulk_set(self, kvdata: Dict[str, str]):
+        records = tuple(i for i in kvdata.items())
+        with self._cache_mutex:
+            self.conn.executemany('replace into "kv" (key, value) values (?,?)', records)
+            self.conn.commit()
+
+    def delete(self, key: str):
+        with self._cache_mutex:
+            self.conn.execute('delete from "kv" where key=?', (key,))
+            self.conn.commit()
+
+
+class _TzCacheException(Exception):
+    pass
+
+
+class _TzCache:
+    """Simple sqlite file cache of ticker->timezone"""
+
+    def __init__(self):
+        self._tz_db = None
+        self._setup_cache_folder()
+
+    def _setup_cache_folder(self):
+        if not _os.path.isdir(self._db_dir):
+            try:
+                _os.makedirs(self._db_dir)
+            except OSError as err:
+                raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
+                                        .format(self._db_dir, err))
+
+        elif not (_os.access(self._db_dir, _os.R_OK) and _os.access(self._db_dir, _os.W_OK)):
+            raise _TzCacheException("Cannot read and write in TzCache folder: '{}'"
+                                    .format(self._db_dir, ))
+
+    def lookup(self, tkr):
+        return self.tz_db.get(tkr)
+
+    def store(self, tkr, tz):
+        if tz is None:
+            self.tz_db.delete(tkr)
+        elif self.tz_db.get(tkr) is not None:
+            raise Exception("Tkr {} tz already in cache".format(tkr))
+        else:
+            self.tz_db.set(tkr, tz)
+
+    @property
+    def _db_dir(self):
+        global _cache_dir
+        return _os.path.join(_cache_dir, "py-yfinance")
+
+    @property
+    def tz_db(self):
+        # lazy init
+        if self._tz_db is None:
+            self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+            self._migrate_cache_tkr_tz()
+
+        return self._tz_db
+
+    def _migrate_cache_tkr_tz(self):
+        """Migrate contents from old ticker CSV-cache to SQLite db"""
+        fp = _os.path.join(self._db_dir, "tkr-tz.csv")
+        if not _os.path.isfile(fp):
+            return None
+        df = _pd.read_csv(fp, index_col="Ticker")
+        self.tz_db.bulk_set(df.to_dict()['Tz'])
+        _os.remove(fp)
+
+
+class _TzCacheDummy:
+    """Dummy cache to use if tz cache is disabled"""
+
+    def lookup(self, tkr):
         return None
 
-    df = _pd.read_csv(fp)
-    f = df["Ticker"] == tkr
-    if sum(f) == 0:
+    def store(self, tkr, tz):
+        pass
+
+    @property
+    def tz_db(self):
         return None
 
-    return df["Tz"][f].iloc[0]
-def cache_store_tkr_tz(tkr,tz):
-    df = _pd.DataFrame({"Ticker":[tkr], "Tz":[tz]})
 
-    dp = get_cache_dirpath()
-    if not _os.path.isdir(dp):
-        _os.makedirs(dp)
-    fp = _os.path.join(dp, "tkr-tz.csv")
-    if not _os.path.isfile(fp):
-        df.to_csv(fp, index=False)
-        return
+def get_tz_cache():
+    """
+    Get the timezone cache, initializes it and creates cache folder if needed on first call.
+    If folder cannot be created for some reason it will fall back to initialize a
+    dummy cache with same interface as real cash.
+    """
+    # as this can be called from multiple threads, protect it.
+    with _cache_init_lock:
+        global _tz_cache
+        if _tz_cache is None:
+            try:
+                _tz_cache = _TzCache()
+            except _TzCacheException as err:
+                print("Failed to create TzCache, reason: {}".format(err))
+                print("TzCache will not be used.")
+                print("Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+                _tz_cache = _TzCacheDummy()
 
-    df_all = _pd.read_csv(fp)
-    f = df_all["Ticker"]==tkr
-    if sum(f) > 0:
-        raise Exception("Tkr {} tz already in cache".format(tkr))
+        return _tz_cache
 
-    _pd.concat([df_all,df]).to_csv(fp, index=False)
 
+_cache_dir = _ad.user_cache_dir()
+_cache_init_lock = Lock()
+_tz_cache = None
+
+
+def set_tz_cache_location(cache_dir: str):
+    """
+    Sets the path to create the "py-yfinance" cache folder in.
+    Useful if the default folder returned by "appdir.user_cache_dir()" is not writable.
+    Must be called before cache is used (that is, before fetching tickers).
+    :param cache_dir: Path to use for caches
+    :return: None
+    """
+    global _cache_dir, _tz_cache
+    assert _tz_cache is None, "Time Zone cache already initialized, setting path must be done before cache is created"
+    _cache_dir = cache_dir

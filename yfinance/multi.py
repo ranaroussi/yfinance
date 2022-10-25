@@ -30,9 +30,9 @@ from . import shared
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=True, 
-             group_by='column', auto_adjust=False, back_adjust=False, keepna=False,
+             group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=None, **kwargs):
+             proxy=None, rounding=False, timeout=10, **kwargs):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -56,6 +56,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             Default is False
         auto_adjust: bool
             Adjust all OHLC automatically? Default is False
+        repair: bool
+            Detect currency unit 100x mixups and attempt repair
+            Default is False
         keepna: bool
             Keep NaN rows returned by Yahoo?
             Default is False
@@ -111,7 +114,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust, keepna=keepna,
+                                   back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
                                    rounding=rounding, timeout=timeout)
         while len(shared._DFS) < len(tickers):
@@ -123,7 +126,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, keepna=keepna, proxy=proxy,
+                                 back_adjust=back_adjust, repair=repair, keepna=keepna, 
+                                 proxy=proxy, 
                                  rounding=rounding, timeout=timeout)
             shared._DFS[ticker.upper()] = data
             if progress:
@@ -191,12 +195,12 @@ def _realign_dfs():
 
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
-                           auto_adjust=False, back_adjust=False,
+                           auto_adjust=False, back_adjust=False, repair=False, 
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=None):
+                           keepna=False, rounding=False, timeout=10):
 
-    data = _download_one(ticker, start, end, auto_adjust, back_adjust,
+    data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair, 
                          actions, period, interval, prepost, proxy, rounding,
                          keepna, timeout)
     shared._DFS[ticker.upper()] = data
@@ -205,14 +209,14 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 
 def _download_one(ticker, start=None, end=None,
-                  auto_adjust=False, back_adjust=False,
+                  auto_adjust=False, back_adjust=False, repair=False, 
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=None):
+                  keepna=False, timeout=10):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
-                                  back_adjust=back_adjust, proxy=proxy,
+                                  back_adjust=back_adjust, repair=repair, proxy=proxy,
                                   rounding=rounding, keepna=keepna, many=True,
                                   timeout=timeout)
