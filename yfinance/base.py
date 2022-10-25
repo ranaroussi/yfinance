@@ -103,7 +103,7 @@ class TickerBase():
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
-                proxy=None, rounding=False, timeout=None, **kwargs):
+                proxy=None, rounding=False, timeout=10, **kwargs):
         """
         :Parameters:
             period : str
@@ -139,7 +139,7 @@ class TickerBase():
             timeout: None or float
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
-                Default is None.
+                Default is 10 seconds.
             **kwargs: dict
                 debug: bool
                     Optional. If passed as False, will suppress
@@ -159,7 +159,7 @@ class TickerBase():
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            tz = self._get_ticker_tz()
+            tz = self._get_ticker_tz(debug_mode, proxy, timeout)
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
                 err_msg = "No timezone found, symbol certainly delisted"
@@ -533,7 +533,7 @@ class TickerBase():
         return df
 
 
-    def _get_ticker_tz(self):
+    def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if not self._tz is None:
             return self._tz
 
@@ -545,10 +545,7 @@ class TickerBase():
             tz = None
 
         if tz is None:
-            try:
-                tz = self.info["exchangeTimezoneName"]
-            except KeyError:
-                return None
+            tz = self._fetch_ticker_tz(debug_mode, proxy, timeout)
 
             if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
@@ -558,6 +555,30 @@ class TickerBase():
 
         self._tz = tz
         return tz
+
+    def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
+        # Query Yahoo for basic price data just to get returned timezone
+
+        params = {"range":"1d", "interval":"1d"}
+
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            proxy = {"https": proxy}
+
+        # Getting data from json
+        url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
+
+        session = self.session or _requests
+        try:
+            data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
+            data = data.json()
+            return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        except Exception as e:
+            if debug_mode:
+                print("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
+            return None
 
 
     def _get_info(self, proxy=None):
