@@ -49,7 +49,7 @@ class Tickers():
                 actions=True, auto_adjust=True, repair=False,
                 proxy=None,
                 threads=True, group_by='column', progress=True,
-                timeout=None, **kwargs):
+                timeout=10, **kwargs):
 
         return self.download(
             period, interval,
@@ -64,7 +64,7 @@ class Tickers():
                  actions=True, auto_adjust=True, repair=False, 
                  proxy=None,
                  threads=True, group_by='column', progress=True,
-                 timeout=None, **kwargs):
+                 timeout=10, **kwargs):
 
         data = multi.download(self.symbols,
                               start=start, end=end,

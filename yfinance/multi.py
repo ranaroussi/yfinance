@@ -32,7 +32,7 @@ from . import shared
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=True, 
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=None, **kwargs):
+             proxy=None, rounding=False, timeout=10, **kwargs):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -198,7 +198,7 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False, 
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=None):
+                           keepna=False, rounding=False, timeout=10):
 
     data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair, 
                          actions, period, interval, prepost, proxy, rounding,
@@ -212,7 +212,7 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False, 
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=None):
+                  keepna=False, timeout=10):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
