@@ -50,7 +50,7 @@ class TestPriceHistory(unittest.TestCase):
 		test_run = False
 		for tkr in tkrs:
 			dat = yf.Ticker(tkr, session=self.session)
-			tz = dat._get_ticker_tz()
+			tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
 
 			dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
 			dt = dt_utc.astimezone(_tz.timezone(tz))
@@ -77,7 +77,7 @@ class TestPriceHistory(unittest.TestCase):
 		test_run = False
 		for tkr in tkrs:
 			dat = yf.Ticker(tkr, session=self.session)
-			tz = dat._get_ticker_tz()
+			tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
 
 			dt = _tz.timezone(tz).localize(_dt.datetime.now())
 			if dt.date().weekday() not in [1,2,3,4]:
