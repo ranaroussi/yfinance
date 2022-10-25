@@ -591,7 +591,7 @@ class TickerBase():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        if None not in (self._info, self._sustainability, self._recommendations):
+        if (self._info is not None) or (self._sustainability is not None) or (self._recommendations):
             # No need to fetch
             return
 
