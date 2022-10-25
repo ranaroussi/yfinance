@@ -28,6 +28,9 @@ class TestTicker(unittest.TestCase):
             history = ticker.history(period="max")
             assert(history.empty is False and history is not None)
 
+        histories = yf.download(symbols, period="1yr")
+        assert(histories.empty is False and histories is not None)
+
     def test_attributes(self):
         for ticker in tickers:
             ticker.isin

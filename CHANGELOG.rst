@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.84
+------
+- Make tz-cache thread-safe
+
 0.1.83
 ------
 - Reduce spam-effect of tz-fetch
