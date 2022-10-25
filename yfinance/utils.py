@@ -31,6 +31,9 @@ import sys as _sys
 import os as _os
 import appdirs as _ad
 
+from threading import Lock
+mutex = Lock()
+
 try:
     import ujson as _json
 except ImportError:
@@ -332,7 +335,9 @@ def cache_lookup_tkr_tz(tkr):
     if not _os.path.isfile(fp):
         return None
 
+    mutex.acquire()
     df = _pd.read_csv(fp)
+    mutex.release()
     f = df["Ticker"] == tkr
     if sum(f) == 0:
         return None
@@ -342,17 +347,21 @@ def cache_store_tkr_tz(tkr,tz):
     df = _pd.DataFrame({"Ticker":[tkr], "Tz":[tz]})
 
     dp = get_cache_dirpath()
+    mutex.acquire()
     if not _os.path.isdir(dp):
         _os.makedirs(dp)
     fp = _os.path.join(dp, "tkr-tz.csv")
     if not _os.path.isfile(fp):
         df.to_csv(fp, index=False)
+        mutex.release()
         return
 
     df_all = _pd.read_csv(fp)
     f = df_all["Ticker"]==tkr
     if sum(f) > 0:
+        mutex.release()
         raise Exception("Tkr {} tz already in cache".format(tkr))
 
     _pd.concat([df_all,df]).to_csv(fp, index=False)
+    mutex.release()
 
