@@ -151,7 +151,7 @@ class TickerBase():
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
             try:
-                tz = self._get_ticker_tz()
+                tz = self._get_ticker_tz(debug_mode, proxy, timeout)
             except KeyError as e:
                 if "exchangeTimezoneName" in str(e):
                     shared._DFS[self.ticker] = utils.empty_df()
@@ -331,13 +331,13 @@ class TickerBase():
 
     # ------------------------
 
-    def _get_ticker_tz(self):
+    def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if not self._tz is None:
             return self._tz
 
         tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
         if tkr_tz is None:
-            tkr_tz = self._fetch_ticker_tz(False, None, None)
+            tkr_tz = self._fetch_ticker_tz(debug_mode, proxy, timeout)
 
             try:
                 utils.cache_store_tkr_tz(self.ticker, tkr_tz)
