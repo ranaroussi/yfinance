@@ -577,21 +577,27 @@ class TickerBase():
         try:
             data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
             data = data.json()
-            try:
-                return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-            except TypeError as err:
-                if debug_mode:
-                    print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
-                    print("Got response: ")
-                    print("-------------")
-                    print(" {}".format(data))
-                    print("-------------")
-                    return None
         except Exception as e:
             if debug_mode:
                 print("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
             return None
-
+        else:
+            error = data.get('chart', {}).get('error', None)
+            if error:
+                # explicit error from yahoo API
+                if debug_mode:
+                    print("Got error from yahoo api for ticker {}, Error: {}".format(self.ticker, error))
+            else:
+                try:
+                    return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+                except Exception as err:
+                    if debug_mode:
+                        print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
+                        print("Got response: ")
+                        print("-------------")
+                        print(" {}".format(data))
+                        print("-------------")
+        return None
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
