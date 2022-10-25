@@ -14,4 +14,7 @@ Before posting an issue - please upgrade to the latest version and confirm the i
 Upgrade using:
 `$ pip install yfinance --upgrade --no-cache-dir`
 
-Bug still there? Delete this content and submit your bug report here...
+Bug still there? Delete this content and submit your bug report here and provide the following, as best you can:
+
+- Simple code that reproduces your problem
+- The error message

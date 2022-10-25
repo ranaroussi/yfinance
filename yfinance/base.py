@@ -559,6 +559,7 @@ class TickerBase():
         self._tz = tz
         return tz
 
+      
     def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
         # Query Yahoo for basic price data just to get returned timezone
 
