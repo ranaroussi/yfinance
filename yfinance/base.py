@@ -402,7 +402,6 @@ class TickerBase():
 
         if (median==0).any():
             raise Exception("median contains zeroes, why?")
-        ratio = _np.zeros(median.shape)
         ratio = df[data_cols].values/median
         # ratio_rounded = (ratio/5).round()*5 # round ratio to nearest 5
         ratio_rounded = (ratio/10).round()*10 # round ratio to nearest 10
@@ -416,7 +415,7 @@ class TickerBase():
                 dc = data_cols[j]
                 for i in _np.where(fj)[0]:
                     idx = df.index[i]
-                    if not idx in mixups:
+                    if idx not in mixups:
                         mixups[idx] = {"data":df.loc[idx,data_cols], "fields":set([dc])}
                     else:
                         mixups[idx]["fields"].add(dc)
@@ -537,7 +536,7 @@ class TickerBase():
 
 
     def _get_ticker_tz(self, debug_mode, proxy, timeout):
-        if not self._tz is None:
+        if self._tz is not None:
             return self._tz
         cache = utils.get_tz_cache()
         tz = cache.lookup(self.ticker)
@@ -578,12 +577,27 @@ class TickerBase():
         try:
             data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
             data = data.json()
-            return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
         except Exception as e:
             if debug_mode:
                 print("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
             return None
-
+        else:
+            error = data.get('chart', {}).get('error', None)
+            if error:
+                # explicit error from yahoo API
+                if debug_mode:
+                    print("Got error from yahoo api for ticker {}, Error: {}".format(self.ticker, error))
+            else:
+                try:
+                    return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+                except Exception as err:
+                    if debug_mode:
+                        print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
+                        print("Got response: ")
+                        print("-------------")
+                        print(" {}".format(data))
+                        print("-------------")
+        return None
 
     def _get_info(self, proxy=None):
         # setup proxy in requests format
@@ -1164,7 +1178,7 @@ class TickerBase():
         dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
         # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
         dates[cn] = dates[cn].dt.tz_localize(
-            tz=self.info["exchangeTimezoneName"])
+            tz=self.get_info()["exchangeTimezoneName"])
 
         dates = dates.set_index("Earnings Date")
 
