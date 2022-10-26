@@ -23,13 +23,10 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
-import pytz as _tz
 import requests as _requests
 import pandas as _pd
 import numpy as _np
 import re as _re
-
-from pytz import UnknownTimeZoneError
 
 try:
     from urllib.parse import quote as urlencode
@@ -49,7 +46,7 @@ _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
 
-class TickerBase():
+class TickerBase:
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
         self.session = session
@@ -229,17 +226,19 @@ class TickerBase():
         fail = False
         if data is None or not type(data) is dict:
             fail = True
-        elif type(data) is dict and 'status_code' in data.keys():
+        elif type(data) is dict and 'status_code' in data:
             err_msg += "(Yahoo status_code = {})".format(data["status_code"])
             fail = True
         elif "chart" in data and data["chart"]["error"]:
             err_msg = data["chart"]["error"]["description"]
             fail = True
-        elif not "chart" in data or data["chart"]["result"] is None or not data["chart"]["result"]:
+        elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"]:
             fail = True
-        elif not period is None and not "timestamp" in data["chart"]["result"][0] and not period in data["chart"]["result"][0]["meta"]["validRanges"]:
+        elif period is not None and "timestamp" not in data["chart"]["result"][0] and period not in \
+                data["chart"]["result"][0]["meta"]["validRanges"]:
             # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
-            err_msg = "Period '{}' is invalid, must be one of {}".format(period, data["chart"]["result"][0]["meta"]["validRanges"])
+            err_msg = "Period '{}' is invalid, must be one of {}".format(period, data["chart"]["result"][0]["meta"][
+                "validRanges"])
             fail = True
         if fail:
             shared._DFS[self.ticker] = utils.empty_df()
@@ -257,8 +256,8 @@ class TickerBase():
             # Yahoo bug fix - it often appends latest price even if after end date
             if end and not quotes.empty:
                 endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
-                if quotes.index[quotes.shape[0]-1] >= endDt:
-                    quotes = quotes.iloc[0:quotes.shape[0]-1]
+                if quotes.index[quotes.shape[0] - 1] >= endDt:
+                    quotes = quotes.iloc[0:quotes.shape[0] - 1]
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
@@ -328,15 +327,15 @@ class TickerBase():
         if start is not None:
             startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
             if dividends is not None:
-                dividends = dividends[dividends.index>=startDt]
+                dividends = dividends[dividends.index >= startDt]
             if splits is not None:
-                splits = splits[splits.index>=startDt]
+                splits = splits[splits.index >= startDt]
         if end is not None:
             endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
             if dividends is not None:
-                dividends = dividends[dividends.index<endDt]
+                dividends = dividends[dividends.index < endDt]
             if splits is not None:
-                splits = splits[splits.index<endDt]
+                splits = splits[splits.index < endDt]
         if splits is not None:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
         if dividends is not None:
@@ -347,17 +346,17 @@ class TickerBase():
         if dividends.shape[0] > 0:
             df = utils.safe_merge_dfs(df, dividends, interval)
         if "Dividends" in df.columns:
-            df.loc[df["Dividends"].isna(),"Dividends"] = 0
+            df.loc[df["Dividends"].isna(), "Dividends"] = 0
         else:
             df["Dividends"] = 0.0
         if splits.shape[0] > 0:
             df = utils.safe_merge_dfs(df, splits, interval)
         if "Stock Splits" in df.columns:
-            df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
+            df.loc[df["Stock Splits"].isna(), "Stock Splits"] = 0
         else:
             df["Stock Splits"] = 0.0
 
-        if params["interval"][-1] in ("m",'h'):
+        if params["interval"][-1] in ("m", 'h'):
             df.index.name = "Datetime"
         else:
             df.index.name = "Date"
@@ -368,7 +367,7 @@ class TickerBase():
         if not actions:
             df = df.drop(columns=["Dividends", "Stock Splits"])
         if not keepna:
-            mask_nan_or_zero = (df.isna()|(df==0)).all(axis=1)
+            mask_nan_or_zero = (df.isna() | (df == 0)).all(axis=1)
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
 
         return df
@@ -395,28 +394,27 @@ class TickerBase():
         # adding it to dependencies.
         from scipy import ndimage as _ndimage
 
-        data_cols = ["Open","High","Low","Close"]
+        data_cols = ["Open", "High", "Low", "Close"]
         data_cols = [c for c in data_cols if c in df.columns]
-        n = df.shape[0]
-        median = _ndimage.median_filter(df[data_cols].values, size=(3,3), mode='mirror')
+        median = _ndimage.median_filter(df[data_cols].values, size=(3, 3), mode='mirror')
 
-        if (median==0).any():
+        if (median == 0).any():
             raise Exception("median contains zeroes, why?")
-        ratio = df[data_cols].values/median
+        ratio = df[data_cols].values / median
         # ratio_rounded = (ratio/5).round()*5 # round ratio to nearest 5
-        ratio_rounded = (ratio/10).round()*10 # round ratio to nearest 10
-        f = (ratio_rounded)==100
+        ratio_rounded = (ratio / 10).round() * 10  # round ratio to nearest 10
+        f = ratio_rounded == 100
 
         # Store each mixup:
         mixups = {}
         for j in range(len(data_cols)):
-            fj = f[:,j]
+            fj = f[:, j]
             if fj.any():
                 dc = data_cols[j]
                 for i in _np.where(fj)[0]:
                     idx = df.index[i]
                     if idx not in mixups:
-                        mixups[idx] = {"data":df.loc[idx,data_cols], "fields":set([dc])}
+                        mixups[idx] = {"data": df.loc[idx, data_cols], "fields": {dc}}
                     else:
                         mixups[idx]["fields"].add(dc)
         n_mixups = len(mixups)
@@ -451,42 +449,44 @@ class TickerBase():
                     raise Exception("was hoping this wouldn't happen")
 
                 start = idx.date()
-                if sub_interval=="1h" and (_datetime.date.today()-start) > _datetime.timedelta(days=729):
+                if sub_interval == "1h" and (_datetime.date.today() - start) > _datetime.timedelta(days=729):
                     # Don't bother requesting more price data, Yahoo will reject
                     pass
                 else:
-                    if sub_interval=="1h":
-                        df_fine = self.history(start=idx.date(), end=idx.date()+td_range, interval=sub_interval, auto_adjust=False)
+                    if sub_interval == "1h":
+                        df_fine = self.history(start=idx.date(), end=idx.date() + td_range, interval=sub_interval,
+                                               auto_adjust=False)
                     else:
-                        df_fine = self.history(start=idx.date()-td_range, end=idx.date()+td_range, interval=sub_interval, auto_adjust=False)
+                        df_fine = self.history(start=idx.date() - td_range, end=idx.date() + td_range,
+                                               interval=sub_interval, auto_adjust=False)
 
                     # First, check whether df_fine has different split-adjustment than df.
                     # If it is different, then adjust df_fine to match df
-                    good_fields = list(set(data_cols)-m["fields"])
-                    median = df.loc[idx,good_fields].median()
+                    good_fields = list(set(data_cols) - m["fields"])
+                    median = df.loc[idx, good_fields].median()
                     median_fine = _np.median(df_fine[good_fields].values)
-                    ratio = round(median/median_fine, 1)
-                    ratio_rcp = round(median_fine/median, 1)
-                    if ratio==1 and ratio_rcp==1:
+                    ratio = round(median / median_fine, 1)
+                    ratio_rcp = round(median_fine / median, 1)
+                    if ratio == 1 and ratio_rcp == 1:
                         # Good!
                         pass
                     else:
-                        if ratio>1:
+                        if ratio > 1:
                             # data has different split-adjustment than fine-grained data
                             # Adjust fine-grained to match
                             df_fine[data_cols] *= ratio
-                        elif ratio_rcp>1:
+                        elif ratio_rcp > 1:
                             # data has different split-adjustment than fine-grained data
                             # Adjust fine-grained to match
-                            df_fine[data_cols] *= 1.0/ratio_rcp
+                            df_fine[data_cols] *= 1.0 / ratio_rcp
                         median_fine = _np.median(df_fine[good_fields].values)
-                        ratio = round(median/median_fine, 1)
-                        ratio_rcp = round(median_fine/median, 1)
+                        ratio = round(median / median_fine, 1)
+                        ratio_rcp = round(median_fine / median, 1)
 
                     if sub_interval != "1h":
                         # dt_before_week = df_fine.index[df_fine.index.get_loc(idx)-1]
-                        df_last_week = df_fine[df_fine.index<idx]
-                        df_fine = df_fine[df_fine.index>=idx]
+                        df_last_week = df_fine[df_fine.index < idx]
+                        df_fine = df_fine[df_fine.index >= idx]
 
                     if "High" in m["fields"]:
                         df.loc[idx, "High"] = df_fine["High"].max()
@@ -508,32 +508,31 @@ class TickerBase():
                         # Assume 'Adj Close' also corrupted, easier than detecting whether true
                         df.loc[idx, "Adj Close"] = df_fine["Adj Close"].iloc[-1]
 
-                if len(m["fields"])==0:
+                if len(m["fields"]) == 0:
                     del mixups[idx]
 
             # This second pass will *crudely* "fix" any remaining errors in High/Low
             # simply by ensuring they don't contradict e.g. Low = 100x High
-            if len(mixups)>0:
+            if len(mixups) > 0:
                 for idx in sorted(list(mixups.keys())):
                     m = mixups[idx]
-                    row = df.loc[idx,["Open","Close"]]
+                    row = df.loc[idx, ["Open", "Close"]]
                     if "High" in m["fields"]:
-                        df.loc[idx,"High"] = row.max()
+                        df.loc[idx, "High"] = row.max()
                         m["fields"].remove("High")
                     if "Low" in m["fields"]:
-                        df.loc[idx,"Low"] = row.min()
+                        df.loc[idx, "Low"] = row.min()
                         m["fields"].remove("Low")
 
-                    if len(m["fields"])==0:
+                    if len(m["fields"]) == 0:
                         del mixups[idx]
 
             n_fixed = n_mixups - len(mixups)
             print("{}: fixed {} currency unit mixups in {} price data".format(self.ticker, n_fixed, interval))
-            if len(mixups)>0:
+            if len(mixups) > 0:
                 print("    ... and failed to correct {}".format(len(mixups)))
 
         return df
-
 
     def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if self._tz is not None:
@@ -558,11 +557,10 @@ class TickerBase():
         self._tz = tz
         return tz
 
-      
     def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
         # Query Yahoo for basic price data just to get returned timezone
 
-        params = {"range":"1d", "interval":"1d"}
+        params = {"range": "1d", "interval": "1d"}
 
         # setup proxy in requests format
         if proxy is not None:
@@ -606,7 +604,7 @@ class TickerBase():
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        if (self._info is not None) or (self._sustainability is not None) or (self._recommendations):
+        if (self._info is not None) or (self._sustainability is not None) or self._recommendations:
             # No need to fetch
             return
 
@@ -654,7 +652,8 @@ class TickerBase():
 
         try:
             if not isinstance(data.get('summaryDetail'), dict):
-                # For some reason summaryDetail did not give any results. The price dict usually has most of the same info
+                # For some reason summaryDetail did not give any results. The price dict
+                # usually has most of the same info
                 self._info.update(data.get('price', {}))
         except Exception:
             pass
@@ -765,7 +764,7 @@ class TickerBase():
                     self._institutional_holders['Date Reported'])
             if '% Out' in self._institutional_holders:
                 self._institutional_holders['% Out'] = self._institutional_holders[
-                    '% Out'].str.replace('%', '').astype(float) / 100
+                                                           '% Out'].str.replace('%', '').astype(float) / 100
 
         if self._mutualfund_holders is not None:
             if 'Date Reported' in self._mutualfund_holders:
@@ -773,7 +772,7 @@ class TickerBase():
                     self._mutualfund_holders['Date Reported'])
             if '% Out' in self._mutualfund_holders:
                 self._mutualfund_holders['% Out'] = self._mutualfund_holders[
-                    '% Out'].str.replace('%', '').astype(float) / 100
+                                                        '% Out'].str.replace('%', '').astype(float) / 100
 
         self._get_info(proxy)
 
@@ -786,9 +785,9 @@ class TickerBase():
         self._balancesheet = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
         self._financials = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
         for key in (
-            (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
-            (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
-            (self._financials, 'incomeStatement', 'incomeStatementHistory')
+                (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
+                (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
+                (self._financials, 'incomeStatement', 'incomeStatementHistory')
         ):
             item = key[1] + 'History'
             if isinstance(data.get(item), dict):
@@ -808,7 +807,7 @@ class TickerBase():
         if isinstance(data.get('earnings'), dict):
             try:
                 earnings = data['earnings']['financialsChart']
-                earnings['financialCurrency'] = 'USD' if 'financialCurrency' not in data['earnings'] else data['earnings']['financialCurrency']
+                earnings['financialCurrency'] = data['earnings'].get('financialCurrency', 'USD')
                 self._earnings['financialCurrency'] = earnings['financialCurrency']
                 df = _pd.DataFrame(earnings['yearly']).set_index('date')
                 df.columns = utils.camel2title(df.columns)
@@ -830,7 +829,7 @@ class TickerBase():
             shares['Year'] = shares['asOfDate'].agg(lambda x: int(x[:4]))
             shares.set_index('Year', inplace=True)
             shares.drop(columns=['dataId', 'asOfDate',
-                        'periodType', 'currencyCode'], inplace=True)
+                                 'periodType', 'currencyCode'], inplace=True)
             shares.rename(
                 columns={'reportedValue': "BasicShares"}, inplace=True)
             self._shares = shares
@@ -857,7 +856,7 @@ class TickerBase():
                             dict_cols.append(colname)
                             for k, v in colval.items():
                                 new_colname = colname + ' ' + \
-                                    utils.camel2title([k])[0]
+                                              utils.camel2title([k])[0]
                                 analysis.loc[idx, new_colname] = v
 
                 self._analysis = analysis[[
@@ -865,14 +864,16 @@ class TickerBase():
             except Exception:
                 pass
 
-        # Complementary key-statistics (currently fetching the important trailingPegRatio which is the value shown in the website)
+        # Complementary key-statistics (currently fetching the important trailingPegRatio which is the
+        # value shown in the website)
         res = {}
         try:
             my_headers = {'user-agent': 'curl/7.55.1', 'accept': 'application/json', 'content-type': 'application/json',
                           'referer': 'https://finance.yahoo.com/', 'cache-control': 'no-cache', 'connection': 'close'}
             p = _re.compile(r'root\.App\.main = (.*);')
             r = _requests.session().get('https://finance.yahoo.com/quote/{}/key-statistics?p={}'.format(self.ticker,
-                                                                                                        self.ticker), headers=my_headers)
+                                                                                                        self.ticker),
+                                        headers=my_headers)
             q_results = {}
             my_qs_keys = ['pegRatio']  # QuoteSummaryStore
             # , 'quarterlyPegRatio']  # QuoteTimeSeriesStore
@@ -890,8 +891,7 @@ class TickerBase():
                     zzz = key_stats['timeSeries'][i]
                     for j in range(len(zzz)):
                         if key_stats['timeSeries'][i][j]:
-                            res = {i: key_stats['timeSeries']
-                                   [i][j]['reportedValue']['raw']}
+                            res = {i: key_stats['timeSeries'][i][j]['reportedValue']['raw']}
                             q_results[self.ticker].append(res)
 
                 # print(res)
@@ -909,28 +909,28 @@ class TickerBase():
 
         self._fundamentals = True
 
-    def get_recommendations(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_recommendations(self, proxy=None, as_dict=False):
         self._get_info(proxy)
         data = self._recommendations
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_calendar(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_calendar(self, proxy=None, as_dict=False):
         self._get_info(proxy)
         data = self._calendar
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_major_holders(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_major_holders(self, proxy=None, as_dict=False):
         self._get_fundamentals(proxy=proxy)
         data = self._major_holders
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_institutional_holders(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_institutional_holders(self, proxy=None, as_dict=False):
         self._get_fundamentals(proxy=proxy)
         data = self._institutional_holders
         if data is not None:
@@ -938,7 +938,7 @@ class TickerBase():
                 return data.to_dict()
             return data
 
-    def get_mutualfund_holders(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_mutualfund_holders(self, proxy=None, as_dict=False):
         self._get_fundamentals(proxy=proxy)
         data = self._mutualfund_holders
         if data is not None:
@@ -946,14 +946,14 @@ class TickerBase():
                 return data.to_dict()
             return data
 
-    def get_info(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_info(self, proxy=None, as_dict=False):
         self._get_info(proxy)
         data = self._info
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_sustainability(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_sustainability(self, proxy=None, as_dict=False):
         self._get_info(proxy)
         data = self._sustainability
         if as_dict:
@@ -965,11 +965,12 @@ class TickerBase():
         data = self._earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
+            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
+                'financialCurrency']
             return dict_data
         return data
 
-    def get_analysis(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_analysis(self, proxy=None, as_dict=False):
         self._get_fundamentals(proxy=proxy)
         data = self._analysis
         if as_dict:
@@ -1024,7 +1025,7 @@ class TickerBase():
             return actions[actions != 0].dropna(how='all').fillna(0)
         return []
 
-    def get_shares(self, proxy=None, as_dict=False, *args, **kwargs):
+    def get_shares(self, proxy=None, as_dict=False):
         self._get_fundamentals(proxy=proxy)
         data = self._shares
         if as_dict:
@@ -1055,7 +1056,7 @@ class TickerBase():
 
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
-            % urlencode(q)
+              % urlencode(q)
         session = self.session or _requests
         data = session.get(
             url=url,

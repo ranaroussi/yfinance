@@ -44,7 +44,6 @@ try:
 except ImportError:
     import json as _json
 
-
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
@@ -54,7 +53,7 @@ def is_isin(string):
 
 
 def get_all_by_isin(isin, proxy=None, session=None):
-    if not(is_isin(isin)):
+    if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
 
     from .base import _BASE_URL_
@@ -133,7 +132,7 @@ def get_json(url, proxy=None, session=None):
     try:
         data['annualBasicAverageShares'] = _json.loads(
             json_str)['context']['dispatcher']['stores'][
-                'QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
+            'QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
     except Exception:
         pass
 
@@ -151,7 +150,7 @@ def camel2title(o):
 
 def _parse_user_dt(dt, exchange_tz):
     if isinstance(dt, int):
-        ## Should already be epoch, test with conversion:
+        # Should already be epoch, test with conversion:
         _datetime.datetime.fromtimestamp(dt)
     else:
         # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
@@ -256,7 +255,7 @@ def parse_actions(data):
             splits.index = _pd.to_datetime(splits.index, unit="s")
             splits.sort_index(inplace=True)
             splits["Stock Splits"] = splits["numerator"] / \
-                splits["denominator"]
+                                     splits["denominator"]
             splits = splits[["Stock Splits"]]
 
     return dividends, splits
@@ -266,7 +265,7 @@ def set_df_tz(df, interval, tz):
     if df.index.tz is None:
         df.index = df.index.tz_localize("UTC")
     df.index = df.index.tz_convert(tz)
-    if interval in ["1d","1w","1wk","1mo","3mo"]:
+    if interval in ["1d", "1w", "1wk", "1mo", "3mo"]:
         # If localizing a midnight during DST transition hour when clocks roll back, 
         # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
         df.index = _pd.to_datetime(df.index.date).tz_localize(tz, ambiguous=True)
@@ -280,8 +279,8 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
     # Fix = merge them together
     n = quotes.shape[0]
     if n > 1:
-        dt1 = quotes.index[n-1]
-        dt2 = quotes.index[n-2]
+        dt1 = quotes.index[n - 1]
+        dt2 = quotes.index[n - 2]
         if quotes.index.tz is None:
             dt1 = dt1.tz_localize("UTC")
             dt2 = dt2.tz_localize("UTC")
@@ -289,36 +288,36 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
         dt2 = dt2.tz_convert(tz_exchange)
         if interval in ["1wk", "1mo", "3mo"]:
             if interval == "1wk":
-                last_rows_same_interval = dt1.year==dt2.year and dt1.week==dt2.week
+                last_rows_same_interval = dt1.year == dt2.year and dt1.week == dt2.week
             elif interval == "1mo":
-                last_rows_same_interval = dt1.month==dt2.month
+                last_rows_same_interval = dt1.month == dt2.month
             elif interval == "3mo":
-                last_rows_same_interval = dt1.year==dt2.year and dt1.quarter==dt2.quarter
+                last_rows_same_interval = dt1.year == dt2.year and dt1.quarter == dt2.quarter
             if last_rows_same_interval:
                 # Last two rows are within same interval
-                idx1 = quotes.index[n-1]
-                idx2 = quotes.index[n-2]
-                if _np.isnan(quotes.loc[idx2,"Open"]):
-                    quotes.loc[idx2,"Open"] = quotes["Open"][n-1]
+                idx1 = quotes.index[n - 1]
+                idx2 = quotes.index[n - 2]
+                if _np.isnan(quotes.loc[idx2, "Open"]):
+                    quotes.loc[idx2, "Open"] = quotes["Open"][n - 1]
                 # Note: nanmax() & nanmin() ignores NaNs
-                quotes.loc[idx2,"High"] = _np.nanmax([quotes["High"][n-1], quotes["High"][n-2]])
-                quotes.loc[idx2,"Low"] = _np.nanmin([quotes["Low"][n-1], quotes["Low"][n-2]])
-                quotes.loc[idx2,"Close"] = quotes["Close"][n-1]
+                quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
+                quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                quotes.loc[idx2, "Close"] = quotes["Close"][n - 1]
                 if "Adj High" in quotes.columns:
-                    quotes.loc[idx2,"Adj High"] = _np.nanmax([quotes["Adj High"][n-1], quotes["Adj High"][n-2]])
+                    quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
                 if "Adj Low" in quotes.columns:
-                    quotes.loc[idx2,"Adj Low"] = _np.nanmin([quotes["Adj Low"][n-1], quotes["Adj Low"][n-2]])
+                    quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
                 if "Adj Close" in quotes.columns:
-                    quotes.loc[idx2,"Adj Close"] = quotes["Adj Close"][n-1]
-                quotes.loc[idx2,"Volume"] += quotes["Volume"][n-1]
-                quotes = quotes.drop(quotes.index[n-1])
+                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
+                quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
+                quotes = quotes.drop(quotes.index[n - 1])
 
         # Similar bug in daily data except most data is simply duplicated
         # - exception is volume, *slightly* greater on final row (and matches website)
-        elif interval=="1d":
+        elif interval == "1d":
             if dt1.date() == dt2.date():
                 # Last two rows are on same day. Drop second-to-last row
-                quotes = quotes.drop(quotes.index[n-2])
+                quotes = quotes.drop(quotes.index[n - 2])
 
     return quotes
 
@@ -331,7 +330,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
     if df_sub.shape[0] == 0:
         raise Exception("No data to merge")
-    
+
     df_sub_backup = df_sub.copy()
     data_cols = [c for c in df_sub.columns if c not in df_main]
     if len(data_cols) > 1:
@@ -357,7 +356,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
         else:
             raise Exception("New index contains duplicates but unsure how to aggregate for '{}'".format(data_col_name))
         if "_NewIndex" in df.columns:
-            df = df.drop("_NewIndex",axis=1)
+            df = df.drop("_NewIndex", axis=1)
         return df
 
     df = df_main.join(df_sub)
@@ -367,7 +366,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     if not data_lost:
         return df
     # Lost data during join()
-    if interval in ["1wk","1mo","3mo"]:
+    if interval in ["1wk", "1mo", "3mo"]:
         # Backdate all df_sub.index dates to start of week/month
         if interval == "1wk":
             new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
@@ -386,46 +385,55 @@ def safe_merge_dfs(df_main, df_sub, interval):
     # Lost data during join(). Manually check each df_sub.index date against df_main.index to
     # find matching interval
     df_sub = df_sub_backup.copy()
-    new_index = [-1]*df_sub.shape[0]
+    new_index = [-1] * df_sub.shape[0]
     for i in range(df_sub.shape[0]):
         dt_sub_i = df_sub.index[i]
         if dt_sub_i in df_main.index:
-            new_index[i] = dt_sub_i ; continue
+            new_index[i] = dt_sub_i
+            continue
         # Found a bad index date, need to search for near-match in df_main (same week/month)
         fixed = False
-        for j in range(df_main.shape[0]-1):
+        for j in range(df_main.shape[0] - 1):
             dt_main_j0 = df_main.index[j]
-            dt_main_j1 = df_main.index[j+1]
+            dt_main_j1 = df_main.index[j + 1]
             if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
                 fixed = True
                 if interval.endswith('h') or interval.endswith('m'):
                     # Must also be same day
                     fixed = (dt_main_j0.date() == dt_sub_i.date()) and (dt_sub_i.date() == dt_main_j1.date())
                 if fixed:
-                    dt_sub_i = dt_main_j0 ; break
+                    dt_sub_i = dt_main_j0
+                    break
         if not fixed:
-            last_main_dt = df_main.index[df_main.shape[0]-1]
+            last_main_dt = df_main.index[df_main.shape[0] - 1]
             diff = dt_sub_i - last_main_dt
             if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
-                dt_sub_i = last_main_dt ; fixed = True
+                dt_sub_i = last_main_dt
+                fixed = True
             elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
-                dt_sub_i = last_main_dt ; fixed = True
+                dt_sub_i = last_main_dt
+                fixed = True
             elif interval == "1wk":
                 if last_main_dt.week == dt_sub_i.week:
-                    dt_sub_i = last_main_dt ; fixed = True
-                elif (dt_sub_i>=last_main_dt) and (dt_sub_i-last_main_dt < _datetime.timedelta(weeks=1)):
+                    dt_sub_i = last_main_dt
+                    fixed = True
+                elif (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < _datetime.timedelta(weeks=1)):
                     # With some specific start dates (e.g. around early Jan), Yahoo
                     # messes up start-of-week, is Saturday not Monday. So check
                     # if same week another way
-                    dt_sub_i = last_main_dt ; fixed = True
+                    dt_sub_i = last_main_dt
+                    fixed = True
             elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
-                dt_sub_i = last_main_dt ; fixed = True
+                dt_sub_i = last_main_dt
+                fixed = True
             elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
-                dt_sub_i = last_main_dt ; fixed = True
+                dt_sub_i = last_main_dt
+                fixed = True
             elif interval.endswith('m') or interval.endswith('h'):
                 td = _pd.to_timedelta(interval)
-                if (dt_sub_i>=last_main_dt) and (dt_sub_i-last_main_dt < td):
-                    dt_sub_i = last_main_dt ; fixed = True
+                if (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < td):
+                    dt_sub_i = last_main_dt
+                    fixed = True
         new_index[i] = dt_sub_i
     df_sub = _reindex_events(df_sub, new_index, data_col)
     df = df_main.join(df_sub)
@@ -439,7 +447,8 @@ def safe_merge_dfs(df_main, df_sub, interval):
         if interval.endswith('m') or interval.endswith('h'):
             f_missing = ~df_sub.index.isin(df.index)
             df_sub_missing = df_sub[f_missing]
-            keys = set(["Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close", "Close"]).intersection(df.columns)
+            keys = {"Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close",
+                    "Close"}.intersection(df.columns)
             df_sub_missing[list(keys)] = _np.nan
             df = _pd.concat([df, df_sub_missing], sort=True)
         else:
@@ -449,14 +458,14 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
 
 def fix_Yahoo_dst_issue(df, interval):
-    if interval in ["1d","1w","1wk"]:
+    if interval in ["1d", "1w", "1wk"]:
         # These intervals should start at time 00:00. But for some combinations of date and timezone, 
         # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
         # The clue is (a) minutes=0 and (b) hour near 0. 
         # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
-        f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22,23]))
-        dst_error_hours = _np.array([0]*df.shape[0])
-        dst_error_hours[f_pre_midnight] = 24-df.index[f_pre_midnight].hour
+        f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22, 23]))
+        dst_error_hours = _np.array([0] * df.shape[0])
+        dst_error_hours[f_pre_midnight] = 24 - df.index[f_pre_midnight].hour
         df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
     return df
 
@@ -509,11 +518,11 @@ class ProgressBar:
         all_full = self.width - 2
         num_hashes = int(round((percent_done / 100.0) * all_full))
         self.prog_bar = '[' + self.fill_char * \
-            num_hashes + ' ' * (all_full - num_hashes) + ']'
+                        num_hashes + ' ' * (all_full - num_hashes) + ']'
         pct_place = (len(self.prog_bar) // 2) - len(str(percent_done))
         pct_string = '%d%%' % percent_done
         self.prog_bar = self.prog_bar[0:pct_place] + \
-            (pct_string + self.prog_bar[pct_place + len(pct_string):])
+                        (pct_string + self.prog_bar[pct_place + len(pct_string):])
 
     def __str__(self):
         return str(self.prog_bar)
@@ -547,7 +556,7 @@ class _KVStore:
         if item:
             return next(item, (None,))[0]
 
-    def set(self, key: str, value: str) -> str:
+    def set(self, key: str, value: str) -> None:
         with self._cache_mutex:
             self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
             self.conn.commit()
