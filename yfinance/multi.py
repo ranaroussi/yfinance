@@ -29,10 +29,10 @@ from . import Ticker, utils
 from . import shared
 
 
-def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=True, 
+def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=True,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=10, **kwargs):
+             proxy=None, rounding=False, timeout=10):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -126,8 +126,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, repair=repair, keepna=keepna, 
-                                 proxy=proxy, 
+                                 back_adjust=back_adjust, repair=repair, keepna=keepna,
+                                 proxy=proxy,
                                  rounding=rounding, timeout=timeout)
             shared._DFS[ticker.upper()] = data
             if progress:
@@ -145,7 +145,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
 
     if ignore_tz:
         for tkr in shared._DFS.keys():
-            if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0]>0):
+            if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
                 shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
 
     if len(tickers) == 1:
@@ -195,12 +195,11 @@ def _realign_dfs():
 
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
-                           auto_adjust=False, back_adjust=False, repair=False, 
+                           auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
-
-    data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair, 
+    data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
                          keepna, timeout)
     shared._DFS[ticker.upper()] = data
@@ -209,11 +208,10 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 
 def _download_one(ticker, start=None, end=None,
-                  auto_adjust=False, back_adjust=False, repair=False, 
+                  auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
-
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
