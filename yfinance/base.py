@@ -674,9 +674,12 @@ class TickerBase():
 
         self._info['logo_url'] = ""
         try:
-            domain = self._info['website'].split(
-                '://')[1].split('/')[0].replace('www.', '')
-            self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
+            if not 'website' in self._info:
+                self._info['logo_url'] = 'https://logo.clearbit.com/%s.com' % self._info['shortName'].split(' ')[0].split(',')[0]
+            else:
+                domain = self._info['website'].split(
+                    '://')[1].split('/')[0].replace('www.', '')
+                self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
         except Exception:
             pass
 
