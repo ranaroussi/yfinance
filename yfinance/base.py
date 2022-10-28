@@ -100,7 +100,8 @@ class TickerBase:
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
-                proxy=None, rounding=False, timeout=10, **kwargs):
+                proxy=None, rounding=False, timeout=10,
+                debug=True, raise_errors=False):
         """
         :Parameters:
             period : str
@@ -137,32 +138,23 @@ class TickerBase:
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
                 Default is 10 seconds.
-            **kwargs: dict
-                debug: bool
-                    Optional. If passed as False, will suppress
-                    error message printing to console.
-                raise_errors: bool
-                    Optional. If True, then raise errors as
-                    exceptions instead of printing to console.
+            debug: bool
+                If passed as False, will suppress
+                error message printing to console.
+            raise_errors: bool
+                If True, then raise errors as
+                exceptions instead of printing to console.
         """
-
-        # Work with errors
-        debug_mode = True
-        if "debug" in kwargs and isinstance(kwargs["debug"], bool):
-            debug_mode = kwargs["debug"]
-        raise_errors = False
-        if "raise_errors" in kwargs and isinstance(kwargs["raise_errors"], bool):
-            raise_errors = kwargs["raise_errors"]
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            tz = self._get_ticker_tz(debug_mode, proxy, timeout)
+            tz = self._get_ticker_tz(debug, proxy, timeout)
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
                 err_msg = "No timezone found, symbol certainly delisted"
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg
-                if "many" not in kwargs and debug_mode:
+                if debug:
                     if raise_errors:
                         raise Exception('%s: %s' % (self.ticker, err_msg))
                     else:
@@ -243,7 +235,7 @@ class TickerBase:
         if fail:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug:
                 if raise_errors:
                     raise Exception('%s: %s' % (self.ticker, err_msg))
                 else:
@@ -261,7 +253,7 @@ class TickerBase:
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug:
                 if raise_errors:
                     raise Exception('%s: %s' % (self.ticker, err_msg))
                 else:
@@ -311,7 +303,7 @@ class TickerBase:
                 err_msg = "back_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug:
                 if raise_errors:
                     raise Exception('%s: %s' % (self.ticker, err_msg))
                 else:

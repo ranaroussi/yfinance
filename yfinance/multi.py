@@ -212,9 +212,11 @@ def _download_one(ticker, start=None, end=None,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
-    return Ticker(ticker).history(period=period, interval=interval,
-                                  start=start, end=end, prepost=prepost,
-                                  actions=actions, auto_adjust=auto_adjust,
-                                  back_adjust=back_adjust, repair=repair, proxy=proxy,
-                                  rounding=rounding, keepna=keepna, many=True,
-                                  timeout=timeout)
+    return Ticker(ticker).history(
+        period=period, interval=interval,
+        start=start, end=end, prepost=prepost,
+        actions=actions, auto_adjust=auto_adjust,
+        back_adjust=back_adjust, repair=repair, proxy=proxy,
+        rounding=rounding, keepna=keepna, timeout=timeout,
+        debug=False, raise_errors=False  # debug and raise_errors false to not log and raise errors in threads
+    )
