@@ -715,19 +715,25 @@ class TickerBase():
         _stmt_annual = None
         _stmt_qtr = None
         try:
-            template_ttm_order, template_annual_order, template_order, level_detail = utils.build_template(data_store["FinancialTemplateStore"])
-            TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
+            # Developers note: TTM and template stuff allows for reproducing the nested structure 
+            # visible on Yahoo website. But more work needed to make it user-friendly! Ideally 
+            # return a tree data structure instead of Pandas MultiIndex
+            # So until this is implemented, just return simple tables
+            _stmt_annual = utils.get_financials_time_series(self.ticker, name, "annual", ticker_url, proxy, self.session)
+            _stmt_qtr = utils.get_financials_time_series(self.ticker, name, "quarterly", ticker_url, proxy, self.session)
 
-            if name == "balance-sheet":
-                # Note: balance sheet is the only financial statement with no ttm detail
-                _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order)
-            else:
-                _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order, TTM_dicts, template_ttm_order)
+            # template_ttm_order, template_annual_order, template_order, level_detail = utils.build_template(data_store["FinancialTemplateStore"])
+            # TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
+            # if name == "balance-sheet":
+            #     # Note: balance sheet is the only financial statement with no ttm detail
+            #     _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order)
+            # else:
+            #     _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order, TTM_dicts, template_ttm_order)
 
             # Data store doesn't contain quarterly data, so retrieve using different url:
-            _qtr_data = utils.get_financials_time_series(self.ticker, name, "quarterly", ticker_url, proxy, self.session)
-            
-            _stmt_qtr = utils.format_quarterly_financial_statement(_qtr_data, level_detail, template_order)
+            # _qtr_data = utils.get_financials_time_series(self.ticker, name, "quarterly", ticker_url, proxy, self.session)
+            # _stmt_qtr = utils.format_quarterly_financial_statement(_qtr_data, level_detail, template_order)
+
         except:
             pass
 

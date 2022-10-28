@@ -318,6 +318,8 @@ def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, 
 
     df.index = df.index.str.replace("^"+timescale, "", regex=True)
 
+    # Reorder table to match order on Yahoo website
+    df = df.reindex([k for k in keys if k in df.index])
     df = df[sorted(df.columns, reverse=True)]
 
     return df
