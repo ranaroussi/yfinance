@@ -46,27 +46,31 @@ class Tickers():
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
-                actions=True, auto_adjust=True, proxy=None,
+                actions=True, auto_adjust=True, repair=False,
+                proxy=None,
                 threads=True, group_by='column', progress=True,
-                timeout=None, **kwargs):
+                timeout=10, **kwargs):
 
         return self.download(
             period, interval,
             start, end, prepost,
-            actions, auto_adjust, proxy,
+            actions, auto_adjust, repair, 
+            proxy,
             threads, group_by, progress,
             timeout, **kwargs)
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
-                 actions=True, auto_adjust=True, proxy=None,
+                 actions=True, auto_adjust=True, repair=False, 
+                 proxy=None,
                  threads=True, group_by='column', progress=True,
-                 timeout=None, **kwargs):
+                 timeout=10, **kwargs):
 
         data = multi.download(self.symbols,
                               start=start, end=end,
                               actions=actions,
                               auto_adjust=auto_adjust,
+                              repair=repair,
                               period=period,
                               interval=interval,
                               prepost=prepost,
