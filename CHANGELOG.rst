@@ -1,6 +1,23 @@
 Change Log
 ===========
 
+0.1.81
+------
+- Fix unhandled tz-cache exception #1107
+
+0.1.80
+------
+- Fix `download(ignore_tz=True)` for single ticker #1097
+- Fix rare case of error "Cannot infer DST time" #1100
+
+0.1.79
+------
+- Fix when Yahoo returns price=NaNs on dividend day
+
+0.1.78
+------
+- Fix download() when different timezones #1085
+
 0.1.77
 ------
 - Fix user experience bug #1078
