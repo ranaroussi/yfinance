@@ -115,26 +115,16 @@ def get_html(url, proxy=None, session=None):
     return html
 
 
-def get_json(url, proxy=None, session=None):
+def get_json_data_stores(url, proxy=None, session=None):
+    '''
+    get_json_data_stores returns a python dictionary of the data stores in yahoo finance web page.
+    '''
     session = session or _requests
     html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
 
-    if "QuoteSummaryStore" not in html:
-        html = session.get(url=url, proxies=proxy).text
-        if "QuoteSummaryStore" not in html:
-            return {}
-
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
-    data = _json.loads(json_str)[
-        'context']['dispatcher']['stores']['QuoteSummaryStore']
-    # add data about Shares Outstanding for companies' tickers if they are available
-    try:
-        data['annualBasicAverageShares'] = _json.loads(
-            json_str)['context']['dispatcher']['stores'][
-            'QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
-    except Exception:
-        pass
+    data = _json.loads(json_str)['context']['dispatcher']['stores']
 
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
@@ -142,6 +132,206 @@ def get_json(url, proxy=None, session=None):
         r'\{[\'|\"]raw[\'|\"]:(.*?),(.*?)\}', r'\1', new_data)
 
     return _json.loads(new_data)
+
+
+def build_template(data):
+    '''
+    build_template returns the details required to rebuild any of the yahoo finance financial statements in the same order as the yahoo finance webpage. The function is built to be used on the "FinancialTemplateStore" json which appears in any one of the three yahoo finance webpages: "/financials", "/cash-flow" and "/balance-sheet".
+
+    Returns:
+        - template_annual_order: The order that annual figures should be listed in.
+        - template_ttm_order: The order that TTM (Trailing Twelve Month) figures should be listed in.
+        - template_order: The order that quarterlies should be in (note that quarterlies have no pre-fix - hence why this is required).
+        - level_detail: The level of each individual line item. E.g. for the "/financials" webpage, "Total Revenue" is a level 0 item and is the summation of "Operating Revenue" and "Excise Taxes" which are level 1 items.
+
+    '''
+    template_ttm_order = []   # Save the TTM (Trailing Twelve Months) ordering to an object.
+    template_annual_order = []    # Save the annual ordering to an object.
+    template_order = [] # Save the ordering to an object (this can be utilized for quarterlies)
+    level_detail = []   #Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
+    for key in data['template']:    # Loop through the json to retreive the exact financial order whilst appending to the objects
+        template_ttm_order.append('trailing{}'.format(key['key']))
+        template_annual_order.append('annual{}'.format(key['key']))
+        template_order.append('{}'.format(key['key']))
+        level_detail.append(0)
+        if 'children' in key:
+            for child1 in key['children']:  # Level 1
+                template_ttm_order.append('trailing{}'.format(child1['key']))
+                template_annual_order.append('annual{}'.format(child1['key']))
+                template_order.append('{}'.format(child1['key']))
+                level_detail.append(1)
+                if 'children' in child1:
+                    for child2 in child1['children']:   # Level 2
+                        template_ttm_order.append('trailing{}'.format(child2['key']))
+                        template_annual_order.append('annual{}'.format(child2['key']))
+                        template_order.append('{}'.format(child2['key']))
+                        level_detail.append(2)
+                        if 'children' in child2:
+                            for child3 in child2['children']:   # Level 3
+                                template_ttm_order.append('trailing{}'.format(child3['key']))
+                                template_annual_order.append('annual{}'.format(child3['key']))
+                                template_order.append('{}'.format(child3['key']))
+                                level_detail.append(3)
+                                if 'children' in child3:
+                                    for child4 in child3['children']: # Level 4
+                                        template_ttm_order.append('trailing{}'.format(child4['key']))
+                                        template_annual_order.append('annual{}'.format(child4['key']))
+                                        template_order.append('{}'.format(child4['key']))
+                                        level_detail.append(4)
+                                        if 'children' in child4:
+                                            for child5 in child4['children']: # Level 5
+                                                template_ttm_order.append('trailing{}'.format(child5['key']))
+                                                template_annual_order.append('annual{}'.format(child5['key']))
+                                                template_order.append('{}'.format(child5['key']))
+                                                level_detail.append(5)
+    return template_ttm_order, template_annual_order, template_order, level_detail
+
+
+def retreive_financial_details(data):
+    '''
+    retreive_financial_details returns all of the available financial details under the "QuoteTimeSeriesStore" for any of the following three yahoo finance webpages: "/financials", "/cash-flow" and "/balance-sheet".
+
+    Returns:
+        - TTM_dicts: A dictionary full of all of the available Trailing Twelve Month figures, this can easily be converted to a pandas dataframe.
+        - Annual_dicts: A dictionary full of all of the available Annual figures, this can easily be converted to a pandas dataframe.
+    '''
+    TTM_dicts = []  # Save a dictionary object to store the TTM financials.
+    Annual_dicts = []   # Save a dictionary object to store the Annual financials.
+    for key in data['timeSeries']:  # Loop through the time series data to grab the key financial figures.
+        try:
+            if len(data['timeSeries'][key]) > 0:
+                time_series_dict = {}
+                time_series_dict['index'] = key
+                for each in data['timeSeries'][key]:    # Loop through the years
+                    if each == None:
+                        continue
+                    else:
+                        time_series_dict[each['asOfDate']] = each['reportedValue']
+                    # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
+                if 'trailing' in key:
+                    TTM_dicts.append(time_series_dict)
+                elif 'annual' in key:
+                    Annual_dicts.append(time_series_dict)
+        except Exception as e:
+            pass
+    return TTM_dicts, Annual_dicts
+
+
+def format_annual_financial_statement(level_detail, annual_dicts, annual_order, ttm_dicts=None, ttm_order=None):
+    '''
+    format_annual_financial_statement formats any annual financial statement
+
+    Returns:
+        - _statement: A fully formatted annual financial statement in pandas dataframe.
+    '''
+    Annual = _pd.DataFrame.from_dict(annual_dicts).set_index("index")
+    Annual = Annual.reindex(annual_order)
+    Annual.index = Annual.index.str.replace(r'annual','')
+
+    # Note: balance sheet is the only financial statement with no ttm detail
+    if (ttm_dicts not in [[], None]) and (ttm_order not in [[], None]):
+        TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index")
+        TTM = TTM.reindex(ttm_order)
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        TTM.index = TTM.index.str.replace(r'trailing', '')
+        _statement = Annual.merge(TTM, left_index=True, right_index=True)
+    else:
+        _statement = Annual
+
+    _statement.index = camel2title(_statement.T)
+    _statement['level_detail'] = level_detail
+    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement[sorted(_statement.columns, reverse=True)]
+    _statement = _statement.dropna(how='all')
+    return _statement
+
+
+def format_quarterly_financial_statement(_statement, level_detail, order):
+    '''
+    format_quarterly_financial_statements formats any quarterly financial statement
+
+    Returns:
+        - _statement: A fully formatted quarterly financial statement in pandas dataframe.
+    '''
+    _statement = _statement.reindex(order)
+    _statement.index = camel2title(_statement.T)
+    _statement['level_detail'] = level_detail
+    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement[sorted(_statement.columns, reverse=True)]
+    _statement = _statement.dropna(how='all')
+    _statement.columns = _pd.to_datetime(_statement.columns).date
+    return _statement
+
+
+def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, session=None):
+    acceptable_names = ["financials", "balance-sheet", "cash-flow"]
+    if not name in acceptable_names:
+        raise Exception("name '{}' must be one of: {}".format(name, acceptable_names))
+    acceptable_timestamps = ["annual", "quarterly"]
+    if not timescale  in acceptable_timestamps:
+        raise Exception("timescale '{}' must be one of: {}".format(timescale, acceptable_timestamps))
+
+    session = session or _requests
+
+    financials_data = get_json_data_stores(ticker_url+'/'+name, proxy, session)
+
+    # Step 1: get the keys:
+    def _finditem1(key, obj):
+        values = []
+        if isinstance(obj,dict):
+            if key in obj.keys():
+                values.append(obj[key])
+            for k,v in obj.items():
+                values += _finditem1(key,v)
+        elif isinstance(obj,list):
+            for v in obj:
+                values += _finditem1(key,v)
+        return values
+    keys = _finditem1("key",financials_data['FinancialTemplateStore'])
+
+    # Step 2: construct url:
+    ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(ticker)
+    if len(keys) == 0:
+        raise Exception("Fetching keys failed")
+    url = ts_url_base + "&type=" + ",".join([timescale+k for k in keys])
+    # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
+    start_dt = _datetime.datetime(2016, 12, 31)
+    end = (_datetime.datetime.now() + _datetime.timedelta(days=366))
+    url += "&period1={}&period2={}".format(int(start_dt.timestamp()), int(end.timestamp()))
+
+    # Step 3: fetch and reshape data
+    json_str = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
+    json_data = _json.loads(json_str)
+    data_raw = json_data["timeseries"]["result"]
+    # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
+    for d in data_raw:
+        del d["meta"]
+
+    # Now reshape data into a table:
+    # Step 1: get columns and index:
+    timestamps = set()
+    data_unpacked = {}
+    for x in data_raw:
+        for k in x.keys():
+            if k=="timestamp":
+                timestamps.update(x[k])
+            else:
+                data_unpacked[k] = x[k]
+    timestamps = sorted(list(timestamps))
+    dates = _pd.to_datetime(timestamps, unit="s")
+    df = _pd.DataFrame(columns=dates, index=data_unpacked.keys())
+    for k,v in data_unpacked.items():
+        if df is None:
+            df = _pd.DataFrame(columns=dates, index=[k])
+        df.loc[k] = {_pd.Timestamp(x["asOfDate"]):x["reportedValue"]["raw"] for x in v}
+
+    df.index = df.index.str.replace("^"+timescale, "", regex=True)
+
+    # Reorder table to match order on Yahoo website
+    df = df.reindex([k for k in keys if k in df.index])
+    df = df[sorted(df.columns, reverse=True)]
+
+    return df
 
 
 def camel2title(o):
