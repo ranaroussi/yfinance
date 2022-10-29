@@ -57,9 +57,14 @@ class TickerBase:
 
         self._fundamentals = False
         self._info = None
-        self._analysis = None
+        self._earnings_trend = None
         self._sustainability = None
         self._recommendations = None
+        self._analyst_trend_details = None
+        self._analyst_price_target = None
+        self._rev_est = None
+        self._eps_est = None
+
         self._major_holders = None
         self._institutional_holders = None
         self._mutualfund_holders = None
@@ -74,8 +79,6 @@ class TickerBase:
 
         self._earnings = None
         self._financials = None
-        self._balancesheet = None
-        self._cashflow = None
 
         # accept isin as ticker
         if utils.is_isin(self.ticker):
@@ -94,7 +97,7 @@ class TickerBase:
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = utils.get_json(ticker_url, proxy, self.session)
+        data = utils.get_json_data_stores(ticker_url, proxy, self.session)["QuoteSummaryStore"]
         return data
 
     def history(self, period="1mo", interval="1d",
@@ -603,7 +606,7 @@ class TickerBase:
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = utils.get_json(ticker_url, proxy, self.session)
+        data = utils.get_json_data_stores(ticker_url, proxy, self.session)['QuoteSummaryStore']
 
         # sustainability
         d = {}
@@ -665,9 +668,12 @@ class TickerBase:
 
         self._info['logo_url'] = ""
         try:
-            domain = self._info['website'].split(
-                '://')[1].split('/')[0].replace('www.', '')
-            self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
+            if not 'website' in self._info:
+                self._info['logo_url'] = 'https://logo.clearbit.com/%s.com' % self._info['shortName'].split(' ')[0].split(',')[0]
+            else:
+                domain = self._info['website'].split(
+                    '://')[1].split('/')[0].replace('www.', '')
+                self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
         except Exception:
             pass
 
@@ -699,6 +705,9 @@ class TickerBase:
 
     def _get_fundamentals(self, proxy=None):
         def cleanup(data):
+            '''
+            The cleanup function is used for parsing yahoo finance json financial statement data into a pandas dataframe format.
+            '''
             df = _pd.DataFrame(data).drop(columns=['maxAge'])
             for col in df.columns:
                 df[col] = _np.where(
@@ -747,9 +756,6 @@ class TickerBase:
         elif len(holders) >= 1:
             self._major_holders = holders[0]
 
-        # self._major_holders = holders[0]
-        # self._institutional_holders = holders[1]
-
         if self._institutional_holders is not None:
             if 'Date Reported' in self._institutional_holders:
                 self._institutional_holders['Date Reported'] = _pd.to_datetime(
@@ -769,37 +775,26 @@ class TickerBase:
         self._get_info(proxy)
 
         # get fundamentals
-        data = utils.get_json(ticker_url + '/financials', proxy, self.session)
+        fin_data = utils.get_json_data_stores(ticker_url + '/financials', proxy, self.session)
+        fin_data_quote = fin_data['QuoteSummaryStore']
 
         # generic patterns
-        self._earnings = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
-        self._cashflow = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
-        self._balancesheet = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
-        self._financials = {"yearly": utils.empty_df(), "quarterly": utils.empty_df()}
-        for key in (
-                (self._cashflow, 'cashflowStatement', 'cashflowStatements'),
-                (self._balancesheet, 'balanceSheet', 'balanceSheetStatements'),
-                (self._financials, 'incomeStatement', 'incomeStatementHistory')
-        ):
-            item = key[1] + 'History'
-            if isinstance(data.get(item), dict):
-                try:
-                    key[0]['yearly'] = cleanup(data[item][key[2]])
-                except Exception:
-                    pass
-
-            item = key[1] + 'HistoryQuarterly'
-            if isinstance(data.get(item), dict):
-                try:
-                    key[0]['quarterly'] = cleanup(data[item][key[2]])
-                except Exception:
-                    pass
+        self._earnings = {"yearly": utils._pd.DataFrame(), "quarterly": utils._pd.DataFrame()}
+        self._financials = {}
+        for name in ["income", "balance-sheet", "cash-flow"]:
+            self._financials[name] = {"yearly":utils._pd.DataFrame(), "quarterly":utils._pd.DataFrame()}
+        for name in ["income", "balance-sheet", "cash-flow"]:
+            annual, qtr = self._create_financials_table(name, proxy)
+            if annual is not None:
+                self._financials[name]["yearly"] = annual
+            if qtr is not None:
+                self._financials[name]["quarterly"] = qtr
 
         # earnings
-        if isinstance(data.get('earnings'), dict):
+        if isinstance(fin_data_quote.get('earnings'), dict):
             try:
-                earnings = data['earnings']['financialsChart']
-                earnings['financialCurrency'] = data['earnings'].get('financialCurrency', 'USD')
+                earnings = fin_data_quote['earnings']['financialsChart']
+                earnings['financialCurrency'] = fin_data_quote['earnings'].get('financialCurrency', 'USD')
                 self._earnings['financialCurrency'] = earnings['financialCurrency']
                 df = _pd.DataFrame(earnings['yearly']).set_index('date')
                 df.columns = utils.camel2title(df.columns)
@@ -816,7 +811,7 @@ class TickerBase:
         # shares outstanding
         try:
             # keep only years with non None data
-            available_shares = [shares_data for shares_data in data['annualBasicAverageShares'] if shares_data]
+            available_shares = [shares_data for shares_data in fin_data['QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares'] if shares_data]
             shares = _pd.DataFrame(available_shares)
             shares['Year'] = shares['asOfDate'].agg(lambda x: int(x[:4]))
             shares.set_index('Year', inplace=True)
@@ -829,7 +824,7 @@ class TickerBase:
             pass
 
         # Analysis
-        data = utils.get_json(ticker_url + '/analysis', proxy, self.session)
+        data = utils.get_json_data_stores(ticker_url + '/analysis', proxy, self.session)["QuoteSummaryStore"]
 
         if isinstance(data.get('earningsTrend'), dict):
             try:
@@ -851,7 +846,7 @@ class TickerBase:
                                               utils.camel2title([k])[0]
                                 analysis.loc[idx, new_colname] = v
 
-                self._analysis = analysis[[
+                self._earnings_trend = analysis[[
                     c for c in analysis.columns if c not in dict_cols]]
             except Exception:
                 pass
@@ -899,7 +894,83 @@ class TickerBase:
         if 'trailingPegRatio' in res:
             self._info['trailingPegRatio'] = res['trailingPegRatio']
 
+        # Analysis Data/Analyst Forecasts
+        try:
+            analysis_data = utils.get_json_data_stores(ticker_url+'/analysis',proxy,self.session)
+            analysis_data = analysis_data['QuoteSummaryStore']
+        except Exception as e:
+            analysis_data = {}
+        try:
+            self._analyst_trend_details = _pd.DataFrame(analysis_data['recommendationTrend']['trend'])
+        except Exception as e:
+            self._analyst_trend_details = None
+        try:
+            self._analyst_price_target = _pd.DataFrame(analysis_data['financialData'], index=[0])[['targetLowPrice','currentPrice','targetMeanPrice','targetHighPrice','numberOfAnalystOpinions']].T
+        except Exception as e:
+            self._analyst_price_target = None
+        earnings_estimate = []
+        revenue_estimate = []
+        if len(self._analyst_trend_details) != 0:
+            for key in analysis_data['earningsTrend']['trend']:
+                try:
+                    earnings_dict = key['earningsEstimate']
+                    earnings_dict['period'] = key['period']
+                    earnings_dict['endDate'] = key['endDate']
+                    earnings_estimate.append(earnings_dict)
+
+                    revenue_dict = key['revenueEstimate']
+                    revenue_dict['period'] = key['period']
+                    revenue_dict['endDate'] = key['endDate']
+                    revenue_estimate.append(revenue_dict)
+                except Exception as e:
+                    pass
+            self._rev_est = _pd.DataFrame(revenue_estimate)
+            self._eps_est = _pd.DataFrame(earnings_estimate)
+        else:
+            self._rev_est = _pd.DataFrame()
+            self._eps_est = _pd.DataFrame()
+
         self._fundamentals = True
+
+    def _create_financials_table(self, name, proxy):
+        acceptable_names = ["income", "balance-sheet", "cash-flow"]
+        if not name in acceptable_names:
+            raise Exception("name '{}' must be one of: {}".format(name, acceptable_names))
+
+        if name == "income":
+            # Yahoo stores the 'income' table internally under 'financials' key
+            name = "financials"
+
+        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
+        data_store = utils.get_json_data_stores(ticker_url+'/'+name, proxy, self.session)
+
+        _stmt_annual = None
+        _stmt_qtr = None
+        try:
+            # Developers note: TTM and template stuff allows for reproducing the nested structure
+            # visible on Yahoo website. But more work needed to make it user-friendly! Ideally
+            # return a tree data structure instead of Pandas MultiIndex
+            # So until this is implemented, just return simple tables
+            _stmt_annual = utils.get_financials_time_series(self.ticker, name, "annual", ticker_url, proxy, self.session)
+            _stmt_qtr = utils.get_financials_time_series(self.ticker, name, "quarterly", ticker_url, proxy, self.session)
+
+            # template_ttm_order, template_annual_order, template_order, level_detail = utils.build_template(data_store["FinancialTemplateStore"])
+            # TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
+            # if name == "balance-sheet":
+            #     # Note: balance sheet is the only financial statement with no ttm detail
+            #     _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order)
+            # else:
+            #     _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order, TTM_dicts, template_ttm_order)
+
+            # Data store doesn't contain quarterly data, so retrieve using different url:
+            # _qtr_data = utils.get_financials_time_series(self.ticker, name, "quarterly", ticker_url, proxy, self.session)
+            # _stmt_qtr = utils.format_quarterly_financial_statement(_qtr_data, level_detail, template_order)
+
+        except:
+            pass
+
+        return _stmt_annual, _stmt_qtr
+
 
     def get_recommendations(self, proxy=None, as_dict=False):
         self._get_info(proxy)
@@ -952,43 +1023,67 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    def get_recommendations_summary(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._analyst_trend_details
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_analyst_price_target(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._analyst_price_target
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_rev_forecast(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._rev_est
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_earnings_forecast(self, proxy=None, as_dict=False):
+        self._get_fundamentals(proxy=proxy)
+        data = self._eps_est
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_earnings_trend(self, proxy=None, as_dict=False, *args, **kwargs):
+        self._get_fundamentals(proxy=proxy)
+        data = self._earnings_trend
+        if as_dict:
+            return data.to_dict()
+        return data
+
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
         self._get_fundamentals(proxy=proxy)
         data = self._earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
-                'financialCurrency']
+            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
             return dict_data
         return data
 
-    def get_analysis(self, proxy=None, as_dict=False):
+    def get_income_stmt(self, proxy=None, as_dict=False, freq="yearly"):
         self._get_fundamentals(proxy=proxy)
-        data = self._analysis
-        if as_dict:
-            return data.to_dict()
-        return data
-
-    def get_financials(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy=proxy)
-        data = self._financials[freq]
-        if as_dict:
-            return data.to_dict()
-        return data
-
-    def get_balancesheet(self, proxy=None, as_dict=False, freq="yearly"):
-        self._get_fundamentals(proxy=proxy)
-        data = self._balancesheet[freq]
+        data = self._financials["income"][freq]
         if as_dict:
             return data.to_dict()
         return data
 
     def get_balance_sheet(self, proxy=None, as_dict=False, freq="yearly"):
-        return self.get_balancesheet(proxy, as_dict, freq)
+        self._get_fundamentals(proxy=proxy)
+        data = self._financials["balance-sheet"][freq]
+        if as_dict:
+            return data.to_dict()
+        return data
 
     def get_cashflow(self, proxy=None, as_dict=False, freq="yearly"):
         self._get_fundamentals(proxy=proxy)
-        data = self._cashflow[freq]
+        data = self._financials["cash-flow"][freq]
         if as_dict:
             return data.to_dict()
         return data
@@ -1212,6 +1307,6 @@ class TickerBase:
             self._earnings_history = data
         # if no tables are found a ValueError is thrown
         except ValueError:
-            print("Could not find data for {}.".format(self.ticker))
+            print("Could not find earnings history data for {}.".format(self.ticker))
             return
         return data
