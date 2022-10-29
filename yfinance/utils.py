@@ -129,7 +129,7 @@ def get_json_data_stores(url, proxy=None, session=None):
     # return data
     new_data = _json.dumps(data).replace('{}', 'null')
     new_data = _re.sub(
-        r'\{[\'|\"]raw[\'|\"]:(.*?),(.*?)\}', r'\1', new_data)
+        r'{[\'|\"]raw[\'|\"]:(.*?),(.*?)}', r'\1', new_data)
 
     return _json.loads(new_data)
 
@@ -145,11 +145,12 @@ def build_template(data):
         - level_detail: The level of each individual line item. E.g. for the "/financials" webpage, "Total Revenue" is a level 0 item and is the summation of "Operating Revenue" and "Excise Taxes" which are level 1 items.
 
     '''
-    template_ttm_order = []   # Save the TTM (Trailing Twelve Months) ordering to an object.
-    template_annual_order = []    # Save the annual ordering to an object.
-    template_order = [] # Save the ordering to an object (this can be utilized for quarterlies)
-    level_detail = []   #Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
-    for key in data['template']:    # Loop through the json to retreive the exact financial order whilst appending to the objects
+    template_ttm_order = []  # Save the TTM (Trailing Twelve Months) ordering to an object.
+    template_annual_order = []  # Save the annual ordering to an object.
+    template_order = []  # Save the ordering to an object (this can be utilized for quarterlies)
+    level_detail = []  # Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
+    for key in data['template']:
+        # Loop through the json to retreive the exact financial order whilst appending to the objects
         template_ttm_order.append('trailing{}'.format(key['key']))
         template_annual_order.append('annual{}'.format(key['key']))
         template_order.append('{}'.format(key['key']))
@@ -161,25 +162,25 @@ def build_template(data):
                 template_order.append('{}'.format(child1['key']))
                 level_detail.append(1)
                 if 'children' in child1:
-                    for child2 in child1['children']:   # Level 2
+                    for child2 in child1['children']:  # Level 2
                         template_ttm_order.append('trailing{}'.format(child2['key']))
                         template_annual_order.append('annual{}'.format(child2['key']))
                         template_order.append('{}'.format(child2['key']))
                         level_detail.append(2)
                         if 'children' in child2:
-                            for child3 in child2['children']:   # Level 3
+                            for child3 in child2['children']:  # Level 3
                                 template_ttm_order.append('trailing{}'.format(child3['key']))
                                 template_annual_order.append('annual{}'.format(child3['key']))
                                 template_order.append('{}'.format(child3['key']))
                                 level_detail.append(3)
                                 if 'children' in child3:
-                                    for child4 in child3['children']: # Level 4
+                                    for child4 in child3['children']:  # Level 4
                                         template_ttm_order.append('trailing{}'.format(child4['key']))
                                         template_annual_order.append('annual{}'.format(child4['key']))
                                         template_order.append('{}'.format(child4['key']))
                                         level_detail.append(4)
                                         if 'children' in child4:
-                                            for child5 in child4['children']: # Level 5
+                                            for child5 in child4['children']:  # Level 5
                                                 template_ttm_order.append('trailing{}'.format(child5['key']))
                                                 template_annual_order.append('annual{}'.format(child5['key']))
                                                 template_order.append('{}'.format(child5['key']))
@@ -196,13 +197,13 @@ def retreive_financial_details(data):
         - Annual_dicts: A dictionary full of all of the available Annual figures, this can easily be converted to a pandas dataframe.
     '''
     TTM_dicts = []  # Save a dictionary object to store the TTM financials.
-    Annual_dicts = []   # Save a dictionary object to store the Annual financials.
+    Annual_dicts = []  # Save a dictionary object to store the Annual financials.
     for key in data['timeSeries']:  # Loop through the time series data to grab the key financial figures.
         try:
             if len(data['timeSeries'][key]) > 0:
                 time_series_dict = {}
                 time_series_dict['index'] = key
-                for each in data['timeSeries'][key]:    # Loop through the years
+                for each in data['timeSeries'][key]:  # Loop through the years
                     if each == None:
                         continue
                     else:
@@ -226,13 +227,15 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
     '''
     Annual = _pd.DataFrame.from_dict(annual_dicts).set_index("index")
     Annual = Annual.reindex(annual_order)
-    Annual.index = Annual.index.str.replace(r'annual','')
+    Annual.index = Annual.index.str.replace(r'annual', '')
 
     # Note: balance sheet is the only financial statement with no ttm detail
     if (ttm_dicts not in [[], None]) and (ttm_order not in [[], None]):
         TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index")
         TTM = TTM.reindex(ttm_order)
-        TTM.columns = ['TTM ' + str(col) for col in TTM.columns] # Add 'TTM' prefix to all column names, so if combined we can tell the difference between actuals and TTM (similar to yahoo finance).
+        # Add 'TTM' prefix to all column names, so if combined we can tell
+        # the difference between actuals and TTM (similar to yahoo finance).
+        TTM.columns = ['TTM ' + str(col) for col in TTM.columns]
         TTM.index = TTM.index.str.replace(r'trailing', '')
         _statement = Annual.merge(TTM, left_index=True, right_index=True)
     else:
@@ -240,7 +243,7 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
 
     _statement.index = camel2title(_statement.T)
     _statement['level_detail'] = level_detail
-    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement.set_index([_statement.index, 'level_detail'])
     _statement = _statement[sorted(_statement.columns, reverse=True)]
     _statement = _statement.dropna(how='all')
     return _statement
@@ -256,7 +259,7 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
     _statement = _statement.reindex(order)
     _statement.index = camel2title(_statement.T)
     _statement['level_detail'] = level_detail
-    _statement = _statement.set_index([_statement.index,'level_detail'])
+    _statement = _statement.set_index([_statement.index, 'level_detail'])
     _statement = _statement[sorted(_statement.columns, reverse=True)]
     _statement = _statement.dropna(how='all')
     _statement.columns = _pd.to_datetime(_statement.columns).date
@@ -268,32 +271,34 @@ def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, 
     if not name in acceptable_names:
         raise Exception("name '{}' must be one of: {}".format(name, acceptable_names))
     acceptable_timestamps = ["annual", "quarterly"]
-    if not timescale  in acceptable_timestamps:
+    if not timescale in acceptable_timestamps:
         raise Exception("timescale '{}' must be one of: {}".format(timescale, acceptable_timestamps))
 
     session = session or _requests
 
-    financials_data = get_json_data_stores(ticker_url+'/'+name, proxy, session)
+    financials_data = get_json_data_stores(ticker_url + '/' + name, proxy, session)
 
     # Step 1: get the keys:
     def _finditem1(key, obj):
         values = []
-        if isinstance(obj,dict):
+        if isinstance(obj, dict):
             if key in obj.keys():
                 values.append(obj[key])
-            for k,v in obj.items():
-                values += _finditem1(key,v)
-        elif isinstance(obj,list):
+            for k, v in obj.items():
+                values += _finditem1(key, v)
+        elif isinstance(obj, list):
             for v in obj:
-                values += _finditem1(key,v)
+                values += _finditem1(key, v)
         return values
-    keys = _finditem1("key",financials_data['FinancialTemplateStore'])
+
+    keys = _finditem1("key", financials_data['FinancialTemplateStore'])
 
     # Step 2: construct url:
-    ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(ticker)
+    ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(
+        ticker)
     if len(keys) == 0:
         raise Exception("Fetching keys failed")
-    url = ts_url_base + "&type=" + ",".join([timescale+k for k in keys])
+    url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
     # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
     start_dt = _datetime.datetime(2016, 12, 31)
     end = (_datetime.datetime.now() + _datetime.timedelta(days=366))
@@ -313,19 +318,19 @@ def get_financials_time_series(ticker, name, timescale, ticker_url, proxy=None, 
     data_unpacked = {}
     for x in data_raw:
         for k in x.keys():
-            if k=="timestamp":
+            if k == "timestamp":
                 timestamps.update(x[k])
             else:
                 data_unpacked[k] = x[k]
     timestamps = sorted(list(timestamps))
     dates = _pd.to_datetime(timestamps, unit="s")
     df = _pd.DataFrame(columns=dates, index=data_unpacked.keys())
-    for k,v in data_unpacked.items():
+    for k, v in data_unpacked.items():
         if df is None:
             df = _pd.DataFrame(columns=dates, index=[k])
-        df.loc[k] = {_pd.Timestamp(x["asOfDate"]):x["reportedValue"]["raw"] for x in v}
+        df.loc[k] = {_pd.Timestamp(x["asOfDate"]): x["reportedValue"]["raw"] for x in v}
 
-    df.index = df.index.str.replace("^"+timescale, "", regex=True)
+    df.index = df.index.str.replace("^" + timescale, "", regex=True)
 
     # Reorder table to match order on Yahoo website
     df = df.reindex([k for k in keys if k in df.index])
@@ -476,14 +481,23 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
             dt2 = dt2.tz_localize("UTC")
         dt1 = dt1.tz_convert(tz_exchange)
         dt2 = dt2.tz_convert(tz_exchange)
-        if interval in ["1wk", "1mo", "3mo"]:
+        if interval == "1d":
+            # Similar bug in daily data except most data is simply duplicated
+            # - exception is volume, *slightly* greater on final row (and matches website)
+            if dt1.date() == dt2.date():
+                # Last two rows are on same day. Drop second-to-last row
+                quotes = quotes.drop(quotes.index[n - 2])
+        else:
             if interval == "1wk":
                 last_rows_same_interval = dt1.year == dt2.year and dt1.week == dt2.week
             elif interval == "1mo":
                 last_rows_same_interval = dt1.month == dt2.month
             elif interval == "3mo":
                 last_rows_same_interval = dt1.year == dt2.year and dt1.quarter == dt2.quarter
-            if last_rows_same_interval:
+            else:
+                last_rows_same_interval = None
+
+            if last_rows_same_interval is not None:
                 # Last two rows are within same interval
                 idx1 = quotes.index[n - 1]
                 idx2 = quotes.index[n - 2]
@@ -501,13 +515,6 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                     quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
                 quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
                 quotes = quotes.drop(quotes.index[n - 1])
-
-        # Similar bug in daily data except most data is simply duplicated
-        # - exception is volume, *slightly* greater on final row (and matches website)
-        elif interval == "1d":
-            if dt1.date() == dt2.date():
-                # Last two rows are on same day. Drop second-to-last row
-                quotes = quotes.drop(quotes.index[n - 2])
 
     return quotes
 
@@ -556,14 +563,17 @@ def safe_merge_dfs(df_main, df_sub, interval):
     if not data_lost:
         return df
     # Lost data during join()
-    if interval in ["1wk", "1mo", "3mo"]:
-        # Backdate all df_sub.index dates to start of week/month
-        if interval == "1wk":
-            new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
-        elif interval == "1mo":
-            new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
-        elif interval == "3mo":
-            new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
+    # Backdate all df_sub.index dates to start of week/month
+    if interval == "1wk":
+        new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
+    elif interval == "1mo":
+        new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
+    elif interval == "3mo":
+        new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
+    else:
+        new_index = None
+
+    if new_index is not None:
         new_index = new_index.tz_localize(df.index.tz, ambiguous=True)
         df_sub = _reindex_events(df_sub, new_index, data_col)
         df = df_main.join(df_sub)
