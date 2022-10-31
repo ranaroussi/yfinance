@@ -336,32 +336,35 @@ def cache_lookup_tkr_tz(tkr):
         return None
 
     mutex.acquire()
-    df = _pd.read_csv(fp)
+    df = _pd.read_csv(fp, index_col="Ticker")
     mutex.release()
-    f = df["Ticker"] == tkr
-    if sum(f) == 0:
+    if tkr in df.index:
+        return df.loc[tkr,"Tz"]
+    else:
         return None
-
-    return df["Tz"][f].iloc[0]
 def cache_store_tkr_tz(tkr,tz):
-    df = _pd.DataFrame({"Ticker":[tkr], "Tz":[tz]})
 
     dp = get_cache_dirpath()
+    fp = _os.path.join(dp, "tkr-tz.csv")
     mutex.acquire()
     if not _os.path.isdir(dp):
         _os.makedirs(dp)
-    fp = _os.path.join(dp, "tkr-tz.csv")
-    if not _os.path.isfile(fp):
-        df.to_csv(fp, index=False)
-        mutex.release()
-        return
+    if (not _os.path.isfile(fp)) and (tz is not None):
+        df = _pd.DataFrame({"Tz":[tz]}, index=[tkr])
+        df.index.name = "Ticker"
+        df.to_csv(fp)
 
-    df_all = _pd.read_csv(fp)
-    f = df_all["Ticker"]==tkr
-    if sum(f) > 0:
-        mutex.release()
-        raise Exception("Tkr {} tz already in cache".format(tkr))
-
-    _pd.concat([df_all,df]).to_csv(fp, index=False)
+    else:
+        df = _pd.read_csv(fp, index_col="Ticker")
+        if tz is None:
+            # Delete if in cache:
+            if tkr in df.index:
+                df.drop(tkr).to_csv(fp)
+        else:
+            if tkr in df.index:
+                raise Exception("Tkr {} tz already in cache".format(tkr))
+            df.loc[tkr,"Tz"] = tz
+            df.to_csv(fp)
+    
     mutex.release()
 
