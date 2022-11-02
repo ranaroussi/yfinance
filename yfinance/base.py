@@ -291,6 +291,7 @@ class TickerBase:
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         if repair:
             # Do this before auto/back adjust
+            quotes = self._fix_zero_prices(quotes, interval, tz_exchange)
             quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
 
         # Auto/back adjust
@@ -372,6 +373,105 @@ class TickerBase:
 
     # ------------------------
 
+    def _reconstruct_interval(self, df_row, interval, bad_fields):
+        if isinstance(df_row, _pd.DataFrame) or not isinstance(df_row, _pd.Series):
+            raise Exception("'df_row' must be a Pandas Series not", type(df_row))
+        if not isinstance(bad_fields, (list,set,_np.ndarray)):
+            raise Exception("'bad_fields' must be a list/set not", type(bad_fields))
+
+        data_cols = [c for c in ["Open","High","Low","Close","Adj Close"] if c in df_row.index]
+
+        # If interval is weekly then can construct with daily. But if smaller intervals then 
+        # restricted to recent times:
+        # - daily = hourly restricted to last 730 days
+        sub_interval = None
+        td_range = None
+        if interval == "1wk":
+            # Correct by fetching week of daily data
+            sub_interval = "1d"
+            td_range = _datetime.timedelta(days=7)
+        elif interval == "1d":
+            # Correct by fetching day of hourly data
+            sub_interval = "1h"
+            td_range = _datetime.timedelta(days=1)
+        else:
+            print("WARNING: Have not implemented repair for '{}' interval. Contact developers".format(interval))
+            return df_row
+
+        idx = df_row.name
+        start = idx.date()
+        if sub_interval=="1h" and (_datetime.date.today()-start) > _datetime.timedelta(days=729):
+            # Don't bother requesting more price data, Yahoo will reject
+            return None
+        else:
+            new_vals = {}
+
+            if sub_interval=="1h":
+                df_fine = self.history(start=start, end=start+td_range, interval=sub_interval, auto_adjust=False)
+            else:
+                df_fine = self.history(start=start-td_range, end=start+td_range, interval=sub_interval, auto_adjust=False)
+
+            # First, check whether df_fine has different split-adjustment than df_row.
+            # If it is different, then adjust df_fine to match df_row
+            good_fields = list(set(data_cols)-set(bad_fields)-set("Adj Close"))
+            if len(good_fields)==0:
+                raise Exception("No good fields, so cannot determine whether different split-adjustment. Contact developers")
+            # median = df_row.loc[good_fields].median()
+            # median_fine = _np.median(df_fine[good_fields].values)
+            # ratio = median/median_fine
+            # Better method to calculate split-adjustment:
+            df_fine_from_idx = df_fine[df_fine.index>=idx]
+            ratios = []
+            for f in good_fields:
+                if f=="Low":
+                    ratios.append(df_row[f] / df_fine_from_idx[f].min())
+                elif f=="High":
+                    ratios.append(df_row[f] / df_fine_from_idx[f].max())
+                elif f=="Open":
+                    ratios.append(df_row[f] / df_fine_from_idx[f].iloc[0])
+                elif f=="Close":
+                    ratios.append(df_row[f] / df_fine_from_idx[f].iloc[-1])
+            ratio = _np.mean(ratios)
+            #
+            ratio_rcp = round(1.0/ratio, 1) ; ratio = round(ratio, 1)
+            if ratio==1 and ratio_rcp==1:
+                # Good!
+                pass
+            else:
+                if ratio>1:
+                    # data has different split-adjustment than fine-grained data
+                    # Adjust fine-grained to match
+                    df_fine[data_cols] *= ratio
+                elif ratio_rcp>1:
+                    # data has different split-adjustment than fine-grained data
+                    # Adjust fine-grained to match
+                    df_fine[data_cols] *= 1.0/ratio_rcp
+
+            if sub_interval != "1h":
+                df_last_week = df_fine[df_fine.index<idx]
+                df_fine = df_fine[df_fine.index>=idx]
+
+            if "High" in bad_fields:
+                new_vals["High"] = df_fine["High"].max()
+            if "Low" in bad_fields:
+                new_vals["Low"] = df_fine["Low"].min()
+            if "Open" in bad_fields:
+                if sub_interval != "1h" and idx != df_fine.index[0]:
+                    # Exchange closed Monday. In this case, Yahoo sets Open to last week close
+                    new_vals["Open"] = df_last_week["Close"][-1]
+                    if "Low" in new_vals:
+                        new_vals["Low"] = min(new_vals["Open"], new_vals["Low"])
+                    elif new_vals["Open"] < df_row["Low"]:
+                        new_vals["Low"] = new_vals["Open"]
+                else:
+                    new_vals["Open"] = df_fine["Open"].iloc[0]
+            if "Close" in bad_fields:
+                new_vals["Close"] = df_fine["Close"].iloc[-1]
+                # Assume 'Adj Close' also corrupted, easier than detecting whether true
+                new_vals["Adj Close"] = df_fine["Adj Close"].iloc[-1]
+
+        return new_vals
+
     def _fix_unit_mixups(self, df, interval, tz_exchange):
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
@@ -383,24 +483,25 @@ class TickerBase:
             # Need multiple rows to confidently identify outliers
             return df
 
+        df2 = df.copy()
+
         if df.index.tz is None:
-            df.index = df.index.tz_localize(tz_exchange)
+            df2.index = df2.index.tz_localize(tz_exchange)
         else:
-            df.index = df.index.tz_convert(tz_exchange)
+            df2.index = df2.index.tz_convert(tz_exchange)
 
         # Only import scipy if users actually want function. To avoid
         # adding it to dependencies.
         from scipy import ndimage as _ndimage
 
-        data_cols = ["Open", "High", "Low", "Close"]
-        data_cols = [c for c in data_cols if c in df.columns]
-        median = _ndimage.median_filter(df[data_cols].values, size=(3, 3), mode='mirror')
+        data_cols = ["High", "Open", "Low", "Close"]  # Order important, separate High from Low
+        data_cols = [c for c in data_cols if c in df2.columns]
+        median = _ndimage.median_filter(df2[data_cols].values, size=(3, 3), mode="wrap")
 
         if (median == 0).any():
             raise Exception("median contains zeroes, why?")
-        ratio = df[data_cols].values / median
-        # ratio_rounded = (ratio/5).round()*5 # round ratio to nearest 5
-        ratio_rounded = (ratio / 10).round() * 10  # round ratio to nearest 10
+        ratio = df2[data_cols].values / median
+        ratio_rounded = (ratio / 20).round() * 20 # round ratio to nearest 20
         f = ratio_rounded == 100
 
         # Store each mixup:
@@ -410,103 +511,22 @@ class TickerBase:
             if fj.any():
                 dc = data_cols[j]
                 for i in _np.where(fj)[0]:
-                    idx = df.index[i]
+                    idx = df2.index[i]
                     if idx not in mixups:
-                        mixups[idx] = {"data": df.loc[idx, data_cols], "fields": {dc}}
+                        mixups[idx] = {"data": df2.loc[idx, data_cols], "fields":{dc}}
                     else:
                         mixups[idx]["fields"].add(dc)
         n_mixups = len(mixups)
 
         if len(mixups) > 0:
-            # Problem with Yahoo's mixup is they calculate high & low after, so they can be corrupted.
-            # If interval is weekly then can correct with daily. But if smaller intervals then 
-            # restricted to recent times:
-            # - daily = hourly restricted to last 730 days
-            sub_interval = None
-            td_range = None
-            if interval == "1wk":
-                # Correct by fetching week of daily data
-                sub_interval = "1d"
-                td_range = _datetime.timedelta(days=7)
-            elif interval == "1d":
-                # Correct by fetching day of hourly data
-                sub_interval = "1h"
-                td_range = _datetime.timedelta(days=1)
-            else:
-                print("WARNING: Have not implemented repair for '{}' interval. Contact developers".format(interval))
-                return df
-
-            # This first pass will correct all errors in Open/Close/Adj Close columns.
-            # It will also *attempt* to correct Low/High columns, but only if can get price data.
+            # This first pass will correct all errors in Open/Close/AdjClose columns.
+            # It will also attempt to correct Low/High columns, but only if can get price data.
             for idx in sorted(list(mixups.keys())):
                 m = mixups[idx]
-                # Although only some fields in row exhibit 100x error, normally the other fields are also corrupted, 
-                # so need to recalculate all fields in row.
-
-                if td_range is None:
-                    raise Exception("was hoping this wouldn't happen")
-
-                start = idx.date()
-                if sub_interval == "1h" and (_datetime.date.today() - start) > _datetime.timedelta(days=729):
-                    # Don't bother requesting more price data, Yahoo will reject
-                    pass
-                else:
-                    if sub_interval == "1h":
-                        df_fine = self.history(start=idx.date(), end=idx.date() + td_range, interval=sub_interval,
-                                               auto_adjust=False)
-                    else:
-                        df_fine = self.history(start=idx.date() - td_range, end=idx.date() + td_range,
-                                               interval=sub_interval, auto_adjust=False)
-
-                    # First, check whether df_fine has different split-adjustment than df.
-                    # If it is different, then adjust df_fine to match df
-                    good_fields = list(set(data_cols) - m["fields"])
-                    median = df.loc[idx, good_fields].median()
-                    median_fine = _np.median(df_fine[good_fields].values)
-                    ratio = round(median / median_fine, 1)
-                    ratio_rcp = round(median_fine / median, 1)
-                    if ratio == 1 and ratio_rcp == 1:
-                        # Good!
-                        pass
-                    else:
-                        if ratio > 1:
-                            # data has different split-adjustment than fine-grained data
-                            # Adjust fine-grained to match
-                            df_fine[data_cols] *= ratio
-                        elif ratio_rcp > 1:
-                            # data has different split-adjustment than fine-grained data
-                            # Adjust fine-grained to match
-                            df_fine[data_cols] *= 1.0 / ratio_rcp
-                        median_fine = _np.median(df_fine[good_fields].values)
-                        ratio = round(median / median_fine, 1)
-                        ratio_rcp = round(median_fine / median, 1)
-
-                    if sub_interval != "1h":
-                        # dt_before_week = df_fine.index[df_fine.index.get_loc(idx)-1]
-                        df_last_week = df_fine[df_fine.index < idx]
-                        df_fine = df_fine[df_fine.index >= idx]
-
-                    if "High" in m["fields"]:
-                        df.loc[idx, "High"] = df_fine["High"].max()
-                        m["fields"].remove("High")
-                    if "Low" in m["fields"]:
-                        df.loc[idx, "Low"] = df_fine["Low"].min()
-                        m["fields"].remove("Low")
-                    if "Open" in m["fields"]:
-                        if sub_interval != "1h" and idx != df_fine.index[0]:
-                            # Exchange closed Monday. In this case, Yahoo sets Open to last week close
-                            df.loc[idx, "Open"] = df_last_week["Close"][-1]
-                            df.loc[idx, "Low"] = min(df.loc[idx, "Open"], df.loc[idx, "Low"])
-                        else:
-                            df.loc[idx, "Open"] = df_fine["Open"].iloc[0]
-                        m["fields"].remove("Open")
-                    if "Close" in m["fields"]:
-                        df.loc[idx, "Close"] = df_fine["Close"].iloc[-1]
-                        m["fields"].remove("Close")
-                        # Assume 'Adj Close' also corrupted, easier than detecting whether true
-                        df.loc[idx, "Adj Close"] = df_fine["Adj Close"].iloc[-1]
-
-                if len(m["fields"]) == 0:
+                new_values = self._reconstruct_interval(df2.loc[idx], interval, m["fields"])
+                if not new_values is None:
+                    for k in new_values:
+                        df2.loc[idx, k] = new_values[k]
                     del mixups[idx]
 
             # This second pass will *crudely* "fix" any remaining errors in High/Low
@@ -514,12 +534,12 @@ class TickerBase:
             if len(mixups) > 0:
                 for idx in sorted(list(mixups.keys())):
                     m = mixups[idx]
-                    row = df.loc[idx, ["Open", "Close"]]
+                    row = df2.loc[idx, ["Open", "Close"]]
                     if "High" in m["fields"]:
-                        df.loc[idx, "High"] = row.max()
+                        df2.loc[idx, "High"] = row.max()
                         m["fields"].remove("High")
                     if "Low" in m["fields"]:
-                        df.loc[idx, "Low"] = row.min()
+                        df2.loc[idx, "Low"] = row.min()
                         m["fields"].remove("Low")
 
                     if len(m["fields"]) == 0:
@@ -530,7 +550,43 @@ class TickerBase:
             if len(mixups) > 0:
                 print("    ... and failed to correct {}".format(len(mixups)))
 
-        return df
+        return df2
+
+    def _fix_zero_prices(self, df, interval, tz_exchange):
+        # Sometimes Yahoo returns prices=0 when obviously wrong e.g. Volume>0 and Close>0.
+        # Easy to detect and fix
+
+        if df.shape[0] == 0:
+            return df
+        if df.shape[0] == 1:
+            # Need multiple rows to confidently identify outliers
+            return df
+
+        df2 = df.copy()
+
+        if df2.index.tz is None:
+            df2.index = df2.index.tz_localize(tz_exchange)
+        else:
+            df2.index = df2.index.tz_convert(tz_exchange)
+
+        data_cols = ["Open","High","Low","Close"]
+        data_cols = [c for c in data_cols if c in df2.columns]
+        f_zeroes = (df2[data_cols]==0.0).values.any(axis=1)
+
+        n_fixed = 0
+        for i in _np.where(f_zeroes)[0]:
+            idx = df2.index[i]
+            df_row = df2.loc[idx]
+            bad_fields = df2.columns[df_row.values==0.0].values
+            new_values = self._reconstruct_interval(df2.loc[idx], interval, bad_fields)
+            if not new_values is None:
+                for k in new_values:
+                    df2.loc[idx, k] = new_values[k]
+                n_fixed += 1
+
+        if n_fixed>0:
+            print("{}: fixed {} price=0.0 errors in {} price data".format(self.ticker, n_fixed, interval))
+        return df2
 
     def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if self._tz is not None:
