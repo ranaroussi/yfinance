@@ -712,6 +712,16 @@ class TickerBase():
         except Exception:
             pass
 
+        #rename bookvalue to bookvalue per share
+        #calculate and create true bookvalue
+        try:
+            if 'bookValue' in self._info:
+                self._info['bookValuePS'] = self._info.pop('bookValue')
+                if 'sharesOutstanding' in self._info:
+                    self._info['bookValue'] = self._info['bookValuePS']*self._info['sharesOutstanding']
+        except Exception:
+            pass
+
     def _get_fundamentals(self, proxy=None):
         def cleanup(data):
             '''
