@@ -154,7 +154,7 @@ class TickerBase:
             tz = self._get_ticker_tz(debug, proxy, timeout)
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
-                err_msg = "No timezone found, symbol certainly delisted"
+                err_msg = "No timezone found, symbol may be delisted"
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg
                 if debug:
@@ -609,6 +609,11 @@ class TickerBase:
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
+        json_data = utils.get_json_data_stores(ticker_url, proxy, self.session)
+        if 'QuoteSummaryStore' not in json_data:
+            err_msg = "No summary info found, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
         data = utils.get_json_data_stores(ticker_url, proxy, self.session)['QuoteSummaryStore']
 
         # sustainability
@@ -822,14 +827,19 @@ class TickerBase:
         self._get_info(proxy)
 
         # get fundamentals
-        fin_data = utils.get_json_data_stores(ticker_url + '/financials', proxy, self.session)
-        fin_data_quote = fin_data['QuoteSummaryStore']
-
-        # generic patterns
         self._earnings = {"yearly": utils._pd.DataFrame(), "quarterly": utils._pd.DataFrame()}
         self._financials = {}
         for name in ["income", "balance-sheet", "cash-flow"]:
             self._financials[name] = {"yearly":utils._pd.DataFrame(), "quarterly":utils._pd.DataFrame()}
+
+        fin_data = utils.get_json_data_stores(ticker_url + '/financials', proxy, self.session)
+        if not "QuoteSummaryStore" in fin_data:
+            err_msg = "No financials data found, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
+        fin_data_quote = fin_data['QuoteSummaryStore']
+
+        # generic patterns
         for name in ["income", "balance-sheet", "cash-flow"]:
             annual, qtr = self._create_financials_table(name, proxy)
             if annual is not None:
@@ -1142,6 +1152,9 @@ class TickerBase:
 
         q = ticker
         self.get_info(proxy=proxy)
+        if self._info is None:
+            # Don't print error message cause _get_info() will print one
+            return None
         if "shortName" in self._info:
             q = self._info['shortName']
 
@@ -1242,8 +1255,10 @@ class TickerBase:
                 dates = _pd.concat([dates, data], axis=0)
             page_offset += page_size
 
-        if dates is None:
-            raise Exception("No data found, symbol may be delisted")
+        if dates is None or dates.shape[0]==0:
+            err_msg = "No earnings dates found, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
         dates = dates.reset_index(drop=True)
 
         # Drop redundant columns
@@ -1277,40 +1292,3 @@ class TickerBase:
         self._earnings_dates = dates
 
         return dates
-
-    def get_earnings_history(self, proxy=None):
-        if self._earnings_history:
-            return self._earnings_history
-
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
-        url = "{}/calendar/earnings?symbol={}".format(_ROOT_URL_, self.ticker)
-        session = self.session or _requests
-        data = session.get(
-            url=url,
-            proxies=proxy,
-            headers=utils.user_agent_headers
-        ).text
-
-        if "Will be right back" in data:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
-
-        try:
-            # read_html returns a list of pandas Dataframes of all the tables in `data`
-            data = _pd.read_html(data)[0]
-            data.replace("-", _np.nan, inplace=True)
-
-            data['EPS Estimate'] = _pd.to_numeric(data['EPS Estimate'])
-            data['Reported EPS'] = _pd.to_numeric(data['Reported EPS'])
-            self._earnings_history = data
-        # if no tables are found a ValueError is thrown
-        except ValueError:
-            print("Could not find earnings history data for {}.".format(self.ticker))
-            return
-        return data
