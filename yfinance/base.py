@@ -150,17 +150,14 @@ class TickerBase():
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            try:
-                tz = self._get_ticker_tz(debug_mode, proxy, timeout)
-            except KeyError as e:
-                if "exchangeTimezoneName" in str(e):
-                    shared._DFS[self.ticker] = utils.empty_df()
-                    shared._ERRORS[self.ticker] = err_msg
-                    if "many" not in kwargs and debug_mode:
-                        print('- %s: %s' % (self.ticker, err_msg))
-                    return utils.empty_df()
-                else:
-                    raise
+            tz = self._get_ticker_tz(debug_mode, proxy, timeout)
+            if tz is None:
+                # Every valid ticker has a timezone. Missing = problem
+                shared._DFS[self.ticker] = utils.empty_df()
+                shared._ERRORS[self.ticker] = err_msg
+                if "many" not in kwargs and debug_mode:
+                    print('- %s: %s' % (self.ticker, err_msg))
+                return utils.empty_df()
 
             if end is None:
                 end = int(_time.time())
@@ -336,6 +333,19 @@ class TickerBase():
             return self._tz
 
         tkr_tz = utils.cache_lookup_tkr_tz(self.ticker)
+
+        if tkr_tz is not None:
+            invalid_value = isinstance(tkr_tz, str)
+            if not invalid_value:
+                try:
+                    _tz.timezone(tz)
+                except:
+                    invalid_value = True
+            if invalid_value:
+                # Clear from cache and force re-fetch
+                utils.cache_store_tkr_tz(self.ticker, None)
+                tkr_tz = None
+
         if tkr_tz is None:
             tkr_tz = self._fetch_ticker_tz(debug_mode, proxy, timeout)
 
