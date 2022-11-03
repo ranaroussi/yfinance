@@ -41,6 +41,7 @@ class TestTicker(unittest.TestCase):
             ticker.splits
             ticker.actions
             ticker.info
+            ticker.info["trailingPegRatio"]
             ticker.calendar
             ticker.recommendations
             ticker.earnings
