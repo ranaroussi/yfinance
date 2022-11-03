@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.85
+------
+- Fix info['log_url'] #1062
+- Fix handling delisted ticker #1137
+
 0.1.84
 ------
 - Make tz-cache thread-safe
