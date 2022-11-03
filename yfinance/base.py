@@ -349,11 +349,12 @@ class TickerBase():
         if tkr_tz is None:
             tkr_tz = self._fetch_ticker_tz(debug_mode, proxy, timeout)
 
-            try:
-                utils.cache_store_tkr_tz(self.ticker, tkr_tz)
-            except PermissionError:
-                # System probably read-only, so cannot cache
-                pass
+            if tkr_tz is not None:
+                try:
+                    utils.cache_store_tkr_tz(self.ticker, tkr_tz)
+                except PermissionError:
+                    # System probably read-only, so cannot cache
+                    pass
 
         self._tz = tkr_tz
         return tkr_tz
@@ -839,6 +840,10 @@ class TickerBase():
         self.get_info(proxy=proxy)
         if "shortName" in self._info:
             q = self._info['shortName']
+        if q is None:
+            err_msg = "Cannot map to ISIN code, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
 
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
@@ -937,8 +942,10 @@ class TickerBase():
                 dates = _pd.concat([dates, data], axis=0)
             page_offset += page_size
 
-        if dates is None:
-            raise Exception("No data found, symbol may be delisted")
+        if (dates is None) or dates.shape[0]==0:
+            err_msg = "No earnings dates found, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
         dates = dates.reset_index(drop=True)
 
         # Drop redundant columns
