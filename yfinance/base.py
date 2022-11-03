@@ -286,9 +286,9 @@ class TickerBase:
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
         # Note: ordering is important. If you change order, run the tests!
-        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         if repair:
             # Do this before auto/back adjust
             quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
@@ -355,6 +355,9 @@ class TickerBase:
             df.index.name = "Datetime"
         else:
             df.index.name = "Date"
+            # If localizing a midnight during DST transition hour when clocks roll back, 
+            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
+            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange, ambiguous=True)
 
         # duplicates and missing rows cleanup
         df = df[~df.index.duplicated(keep='first')]
