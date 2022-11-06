@@ -146,7 +146,7 @@ class TickerBase:
             tz = self._get_ticker_tz(debug, proxy, timeout)
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
-                err_msg = "No timezone found, symbol certainly delisted"
+                err_msg = "No timezone found, symbol may be delisted"
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg
                 if debug:
@@ -275,9 +275,9 @@ class TickerBase:
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
         # Note: ordering is important. If you change order, run the tests!
-        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         if repair:
             # Do this before auto/back adjust
             quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
@@ -344,6 +344,9 @@ class TickerBase:
             df.index.name = "Datetime"
         else:
             df.index.name = "Date"
+            # If localizing a midnight during DST transition hour when clocks roll back,
+            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
+            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange, ambiguous=True)
 
         # duplicates and missing rows cleanup
         df = df[~df.index.duplicated(keep='first')]
@@ -582,7 +585,12 @@ class TickerBase:
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = self._data.get_json_data_stores(ticker_url, proxy)['QuoteSummaryStore']
+        json_data = self._data.get_json_data_stores(ticker_url, proxy)
+        if 'QuoteSummaryStore' not in json_data:
+            err_msg = "No summary info found, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
+        data = json_data['QuoteSummaryStore']
 
         # sustainability
         d = {}
@@ -791,14 +799,19 @@ class TickerBase:
         self._get_info(proxy)
 
         # get fundamentals
-        financials_data = self._data.get_json_data_stores(ticker_url + '/financials', proxy)
-        fin_data_quote = financials_data['QuoteSummaryStore']
-
-        # generic patterns
         self._earnings = {"yearly": utils._pd.DataFrame(), "quarterly": utils._pd.DataFrame()}
         self._financials = {}
         for name in ["income", "balance-sheet", "cash-flow"]:
             self._financials[name] = {"yearly": utils._pd.DataFrame(), "quarterly": utils._pd.DataFrame()}
+
+        financials_data = self._data.get_json_data_stores(ticker_url + '/financials', proxy)
+        if not "QuoteSummaryStore" in financials_data:
+            err_msg = "No financials data found, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
+        fin_data_quote = financials_data['QuoteSummaryStore']
+
+        # generic patterns
         for name in ["income", "balance-sheet", "cash-flow"]:
             annual, qtr = self._create_financials_table(name, financials_data, proxy)
             if annual is not None:
@@ -1105,6 +1118,9 @@ class TickerBase:
 
         q = ticker
         self.get_info(proxy=proxy)
+        if self._info is None:
+            # Don't print error message cause _get_info() will print one
+            return None
         if "shortName" in self._info:
             q = self._info['shortName']
 
@@ -1178,8 +1194,10 @@ class TickerBase:
                 dates = _pd.concat([dates, data], axis=0)
             page_offset += page_size
 
-        if dates is None:
-            raise Exception("No data found, symbol may be delisted")
+        if dates is None or dates.shape[0]==0:
+            err_msg = "No earnings dates found, symbol may be delisted"
+            print('- %s: %s' % (self.ticker, err_msg))
+            return None
         dates = dates.reset_index(drop=True)
 
         # Drop redundant columns

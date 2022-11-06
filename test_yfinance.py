@@ -56,7 +56,6 @@ class TestTicker(unittest.TestCase):
             ticker.options
             ticker.news
             ticker.earnings_trend
-            ticker.earnings_history
             ticker.earnings_dates
             ticker.earnings_forecasts
 
