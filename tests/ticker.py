@@ -3,9 +3,6 @@ import pandas as pd
 from .context import yfinance as yf
 
 import unittest
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 class TestTicker(unittest.TestCase):
