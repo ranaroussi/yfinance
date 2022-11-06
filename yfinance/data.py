@@ -64,12 +64,6 @@ class TickerData:
 
     @freezeargs
     @lru_cache(maxsize=cache_maxsize)
-    def get_html(self, url, proxy=None):
-        html = self._session.get(url=url, proxies=proxy, headers=self.user_agent_headers).text
-        return html
-
-    @freezeargs
-    @lru_cache(maxsize=cache_maxsize)
     def get_json_data_stores(self, url, proxy=None):
         '''
         get_json_data_stores returns a python dictionary of the data stores in yahoo finance web page.
