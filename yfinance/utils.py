@@ -362,10 +362,6 @@ def set_df_tz(df, interval, tz):
     if df.index.tz is None:
         df.index = df.index.tz_localize("UTC")
     df.index = df.index.tz_convert(tz)
-    if interval in ["1d", "1w", "1wk", "1mo", "3mo"]:
-        # If localizing a midnight during DST transition hour when clocks roll back, 
-        # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-        df.index = _pd.to_datetime(df.index.date).tz_localize(tz, ambiguous=True)
     return df
 
 
