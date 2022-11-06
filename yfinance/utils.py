@@ -495,9 +495,9 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
             elif interval == "3mo":
                 last_rows_same_interval = dt1.year == dt2.year and dt1.quarter == dt2.quarter
             else:
-                last_rows_same_interval = None
+                last_rows_same_interval = False
 
-            if last_rows_same_interval is not None:
+            if last_rows_same_interval:
                 # Last two rows are within same interval
                 idx1 = quotes.index[n - 1]
                 idx2 = quotes.index[n - 2]
