@@ -81,14 +81,14 @@ class TickerData:
 
         return json.loads(new_data)
 
-    @freezeargs
-    @lru_cache(maxsize=cache_maxsize)
+    # Note cant use lru_cache as financials_data is a nested dict (freezeargs only handle flat dicts)
     def get_financials_time_series(self, name, timescale, financials_data, proxy=None):
+
         acceptable_names = ["financials", "balance-sheet", "cash-flow"]
-        if not name in acceptable_names:
+        if name not in acceptable_names:
             raise Exception("name '{}' must be one of: {}".format(name, acceptable_names))
         acceptable_timestamps = ["annual", "quarterly"]
-        if not timescale in acceptable_timestamps:
+        if timescale not in acceptable_timestamps:
             raise Exception("timescale '{}' must be one of: {}".format(timescale, acceptable_timestamps))
 
         # Step 1: get the keys:

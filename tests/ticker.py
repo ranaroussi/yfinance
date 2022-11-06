@@ -4,6 +4,11 @@ from .context import yfinance as yf
 
 import unittest
 
+log_requests = False
+
+if log_requests:
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
 
 class TestTicker(unittest.TestCase):
     def setUp(self):
@@ -99,11 +104,30 @@ class TestTickerHolders(unittest.TestCase):
         self.assertIs(data, data_cached, "data not cached")
 
 
+class TestTickerBalanceSheet(unittest.TestCase):
+
+    def setUp(self):
+        self.ticker = yf.Ticker("GOOGL")
+
+    def tearDown(self):
+        self.ticker = None
+
+    def test_balance_sheet(self):
+        data = self.ticker.balance_sheet
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.balance_sheet
+        self.assertIs(data, data_cached, "data not cached")
+
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestTicker('Test ticker'))
-    suite.addTest(TestTickerEarnings('Test Earnings'))
+    suite.addTest(TestTickerEarnings('Test earnings'))
     suite.addTest(TestTickerHolders('Test holders'))
+    suite.addTest(TestTickerBalanceSheet('Test balance sheet'))
     return suite
 
 

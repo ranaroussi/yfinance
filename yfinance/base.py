@@ -917,9 +917,6 @@ class TickerBase:
             # Yahoo stores the 'income' table internally under 'financials' key
             name = "financials"
 
-        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
-        # data_store = utils.get_json_data_stores(ticker_url+'/'+name, proxy, self.session)
-
         _stmt_annual = None
         _stmt_qtr = None
         try:
@@ -927,8 +924,8 @@ class TickerBase:
             # visible on Yahoo website. But more work needed to make it user-friendly! Ideally
             # return a tree data structure instead of Pandas MultiIndex
             # So until this is implemented, just return simple tables
-            _stmt_annual = self._data.get_financials_time_series(self.ticker, name, "annual", financials_data, proxy)
-            _stmt_qtr = self._data.get_financials_time_series(self.ticker, name, "quarterly", financials_data, proxy)
+            _stmt_annual = self._data.get_financials_time_series(name, "annual", financials_data, proxy)
+            _stmt_qtr = self._data.get_financials_time_series(name, "quarterly", financials_data, proxy)
 
             # template_ttm_order, template_annual_order, template_order, level_detail = utils.build_template(data_store["FinancialTemplateStore"])
             # TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
@@ -942,7 +939,7 @@ class TickerBase:
             # _qtr_data = utils.get_financials_time_series(self.ticker, name, "quarterly", ticker_url, proxy, self.session)
             # _stmt_qtr = utils.format_quarterly_financial_statement(_qtr_data, level_detail, template_order)
 
-        except:
+        except Exception as e:
             pass
 
         return _stmt_annual, _stmt_qtr
