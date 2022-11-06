@@ -76,19 +76,27 @@ class TestTickerHolders(unittest.TestCase):
 
     def test_major_holders(self):
         data = self.ticker.major_holders
-        self.assertIsInstance(data, pd.DataFrame, "major_holders has wrong type")
-        self.assertFalse(data.empty, "major_holders is empty")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.major_holders
-        assert data is data_cached, "not cached"
+        self.assertIs(data, data_cached, "data not cached")
 
     def test_institutional_holders(self):
         data = self.ticker.institutional_holders
-        self.assertIsInstance(data, pd.DataFrame, "major_holders has wrong type")
-        self.assertFalse(data.empty, "major_holders is empty")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.institutional_holders
-        assert data is data_cached, "not cached"
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_mutualfund_holders(self):
+        data = self.ticker.mutualfund_holders
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.mutualfund_holders
+        self.assertIs(data, data_cached, "data not cached")
 
 
 def suite():
