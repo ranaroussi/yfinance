@@ -59,7 +59,7 @@ def get_all_by_isin(isin, proxy=None, session=None):
     from .base import _BASE_URL_
     session = session or _requests
     url = "{}/v1/finance/search?q={}".format(_BASE_URL_, isin)
-    data = session.get(url=url, proxy=proxy, headers=user_agent_headers)
+    data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
     try:
         data = data.json()
         ticker = data.get('quotes', [{}])[0]
