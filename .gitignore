@@ -9,3 +9,12 @@ build/
 *.html
 *.css
 *.png
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
