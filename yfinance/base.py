@@ -23,21 +23,16 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
-import requests as _requests
 import pandas as _pd
 import numpy as _np
-import re as _re
 
-try:
-    from urllib.parse import quote as urlencode
-except ImportError:
-    from urllib import quote as urlencode
+from .data import TickerData
+
+from urllib.parse import quote as urlencode
 
 from . import utils
 
 import json as _json
-# import re as _re
-# import sys as _sys
 
 from . import shared
 
@@ -84,12 +79,9 @@ class TickerBase:
         if utils.is_isin(self.ticker):
             self.ticker = utils.get_ticker_by_isin(self.ticker, None, session)
 
+        self._data = TickerData(self.ticker, session=session)
+
     def stats(self, proxy=None):
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
 
         if self._fundamentals:
             return
@@ -97,7 +89,7 @@ class TickerBase:
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = utils.get_json_data_stores(ticker_url, proxy, self.session)["QuoteSummaryStore"]
+        data = self._data.get_json_data_stores(ticker_url, proxy)["QuoteSummaryStore"]
         return data
 
     def history(self, period="1mo", interval="1d",
@@ -197,15 +189,12 @@ class TickerBase:
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
 
-        session = self.session or _requests
         data = None
 
         try:
-            data = session.get(
+            data = self._data.get(
                 url=url,
                 params=params,
-                proxies=proxy,
-                headers=utils.user_agent_headers,
                 timeout=timeout
             )
             if "Will be right back" in data.text or data is None:
@@ -557,18 +546,11 @@ class TickerBase:
 
         params = {"range": "1d", "interval": "1d"}
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
 
-        session = self.session or _requests
         try:
-            data = session.get(url=url, params=params, proxies=proxy, headers=utils.user_agent_headers, timeout=timeout)
+            data = self._data.get(url=url, params=params, proxy=proxy, timeout=timeout)
             data = data.json()
         except Exception as e:
             if debug_mode:
@@ -593,12 +575,6 @@ class TickerBase:
         return None
 
     def _get_info(self, proxy=None):
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         if (self._info is not None) or (self._sustainability is not None) or self._recommendations:
             # No need to fetch
             return
@@ -606,7 +582,7 @@ class TickerBase:
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = utils.get_json_data_stores(ticker_url, proxy, self.session)['QuoteSummaryStore']
+        data = self._data.get_json_data_stores(ticker_url, proxy)['QuoteSummaryStore']
 
         # sustainability
         d = {}
@@ -669,7 +645,8 @@ class TickerBase:
         self._info['logo_url'] = ""
         try:
             if not 'website' in self._info:
-                self._info['logo_url'] = 'https://logo.clearbit.com/%s.com' % self._info['shortName'].split(' ')[0].split(',')[0]
+                self._info['logo_url'] = 'https://logo.clearbit.com/%s.com' % \
+                                         self._info['shortName'].split(' ')[0].split(',')[0]
             else:
                 domain = self._info['website'].split(
                     '://')[1].split('/')[0].replace('www.', '')
@@ -704,9 +681,8 @@ class TickerBase:
             pass
 
         # Complementary key-statistics. For now just want 'trailing PEG ratio'
-        session = self.session or _requests
         keys = {"trailingPegRatio"}
-        if len(keys)>0:
+        if len(keys) > 0:
             # Simplified the original scrape code for key-statistics. Very expensive for fetching
             # just one value, best if scraping most/all:
             #
@@ -729,13 +705,16 @@ class TickerBase:
             #     pass
             #
             # For just one/few variable is faster to query directly:
-            url = "https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{}?symbol={}".format(self.ticker, self.ticker)
+            url = "https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{}?symbol={}".format(
+                self.ticker, self.ticker)
             for k in keys:
-                url += "&type="+k
+                url += "&type=" + k
             # Request 6 months of data
-            url += "&period1={}".format(int((_datetime.datetime.now()-_datetime.timedelta(days=365//2)).timestamp()))
-            url += "&period2={}".format(int((_datetime.datetime.now()+_datetime.timedelta(days=1)).timestamp()))
-            json_str = session.get(url=url, proxies=proxy, headers=utils.user_agent_headers).text
+            url += "&period1={}".format(
+                int((_datetime.datetime.now() - _datetime.timedelta(days=365 // 2)).timestamp()))
+            url += "&period2={}".format(int((_datetime.datetime.now() + _datetime.timedelta(days=1)).timestamp()))
+
+            json_str = self._data.get(url=url, proxy=proxy).text
             json_data = _json.loads(json_str)
             key_stats = json_data["timeseries"]["result"][0]
             if k not in key_stats:
@@ -745,7 +724,6 @@ class TickerBase:
                 # Select most recent (last) raw value in list:
                 v = key_stats[k][-1]["reportedValue"]["raw"]
             self._info[k] = v
-
 
     def _get_fundamentals(self, proxy=None):
         def cleanup(data):
@@ -772,12 +750,6 @@ class TickerBase:
             df.index = utils.camel2title(df.index)
             return df
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         if self._fundamentals:
             return
 
@@ -785,8 +757,8 @@ class TickerBase:
 
         # holders
         try:
-            resp = utils.get_html(ticker_url + '/holders', proxy, self.session)
-            holders = _pd.read_html(resp)
+            resp = self._data.get(ticker_url + '/holders', proxy)
+            holders = _pd.read_html(resp.text)
         except Exception:
             holders = []
 
@@ -819,16 +791,16 @@ class TickerBase:
         self._get_info(proxy)
 
         # get fundamentals
-        fin_data = utils.get_json_data_stores(ticker_url + '/financials', proxy, self.session)
-        fin_data_quote = fin_data['QuoteSummaryStore']
+        financials_data = self._data.get_json_data_stores(ticker_url + '/financials', proxy)
+        fin_data_quote = financials_data['QuoteSummaryStore']
 
         # generic patterns
         self._earnings = {"yearly": utils._pd.DataFrame(), "quarterly": utils._pd.DataFrame()}
         self._financials = {}
         for name in ["income", "balance-sheet", "cash-flow"]:
-            self._financials[name] = {"yearly":utils._pd.DataFrame(), "quarterly":utils._pd.DataFrame()}
+            self._financials[name] = {"yearly": utils._pd.DataFrame(), "quarterly": utils._pd.DataFrame()}
         for name in ["income", "balance-sheet", "cash-flow"]:
-            annual, qtr = self._create_financials_table(name, proxy)
+            annual, qtr = self._create_financials_table(name, financials_data, proxy)
             if annual is not None:
                 self._financials[name]["yearly"] = annual
             if qtr is not None:
@@ -855,7 +827,9 @@ class TickerBase:
         # shares outstanding
         try:
             # keep only years with non None data
-            available_shares = [shares_data for shares_data in fin_data['QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares'] if shares_data]
+            available_shares = [shares_data for shares_data in
+                                financials_data['QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares'] if
+                                shares_data]
             shares = _pd.DataFrame(available_shares)
             shares['Year'] = shares['asOfDate'].agg(lambda x: int(x[:4]))
             shares.set_index('Year', inplace=True)
@@ -868,7 +842,7 @@ class TickerBase:
             pass
 
         # Analysis
-        data = utils.get_json_data_stores(ticker_url + '/analysis', proxy, self.session)["QuoteSummaryStore"]
+        data = self._data.get_json_data_stores(ticker_url + '/analysis', proxy)["QuoteSummaryStore"]
 
         if isinstance(data.get('earningsTrend'), dict):
             try:
@@ -897,7 +871,7 @@ class TickerBase:
 
         # Analysis Data/Analyst Forecasts
         try:
-            analysis_data = utils.get_json_data_stores(ticker_url+'/analysis',proxy,self.session)
+            analysis_data = self._data.get_json_data_stores(ticker_url + '/analysis', proxy)
             analysis_data = analysis_data['QuoteSummaryStore']
         except Exception as e:
             analysis_data = {}
@@ -906,7 +880,8 @@ class TickerBase:
         except Exception as e:
             self._analyst_trend_details = None
         try:
-            self._analyst_price_target = _pd.DataFrame(analysis_data['financialData'], index=[0])[['targetLowPrice','currentPrice','targetMeanPrice','targetHighPrice','numberOfAnalystOpinions']].T
+            self._analyst_price_target = _pd.DataFrame(analysis_data['financialData'], index=[0])[
+                ['targetLowPrice', 'currentPrice', 'targetMeanPrice', 'targetHighPrice', 'numberOfAnalystOpinions']].T
         except Exception as e:
             self._analyst_price_target = None
         earnings_estimate = []
@@ -933,7 +908,7 @@ class TickerBase:
 
         self._fundamentals = True
 
-    def _create_financials_table(self, name, proxy):
+    def _create_financials_table(self, name, financials_data, proxy):
         acceptable_names = ["income", "balance-sheet", "cash-flow"]
         if not name in acceptable_names:
             raise Exception("name '{}' must be one of: {}".format(name, acceptable_names))
@@ -943,7 +918,7 @@ class TickerBase:
             name = "financials"
 
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
-        data_store = utils.get_json_data_stores(ticker_url+'/'+name, proxy, self.session)
+        # data_store = utils.get_json_data_stores(ticker_url+'/'+name, proxy, self.session)
 
         _stmt_annual = None
         _stmt_qtr = None
@@ -952,8 +927,8 @@ class TickerBase:
             # visible on Yahoo website. But more work needed to make it user-friendly! Ideally
             # return a tree data structure instead of Pandas MultiIndex
             # So until this is implemented, just return simple tables
-            _stmt_annual = utils.get_financials_time_series(self.ticker, name, "annual", ticker_url, proxy, self.session)
-            _stmt_qtr = utils.get_financials_time_series(self.ticker, name, "quarterly", ticker_url, proxy, self.session)
+            _stmt_annual = self._data.get_financials_time_series(self.ticker, name, "annual", financials_data, proxy)
+            _stmt_qtr = self._data.get_financials_time_series(self.ticker, name, "quarterly", financials_data, proxy)
 
             # template_ttm_order, template_annual_order, template_order, level_detail = utils.build_template(data_store["FinancialTemplateStore"])
             # TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
@@ -971,7 +946,6 @@ class TickerBase:
             pass
 
         return _stmt_annual, _stmt_qtr
-
 
     def get_recommendations(self, proxy=None, as_dict=False):
         self._get_info(proxy)
@@ -1064,7 +1038,8 @@ class TickerBase:
         data = self._earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings['financialCurrency']
+            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
+                'financialCurrency']
             return dict_data
         return data
 
@@ -1131,12 +1106,6 @@ class TickerBase:
             self._isin = '-'
             return self._isin
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         q = ticker
         self.get_info(proxy=proxy)
         if "shortName" in self._info:
@@ -1145,12 +1114,7 @@ class TickerBase:
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
               % urlencode(q)
-        session = self.session or _requests
-        data = session.get(
-            url=url,
-            proxies=proxy,
-            headers=utils.user_agent_headers
-        ).text
+        data = self._data.get(url=url, proxy=proxy).text
 
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
@@ -1170,20 +1134,9 @@ class TickerBase:
         if self._news:
             return self._news
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         # Getting data from json
         url = "{}/v1/finance/search?q={}".format(self._base_url, self.ticker)
-        session = self.session or _requests
-        data = session.get(
-            url=url,
-            proxies=proxy,
-            headers=utils.user_agent_headers
-        )
+        data = self._data.get(url=url, proxy=proxy)
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -1198,12 +1151,6 @@ class TickerBase:
         if self._earnings_dates is not None:
             return self._earnings_dates
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         page_size = 100  # YF caps at 100, don't go higher
         page_offset = 0
         dates = None
@@ -1211,12 +1158,7 @@ class TickerBase:
             url = "{}/calendar/earnings?symbol={}&offset={}&size={}".format(
                 _ROOT_URL_, self.ticker, page_offset, page_size)
 
-            session = self.session or _requests
-            data = session.get(
-                url=url,
-                proxies=proxy,
-                headers=utils.user_agent_headers
-            ).text
+            data = self._data.get(url=url, proxy=proxy).text
 
             if "Will be right back" in data:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
@@ -1276,22 +1218,11 @@ class TickerBase:
         return dates
 
     def get_earnings_history(self, proxy=None):
-        if self._earnings_history:
+        if self._earnings_history is not None:
             return self._earnings_history
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         url = "{}/calendar/earnings?symbol={}".format(_ROOT_URL_, self.ticker)
-        session = self.session or _requests
-        data = session.get(
-            url=url,
-            proxies=proxy,
-            headers=utils.user_agent_headers
-        ).text
+        data = self._data.get(url=url, proxy=proxy).text
 
         if "Will be right back" in data:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
