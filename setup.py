@@ -62,7 +62,8 @@ setup(
     install_requires=['pandas>=1.1.0', 'numpy>=1.15',
                       'requests>=2.26', 'multitasking>=0.0.7',
                       'lxml>=4.5.1', 'appdirs>=1.4.4', 'pytz>=2022.5',
-                      'frozendict>=2.3.4'],
+                      'frozendict>=2.3.4',
+                      'beautifulsoup4>=4.11.1', 'html5lib>=1.1'],
     entry_points={
         'console_scripts': [
             'sample=sample:main',
