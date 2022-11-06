@@ -614,7 +614,7 @@ class TickerBase:
             err_msg = "No summary info found, symbol may be delisted"
             print('- %s: %s' % (self.ticker, err_msg))
             return None
-        data = utils.get_json_data_stores(ticker_url, proxy, self.session)['QuoteSummaryStore']
+        data = json_data['QuoteSummaryStore']
 
         # sustainability
         d = {}
