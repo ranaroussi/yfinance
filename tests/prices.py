@@ -11,6 +11,7 @@ import pandas as _pd
 import requests_cache, tempfile
 
 td = tempfile.TemporaryDirectory()
+cache_fp = td.name+'/'+"yfinance.cache"
 
 
 class TestPriceHistory(unittest.TestCase):
@@ -115,6 +116,8 @@ class TestPriceHistory(unittest.TestCase):
         end_d = "2020-11-29"
         df1 = yf.Ticker(tkr1).history(start=start_d, end=end_d, interval="1d", actions=True)
         df2 = yf.Ticker(tkr2).history(start=start_d, end=end_d, interval="1d", actions=True)
+        self.assertTrue(((df1["Dividends"]>0)|(df1["Stock Splits"]>0)).any())
+        self.assertTrue(((df2["Dividends"]>0)|(df2["Stock Splits"]>0)).any())
         try:
             self.assertTrue(df1.index.equals(df2.index))
         except:
@@ -129,6 +132,7 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             df1 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
             df2 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=False)
+            self.assertTrue(((df1["Dividends"]>0)|(df1["Stock Splits"]>0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
             except:
@@ -146,6 +150,8 @@ class TestPriceHistory(unittest.TestCase):
         end_d = "2020-11-29"
         df1 = yf.Ticker(tkr1).history(start=start_d, end=end_d, interval="1wk", actions=True)
         df2 = yf.Ticker(tkr2).history(start=start_d, end=end_d, interval="1wk", actions=True)
+        self.assertTrue(((df1["Dividends"]>0)|(df1["Stock Splits"]>0)).any())
+        self.assertTrue(((df2["Dividends"]>0)|(df2["Stock Splits"]>0)).any())
         try:
             self.assertTrue(df1.index.equals(df2.index))
         except:
@@ -160,6 +166,7 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             df1 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1wk", actions=True)
             df2 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1wk", actions=False)
+            self.assertTrue(((df1["Dividends"]>0)|(df1["Stock Splits"]>0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
             except:
@@ -176,6 +183,8 @@ class TestPriceHistory(unittest.TestCase):
         end_d = "2020-11-29"
         df1 = yf.Ticker(tkr1).history(start=start_d, end=end_d, interval="1mo", actions=True)
         df2 = yf.Ticker(tkr2).history(start=start_d, end=end_d, interval="1mo", actions=True)
+        self.assertTrue(((df1["Dividends"]>0)|(df1["Stock Splits"]>0)).any())
+        self.assertTrue(((df2["Dividends"]>0)|(df2["Stock Splits"]>0)).any())
         try:
             self.assertTrue(df1.index.equals(df2.index))
         except:
@@ -190,6 +199,7 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             df1 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1mo", actions=True)
             df2 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1mo", actions=False)
+            self.assertTrue(((df1["Dividends"]>0)|(df1["Stock Splits"]>0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
             except:
@@ -206,6 +216,41 @@ class TestPriceHistory(unittest.TestCase):
             yf.Ticker("ESLT.TA", session=self.session).history(start="2002-10-06", end="2002-10-09", interval="1d")
         except _tz.exceptions.AmbiguousTimeError:
             raise Exception("Ambiguous DST issue not resolved")
+
+    def test_dst_fix(self):
+        # Daily intervals should start at time 00:00. But for some combinations of date and timezone, 
+        # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
+        # The clue is (a) minutes=0 and (b) hour near 0. 
+        # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion.
+
+        # The correction is successful if no days are weekend, and weekly data begins Monday
+
+        tkr = "AGRO3.SA"
+        dat = yf.Ticker(tkr, session=self.session)
+        start = "2021-01-11"
+        end = "2022-11-05"
+
+        interval = "1d"
+        df = dat.history(start=start, end=end, interval=interval)
+        self.assertTrue(((df.index.weekday>=0) & (df.index.weekday<=4)).all())
+
+        interval = "1wk"
+        df = dat.history(start=start, end=end, interval=interval)
+        try:
+            self.assertTrue((df.index.weekday==0).all())
+        except:
+            print("Weekly data not aligned to Monday")
+            raise
+
+    def test_weekly_2rows_fix(self):
+        tkr = "AMZN"
+        start = _dt.date.today()-_dt.timedelta(days=14)
+        start -= _dt.timedelta(days=start.weekday())
+
+        dat = yf.Ticker(tkr)
+        df = dat.history(start=start, interval="1wk")
+        self.assertTrue((df.index.weekday==0).all())
+
 
     def test_repair_weekly(self):
         # Sometimes, Yahoo returns prices 100x the correct value.
