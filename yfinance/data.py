@@ -13,7 +13,7 @@ try:
 except ImportError:
     import json as json
 
-cache_maxsize = 1000
+cache_maxsize = 128
 
 
 def freezeargs(func):
@@ -137,7 +137,7 @@ class TickerData:
                     data_unpacked[k] = x[k]
         timestamps = sorted(list(timestamps))
         dates = pd.to_datetime(timestamps, unit="s")
-        df = pd.DataFrame(columns=dates, index=data_unpacked.keys())
+        df = pd.DataFrame(columns=dates, index=list(data_unpacked.keys()))
         for k, v in data_unpacked.items():
             if df is None:
                 df = pd.DataFrame(columns=dates, index=[k])
