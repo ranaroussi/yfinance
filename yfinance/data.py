@@ -13,10 +13,10 @@ try:
 except ImportError:
     import json as json
 
-cache_maxsize = 128
+cache_maxsize = 64
 
 
-def freezeargs(func):
+def lru_cache_freezeargs(func):
     """
     Decorator transforms mutable dictionary arguments into immutable
     Needed so lru_cache can cache method calls what has dict arguments.
@@ -28,6 +28,10 @@ def freezeargs(func):
         kwargs = {k: frozendict(v) if isinstance(v, dict) else v for k, v in kwargs.items()}
         return func(*args, **kwargs)
 
+    # copy over the lru_cache extra methods to this wrapper to be able to access them
+    # after this decorator has been applied
+    wrapped.cache_info = func.cache_info
+    wrapped.cache_clear = func.cache_clear
     return wrapped
 
 
@@ -42,7 +46,7 @@ class TickerData:
         self._ticker = ticker
         self._session = session or requests
 
-    @freezeargs
+    @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
         proxy = self._get_proxy(proxy)
@@ -62,7 +66,7 @@ class TickerData:
             proxy = {"https": proxy}
         return proxy
 
-    @freezeargs
+    @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
     def get_json_data_stores(self, url, proxy=None):
         '''
