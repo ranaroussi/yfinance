@@ -1,6 +1,16 @@
 Change Log
 ===========
 
+0.2.0rc1
+------
+Jumping to 0.2 for this big update. 0.1.* will continue to receive bug-fixes
+- timezone cache performance massively improved. Thanks @fredrik-corneliusson #1113 #1112 #1109 #1105 #1099
+- price repair feature #1110
+- fix merging of dividends/splits with prices #1069 #1086 #1102
+- fix Yahoo returning latest price interval across 2 rows #1070
+- optional: raise errors as exceptions: raise_errors=True #1104
+- add proper unit tests #1069
+
 0.1.81
 ------
 - Fix unhandled tz-cache exception #1107
