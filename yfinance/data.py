@@ -43,7 +43,7 @@ class TickerData:
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
     def __init__(self, ticker: str, session=None):
-        self._ticker = ticker
+        self.ticker = ticker
         self._session = session or requests
 
     @lru_cache_freezeargs
@@ -90,7 +90,7 @@ class TickerData:
 
         acceptable_timestamps = ["annual", "quarterly"]
         if timescale not in acceptable_timestamps:
-            raise Exception("timescale '{}' must be one of: {}".format(timescale, acceptable_timestamps))
+            raise ValueError("timescale '{}' must be one of: {}".format(timescale, acceptable_timestamps))
 
         # Step 1: get the keys:
         def _finditem1(key, obj):
@@ -109,7 +109,7 @@ class TickerData:
 
         # Step 2: construct url:
         ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(
-            self._ticker)
+            self.ticker)
         if len(keys) == 0:
             raise Exception("Fetching keys failed")
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])

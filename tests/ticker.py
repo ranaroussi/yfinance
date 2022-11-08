@@ -16,7 +16,7 @@ import unittest
 import requests_cache
 
 # Set this to see the exact requests that are made during tests
-DEBUG_LOG_REQUESTS = True
+DEBUG_LOG_REQUESTS = False
 
 if DEBUG_LOG_REQUESTS:
     import logging
