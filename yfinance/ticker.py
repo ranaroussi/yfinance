@@ -30,6 +30,9 @@ from .base import TickerBase
 
 
 class Ticker(TickerBase):
+    def __init__(self, ticker, session=None):
+        super(Ticker, self).__init__(ticker, session=session)
+        self._expirations = {}
 
     def __repr__(self):
         return 'yfinance.Ticker object <%s>' % self.ticker
