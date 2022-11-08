@@ -255,7 +255,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
     def test_isin(self):
         data = self.ticker.isin
         self.assertIsInstance(data, str, "data has wrong type")
-        self.assertEquals("ARDEUT116159", data, "data is empty")
+        self.assertEqual("ARDEUT116159", data, "data is empty")
 
         data_cached = self.ticker.isin
         self.assertIs(data, data_cached, "data not cached")
