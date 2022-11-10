@@ -326,6 +326,17 @@ class TickerBase:
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
 
+        # Prepare for combine
+        intraday = params["interval"][-1] in ("m", 'h')
+        if not intraday:
+            # If localizing a midnight during DST transition hour when clocks roll back,
+            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
+            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True)
+            if dividends.shape[0] > 0:
+                dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True)
+            if splits.shape[0] > 0:
+                splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True)
+
         # Combine
         df = quotes.sort_index()
         if dividends.shape[0] > 0:
@@ -341,13 +352,10 @@ class TickerBase:
         else:
             df["Stock Splits"] = 0.0
 
-        if params["interval"][-1] in ("m", 'h'):
+        if intraday:
             df.index.name = "Datetime"
         else:
             df.index.name = "Date"
-            # If localizing a midnight during DST transition hour when clocks roll back,
-            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            df.index = _pd.to_datetime(df.index.date).tz_localize(tz_exchange, ambiguous=True)
 
         # duplicates and missing rows cleanup
         df = df[~df.index.duplicated(keep='first')]
