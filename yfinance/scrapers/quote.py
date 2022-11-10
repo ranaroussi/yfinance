@@ -8,7 +8,6 @@ from yfinance.data import TickerData
 
 
 class Quote:
-    _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
     def __init__(self, data: TickerData, proxy=None):
         self._data = data
@@ -23,7 +22,7 @@ class Quote:
         self._already_scraped_complementary = False
 
     @property
-    def info(self):
+    def info(self) -> dict:
         if self._info is None:
             self._scrape(self.proxy)
             self._scrape_complementary(self.proxy)
@@ -31,19 +30,19 @@ class Quote:
         return self._info
 
     @property
-    def sustainability(self):
+    def sustainability(self) -> pd.DataFrame:
         if self._sustainability is None:
             self._scrape(self.proxy)
         return self._sustainability
 
     @property
-    def recommendations(self):
+    def recommendations(self) -> pd.DataFrame:
         if self._recommendations is None:
             self._scrape(self.proxy)
         return self._recommendations
 
     @property
-    def calendar(self):
+    def calendar(self) -> pd.DataFrame:
         if self._calendar is None:
             self._scrape(self.proxy)
         return self._calendar
@@ -53,12 +52,10 @@ class Quote:
             return
         self._already_scraped = True
 
-        ticker_url = "{}/{}".format(self._SCRAPE_URL_, self._data.ticker)
-
         # get info and sustainability
-        json_data = self._data.get_json_data_stores(ticker_url, proxy)
+        json_data = self._data.get_json_data_stores(proxy=proxy)
         try:
-            data = json_data['QuoteSummaryStore']
+            quote_summary_store = json_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No summary info found, symbol may be delisted"
             print('- %s: %s' % (self._data.ticker, err_msg))
@@ -67,10 +64,10 @@ class Quote:
         # sustainability
         d = {}
         try:
-            if isinstance(data.get('esgScores'), dict):
-                for item in data['esgScores']:
-                    if not isinstance(data['esgScores'][item], (dict, list)):
-                        d[item] = data['esgScores'][item]
+            if isinstance(quote_summary_store.get('esgScores'), dict):
+                for item in quote_summary_store['esgScores']:
+                    if not isinstance(quote_summary_store['esgScores'][item], (dict, list)):
+                        d[item] = quote_summary_store['esgScores'][item]
 
                 s = pd.DataFrame(index=[0], data=d)[-1:].T
                 s.columns = ['Value']
@@ -83,41 +80,40 @@ class Quote:
         except Exception:
             pass
 
-        # info (be nice to python 2)
         self._info = {}
         try:
             items = ['summaryProfile', 'financialData', 'quoteType',
                      'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
             for item in items:
-                if isinstance(data.get(item), dict):
-                    self._info.update(data[item])
+                if isinstance(quote_summary_store.get(item), dict):
+                    self._info.update(quote_summary_store[item])
         except Exception:
             pass
 
         # For ETFs, provide this valuable data: the top holdings of the ETF
         try:
-            if 'topHoldings' in data:
-                self._info.update(data['topHoldings'])
+            if 'topHoldings' in quote_summary_store:
+                self._info.update(quote_summary_store['topHoldings'])
         except Exception:
             pass
 
         try:
-            if not isinstance(data.get('summaryDetail'), dict):
+            if not isinstance(quote_summary_store.get('summaryDetail'), dict):
                 # For some reason summaryDetail did not give any results. The price dict
                 # usually has most of the same info
-                self._info.update(data.get('price', {}))
+                self._info.update(quote_summary_store.get('price', {}))
         except Exception:
             pass
 
         try:
             # self._info['regularMarketPrice'] = self._info['regularMarketOpen']
-            self._info['regularMarketPrice'] = data.get('price', {}).get(
+            self._info['regularMarketPrice'] = quote_summary_store.get('price', {}).get(
                 'regularMarketPrice', self._info.get('regularMarketOpen', None))
         except Exception:
             pass
 
         try:
-            self._info['preMarketPrice'] = data.get('price', {}).get(
+            self._info['preMarketPrice'] = quote_summary_store.get('price', {}).get(
                 'preMarketPrice', self._info.get('preMarketPrice', None))
         except Exception:
             pass
@@ -136,7 +132,7 @@ class Quote:
 
         # events
         try:
-            cal = pd.DataFrame(data['calendarEvents']['earnings'])
+            cal = pd.DataFrame(quote_summary_store['calendarEvents']['earnings'])
             cal['earningsDate'] = pd.to_datetime(
                 cal['earningsDate'], unit='s')
             self._calendar = cal.T
@@ -148,7 +144,7 @@ class Quote:
         # analyst recommendations
         try:
             rec = pd.DataFrame(
-                data['upgradeDowngradeHistory']['history'])
+                quote_summary_store['upgradeDowngradeHistory']['history'])
             rec['earningsDate'] = pd.to_datetime(
                 rec['epochGradeDate'], unit='s')
             rec.set_index('earningsDate', inplace=True)

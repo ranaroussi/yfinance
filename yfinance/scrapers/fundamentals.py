@@ -1,17 +1,18 @@
+import datetime
+import json
+
 import pandas as pd
 
 from yfinance import utils
 from yfinance.data import TickerData
+from yfinance.exceptions import YFianceDataException, YFianceException
 
 
 class Fundamentals:
-    _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
     def __init__(self, data: TickerData, proxy=None):
         self._data = data
         self.proxy = proxy
-
-        self.ticker_url = "{}/{}".format(self._SCRAPE_URL_, self._data.ticker)
 
         self._earnings = None
         self._financials = None
@@ -20,22 +21,20 @@ class Fundamentals:
         self._financials_data = None
         self._fin_data_quote = None
         self._basics_already_scraped = False
-        self._already_scraped_financials = False
+        self._financials = Fiancials(data)
 
     @property
-    def earnings(self):
+    def financials(self) -> "Fiancials":
+        return self._financials
+
+    @property
+    def earnings(self) -> dict:
         if self._earnings is None:
             self._scrape_earnings(self.proxy)
         return self._earnings
 
     @property
-    def financials(self):
-        if self._financials is None:
-            self._scrape_financials(self.proxy)
-        return self._financials
-
-    @property
-    def shares(self):
+    def shares(self) -> pd.DataFrame:
         if self._shares is None:
             self._scrape_shares(self.proxy)
         return self._shares
@@ -45,7 +44,7 @@ class Fundamentals:
             return
         self._basics_already_scraped = True
 
-        self._financials_data = self._data.get_json_data_stores(self.ticker_url + '/financials', proxy)
+        self._financials_data = self._data.get_json_data_stores('financials', proxy)
         try:
             self._fin_data_quote = self._financials_data['QuoteSummaryStore']
         except KeyError:
@@ -96,55 +95,136 @@ class Fundamentals:
         except Exception:
             pass
 
-    def _scrape_financials(self, proxy):
-        self._scrape_basics(proxy)
-        if self._already_scraped_financials:
-            return
-        self._already_scraped_financials = True
 
-        # get fundamentals
-        self._financials = {}
-        for name in ["income", "balance-sheet", "cash-flow"]:
-            self._financials[name] = {"yearly": pd.DataFrame(), "quarterly": pd.DataFrame()}
-            annual, qtr = self._create_financials_table(name, proxy)
-            if annual is not None:
-                self._financials[name]["yearly"] = annual
-            if qtr is not None:
-                self._financials[name]["quarterly"] = qtr
+class Fiancials:
+    def __init__(self, data: TickerData):
+        self._data = data
+        self._income = {}
+        self._balance_sheet = {}
+        self._cash_flow = {}
 
-    def _create_financials_table(self, name, proxy):
-        acceptable_names = ["income", "balance-sheet", "cash-flow"]
-        if name not in acceptable_names:
-            raise ValueError("name '{}' must be one of: {}".format(name, acceptable_names))
+    def get_income(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._income
+        if freq not in res:
+            res[freq] = self._scrape("income", freq, proxy=None)
+        return res[freq]
 
+    def get_balance_sheet(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._balance_sheet
+        if freq not in res:
+            res[freq] = self._scrape("balance-sheet", freq, proxy=None)
+        return res[freq]
+
+    def get_cash_flow(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._cash_flow
+        if freq not in res:
+            res[freq] = self._scrape("cash-flow", freq, proxy=None)
+        return res[freq]
+
+    def _scrape(self, name, timescale, proxy=None):
+        allowed_names = ["income", "balance-sheet", "cash-flow"]
+        allowed_timescales = ["yearly", "quarterly"]
+
+        if name not in allowed_names:
+            raise ValueError("Illegal argument: name must be one of: {}".format(allowed_names))
+        if timescale not in allowed_timescales:
+            raise ValueError("Illegal argument: timescale must be one of: {}".format(allowed_names))
+
+        try:
+            statement = self._create_financials_table(name, timescale, proxy)
+            if statement is not None:
+                return statement
+        except YFianceException as e:
+            print("Failed to create financials table for {} reason: {}".format(name, repr(e)))
+        return pd.DataFrame()
+
+    def _create_financials_table(self, name, timescale, proxy):
         if name == "income":
             # Yahoo stores the 'income' table internally under 'financials' key
             name = "financials"
 
-        data_stores = self._data.get_json_data_stores(self.ticker_url + '/' + name, proxy)
-        _stmt_annual = None
-        _stmt_qtr = None
+        keys = self._get_datastore_keys(name, proxy)
+
         try:
             # Developers note: TTM and template stuff allows for reproducing the nested structure
             # visible on Yahoo website. But more work needed to make it user-friendly! Ideally
             # return a tree data structure instead of Pandas MultiIndex
             # So until this is implemented, just return simple tables
-            _stmt_annual = self._data.get_financials_time_series("annual", data_stores, proxy)
-            _stmt_qtr = self._data.get_financials_time_series("quarterly", data_stores, proxy)
-
-            # template_ttm_order, template_annual_order, template_order, level_detail = utils.build_template(data_store["FinancialTemplateStore"])
-            # TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
-            # if name == "balance-sheet":
-            #     # Note: balance sheet is the only financial statement with no ttm detail
-            #     _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order)
-            # else:
-            #     _stmt_annual = utils.format_annual_financial_statement(level_detail, Annual_dicts, template_annual_order, TTM_dicts, template_ttm_order)
-
-            # Data store doesn't contain quarterly data, so retrieve using different url:
-            # _qtr_data = utils.get_financials_time_series(self._ticker.ticker, name, "quarterly", ticker_url, proxy, self.session)
-            # _stmt_qtr = utils.format_quarterly_financial_statement(_qtr_data, level_detail, template_order)
+            return self.get_financials_time_series(timescale, keys, proxy)
 
         except Exception as e:
             pass
 
-        return _stmt_annual, _stmt_qtr
+    def _get_datastore_keys(self, sub_page, proxy) -> list:
+        data_stores = self._data.get_json_data_stores(sub_page, proxy)
+
+        # Step 1: get the keys:
+        def _finditem1(key, obj):
+            values = []
+            if isinstance(obj, dict):
+                if key in obj.keys():
+                    values.append(obj[key])
+                for k, v in obj.items():
+                    values += _finditem1(key, v)
+            elif isinstance(obj, list):
+                for v in obj:
+                    values += _finditem1(key, v)
+            return values
+
+        try:
+            keys = _finditem1("key", data_stores['FinancialTemplateStore'])
+        except KeyError as e:
+            raise YFianceDataException("Parsing FinancialTemplateStore failed, reason: {}".format(repr(e)))
+
+        if not keys:
+            raise YFianceDataException("No keys in FinancialTemplateStore")
+        return keys
+
+    def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
+        timescale_translation = {"yearly": "annual", "quarterly": "quarterly"}
+        timescale = timescale_translation[timescale]
+
+        # Step 2: construct url:
+        ts_url_base = \
+            "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}" \
+                .format(self._data.ticker)
+
+        url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
+        # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
+        start_dt = datetime.datetime(2016, 12, 31)
+        end = (datetime.datetime.now() + datetime.timedelta(days=366))
+        url += "&period1={}&period2={}".format(int(start_dt.timestamp()), int(end.timestamp()))
+
+        # Step 3: fetch and reshape data
+        json_str = self._data.get(url=url, proxy=proxy).text
+        json_data = json.loads(json_str)
+        data_raw = json_data["timeseries"]["result"]
+        # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
+        for d in data_raw:
+            del d["meta"]
+
+        # Now reshape data into a table:
+        # Step 1: get columns and index:
+        timestamps = set()
+        data_unpacked = {}
+        for x in data_raw:
+            for k in x.keys():
+                if k == "timestamp":
+                    timestamps.update(x[k])
+                else:
+                    data_unpacked[k] = x[k]
+        timestamps = sorted(list(timestamps))
+        dates = pd.to_datetime(timestamps, unit="s")
+        df = pd.DataFrame(columns=dates, index=list(data_unpacked.keys()))
+        for k, v in data_unpacked.items():
+            if df is None:
+                df = pd.DataFrame(columns=dates, index=[k])
+            df.loc[k] = {pd.Timestamp(x["asOfDate"]): x["reportedValue"]["raw"] for x in v}
+
+        df.index = df.index.str.replace("^" + timescale, "", regex=True)
+
+        # Reorder table to match order on Yahoo website
+        df = df.reindex([k for k in keys if k in df.index])
+        df = df[sorted(df.columns, reverse=True)]
+
+        return df

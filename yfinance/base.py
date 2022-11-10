@@ -23,8 +23,11 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
+from typing import Optional
+
 import pandas as _pd
 import numpy as _np
+import pandas as pd
 
 from .data import TickerData
 
@@ -77,14 +80,14 @@ class TickerBase:
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
 
         # get info and sustainability
-        data = self._data.get_json_data_stores(ticker_url, proxy)["QuoteSummaryStore"]
+        data = self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
         return data
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
-                debug=True, raise_errors=False):
+                debug=True, raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
             period : str
@@ -152,8 +155,8 @@ class TickerBase:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
-		    #time stamp of 01/01/1900
-                    start = -2208994789
+                    _UNIX_TIMESTAMP_1900 = -2208994789
+                    start = _UNIX_TIMESTAMP_1900
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
@@ -299,13 +302,15 @@ class TickerBase:
         # actions
         dividends, splits = utils.parse_actions(data["chart"]["result"][0])
         if start is not None:
-            startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
+            # Note: use pandas Timestamp as datetime.utcfromtimestamp has bugs on windows
+            # https://github.com/python/cpython/issues/81708
+            startDt = _pd.Timestamp(start, unit='s')
             if dividends is not None:
                 dividends = dividends[dividends.index >= startDt]
             if splits is not None:
                 splits = splits[splits.index >= startDt]
         if end is not None:
-            endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+            endDt = _pd.Timestamp(end, unit='s')
             if dividends is not None:
                 dividends = dividends[dividends.index < endDt]
             if splits is not None:
@@ -362,10 +367,10 @@ class TickerBase:
     def _reconstruct_interval(self, df_row, interval, bad_fields):
         if isinstance(df_row, _pd.DataFrame) or not isinstance(df_row, _pd.Series):
             raise Exception("'df_row' must be a Pandas Series not", type(df_row))
-        if not isinstance(bad_fields, (list,set,_np.ndarray)):
+        if not isinstance(bad_fields, (list, set, _np.ndarray)):
             raise Exception("'bad_fields' must be a list/set not", type(bad_fields))
 
-        data_cols = [c for c in ["Open","High","Low","Close","Adj Close"] if c in df_row.index]
+        data_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df_row.index]
 
         # If interval is weekly then can construct with daily. But if smaller intervals then
         # restricted to recent times:
@@ -386,56 +391,59 @@ class TickerBase:
 
         idx = df_row.name
         start = idx.date()
-        if sub_interval=="1h" and (_datetime.date.today()-start) > _datetime.timedelta(days=729):
+        if sub_interval == "1h" and (_datetime.date.today() - start) > _datetime.timedelta(days=729):
             # Don't bother requesting more price data, Yahoo will reject
             return None
         else:
             new_vals = {}
 
-            if sub_interval=="1h":
-                df_fine = self.history(start=start, end=start+td_range, interval=sub_interval, auto_adjust=False)
+            if sub_interval == "1h":
+                df_fine = self.history(start=start, end=start + td_range, interval=sub_interval, auto_adjust=False)
             else:
-                df_fine = self.history(start=start-td_range, end=start+td_range, interval=sub_interval, auto_adjust=False)
+                df_fine = self.history(start=start - td_range, end=start + td_range, interval=sub_interval,
+                                       auto_adjust=False)
 
             # First, check whether df_fine has different split-adjustment than df_row.
             # If it is different, then adjust df_fine to match df_row
-            good_fields = list(set(data_cols)-set(bad_fields)-set("Adj Close"))
-            if len(good_fields)==0:
-                raise Exception("No good fields, so cannot determine whether different split-adjustment. Contact developers")
+            good_fields = list(set(data_cols) - set(bad_fields) - set("Adj Close"))
+            if len(good_fields) == 0:
+                raise Exception(
+                    "No good fields, so cannot determine whether different split-adjustment. Contact developers")
             # median = df_row.loc[good_fields].median()
             # median_fine = _np.median(df_fine[good_fields].values)
             # ratio = median/median_fine
             # Better method to calculate split-adjustment:
-            df_fine_from_idx = df_fine[df_fine.index>=idx]
+            df_fine_from_idx = df_fine[df_fine.index >= idx]
             ratios = []
             for f in good_fields:
-                if f=="Low":
+                if f == "Low":
                     ratios.append(df_row[f] / df_fine_from_idx[f].min())
-                elif f=="High":
+                elif f == "High":
                     ratios.append(df_row[f] / df_fine_from_idx[f].max())
-                elif f=="Open":
+                elif f == "Open":
                     ratios.append(df_row[f] / df_fine_from_idx[f].iloc[0])
-                elif f=="Close":
+                elif f == "Close":
                     ratios.append(df_row[f] / df_fine_from_idx[f].iloc[-1])
             ratio = _np.mean(ratios)
             #
-            ratio_rcp = round(1.0/ratio, 1) ; ratio = round(ratio, 1)
-            if ratio==1 and ratio_rcp==1:
+            ratio_rcp = round(1.0 / ratio, 1)
+            ratio = round(ratio, 1)
+            if ratio == 1 and ratio_rcp == 1:
                 # Good!
                 pass
             else:
-                if ratio>1:
+                if ratio > 1:
                     # data has different split-adjustment than fine-grained data
                     # Adjust fine-grained to match
                     df_fine[data_cols] *= ratio
-                elif ratio_rcp>1:
+                elif ratio_rcp > 1:
                     # data has different split-adjustment than fine-grained data
                     # Adjust fine-grained to match
-                    df_fine[data_cols] *= 1.0/ratio_rcp
+                    df_fine[data_cols] *= 1.0 / ratio_rcp
 
             if sub_interval != "1h":
-                df_last_week = df_fine[df_fine.index<idx]
-                df_fine = df_fine[df_fine.index>=idx]
+                df_last_week = df_fine[df_fine.index < idx]
+                df_fine = df_fine[df_fine.index >= idx]
 
             if "High" in bad_fields:
                 new_vals["High"] = df_fine["High"].max()
@@ -487,7 +495,7 @@ class TickerBase:
         if (median == 0).any():
             raise Exception("median contains zeroes, why?")
         ratio = df2[data_cols].values / median
-        ratio_rounded = (ratio / 20).round() * 20 # round ratio to nearest 20
+        ratio_rounded = (ratio / 20).round() * 20  # round ratio to nearest 20
         f = ratio_rounded == 100
 
         # Store each mixup:
@@ -499,7 +507,7 @@ class TickerBase:
                 for i in _np.where(fj)[0]:
                     idx = df2.index[i]
                     if idx not in mixups:
-                        mixups[idx] = {"data": df2.loc[idx, data_cols], "fields":{dc}}
+                        mixups[idx] = {"data": df2.loc[idx, data_cols], "fields": {dc}}
                     else:
                         mixups[idx]["fields"].add(dc)
         n_mixups = len(mixups)
@@ -555,22 +563,22 @@ class TickerBase:
         else:
             df2.index = df2.index.tz_convert(tz_exchange)
 
-        data_cols = ["Open","High","Low","Close"]
+        data_cols = ["Open", "High", "Low", "Close"]
         data_cols = [c for c in data_cols if c in df2.columns]
-        f_zeroes = (df2[data_cols]==0.0).values.any(axis=1)
+        f_zeroes = (df2[data_cols] == 0.0).values.any(axis=1)
 
         n_fixed = 0
         for i in _np.where(f_zeroes)[0]:
             idx = df2.index[i]
             df_row = df2.loc[idx]
-            bad_fields = df2.columns[df_row.values==0.0].values
+            bad_fields = df2.columns[df_row.values == 0.0].values
             new_values = self._reconstruct_interval(df2.loc[idx], interval, bad_fields)
             if not new_values is None:
                 for k in new_values:
                     df2.loc[idx, k] = new_values[k]
                 n_fixed += 1
 
-        if n_fixed>0:
+        if n_fixed > 0:
             print("{}: fixed {} price=0.0 errors in {} price data".format(self.ticker, n_fixed, interval))
         return df2
 
@@ -667,11 +675,9 @@ class TickerBase:
                 return data.to_dict()
             return data
 
-    def get_info(self, proxy=None, as_dict=False):
+    def get_info(self, proxy=None) -> dict:
         self._quote.proxy = proxy
         data = self._quote.info
-        if as_dict:
-            return data.to_dict()
         return data
 
     def get_sustainability(self, proxy=None, as_dict=False):
@@ -735,21 +741,21 @@ class TickerBase:
 
     def get_income_stmt(self, proxy=None, as_dict=False, freq="yearly"):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials["income"][freq]
+        data = self._fundamentals.financials.get_income(freq=freq, proxy=proxy)
         if as_dict:
             return data.to_dict()
         return data
 
     def get_balance_sheet(self, proxy=None, as_dict=False, freq="yearly"):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials["balance-sheet"][freq]
+        data = self._fundamentals.financials.get_balance_sheet(freq=freq, proxy=proxy)
         if as_dict:
             return data.to_dict()
         return data
 
     def get_cashflow(self, proxy=None, as_dict=False, freq="yearly"):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials["cash-flow"][freq]
+        data = self._fundamentals.financials.get_cash_flow(freq=freq, proxy=proxy)
         if as_dict:
             return data.to_dict()
         return data
@@ -785,7 +791,7 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_isin(self, proxy=None):
+    def get_isin(self, proxy=None) -> Optional[str]:
         # *** experimental ***
         if self._isin is not None:
             return self._isin
@@ -841,7 +847,7 @@ class TickerBase:
         self._news = data.get("news", [])
         return self._news
 
-    def get_earnings_dates(self, proxy=None):
+    def get_earnings_dates(self, proxy=None) -> Optional[pd.DataFrame]:
         if self._earnings_dates is not None:
             return self._earnings_dates
 
@@ -914,7 +920,7 @@ class TickerBase:
 
         return dates
 
-    def get_earnings_history(self, proxy=None):
+    def get_earnings_history(self, proxy=None) -> Optional[pd.DataFrame]:
         if self._earnings_history is not None:
             return self._earnings_history
 
