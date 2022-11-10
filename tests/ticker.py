@@ -173,33 +173,41 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.ticker = None
 
     def test_balance_sheet(self):
+        expected_row = "TotalAssets"
         data = self.ticker.balance_sheet
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.balance_sheet
         self.assertIs(data, data_cached, "data not cached")
 
     def test_quarterly_balance_sheet(self):
+        expected_row = "TotalAssets"
         data = self.ticker.quarterly_balance_sheet
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.quarterly_balance_sheet
         self.assertIs(data, data_cached, "data not cached")
 
     def test_cashflow(self):
+        expected_row = "OperatingCashFlow"
         data = self.ticker.cashflow
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.cashflow
         self.assertIs(data, data_cached, "data not cached")
 
     def test_quarterly_cashflow(self):
+        expected_row = "OperatingCashFlow"
         data = self.ticker.quarterly_cashflow
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.quarterly_cashflow
         self.assertIs(data, data_cached, "data not cached")
