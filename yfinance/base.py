@@ -652,6 +652,20 @@ class TickerBase():
         except Exception:
             pass
 
+        # For ETFs & Mutual Funds, provide fund profile
+        try:
+            if 'fundProfile' in data:
+                self._info.update(data['fundProfile'])
+        except Exception:
+            pass
+
+        # For ETFs & Mutual Funds, provide fund performance
+        try:
+            if 'fundPerformance' in data:
+                self._info.update(data['fundPerformance'])
+        except Exception:
+            pass
+
         try:
             if not isinstance(data.get('summaryDetail'), dict):
                 # For some reason summaryDetail did not give any results. The price dict usually has most of the same info
