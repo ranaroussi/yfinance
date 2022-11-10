@@ -336,7 +336,7 @@ def cache_lookup_tkr_tz(tkr):
         return None
 
     mutex.acquire()
-    df = _pd.read_csv(fp, index_col="Ticker")
+    df = _pd.read_csv(fp, index_col="Ticker", on_bad_lines="skip")
     mutex.release()
     if tkr in df.index:
         return df.loc[tkr,"Tz"]
@@ -355,7 +355,7 @@ def cache_store_tkr_tz(tkr,tz):
         df.to_csv(fp)
 
     else:
-        df = _pd.read_csv(fp, index_col="Ticker")
+        df = _pd.read_csv(fp, index_col="Ticker", on_bad_lines="skip")
         if tz is None:
             # Delete if in cache:
             if tkr in df.index:
