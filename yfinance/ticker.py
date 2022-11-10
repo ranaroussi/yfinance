@@ -102,39 +102,39 @@ class Ticker(TickerBase):
         return self.get_isin()
 
     @property
-    def major_holders(self):
+    def major_holders(self) -> _pd.DataFrame:
         return self.get_major_holders()
 
     @property
-    def institutional_holders(self):
+    def institutional_holders(self) -> _pd.DataFrame:
         return self.get_institutional_holders()
 
     @property
-    def mutualfund_holders(self):
+    def mutualfund_holders(self) -> _pd.DataFrame:
         return self.get_mutualfund_holders()
 
     @property
-    def dividends(self):
+    def dividends(self) -> _pd.Series:
         return self.get_dividends()
 
     @property
-    def splits(self):
+    def splits(self) -> _pd.Series:
         return self.get_splits()
 
     @property
-    def actions(self):
+    def actions(self) -> _pd.DataFrame:
         return self.get_actions()
 
     @property
-    def shares(self):
+    def shares(self) -> _pd.DataFrame :
         return self.get_shares()
 
     @property
-    def info(self):
+    def info(self) -> dict:
         return self.get_info()
 
     @property
-    def calendar(self):
+    def calendar(self) -> _pd.DataFrame:
         return self.get_calendar()
 
     @property
@@ -142,43 +142,43 @@ class Ticker(TickerBase):
         return self.get_recommendations()
 
     @property
-    def earnings(self):
+    def earnings(self) -> _pd.DataFrame:
         return self.get_earnings()
 
     @property
-    def quarterly_earnings(self):
+    def quarterly_earnings(self) -> _pd.DataFrame:
         return self.get_earnings(freq='quarterly')
 
     @property
-    def income_stmt(self):
+    def income_stmt(self) -> _pd.DataFrame:
         return self.get_income_stmt()
 
     @property
-    def quarterly_income_stmt(self):
+    def quarterly_income_stmt(self) -> _pd.DataFrame:
         return self.get_income_stmt(freq='quarterly')
 
     @property
-    def balance_sheet(self):
+    def balance_sheet(self) -> _pd.DataFrame:
         return self.get_balance_sheet()
 
     @property
-    def quarterly_balance_sheet(self):
+    def quarterly_balance_sheet(self) -> _pd.DataFrame:
         return self.get_balance_sheet(freq='quarterly')
 
     @property
-    def balancesheet(self):
+    def balancesheet(self) -> _pd.DataFrame:
         return self.balance_sheet
 
     @property
-    def quarterly_balancesheet(self):
+    def quarterly_balancesheet(self) -> _pd.DataFrame:
         return self.quarterly_balance_sheet
 
     @property
-    def cashflow(self):
+    def cashflow(self) -> _pd.DataFrame:
         return self.get_cashflow(freq="yearly")
 
     @property
-    def quarterly_cashflow(self):
+    def quarterly_cashflow(self) -> _pd.DataFrame:
         return self.get_cashflow(freq='quarterly')
 
     @property
@@ -186,19 +186,19 @@ class Ticker(TickerBase):
         return self.get_recommendations_summary()
 
     @property
-    def analyst_price_target(self):
+    def analyst_price_target(self) -> _pd.DataFrame:
         return self.get_analyst_price_target()
 
     @property
-    def revenue_forecasts(self):
+    def revenue_forecasts(self) -> _pd.DataFrame:
         return self.get_rev_forecast()
 
     @property
-    def sustainability(self):
+    def sustainability(self) -> _pd.DataFrame:
         return self.get_sustainability()
 
     @property
-    def options(self):
+    def options(self) -> tuple:
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
@@ -208,17 +208,17 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def earnings_trend(self):
+    def earnings_trend(self) -> _pd.DataFrame:
         return self.get_earnings_trend()
 
     @property
-    def earnings_history(self):
+    def earnings_history(self) -> _pd.DataFrame:
         return self.get_earnings_history()
 
     @property
-    def earnings_dates(self):
+    def earnings_dates(self) -> _pd.DataFrame:
         return self.get_earnings_dates()
 
     @property
-    def earnings_forecasts(self):
+    def earnings_forecasts(self) -> _pd.DataFrame:
         return self.get_earnings_forecast()

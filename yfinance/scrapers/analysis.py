@@ -5,7 +5,6 @@ from yfinance.data import TickerData
 
 
 class Analysis:
-    _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
     def __init__(self, data: TickerData, proxy=None):
         self._data = data
@@ -19,31 +18,31 @@ class Analysis:
         self._already_scraped = False
 
     @property
-    def earnings_trend(self):
+    def earnings_trend(self) -> pd.DataFrame:
         if self._earnings_trend is None:
             self._scrape(self.proxy)
         return self._earnings_trend
 
     @property
-    def analyst_trend_details(self):
+    def analyst_trend_details(self) -> pd.DataFrame:
         if self._analyst_trend_details is None:
             self._scrape(self.proxy)
         return self._analyst_trend_details
 
     @property
-    def analyst_price_target(self):
+    def analyst_price_target(self) -> pd.DataFrame:
         if self._analyst_price_target is None:
             self._scrape(self.proxy)
         return self._analyst_price_target
 
     @property
-    def rev_est(self):
+    def rev_est(self) -> pd.DataFrame:
         if self._rev_est is None:
             self._scrape(self.proxy)
         return self._rev_est
 
     @property
-    def eps_est(self):
+    def eps_est(self) -> pd.DataFrame:
         if self._eps_est is None:
             self._scrape(self.proxy)
         return self._eps_est
@@ -53,10 +52,8 @@ class Analysis:
             return
         self._already_scraped = True
 
-        ticker_url = "{}/{}".format(self._SCRAPE_URL_, self._data.ticker)
-
         # Analysis Data/Analyst Forecasts
-        analysis_data = self._data.get_json_data_stores(ticker_url + '/analysis', proxy)
+        analysis_data = self._data.get_json_data_stores("analysis", proxy=proxy)
         try:
             analysis_data = analysis_data['QuoteSummaryStore']
         except KeyError as e:
@@ -100,7 +97,7 @@ class Analysis:
             self._analyst_price_target = None
         earnings_estimate = []
         revenue_estimate = []
-        if len(self._analyst_trend_details) != 0:
+        if self._analyst_trend_details is not None :
             for key in analysis_data['earningsTrend']['trend']:
                 try:
                     earnings_dict = key['earningsEstimate']

@@ -14,19 +14,19 @@ class Holders:
         self._mutualfund = None
 
     @property
-    def major(self):
+    def major(self) -> pd.DataFrame:
         if self._major is None:
             self._scrape(self.proxy)
         return self._major
 
     @property
-    def institutional(self):
+    def institutional(self) -> pd.DataFrame:
         if self._institutional is None:
             self._scrape(self.proxy)
         return self._institutional
 
     @property
-    def mutualfund(self):
+    def mutualfund(self) -> pd.DataFrame:
         if self._mutualfund is None:
             self._scrape(self.proxy)
         return self._mutualfund

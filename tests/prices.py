@@ -10,7 +10,6 @@ import pandas as _pd
 import requests_cache
 
 
-
 class TestPriceHistory(unittest.TestCase):
     session = None
 
@@ -443,4 +442,3 @@ if __name__ == '__main__':
 #     test_src.index(f"def {x}") - test_src.index(f"def {y}")
 # )
 # unittest.main(verbosity=2)
-

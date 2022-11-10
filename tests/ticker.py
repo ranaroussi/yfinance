@@ -86,6 +86,70 @@ class TestTicker(unittest.TestCase):
         dat.earnings_dates
         dat.earnings_forecasts
 
+    def test_goodTicker(self):
+        # that yfinance works when full api is called on same instance of ticker
+
+        tkr = "IBM"
+        dat = yf.Ticker(tkr, session=self.session)
+
+        dat.isin
+        dat.major_holders
+        dat.institutional_holders
+        dat.mutualfund_holders
+        dat.dividends
+        dat.splits
+        dat.actions
+        dat.shares
+        dat.info
+        dat.calendar
+        dat.recommendations
+        dat.earnings
+        dat.quarterly_earnings
+        dat.income_stmt
+        dat.quarterly_income_stmt
+        dat.balance_sheet
+        dat.quarterly_balance_sheet
+        dat.cashflow
+        dat.quarterly_cashflow
+        dat.recommendations_summary
+        dat.analyst_price_target
+        dat.revenue_forecasts
+        dat.sustainability
+        dat.options
+        dat.news
+        dat.earnings_trend
+        dat.earnings_dates
+        dat.earnings_forecasts
+
+        dat.history(period="1wk")
+        dat.history(start="2022-01-01")
+        dat.history(start="2022-01-01", end="2022-03-01")
+        yf.download([tkr], period="1wk")
+
+
+class TestTickerHistory(unittest.TestCase):
+    def setUp(self):
+        # use a ticker that has dividends
+        self.ticker = yf.Ticker("IBM")
+
+    def tearDown(self):
+        self.ticker = None
+
+    def test_dividends(self):
+        data = self.ticker.dividends
+        self.assertIsInstance(data, pd.Series, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+    def test_splits(self):
+        data = self.ticker.splits
+        self.assertIsInstance(data, pd.Series, "data has wrong type")
+        # self.assertFalse(data.empty, "data is empty")
+
+    def test_actions(self):
+        data = self.ticker.actions
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
 
 class TestTickerEarnings(unittest.TestCase):
 
@@ -184,6 +248,26 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def tearDown(self):
         self.ticker = None
+
+    def test_income_statement(self):
+        expected_row = "TotalRevenue"
+        data = self.ticker.income_stmt
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
+
+        data_cached = self.ticker.income_stmt
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_quarterly_income_statement(self):
+        expected_row = "TotalRevenue"
+        data = self.ticker.quarterly_income_stmt
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
+
+        data_cached = self.ticker.quarterly_income_stmt
+        self.assertIs(data, data_cached, "data not cached")
 
     def test_balance_sheet(self):
         expected_row = "TotalAssets"
@@ -286,12 +370,27 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertIsInstance(data, tuple, "data has wrong type")
         self.assertTrue(len(data) > 1, "data is empty")
 
+    def test_shares(self):
+        data = self.ticker.shares
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+    def test_info(self):
+        data = self.ticker.info
+        self.assertIsInstance(data, dict, "data has wrong type")
+        self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
+        self.assertEqual("GOOGL", data["symbol"], "Wrong symbol value in info dict")
+
+    def test_bad_freq_value_raises_exception(self):
+        self.assertRaises(ValueError, lambda : self.ticker.get_cashflow(freq="badarg"))
+
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestTicker('Test ticker'))
     suite.addTest(TestTickerEarnings('Test earnings'))
     suite.addTest(TestTickerHolders('Test holders'))
+    suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
     return suite
 
