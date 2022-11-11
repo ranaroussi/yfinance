@@ -190,7 +190,7 @@ class TickerBase():
 
         params["interval"] = interval.lower()
         params["includePrePost"] = prepost
-        params["events"] = "div,splits"
+        params["events"] = "div,splits,capitalGains"
 
         # 1) fix weired bug with Yahoo! - returning 60m for 30m bars
         if params["interval"] == "30m":
@@ -324,23 +324,29 @@ class TickerBase():
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
         # actions
-        dividends, splits = utils.parse_actions(data["chart"]["result"][0])
+        dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
         if start is not None:
             startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
             if dividends is not None:
                 dividends = dividends[dividends.index>=startDt]
+            if capital_gains is not None:
+                capital_gains = capital_gains[capital_gains.index>=startDt]
             if splits is not None:
                 splits = splits[splits.index>=startDt]
         if end is not None:
             endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
             if dividends is not None:
                 dividends = dividends[dividends.index<endDt]
+            if capital_gains is not None:
+                capital_gains = capital_gains[capital_gains.index<endDt]
             if splits is not None:
                 splits = splits[splits.index<endDt]
         if splits is not None:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
+        if capital_gains is not None:
+            capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
 
         # Combine
         df = quotes.sort_index()
@@ -356,6 +362,12 @@ class TickerBase():
             df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
         else:
             df["Stock Splits"] = 0.0
+        if capital_gains.shape[0] > 0:
+            df = utils.safe_merge_dfs(df, capital_gains, interval)
+        if "Capital Gains" in df.columns:
+            df.loc[df["Capital Gains"].isna(),"Capital Gains"] = 0
+        else:
+            df["Capital Gains"] = 0.0
 
         if params["interval"][-1] in ("m",'h'):
             df.index.name = "Datetime"
@@ -366,7 +378,7 @@ class TickerBase():
         df = df[~df.index.duplicated(keep='first')]
         self._history = df.copy()
         if not actions:
-            df = df.drop(columns=["Dividends", "Stock Splits"])
+            df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"])
         if not keepna:
             mask_nan_or_zero = (df.isna()|(df==0)).all(axis=1)
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
@@ -1008,6 +1020,14 @@ class TickerBase():
             return dividends[dividends != 0]
         return []
 
+    def get_capital_gains(self, proxy=None):
+        if self._history is None:
+            self.history(period="max", proxy=proxy)
+        if self._history is not None and "Capital Gains" in self._history:
+            capital_gains = self._history["Capital Gains"]
+            return capital_gains[capital_gains != 0]
+        return []
+
     def get_splits(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -1019,8 +1039,8 @@ class TickerBase():
     def get_actions(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
-            actions = self._history[["Dividends", "Stock Splits"]]
+        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history and "Capital Gains" in self._history:
+            actions = self._history[["Dividends", "Stock Splits", "Capital Gains"]]
             return actions[actions != 0].dropna(how='all').fillna(0)
         return []
 
