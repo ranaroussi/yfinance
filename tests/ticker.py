@@ -1,28 +1,40 @@
+"""
+Tests for Ticker
+
+To run all tests in suite from commandline:
+   python -m unittest tests.ticker
+
+Specific test class:
+   python -m unittest tests.ticker.TestTicker
+
+"""
 import pandas as pd
 
 from .context import yfinance as yf
 
 import unittest
+import requests_cache
 
-log_requests = False
+# Set this to see the exact requests that are made during tests
+DEBUG_LOG_REQUESTS = True
 
-if log_requests:
+if DEBUG_LOG_REQUESTS:
     import logging
 
     logging.basicConfig(level=logging.DEBUG)
 
-# Create temp session
-import requests_cache, tempfile
-td = tempfile.TemporaryDirectory()
 
 class TestTicker(unittest.TestCase):
-    def setUp(self):
-        global td
-        self.td = td
-        self.session = requests_cache.CachedSession(self.td.name + '/' + "yfinance.cache")
+    session = None
 
-    def tearDown(self):
-        self.session.close()
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession()
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
 
     def test_getTz(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
@@ -73,6 +85,7 @@ class TestTicker(unittest.TestCase):
         dat.earnings_trend
         dat.earnings_dates
         dat.earnings_forecasts
+
 
 class TestTickerEarnings(unittest.TestCase):
 
@@ -173,33 +186,41 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.ticker = None
 
     def test_balance_sheet(self):
+        expected_row = "TotalAssets"
         data = self.ticker.balance_sheet
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.balance_sheet
         self.assertIs(data, data_cached, "data not cached")
 
     def test_quarterly_balance_sheet(self):
+        expected_row = "TotalAssets"
         data = self.ticker.quarterly_balance_sheet
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.quarterly_balance_sheet
         self.assertIs(data, data_cached, "data not cached")
 
     def test_cashflow(self):
+        expected_row = "OperatingCashFlow"
         data = self.ticker.cashflow
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.cashflow
         self.assertIs(data, data_cached, "data not cached")
 
     def test_quarterly_cashflow(self):
+        expected_row = "OperatingCashFlow"
         data = self.ticker.quarterly_cashflow
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
         data_cached = self.ticker.quarterly_cashflow
         self.assertIs(data, data_cached, "data not cached")
@@ -271,10 +292,9 @@ def suite():
     suite.addTest(TestTicker('Test ticker'))
     suite.addTest(TestTickerEarnings('Test earnings'))
     suite.addTest(TestTickerHolders('Test holders'))
-    suite.addTest(TestTickerMiscFinancials('Test balance sheet'))
+    suite.addTest(TestTickerMiscFinancials('Test misc financials'))
     return suite
 
 
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner()
-    runner.run(suite())
+    unittest.main()

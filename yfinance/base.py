@@ -877,7 +877,7 @@ class TickerBase:
 
         # generic patterns
         for name in ["income", "balance-sheet", "cash-flow"]:
-            annual, qtr = self._create_financials_table(name, financials_data, proxy)
+            annual, qtr = self._create_financials_table(name, proxy)
             if annual is not None:
                 self._financials[name]["yearly"] = annual
             if qtr is not None:
@@ -985,7 +985,7 @@ class TickerBase:
 
         self._fundamentals = True
 
-    def _create_financials_table(self, name, financials_data, proxy):
+    def _create_financials_table(self, name, proxy):
         acceptable_names = ["income", "balance-sheet", "cash-flow"]
         if not name in acceptable_names:
             raise Exception("name '{}' must be one of: {}".format(name, acceptable_names))
@@ -994,6 +994,8 @@ class TickerBase:
             # Yahoo stores the 'income' table internally under 'financials' key
             name = "financials"
 
+        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
+        data_stores = self._data.get_json_data_stores(ticker_url + '/' + name, proxy)
         _stmt_annual = None
         _stmt_qtr = None
         try:
@@ -1001,8 +1003,8 @@ class TickerBase:
             # visible on Yahoo website. But more work needed to make it user-friendly! Ideally
             # return a tree data structure instead of Pandas MultiIndex
             # So until this is implemented, just return simple tables
-            _stmt_annual = self._data.get_financials_time_series(name, "annual", financials_data, proxy)
-            _stmt_qtr = self._data.get_financials_time_series(name, "quarterly", financials_data, proxy)
+            _stmt_annual = self._data.get_financials_time_series("annual", data_stores, proxy)
+            _stmt_qtr = self._data.get_financials_time_series("quarterly", data_stores, proxy)
 
             # template_ttm_order, template_annual_order, template_order, level_detail = utils.build_template(data_store["FinancialTemplateStore"])
             # TTM_dicts, Annual_dicts = utils.retreive_financial_details(data_store['QuoteTimeSeriesStore'])
