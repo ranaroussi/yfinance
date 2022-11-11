@@ -59,7 +59,7 @@ msft.info
 # get historical market data
 hist = msft.history(period="max")
 
-# show actions (dividends, splits)
+# show actions (dividends, splits, capital gains)
 msft.actions
 
 # show dividends
@@ -67,6 +67,9 @@ msft.dividends
 
 # show splits
 msft.splits
+
+# show capital gains (for mutual funds & etfs)
+msft.capital_gains
 
 # show financials
 msft.financials
@@ -128,6 +131,7 @@ msft.history(..., proxy="PROXY_SERVER")
 msft.get_actions(proxy="PROXY_SERVER")
 msft.get_dividends(proxy="PROXY_SERVER")
 msft.get_splits(proxy="PROXY_SERVER")
+msft.get_capital_gains(proxy="PROXY_SERVER")
 msft.get_balance_sheet(proxy="PROXY_SERVER")
 msft.get_cashflow(proxy="PROXY_SERVER")
 msft.option_chain(..., proxy="PROXY_SERVER")
