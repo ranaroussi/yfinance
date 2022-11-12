@@ -37,23 +37,27 @@ class TestTicker(unittest.TestCase):
             ticker.dividends
             ticker.splits
             ticker.actions
+            ticker.shares
             ticker.info
             ticker.calendar
             ticker.recommendations
             ticker.earnings
             ticker.quarterly_earnings
-            ticker.financials
-            ticker.quarterly_financials
+            ticker.income_stmt
+            ticker.quarterly_income_stmt
             ticker.balance_sheet
             ticker.quarterly_balance_sheet
             ticker.cashflow
             ticker.quarterly_cashflow
+            ticker.recommendations_summary
+            ticker.analyst_price_target
+            ticker.revenue_forecasts
             ticker.sustainability
             ticker.options
             ticker.news
-            ticker.shares
-            ticker.earnings_history
+            ticker.earnings_trend
             ticker.earnings_dates
+            ticker.earnings_forecasts
 
     def test_holders(self):
         for ticker in tickers:
