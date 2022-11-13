@@ -15,7 +15,7 @@ class TestPriceHistory(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession()
+        cls.session = requests_cache.CachedSession(backend='memory')
 
     @classmethod
     def tearDownClass(cls):
