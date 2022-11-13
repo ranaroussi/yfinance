@@ -164,7 +164,8 @@ class TickerBase:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
-                    start = -631159200
+		    #time stamp of 01/01/1900
+                    start = -2208994789
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
