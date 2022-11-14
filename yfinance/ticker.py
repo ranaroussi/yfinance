@@ -21,17 +21,11 @@
 
 from __future__ import print_function
 
-# import time as _time
 import datetime as _datetime
-import requests as _requests
 import pandas as _pd
-# import numpy as _np
 
-# import json as _json
-# import re as _re
 from collections import namedtuple as _namedtuple
 
-from . import utils
 from .base import TickerBase
 
 
@@ -48,17 +42,7 @@ class Ticker(TickerBase):
             url = "{}/v7/finance/options/{}?date={}".format(
                 self._base_url, self.ticker, date)
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
-        r = _requests.get(
-            url=url,
-            proxies=proxy,
-            headers=utils.user_agent_headers
-        ).json()
+        r = self._data.get(url=url, proxy=proxy).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.utcfromtimestamp(
@@ -167,36 +151,48 @@ class Ticker(TickerBase):
         return self.get_earnings(freq='quarterly')
 
     @property
-    def financials(self):
-        return self.get_financials()
+    def income_stmt(self):
+        return self.get_income_stmt()
 
     @property
-    def quarterly_financials(self):
-        return self.get_financials(freq='quarterly')
+    def quarterly_income_stmt(self):
+        return self.get_income_stmt(freq='quarterly')
 
     @property
     def balance_sheet(self):
-        return self.get_balancesheet()
+        return self.get_balance_sheet()
 
     @property
     def quarterly_balance_sheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.get_balance_sheet(freq='quarterly')
 
     @property
     def balancesheet(self):
-        return self.get_balancesheet()
+        return self.balance_sheet
 
     @property
     def quarterly_balancesheet(self):
-        return self.get_balancesheet(freq='quarterly')
+        return self.quarterly_balance_sheet
 
     @property
     def cashflow(self):
-        return self.get_cashflow()
+        return self.get_cashflow(freq="yearly")
 
     @property
     def quarterly_cashflow(self):
         return self.get_cashflow(freq='quarterly')
+
+    @property
+    def recommendations_summary(self):
+        return self.get_recommendations_summary()
+
+    @property
+    def analyst_price_target(self):
+        return self.get_analyst_price_target()
+
+    @property
+    def revenue_forecasts(self):
+        return self.get_rev_forecast()
 
     @property
     def sustainability(self):
@@ -213,8 +209,8 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def analysis(self):
-        return self.get_analysis()
+    def earnings_trend(self):
+        return self.get_earnings_trend()
 
     @property
     def earnings_history(self):
@@ -223,3 +219,7 @@ class Ticker(TickerBase):
     @property
     def earnings_dates(self):
         return self.get_earnings_dates()
+
+    @property
+    def earnings_forecasts(self):
+        return self.get_earnings_forecast()
