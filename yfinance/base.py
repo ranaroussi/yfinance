@@ -190,7 +190,6 @@ class TickerBase():
 
         params["interval"] = interval.lower()
         params["includePrePost"] = prepost
-        params["events"] = "div,splits,capitalGains"
 
         # 1) fix weired bug with Yahoo! - returning 60m for 30m bars
         if params["interval"] == "30m":
@@ -201,6 +200,18 @@ class TickerBase():
             if isinstance(proxy, dict) and "https" in proxy:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
+
+        #if the ticker is MUTUALFUND or ETF, then get capitalGains events
+        self._get_info(proxy)
+        data = self._info
+        is_capital_gains_data_supported = False
+        if 'quoteType' in data and data['quoteType'] in ('MUTUALFUND', 'ETF'):
+            is_capital_gains_data_supported = True
+
+        if is_capital_gains_data_supported:
+            params["events"] = "div,splits,capitalGains"
+        else:
+            params["events"] = "div,splits"
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
@@ -324,12 +335,15 @@ class TickerBase():
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
         # actions
-        dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
+        dividends, splits, capital_gains = utils.parse_actions(
+            data["chart"]["result"][0], 
+            is_capital_gains_data_supported
+        )
         if start is not None:
             startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
             if dividends is not None:
                 dividends = dividends[dividends.index>=startDt]
-            if capital_gains is not None:
+            if is_capital_gains_data_supported and capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index>=startDt]
             if splits is not None:
                 splits = splits[splits.index>=startDt]
@@ -337,7 +351,7 @@ class TickerBase():
             endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
             if dividends is not None:
                 dividends = dividends[dividends.index<endDt]
-            if capital_gains is not None:
+            if is_capital_gains_data_supported and capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index<endDt]
             if splits is not None:
                 splits = splits[splits.index<endDt]
@@ -362,12 +376,13 @@ class TickerBase():
             df.loc[df["Stock Splits"].isna(),"Stock Splits"] = 0
         else:
             df["Stock Splits"] = 0.0
-        if capital_gains.shape[0] > 0:
-            df = utils.safe_merge_dfs(df, capital_gains, interval)
-        if "Capital Gains" in df.columns:
-            df.loc[df["Capital Gains"].isna(),"Capital Gains"] = 0
-        else:
-            df["Capital Gains"] = 0.0
+        if is_capital_gains_data_supported:
+            if capital_gains.shape[0] > 0:
+                df = utils.safe_merge_dfs(df, capital_gains, interval)
+            if "Capital Gains" in df.columns:
+                df.loc[df["Capital Gains"].isna(),"Capital Gains"] = 0
+            else:
+                df["Capital Gains"] = 0.0
 
         if params["interval"][-1] in ("m",'h'):
             df.index.name = "Datetime"
