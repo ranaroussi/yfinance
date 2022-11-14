@@ -25,7 +25,7 @@ from . import Ticker, multi
 # from collections import namedtuple as _namedtuple
 
 
-class Tickers():
+class Tickers:
 
     def __repr__(self):
         return 'yfinance.Tickers object <%s>' % ",".join(self.symbols)
