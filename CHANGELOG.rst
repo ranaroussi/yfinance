@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+0.1.86
+------
+- Fix 'trailingPegRatio' #1141
+- Improve handling delisted tickers #1142
+- Fix corrupt tkr-tz-csv halting code #1162
+- Change default start to 1900-01-01 #1170
+
 0.1.85
 ------
 - Fix info['log_url'] #1062
