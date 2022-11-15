@@ -721,12 +721,17 @@ class _TzCache:
 
     def _migrate_cache_tkr_tz(self):
         """Migrate contents from old ticker CSV-cache to SQLite db"""
-        fp = _os.path.join(self._db_dir, "tkr-tz.csv")
-        if not _os.path.isfile(fp):
+        old_cache_file_path = _os.path.join(self._db_dir, "tkr-tz.csv")
+
+        if not _os.path.isfile(old_cache_file_path):
             return None
-        df = _pd.read_csv(fp, index_col="Ticker")
-        self.tz_db.bulk_set(df.to_dict()['Tz'])
-        _os.remove(fp)
+        try:
+            df = _pd.read_csv(old_cache_file_path, index_col="Ticker")
+        except _pd.errors.EmptyDataError:
+            _os.remove(old_cache_file_path)
+        else:
+            self.tz_db.bulk_set(df.to_dict()['Tz'])
+            _os.remove(old_cache_file_path)
 
 
 class _TzCacheDummy:
