@@ -329,7 +329,7 @@ def parse_quotes(data):
     return quotes
 
 
-def parse_actions(data, is_capital_gains_data_supported):
+def parse_actions(data):
     dividends = _pd.DataFrame(
         columns=["Dividends"], index=_pd.DatetimeIndex([]))
     capital_gains = _pd.DataFrame(
@@ -344,10 +344,9 @@ def parse_actions(data, is_capital_gains_data_supported):
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
-
             dividends.columns = ["Dividends"]
 
-        if is_capital_gains_data_supported and "capitalGains" in data["events"]:
+        if "capitalGains" in data["events"]:
             capital_gains = _pd.DataFrame(
                 data=list(data["events"]["capitalGains"].values()))
             capital_gains.set_index("date", inplace=True)
