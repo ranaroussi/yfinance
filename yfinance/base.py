@@ -189,11 +189,7 @@ class TickerBase:
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
         self._get_info(proxy)
         data = self._info
-        is_capital_gains_data_supported = False
         if 'quoteType' in data and data['quoteType'] in ('MUTUALFUND', 'ETF'):
-            is_capital_gains_data_supported = True
-
-        if is_capital_gains_data_supported:
             params["events"] = "div,splits,capitalGains"
         else:
             params["events"] = "div,splits"
@@ -320,15 +316,12 @@ class TickerBase:
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
         # actions
-        dividends, splits, capital_gains = utils.parse_actions(
-            data["chart"]["result"][0], 
-            is_capital_gains_data_supported
-        )
+        dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
         if start is not None:
             startDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(start))
             if dividends is not None:
                 dividends = dividends[dividends.index>=startDt]
-            if is_capital_gains_data_supported and capital_gains is not None:
+            if "capitalGains" in params["events"] and capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index>=startDt]
             if splits is not None:
                 splits = splits[splits.index >= startDt]
@@ -336,7 +329,7 @@ class TickerBase:
             endDt = _pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
             if dividends is not None:
                 dividends = dividends[dividends.index<endDt]
-            if is_capital_gains_data_supported and capital_gains is not None:
+            if "capitalGains" in params["events"] and capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index<endDt]
             if splits is not None:
                 splits = splits[splits.index < endDt]
@@ -372,7 +365,7 @@ class TickerBase:
             df.loc[df["Stock Splits"].isna(), "Stock Splits"] = 0
         else:
             df["Stock Splits"] = 0.0
-        if is_capital_gains_data_supported:
+        if "capitalGains" in params["events"]:
             if capital_gains.shape[0] > 0:
                 df = utils.safe_merge_dfs(df, capital_gains, interval)
             if "Capital Gains" in df.columns:
@@ -1195,8 +1188,11 @@ class TickerBase:
     def get_actions(self, proxy=None):
         if self._history is None:
             self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history and "Capital Gains" in self._history:
-            actions = self._history[["Dividends", "Stock Splits", "Capital Gains"]]
+        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
+            action_columns = ["Dividends", "Stock Splits"]
+            if "Capital Gains" in self._history:
+                action_columns.append("Capital Gains")
+            actions = self._history[action_columns]
             return actions[actions != 0].dropna(how='all').fillna(0)
         return []
 
