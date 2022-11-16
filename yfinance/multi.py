@@ -198,7 +198,7 @@ def _download_one_threaded(ticker, start=None, end=None,
 
     data = _download_one(ticker, start, end, auto_adjust, back_adjust,
                          actions, period, interval, prepost, proxy, rounding,
-                         keepna, timeout)
+                         keepna, timeout, many=True)
     shared._DFS[ticker.upper()] = data
     if progress:
         shared._PROGRESS_BAR.animate()
@@ -208,11 +208,11 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=None):
+                  keepna=False, timeout=None, many=False):
 
     return Ticker(ticker).history(period=period, interval=interval,
                                   start=start, end=end, prepost=prepost,
                                   actions=actions, auto_adjust=auto_adjust,
                                   back_adjust=back_adjust, proxy=proxy,
-                                  rounding=rounding, keepna=keepna, many=True,
-                                  timeout=timeout)
+                                  rounding=rounding, keepna=keepna, timeout=timeout, 
+                                  many=many)

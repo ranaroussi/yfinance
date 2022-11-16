@@ -145,6 +145,9 @@ class TickerBase():
         debug_mode = True
         if "debug" in kwargs and isinstance(kwargs["debug"], bool):
             debug_mode = kwargs["debug"]
+        if "many" in kwargs and kwargs["many"]:
+            # Disable prints with threads, it deadlocks/throws
+            debug_mode = False
 
         err_msg = "No data found for this date range, symbol may be delisted"
 
@@ -155,7 +158,7 @@ class TickerBase():
                 # Every valid ticker has a timezone. Missing = problem
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg
-                if "many" not in kwargs and debug_mode:
+                if debug_mode:
                     print('- %s: %s' % (self.ticker, err_msg))
                 return utils.empty_df()
 
@@ -216,7 +219,7 @@ class TickerBase():
         if data is None or not type(data) is dict or 'status_code' in data.keys():
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
 
@@ -224,7 +227,7 @@ class TickerBase():
             err_msg = data["chart"]["error"]["description"]
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -232,7 +235,7 @@ class TickerBase():
                 not data["chart"]["result"]:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -247,7 +250,7 @@ class TickerBase():
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
@@ -283,7 +286,7 @@ class TickerBase():
                 err_msg = "back_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if "many" not in kwargs and debug_mode:
+            if debug_mode:
                 print('- %s: %s' % (self.ticker, err_msg))
 
         if rounding:
