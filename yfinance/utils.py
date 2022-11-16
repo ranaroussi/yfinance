@@ -472,7 +472,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
         new_index = None
 
     if new_index is not None:
-        new_index = new_index.tz_localize(df.index.tz, ambiguous=True)
+        new_index = new_index.tz_localize(df.index.tz, ambiguous=True, nonexistent='shift_forward')
         df_sub = _reindex_events(df_sub, new_index, data_col)
         df = df_main.join(df_sub)
 
