@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.87
+------
+- Fix localizing midnight when non-existent (DST) #1176
+- Fix thread deadlock in bpython #1163
+
 0.1.86
 ------
 - Fix 'trailingPegRatio' #1141
