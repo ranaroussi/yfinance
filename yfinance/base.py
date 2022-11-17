@@ -178,8 +178,7 @@ class TickerBase:
             proxy = {"https": proxy}
 
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
-        self._get_info(proxy)
-        data = self._info
+        data = self.get_info(proxy)
         if 'quoteType' in data and data['quoteType'] in ('MUTUALFUND', 'ETF'):
             params["events"] = "div,splits,capitalGains"
         else:
