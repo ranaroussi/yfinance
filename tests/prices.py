@@ -6,22 +6,21 @@ import datetime as _dt
 import pytz as _tz
 import numpy as _np
 import pandas as _pd
-import os
 
-# Create temp session
-import requests_cache, tempfile
-
-td = tempfile.TemporaryDirectory()
+import requests_cache
 
 
 class TestPriceHistory(unittest.TestCase):
-    def setUp(self):
-        global td
-        self.td = td
-        self.session = requests_cache.CachedSession(os.path.join(self.td.name, "yfinance.cache"))
+    session = None
 
-    def tearDown(self):
-        self.session.close()
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
 
     def test_daily_index(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
@@ -433,11 +432,8 @@ class TestPriceHistory(unittest.TestCase):
         for c in ["Open", "Low", "High", "Close"]:
             self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-8).all())
 
-try:
-    if __name__ == '__main__':
-        unittest.main()
-finally:
-    td.cleanup()
+if __name__ == '__main__':
+    unittest.main()
 
 # # Run tests sequentially:
 # import inspect
@@ -446,4 +442,3 @@ finally:
 #     test_src.index(f"def {x}") - test_src.index(f"def {y}")
 # )
 # unittest.main(verbosity=2)
-
