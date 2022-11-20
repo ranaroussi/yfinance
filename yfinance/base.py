@@ -60,7 +60,6 @@ class TickerBase:
         self._shares = None
 
         self._earnings_dates = {}
-        self._earnings_history = None
 
         self._earnings = None
         self._financials = None
@@ -847,11 +846,13 @@ class TickerBase:
         self._news = data.get("news", [])
         return self._news
 
-    def get_earnings_dates(self, limit=1000, proxy=None) -> Optional[pd.DataFrame]:
+    def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
-        :param limit: max amount of upcoming and recent earnings dates, set to smaller value to reduce amount
-                      of requests needed if ticker has a long history that is not of interest.
+        :param limit: max amount of upcoming and recent earnings dates to return.
+                      Default value 12 should return next 4 quarters and last 8 quarters.
+                      Increase if more history is needed.
+
         :param proxy: requests proxy to use.
         :return: pandas dataframe
         """
@@ -888,9 +889,12 @@ class TickerBase:
 
             page_offset += page_size
             # got less data then we asked for or already fetched all we requested, no need to fetch more pages
-            if len(data) > page_size or len(dates) >= limit:
+            if len(data) < page_size or len(dates) >= limit:
                 dates = dates.iloc[:limit]
                 break
+            else:
+                # do not fetch more than needed next time
+                page_size = min(limit - len(dates), page_size)
 
         if dates is None or dates.shape[0] == 0:
             err_msg = "No earnings dates found, symbol may be delisted"
@@ -930,29 +934,3 @@ class TickerBase:
         self._earnings_dates[limit] = dates
 
         return dates
-
-    def get_earnings_history(self, proxy=None) -> Optional[pd.DataFrame]:
-        if self._earnings_history is not None:
-            return self._earnings_history
-
-        url = "{}/calendar/earnings?symbol={}".format(_ROOT_URL_, self.ticker)
-        data = self._data.get(url=url, proxy=proxy).text
-
-        if "Will be right back" in data:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
-
-        try:
-            # read_html returns a list of pandas Dataframes of all the tables in `data`
-            data = _pd.read_html(data)[0]
-            data.replace("-", _np.nan, inplace=True)
-
-            data['EPS Estimate'] = _pd.to_numeric(data['EPS Estimate'])
-            data['Reported EPS'] = _pd.to_numeric(data['Reported EPS'])
-            self._earnings_history = data
-        # if no tables are found a ValueError is thrown
-        except ValueError:
-            print("Could not find earnings history data for {}.".format(self.ticker))
-            return
-        return data
