@@ -59,7 +59,7 @@ class TickerBase:
         self._news = []
         self._shares = None
 
-        self._earnings_dates = None
+        self._earnings_dates = {}
         self._earnings_history = None
 
         self._earnings = None
@@ -847,11 +847,18 @@ class TickerBase:
         self._news = data.get("news", [])
         return self._news
 
-    def get_earnings_dates(self, proxy=None) -> Optional[pd.DataFrame]:
-        if self._earnings_dates is not None:
-            return self._earnings_dates
+    def get_earnings_dates(self, limit=1000, proxy=None) -> Optional[pd.DataFrame]:
+        """
+        Get earning dates (future and historic)
+        :param limit: max amount of upcoming and recent earnings dates, set to smaller value to reduce amount
+                      of requests needed if ticker has a long history that is not of interest.
+        :param proxy: requests proxy to use.
+        :return: pandas dataframe
+        """
+        if self._earnings_dates and limit in self._earnings_dates:
+            return self._earnings_dates[limit]
 
-        page_size = 100  # YF caps at 100, don't go higher
+        page_size = min(limit, 100)  # YF caps at 100, don't go higher
         page_offset = 0
         dates = None
         while True:
@@ -874,12 +881,16 @@ class TickerBase:
                         # Actually YF was successful, problem is company doesn't have earnings history
                         dates = utils.empty_earnings_dates_df()
                 break
-
             if dates is None:
                 dates = data
             else:
                 dates = _pd.concat([dates, data], axis=0)
+
             page_offset += page_size
+            # got less data then we asked for or already fetched all we requested, no need to fetch more pages
+            if len(data) > page_size or len(dates) >= limit:
+                dates = dates.iloc[:limit]
+                break
 
         if dates is None or dates.shape[0] == 0:
             err_msg = "No earnings dates found, symbol may be delisted"
@@ -916,7 +927,7 @@ class TickerBase:
 
         dates = dates.set_index("Earnings Date")
 
-        self._earnings_dates = dates
+        self._earnings_dates[limit] = dates
 
         return dates
 
