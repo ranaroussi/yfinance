@@ -159,14 +159,6 @@ class TestTickerEarnings(unittest.TestCase):
     def tearDown(self):
         self.ticker = None
 
-    def test_earnings_history(self):
-        data = self.ticker.earnings_history
-        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-        self.assertFalse(data.empty, "data is empty")
-
-        data_cached = self.ticker.earnings_history
-        self.assertIs(data, data_cached, "data not cached")
-
     def test_earnings(self):
         data = self.ticker.earnings
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
@@ -208,13 +200,15 @@ class TestTickerEarnings(unittest.TestCase):
         self.assertIs(data, data_cached, "data not cached")
 
     def test_earnings_dates_with_limit(self):
-        limit = 5
-        data = self.ticker.get_earnings_dates(limit=limit)
+        # use ticker with lots of historic earnings
+        ticker = yf.Ticker("IBM")
+        limit = 110
+        data = ticker.get_earnings_dates(limit=limit)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
         self.assertEqual(len(data), limit, "Wrong number or rows")
 
-        data_cached = self.ticker.get_earnings_dates(limit=limit)
+        data_cached = ticker.get_earnings_dates(limit=limit)
         self.assertIs(data, data_cached, "data not cached")
 
 
@@ -392,7 +386,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertEqual("GOOGL", data["symbol"], "Wrong symbol value in info dict")
 
     def test_bad_freq_value_raises_exception(self):
-        self.assertRaises(ValueError, lambda : self.ticker.get_cashflow(freq="badarg"))
+        self.assertRaises(ValueError, lambda: self.ticker.get_cashflow(freq="badarg"))
 
 
 def suite():
