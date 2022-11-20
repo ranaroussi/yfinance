@@ -207,6 +207,16 @@ class TestTickerEarnings(unittest.TestCase):
         data_cached = self.ticker.earnings_trend
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_earnings_dates_with_limit(self):
+        limit = 5
+        data = self.ticker.get_earnings_dates(limit=limit)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertEqual(len(data), limit, "Wrong number or rows")
+
+        data_cached = self.ticker.get_earnings_dates(limit=limit)
+        self.assertIs(data, data_cached, "data not cached")
+
 
 class TestTickerHolders(unittest.TestCase):
 
