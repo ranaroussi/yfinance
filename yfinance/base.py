@@ -638,7 +638,6 @@ class TickerBase:
                         print("-------------")
         return None
 
-
     def get_recommendations(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy
         data = self._quote.recommendations
