@@ -16,7 +16,6 @@ class _KVStore:
         with self._cache_mutex:
             self.conn = _sqlite3.connect(filename, timeout=10, check_same_thread=False)
             self.conn.execute('pragma journal_mode=wal')
-            self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT) without rowid')
             self.conn.commit()
         _atexit.register(self.close)
 
@@ -26,26 +25,50 @@ class _KVStore:
                 self.conn.close()
                 self.conn = None
 
-    def get(self, key: str) -> Union[str, None]:
+    def table_exists(self, name) -> bool:
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        results = cursor.fetchall()
+        return len(results)>0 and name in results[0]
+
+    def get(self, tkr, key: str) -> Union[str, None]:
         """Get value for key if it exists else returns None"""
-        item = self.conn.execute('select value from "kv" where key=?', (key,))
+        if not self.table_exists(key):
+            return None
+        item = self.conn.execute('select value from '+key+' where Ticker=?', (tkr,))
         if item:
             return next(item, (None,))[0]
 
-    def set(self, key: str, value: str) -> None:
+    def set(self, tkr, key: str, value: str) -> None:
         with self._cache_mutex:
-            self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
+            if not self.table_exists(key):
+                self.conn.execute('create table if not exists '+key+' (Ticker TEXT primary key, Value TEXT) without rowid')
+            self.conn.execute('replace into '+key+' (Ticker, Value) values (?,?)', (tkr, value))
             self.conn.commit()
 
-    def bulk_set(self, kvdata: Dict[str, str]):
-        records = tuple(i for i in kvdata.items())
+    def bulk_set(self, key, tkrData: Dict[str, str]):
+        records = tuple(i for i in tkrData.items())
         with self._cache_mutex:
-            self.conn.executemany('replace into "kv" (key, value) values (?,?)', records)
+            if not self.table_exists(key):
+                print("Creating table", key)
+                self.conn.execute('create table if not exists '+key+' (Ticker TEXT primary key, Value TEXT) without rowid')
+            self.conn.executemany('replace into '+key+' (Ticker, Value) values (?,?)', records)
             self.conn.commit()
 
-    def delete(self, key: str):
+    def delete(self, tkr, key: str):
+        if not self.table_exists(key):
+            return
         with self._cache_mutex:
-            self.conn.execute('delete from "kv" where key=?', (key,))
+            self.conn.execute('delete from '+key+' where Ticker=?', (tkr,))
+            self.conn.commit()
+
+    def migrate_old_schema(self):
+        with self._cache_mutex:
+            if not self.table_exists("kv"):
+                return
+            self.conn.execute("ALTER TABLE `kv` RENAME TO `Timezone`")
+            self.conn.execute("ALTER TABLE `Timezone` RENAME COLUMN key TO Ticker;")
+            self.conn.execute("ALTER TABLE `Timezone` RENAME COLUMN value TO Value;")
             self.conn.commit()
 
 
@@ -58,7 +81,10 @@ class _DbCache:
 
     def __init__(self):
         self._db = None
+        self.fp = _os.path.join(self._db_dir, "tkr-keys.db")
+
         self._setup_cache_folder()
+        self._migrate_old_schema()
 
     def _setup_cache_folder(self):
         if not _os.path.isdir(self._db_dir):
@@ -72,16 +98,16 @@ class _DbCache:
             raise _DbCacheException("Cannot read and write in DbCache folder: '{}'"
                                     .format(self._db_dir, ))
 
-    def lookup(self, tkr):
-        return self.db.get(tkr)
+    def lookup(self, tkr, key):
+        return self.db.get(tkr, key)
 
-    def store(self, tkr, tz):
-        if tz is None:
-            self.db.delete(tkr)
-        elif self.db.get(tkr) is not None:
-            raise Exception("Tkr {} tz already in cache".format(tkr))
+    def store(self, tkr, key, value):
+        if value is None:
+            self.db.delete(tkr, key)
+        elif self.db.get(tkr, key) is not None:
+            raise Exception("Tkr {} {} already in cache".format(tkr, key))
         else:
-            self.db.set(tkr, tz)
+            self.db.set(tkr, key, value)
 
     @property
     def _db_dir(self):
@@ -92,33 +118,42 @@ class _DbCache:
     def db(self):
         # lazy init
         if self._db is None:
-            self._db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+            self._db = _KVStore(self.fp)
             self._migrate_cache_tkr_tz()
 
         return self._db
 
+    def _migrate_old_schema(self):
+        old_fp = _os.path.join(self._db_dir, "tkr-tz.db")
+        if _os.path.isfile(old_fp):
+            _db = _KVStore(old_fp)
+            _db.migrate_old_schema()
+            _db.close() ; _db = None
+            _os.rename(old_fp, self.fp)
+
     def _migrate_cache_tkr_tz(self):
         """Migrate contents from old ticker CSV-cache to SQLite db"""
-        old_cache_file_path = _os.path.join(self._db_dir, "tkr-tz.csv")
+        csv_cache_fp = _os.path.join(self._db_dir, "tkr-tz.csv")
 
-        if not _os.path.isfile(old_cache_file_path):
+        if not _os.path.isfile(csv_cache_fp):
             return None
         try:
-            df = _pd.read_csv(old_cache_file_path, index_col="Ticker")
+            df = _pd.read_csv(csv_cache_fp, index_col="Ticker")
         except _pd.errors.EmptyDataError:
-            _os.remove(old_cache_file_path)
+            _os.remove(csv_cache_fp)
         else:
-            self.db.bulk_set(df.to_dict()['Tz'])
-            _os.remove(old_cache_file_path)
+            self.db.bulk_set("Timezone", df.to_dict()['Tz'])
+            _os.remove(csv_cache_fp)
+
 
 
 class _DbCacheDummy:
-    """Dummy cache to use if tz cache is disabled"""
+    """Dummy cache to use if db cache is disabled"""
 
-    def lookup(self, tkr):
+    def lookup(self, tkr, key):
         return None
 
-    def store(self, tkr, tz):
+    def store(self, tkr, key, value):
         pass
 
     @property

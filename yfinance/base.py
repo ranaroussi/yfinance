@@ -605,8 +605,8 @@ class TickerBase:
     def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if self._tz is not None:
             return self._tz
-        cache = db_cache.get_cache()
-        tz = cache.lookup(self.ticker)
+        cache = db_cache.get_db_cache()
+        tz = cache.lookup(self.ticker, "Timezone")
 
         if tz and not utils.is_valid_timezone(tz):
             # Clear from cache and force re-fetch
@@ -618,7 +618,7 @@ class TickerBase:
 
             if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
-                cache.store(self.ticker, tz)
+                cache.store(self.ticker, "Timezone", tz)
             else:
                 tz = None
 
