@@ -21,21 +21,18 @@
 
 from __future__ import print_function
 
-# import time as _time
 import datetime as _datetime
-import requests as _requests
 import pandas as _pd
-# import numpy as _np
 
-# import json as _json
-# import re as _re
 from collections import namedtuple as _namedtuple
 
-from . import utils
 from .base import TickerBase
 
 
 class Ticker(TickerBase):
+    def __init__(self, ticker, session=None):
+        super(Ticker, self).__init__(ticker, session=session)
+        self._expirations = {}
 
     def __repr__(self):
         return 'yfinance.Ticker object <%s>' % self.ticker
@@ -48,17 +45,7 @@ class Ticker(TickerBase):
             url = "{}/v7/finance/options/{}?date={}".format(
                 self._base_url, self.ticker, date)
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
-        r = _requests.get(
-            url=url,
-            proxies=proxy,
-            headers=utils.user_agent_headers
-        ).json()
+        r = self._data.get(url=url, proxy=proxy).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.utcfromtimestamp(
@@ -115,39 +102,39 @@ class Ticker(TickerBase):
         return self.get_isin()
 
     @property
-    def major_holders(self):
+    def major_holders(self) -> _pd.DataFrame:
         return self.get_major_holders()
 
     @property
-    def institutional_holders(self):
+    def institutional_holders(self) -> _pd.DataFrame:
         return self.get_institutional_holders()
 
     @property
-    def mutualfund_holders(self):
+    def mutualfund_holders(self) -> _pd.DataFrame:
         return self.get_mutualfund_holders()
 
     @property
-    def dividends(self):
+    def dividends(self) -> _pd.Series:
         return self.get_dividends()
 
     @property
-    def splits(self):
+    def splits(self) -> _pd.Series:
         return self.get_splits()
 
     @property
-    def actions(self):
+    def actions(self) -> _pd.DataFrame:
         return self.get_actions()
 
     @property
-    def shares(self):
+    def shares(self) -> _pd.DataFrame :
         return self.get_shares()
 
     @property
-    def info(self):
+    def info(self) -> dict:
         return self.get_info()
 
     @property
-    def calendar(self):
+    def calendar(self) -> _pd.DataFrame:
         return self.get_calendar()
 
     @property
@@ -155,51 +142,63 @@ class Ticker(TickerBase):
         return self.get_recommendations()
 
     @property
-    def earnings(self):
+    def earnings(self) -> _pd.DataFrame:
         return self.get_earnings()
 
     @property
-    def quarterly_earnings(self):
+    def quarterly_earnings(self) -> _pd.DataFrame:
         return self.get_earnings(freq='quarterly')
 
     @property
-    def financials(self):
-        return self.get_financials()
+    def income_stmt(self) -> _pd.DataFrame:
+        return self.get_income_stmt()
 
     @property
-    def quarterly_financials(self):
-        return self.get_financials(freq='quarterly')
+    def quarterly_income_stmt(self) -> _pd.DataFrame:
+        return self.get_income_stmt(freq='quarterly')
 
     @property
-    def balance_sheet(self):
-        return self.get_balancesheet()
+    def balance_sheet(self) -> _pd.DataFrame:
+        return self.get_balance_sheet()
 
     @property
-    def quarterly_balance_sheet(self):
-        return self.get_balancesheet(freq='quarterly')
+    def quarterly_balance_sheet(self) -> _pd.DataFrame:
+        return self.get_balance_sheet(freq='quarterly')
 
     @property
-    def balancesheet(self):
-        return self.get_balancesheet()
+    def balancesheet(self) -> _pd.DataFrame:
+        return self.balance_sheet
 
     @property
-    def quarterly_balancesheet(self):
-        return self.get_balancesheet(freq='quarterly')
+    def quarterly_balancesheet(self) -> _pd.DataFrame:
+        return self.quarterly_balance_sheet
 
     @property
-    def cashflow(self):
-        return self.get_cashflow()
+    def cashflow(self) -> _pd.DataFrame:
+        return self.get_cashflow(freq="yearly")
 
     @property
-    def quarterly_cashflow(self):
+    def quarterly_cashflow(self) -> _pd.DataFrame:
         return self.get_cashflow(freq='quarterly')
 
     @property
-    def sustainability(self):
+    def recommendations_summary(self):
+        return self.get_recommendations_summary()
+
+    @property
+    def analyst_price_target(self) -> _pd.DataFrame:
+        return self.get_analyst_price_target()
+
+    @property
+    def revenue_forecasts(self) -> _pd.DataFrame:
+        return self.get_rev_forecast()
+
+    @property
+    def sustainability(self) -> _pd.DataFrame:
         return self.get_sustainability()
 
     @property
-    def options(self):
+    def options(self) -> tuple:
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
@@ -209,13 +208,17 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def analysis(self):
-        return self.get_analysis()
+    def earnings_trend(self) -> _pd.DataFrame:
+        return self.get_earnings_trend()
 
     @property
-    def earnings_history(self):
+    def earnings_history(self) -> _pd.DataFrame:
         return self.get_earnings_history()
 
     @property
-    def earnings_dates(self):
+    def earnings_dates(self) -> _pd.DataFrame:
         return self.get_earnings_dates()
+
+    @property
+    def earnings_forecasts(self) -> _pd.DataFrame:
+        return self.get_earnings_forecast()

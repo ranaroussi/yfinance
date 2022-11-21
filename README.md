@@ -68,9 +68,20 @@ msft.dividends
 # show splits
 msft.splits
 
-# show financials
-msft.financials
-msft.quarterly_financials
+# show share count
+msft.shares
+
+# show income statement
+msft.income_stmt
+msft.quarterly_income_stmt
+
+# show balance sheet
+msft.balance_sheet
+msft.quarterly_balance_sheet
+
+# show cash flow statement
+msft.cashflow
+msft.quarterly_cashflow
 
 # show major holders
 msft.major_holders
@@ -78,13 +89,8 @@ msft.major_holders
 # show institutional holders
 msft.institutional_holders
 
-# show balance sheet
-msft.balance_sheet
-msft.quarterly_balance_sheet
-
-# show cashflow
-msft.cashflow
-msft.quarterly_cashflow
+# show mutualfund holders
+msft.mutualfund_holders
 
 # show earnings
 msft.earnings
@@ -95,6 +101,12 @@ msft.sustainability
 
 # show analysts recommendations
 msft.recommendations
+msft.recommendations_summary
+# show analysts other work
+msft.analyst_price_target
+mfst.revenue_forecasts
+mfst.earnings_forecasts
+mfst.earnings_trend
 
 # show next event (earnings, etc)
 msft.calendar
@@ -156,9 +168,9 @@ tickers = yf.Tickers('msft aapl goog')
 # ^ returns a named tuple of Ticker objects
 
 # access each ticker using (example)
-tickers.tickers.MSFT.info
-tickers.tickers.AAPL.history(period="1mo")
-tickers.tickers.GOOG.actions
+tickers.tickers['MSFT'].info
+tickers.tickers['AAPL'].history(period="1mo")
+tickers.tickers['GOOG'].actions
 ```
 
 ### Fetching data for multiple tickers
