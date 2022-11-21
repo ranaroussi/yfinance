@@ -49,15 +49,15 @@ class _KVStore:
             self.conn.commit()
 
 
-class _TzCacheException(Exception):
+class _DbCacheException(Exception):
     pass
 
 
-class _TzCache:
-    """Simple sqlite file cache of ticker->timezone"""
+class _DbCache:
+    """Simple sqlite file cache of key->value"""
 
     def __init__(self):
-        self._tz_db = None
+        self._db = None
         self._setup_cache_folder()
 
     def _setup_cache_folder(self):
@@ -65,23 +65,23 @@ class _TzCache:
             try:
                 _os.makedirs(self._db_dir)
             except OSError as err:
-                raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
+                raise _DbCacheException("Error creating DbCache folder: '{}' reason: {}"
                                         .format(self._db_dir, err))
 
         elif not (_os.access(self._db_dir, _os.R_OK) and _os.access(self._db_dir, _os.W_OK)):
-            raise _TzCacheException("Cannot read and write in TzCache folder: '{}'"
+            raise _DbCacheException("Cannot read and write in DbCache folder: '{}'"
                                     .format(self._db_dir, ))
 
     def lookup(self, tkr):
-        return self.tz_db.get(tkr)
+        return self.db.get(tkr)
 
     def store(self, tkr, tz):
         if tz is None:
-            self.tz_db.delete(tkr)
-        elif self.tz_db.get(tkr) is not None:
+            self.db.delete(tkr)
+        elif self.db.get(tkr) is not None:
             raise Exception("Tkr {} tz already in cache".format(tkr))
         else:
-            self.tz_db.set(tkr, tz)
+            self.db.set(tkr, tz)
 
     @property
     def _db_dir(self):
@@ -89,13 +89,13 @@ class _TzCache:
         return _os.path.join(_cache_dir, "py-yfinance")
 
     @property
-    def tz_db(self):
+    def db(self):
         # lazy init
-        if self._tz_db is None:
-            self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+        if self._db is None:
+            self._db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
             self._migrate_cache_tkr_tz()
 
-        return self._tz_db
+        return self._db
 
     def _migrate_cache_tkr_tz(self):
         """Migrate contents from old ticker CSV-cache to SQLite db"""
@@ -108,11 +108,11 @@ class _TzCache:
         except _pd.errors.EmptyDataError:
             _os.remove(old_cache_file_path)
         else:
-            self.tz_db.bulk_set(df.to_dict()['Tz'])
+            self.db.bulk_set(df.to_dict()['Tz'])
             _os.remove(old_cache_file_path)
 
 
-class _TzCacheDummy:
+class _DbCacheDummy:
     """Dummy cache to use if tz cache is disabled"""
 
     def lookup(self, tkr):
@@ -122,37 +122,37 @@ class _TzCacheDummy:
         pass
 
     @property
-    def tz_db(self):
+    def db(self):
         return None
 
 
-def get_tz_cache():
+def get_db_cache():
     """
-    Get the timezone cache, initializes it and creates cache folder if needed on first call.
+    Get the database cache, initializes it and creates cache folder if needed on first call.
     If folder cannot be created for some reason it will fall back to initialize a
     dummy cache with same interface as real cash.
     """
     # as this can be called from multiple threads, protect it.
     with _cache_init_lock:
-        global _tz_cache
-        if _tz_cache is None:
+        global _db_cache
+        if _db_cache is None:
             try:
-                _tz_cache = _TzCache()
-            except _TzCacheException as err:
-                print("Failed to create TzCache, reason: {}".format(err))
-                print("TzCache will not be used.")
-                print("Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
-                _tz_cache = _TzCacheDummy()
+                _db_cache = _DbCache()
+            except _DbCacheException as err:
+                print("Failed to create DbCache, reason: {}".format(err))
+                print("DbCache will not be used.")
+                print("Tip: You can direct cache to use a different location with 'set_db_cache_location(mylocation)'")
+                _db_cache = _DbCacheDummy()
 
-        return _tz_cache
+        return _db_cache
 
 
 _cache_dir = _ad.user_cache_dir()
 _cache_init_lock = Lock()
-_tz_cache = None
+_db_cache = None
 
 
-def set_tz_cache_location(cache_dir: str):
+def set_db_cache_location(cache_dir: str):
     """
     Sets the path to create the "py-yfinance" cache folder in.
     Useful if the default folder returned by "appdir.user_cache_dir()" is not writable.
@@ -160,6 +160,6 @@ def set_tz_cache_location(cache_dir: str):
     :param cache_dir: Path to use for caches
     :return: None
     """
-    global _cache_dir, _tz_cache
-    assert _tz_cache is None, "Time Zone cache already initialized, setting path must be done before cache is created"
+    global _cache_dir, _db_cache
+    assert _db_cache is None, "DB cache already initialized, setting path must be done before cache is created"
     _cache_dir = cache_dir

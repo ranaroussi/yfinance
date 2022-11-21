@@ -605,7 +605,7 @@ class TickerBase:
     def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if self._tz is not None:
             return self._tz
-        cache = db_cache.get_tz_cache()
+        cache = db_cache.get_cache()
         tz = cache.lookup(self.ticker)
 
         if tz and not utils.is_valid_timezone(tz):
