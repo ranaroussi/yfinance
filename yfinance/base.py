@@ -59,8 +59,7 @@ class TickerBase:
         self._news = []
         self._shares = None
 
-        self._earnings_dates = None
-        self._earnings_history = None
+        self._earnings_dates = {}
 
         self._earnings = None
         self._financials = None
@@ -877,11 +876,20 @@ class TickerBase:
         self._news = data.get("news", [])
         return self._news
 
-    def get_earnings_dates(self, proxy=None) -> Optional[pd.DataFrame]:
-        if self._earnings_dates is not None:
-            return self._earnings_dates
+    def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
+        """
+        Get earning dates (future and historic)
+        :param limit: max amount of upcoming and recent earnings dates to return.
+                      Default value 12 should return next 4 quarters and last 8 quarters.
+                      Increase if more history is needed.
 
-        page_size = 100  # YF caps at 100, don't go higher
+        :param proxy: requests proxy to use.
+        :return: pandas dataframe
+        """
+        if self._earnings_dates and limit in self._earnings_dates:
+            return self._earnings_dates[limit]
+
+        page_size = min(limit, 100)  # YF caps at 100, don't go higher
         page_offset = 0
         dates = None
         while True:
@@ -904,12 +912,19 @@ class TickerBase:
                         # Actually YF was successful, problem is company doesn't have earnings history
                         dates = utils.empty_earnings_dates_df()
                 break
-
             if dates is None:
                 dates = data
             else:
                 dates = _pd.concat([dates, data], axis=0)
+
             page_offset += page_size
+            # got less data then we asked for or already fetched all we requested, no need to fetch more pages
+            if len(data) < page_size or len(dates) >= limit:
+                dates = dates.iloc[:limit]
+                break
+            else:
+                # do not fetch more than needed next time
+                page_size = min(limit - len(dates), page_size)
 
         if dates is None or dates.shape[0] == 0:
             err_msg = "No earnings dates found, symbol may be delisted"
@@ -946,32 +961,6 @@ class TickerBase:
 
         dates = dates.set_index("Earnings Date")
 
-        self._earnings_dates = dates
+        self._earnings_dates[limit] = dates
 
         return dates
-
-    def get_earnings_history(self, proxy=None) -> Optional[pd.DataFrame]:
-        if self._earnings_history is not None:
-            return self._earnings_history
-
-        url = "{}/calendar/earnings?symbol={}".format(_ROOT_URL_, self.ticker)
-        data = self._data.get(url=url, proxy=proxy).text
-
-        if "Will be right back" in data:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
-
-        try:
-            # read_html returns a list of pandas Dataframes of all the tables in `data`
-            data = _pd.read_html(data)[0]
-            data.replace("-", _np.nan, inplace=True)
-
-            data['EPS Estimate'] = _pd.to_numeric(data['EPS Estimate'])
-            data['Reported EPS'] = _pd.to_numeric(data['Reported EPS'])
-            self._earnings_history = data
-        # if no tables are found a ValueError is thrown
-        except ValueError:
-            print("Could not find earnings history data for {}.".format(self.ticker))
-            return
-        return data
