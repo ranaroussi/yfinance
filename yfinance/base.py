@@ -374,8 +374,7 @@ class TickerBase:
         df = df[~df.index.duplicated(keep='first')]
         self._history = df.copy()
         if not actions:
-            columns_to_be_dropped = ["Dividends", "Stock Splits", "Capital Gains"]
-            df = df.drop([colname for colname in columns_to_be_dropped if colname in df.columns], axis=1)
+            df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
         if not keepna:
             mask_nan_or_zero = (df.isna() | (df == 0)).all(axis=1)
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
