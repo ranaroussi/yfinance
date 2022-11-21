@@ -34,6 +34,7 @@ from .data import TickerData
 from urllib.parse import quote as urlencode
 
 from . import utils
+from . import db_cache
 
 from . import shared
 from .scrapers.analysis import Analysis
@@ -604,7 +605,7 @@ class TickerBase:
     def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if self._tz is not None:
             return self._tz
-        cache = utils.get_tz_cache()
+        cache = db_cache.get_tz_cache()
         tz = cache.lookup(self.ticker)
 
         if tz and not utils.is_valid_timezone(tz):

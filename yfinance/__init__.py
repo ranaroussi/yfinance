@@ -23,7 +23,7 @@ from . import version
 from .ticker import Ticker
 from .tickers import Tickers
 from .multi import download
-from .utils import set_tz_cache_location
+from .db_cache import set_tz_cache_location
 
 __version__ = version.version
 __author__ = "Ran Aroussi"
