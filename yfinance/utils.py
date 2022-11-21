@@ -332,6 +332,8 @@ def parse_quotes(data):
 def parse_actions(data):
     dividends = _pd.DataFrame(
         columns=["Dividends"], index=_pd.DatetimeIndex([]))
+    capital_gains = _pd.DataFrame(
+        columns=["Capital Gains"], index=_pd.DatetimeIndex([]))
     splits = _pd.DataFrame(
         columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
 
@@ -342,8 +344,15 @@ def parse_actions(data):
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
-
             dividends.columns = ["Dividends"]
+
+        if "capitalGains" in data["events"]:
+            capital_gains = _pd.DataFrame(
+                data=list(data["events"]["capitalGains"].values()))
+            capital_gains.set_index("date", inplace=True)
+            capital_gains.index = _pd.to_datetime(capital_gains.index, unit="s")
+            capital_gains.sort_index(inplace=True)
+            capital_gains.columns = ["Capital Gains"]
 
         if "splits" in data["events"]:
             splits = _pd.DataFrame(
@@ -355,7 +364,7 @@ def parse_actions(data):
                                      splits["denominator"]
             splits = splits[["Stock Splits"]]
 
-    return dividends, splits
+    return dividends, splits, capital_gains
 
 
 def set_df_tz(df, interval, tz):
