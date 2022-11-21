@@ -216,10 +216,6 @@ class Ticker(TickerBase):
         return self.get_earnings_trend()
 
     @property
-    def earnings_history(self) -> _pd.DataFrame:
-        return self.get_earnings_history()
-
-    @property
     def earnings_dates(self) -> _pd.DataFrame:
         return self.get_earnings_dates()
 

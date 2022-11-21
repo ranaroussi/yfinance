@@ -115,7 +115,8 @@ mfst.earnings_trend
 # show next event (earnings, etc)
 msft.calendar
 
-# show all earnings dates
+# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
+# Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates
 
 # show ISIN code - *experimental*
