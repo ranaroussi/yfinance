@@ -40,7 +40,7 @@ class TestTicker(unittest.TestCase):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         for tkr in tkrs:
             # First step: remove ticker from tz-cache
-            yf.utils.get_tz_cache().store(tkr, None)
+            yf.db_cache.get_db_cache().store(tkr, "Timezone", None)
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
