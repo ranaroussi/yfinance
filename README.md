@@ -72,10 +72,6 @@ msft.splits
 # show capital gains (for mutual funds & etfs)
 msft.capital_gains
 
-# show financials
-msft.financials
-msft.quarterly_financials
-
 # show share count
 msft.shares
 
