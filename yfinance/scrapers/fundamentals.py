@@ -2,6 +2,7 @@ import datetime
 import json
 
 import pandas as pd
+import numpy as np
 
 from yfinance import utils
 from yfinance.data import TickerData
@@ -132,6 +133,13 @@ class Fiancials:
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
+
+            if statement.shape[0] == 0:
+                # Normally table only empty when nothing on Yahoo. So good?
+                # Except 'QuoteSummaryStore' still contains the old financial data, 
+                # is it useful to return?
+                statement = self._create_financials_table_old(name, timescale, proxy)
+
             if statement is not None:
                 return statement
         except YFianceException as e:
@@ -154,6 +162,34 @@ class Fiancials:
 
         except Exception as e:
             pass
+
+    def _create_financials_table_old(self, name, timescale, proxy):
+        data_stores = self._data.get_json_data_stores(name, proxy)
+
+        # Fetch raw data
+        data = data_stores["QuoteSummaryStore"]
+        key1 = name.replace('-','') + "StatementHistory"
+        if timescale == "quarterly":
+            key1 += "Quarterly"
+        key2 = name.replace('-','') + "Statements"
+        data = data.get(key1)[key2]
+
+        # Tabulate
+        df = pd.DataFrame(data).drop(columns=['maxAge'])
+        for col in df.columns:
+            df[col] = df[col].replace('-', np.nan)
+        df.set_index('endDate', inplace=True)
+        try:
+            df.index = pd.to_datetime(df.index, unit='s')
+        except ValueError:
+            df.index = pd.to_datetime(df.index)
+        df = df.T
+        df.columns.name = ''
+        df.index.name = 'Breakdown'
+        # rename incorrect yahoo key
+        df.rename(index={'treasuryStock': 'Gains Losses Not Affecting Retained Earnings'}, inplace=True)
+        df.index = utils.camel2title(df.index)
+        return df
 
     def _get_datastore_keys(self, sub_page, proxy) -> list:
         data_stores = self._data.get_json_data_stores(sub_page, proxy)
