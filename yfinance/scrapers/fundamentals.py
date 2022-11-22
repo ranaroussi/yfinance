@@ -227,4 +227,6 @@ class Fiancials:
         df = df.reindex([k for k in keys if k in df.index])
         df = df[sorted(df.columns, reverse=True)]
 
+        df.index = utils.camel2title(df.index)
+
         return df
