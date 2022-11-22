@@ -336,11 +336,11 @@ class TickerBase:
         if not intraday:
             # If localizing a midnight during DST transition hour when clocks roll back,
             # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True)
+            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
             if dividends.shape[0] > 0:
-                dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True)
+                dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
             if splits.shape[0] > 0:
-                splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True)
+                splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
 
         # Combine
         df = quotes.sort_index()
