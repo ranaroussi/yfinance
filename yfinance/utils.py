@@ -241,8 +241,34 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
     return _statement
 
 
-def camel2title(o):
-    return [_re.sub("([a-z])([A-Z])", r"\g<1> \g<2>", i).title() for i in o]
+def camel2title(o, sep=' ', acronyms=None):
+    if not isinstance(sep, str) or len(sep) != 1:
+        raise Exception("camel2title() 'sep' argument must be single character not:", sep)
+
+    if acronyms is None:
+        return [_re.sub("([a-z])([A-Z])", r"\g<1>{}\g<2>".format(sep), i).title() for i in o]
+
+    # Handling acronyms requires more care. Assumes Yahoo returns acronym strings upper-case
+
+    # Insert 'sep' between lower-then-upper-case
+    pat = "([a-z])([A-Z])"
+    rep = r"\g<1>{}\g<2>".format(sep)
+    o = [_re.sub(pat, rep, i) for i in o]
+
+    # Insert 'sep' after acronyms. Assumes Yahoo returns acronym strings upper-case
+    if not isinstance(acronyms, (set,list)):
+        raise Exception("camel2title() 'acronyms' argument should be an iterable of acronym strings")
+    for a in acronyms:
+        pat = "("+a+")" + "([A-Z][a-z])"
+        rep = r"\g<1>{}\g<2>".format(sep)
+        o = [_re.sub(pat, rep, i) for i in o]
+
+    # Apply str.title() to non-acronym words
+    o = [i.split(sep) for i in o]
+    o = [ [j.title() if not j in acronyms else j for j in i] for i in o]
+    o = [sep.join(i) for i in o]
+
+    return o
 
 
 def _parse_user_dt(dt, exchange_tz):

@@ -757,23 +757,29 @@ class TickerBase:
             return dict_data
         return data
 
-    def get_income_stmt(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         self._fundamentals.proxy = proxy
         data = self._fundamentals.financials.get_income(freq=freq, proxy=proxy)
+        if pretty:
+            data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_balance_sheet(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         self._fundamentals.proxy = proxy
         data = self._fundamentals.financials.get_balance_sheet(freq=freq, proxy=proxy)
+        if pretty:
+            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_cashflow(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         self._fundamentals.proxy = proxy
         data = self._fundamentals.financials.get_cash_flow(freq=freq, proxy=proxy)
+        if pretty:
+            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
