@@ -150,15 +150,6 @@ class Fiancials:
             # visible on Yahoo website. But more work needed to make it user-friendly! Ideally
             # return a tree data structure instead of Pandas MultiIndex
             # So until this is implemented, just return simple tables
-            #
-            # _fin_data = self._data.get_json_data_stores(name, proxy)
-            # data = _fin_data['FinancialTemplateStore']
-            # financials_template_ttm_order, financials_template_annual_order, financials_template_order, financials_level_detail = utils.build_template(data)
-            # # Grab the raw financial details (this can be later combined with the financial template store detail to correctly order and present the data).
-            # data = _fin_data['QuoteTimeSeriesStore']
-            # TTM_dicts, Annual_dicts = utils.retreive_financial_details(data)
-            # _nested_table = utils.format_annual_financial_statement(financials_level_detail, Annual_dicts, financials_template_annual_order, TTM_dicts, financials_template_ttm_order)
-
             return self.get_financials_time_series(timescale, keys, proxy)
 
         except Exception as e:
@@ -235,7 +226,5 @@ class Fiancials:
         # Reorder table to match order on Yahoo website
         df = df.reindex([k for k in keys if k in df.index])
         df = df[sorted(df.columns, reverse=True)]
-
-        df.index = utils.camel2title(df.index)
 
         return df
