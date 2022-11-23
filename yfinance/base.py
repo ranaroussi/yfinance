@@ -50,7 +50,13 @@ class TickerBase:
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
         self.session = session
-        self._history = None
+
+        # Simple cache of price data. Reason = for some users, 
+        # successive calls to Yahoo sometimes missing rows. 
+        # Why not combine them?
+        # Cache structure: (interval, period/dates) -> DataFrame
+        self._history = {}
+
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
         self._tz = None
@@ -131,6 +137,7 @@ class TickerBase:
                 exceptions instead of printing to console.
         """
 
+        end_is_none = end is None  # Need to know much later
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
             tz = self._get_ticker_tz(debug, proxy, timeout)
@@ -146,7 +153,7 @@ class TickerBase:
                         print('- %s: %s' % (self.ticker, err_msg))
                 return utils.empty_df()
 
-            if end is None:
+            if end_is_none:
                 end = int(_time.time())
             else:
                 end = utils._parse_user_dt(end, tz)
@@ -159,6 +166,7 @@ class TickerBase:
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
+            period = None
         else:
             period = period.lower()
             params = {"range": period}
@@ -280,28 +288,6 @@ class TickerBase:
             quotes = self._fix_zero_prices(quotes, interval, tz_exchange)
             quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
 
-        # Auto/back adjust
-        try:
-            if auto_adjust:
-                quotes = utils.auto_adjust(quotes)
-            elif back_adjust:
-                quotes = utils.back_adjust(quotes)
-        except Exception as e:
-            if auto_adjust:
-                err_msg = "auto_adjust failed with %s" % e
-            else:
-                err_msg = "back_adjust failed with %s" % e
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if debug:
-                if raise_errors:
-                    raise Exception('%s: %s' % (self.ticker, err_msg))
-                else:
-                    print('%s: %s' % (self.ticker, err_msg))
-
-        if rounding:
-            quotes = _np.round(quotes, data[
-                "chart"]["result"][0]["meta"]["priceHint"])
         quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
         # actions
@@ -368,10 +354,60 @@ class TickerBase:
             df.index.name = "Datetime"
         else:
             df.index.name = "Date"
+        df = df[~df.index.duplicated(keep='first')].copy()
 
+        # Cache!
+        # - load any cached price data
+        if period is not None:
+            # Period handling simple - if in cache, return it
+            cache_key = (interval, period, prepost)
+        else:
+            cache_key = (interval, "dates", prepost)
+        if cache_key not in self._history:
+            self._history[cache_key] = df
+        else:
+            df_cached = self._history[cache_key]
+            # Something was cached so it may have data missing from fetch
+            # - combine fetched prices with cached, because one may be missing rows
+            df_cached = _pd.concat([df_cached[~df_cached.index.isin(df.index)], df]).sort_index()
+            self._history[cache_key] = df_cached
+            # - select from combined data, as fetched prices may be missing rows that 
+            #   existed in old cache
+            if period is not None:
+                df = df_cached
+            else:
+                start_dt = _pd.Timestamp(start, unit='s').tz_localize("UTC").tz_convert(tz_exchange)
+                if end_is_none:
+                    df = df_cached.loc[start_dt:]
+                else:
+                    end_dt = _pd.Timestamp(end, unit='s').tz_localize("UTC").tz_convert(tz_exchange)
+                    end_dt -= utils._interval_to_timedelta(interval) * 0.99
+                    df = df_cached.loc[start_dt:end_dt]
+
+        # Finally, present for user
+        # Auto/back adjust
+        try:
+            if auto_adjust:
+                quotes = utils.auto_adjust(quotes)
+            elif back_adjust:
+                quotes = utils.back_adjust(quotes)
+        except Exception as e:
+            if auto_adjust:
+                err_msg = "auto_adjust failed with %s" % e
+            else:
+                err_msg = "back_adjust failed with %s" % e
+            shared._DFS[self.ticker] = utils.empty_df()
+            shared._ERRORS[self.ticker] = err_msg
+            if debug:
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
+
+        if rounding:
+            quotes = _np.round(quotes, data["chart"]["result"][0]["meta"]["priceHint"])
+        
         # duplicates and missing rows cleanup
-        df = df[~df.index.duplicated(keep='first')]
-        self._history = df.copy()
         if not actions:
             df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
         if not keepna:
