@@ -165,6 +165,12 @@ class TickerBase:
                     start = end - 604800  # Subtract 7 days
                 else:
                     start = -631159200
+                    try:
+                        # Some platforms such as Windows don't like such low timestamp
+                        # numbers, so we test that here to prevent problems later
+                        _datetime.datetime.utcfromtimestamp(start)
+                    except OSError:
+                        start = 0
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
