@@ -46,6 +46,7 @@ class TickerBase:
         self.ticker = ticker.upper()
         self.session = session
         self._history = None
+        self._meta = {}
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
         self._tz = None
@@ -233,6 +234,9 @@ class TickerBase:
                 else:
                     print('%s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
+
+        # store the meta information to make it accessible from the outside
+        self._meta = data["chart"]["result"][0]["meta"]
 
         # parse quotes
         try:
