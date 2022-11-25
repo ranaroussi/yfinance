@@ -171,7 +171,6 @@ To initialize multiple `Ticker` objects, use
 import yfinance as yf
 
 tickers = yf.Tickers('msft aapl goog')
-# ^ returns a named tuple of Ticker objects
 
 # access each ticker using (example)
 tickers.tickers['MSFT'].info
