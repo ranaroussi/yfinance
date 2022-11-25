@@ -9,6 +9,7 @@ Specific test class:
 
 """
 import pandas as pd
+from requests import HTTPError
 
 from .context import yfinance as yf
 
@@ -149,6 +150,16 @@ class TestTickerHistory(unittest.TestCase):
         data = self.ticker.actions
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+
+    def test_metadata(self):
+        data = self.ticker.metadata
+        self.assertIsInstance(data, dict, "data has wrong type")
+        self.assertTrue(data, "data is empty")
+        self.assertIn("currency", data, "metadata seems to be missing data")
+
+    def test_metadata_should_fail_if_bad_ticker(self):
+        ticker = yf.Ticker("DOES_NOT_EXIST")
+        self.assertRaises(HTTPError, lambda _: ticker.metadata, "Did not get 404")
 
 
 class TestTickerEarnings(unittest.TestCase):

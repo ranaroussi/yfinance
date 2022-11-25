@@ -36,6 +36,7 @@ from urllib.parse import quote as urlencode
 from . import utils
 
 from . import shared
+from .exceptions import YFianceException
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
@@ -50,6 +51,7 @@ class TickerBase:
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
         self.session = session
+        self._meta = None
         self._history = None
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
@@ -81,6 +83,26 @@ class TickerBase:
         # get info and sustainability
         data = self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
         return data
+
+    def get_metadata(self, proxy=None, timeout=10) -> dict:
+        """
+        Returns the raw unparsed metadata returned from the chart response
+        """
+        if self._meta:
+            return self._meta
+
+        url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
+        params = {"range": "1d", "interval": "1d"}
+
+        response = self._data.get(url=url, params=params, proxy=proxy, timeout=timeout)
+        response.raise_for_status()
+        data = response.json()
+        try:
+            self._meta = data["chart"]["result"][0]["meta"]
+            return self._meta
+        except (KeyError, IndexError) as err:
+            raise YFianceException(f"Could not parse metadata from history data for ticker {self.ticker}."
+                                   f" Reason: {repr(err)}")
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
@@ -176,7 +198,7 @@ class TickerBase:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
 
-        #if the ticker is MUTUALFUND or ETF, then get capitalGains events
+        # if the ticker is MUTUALFUND or ETF, then get capitalGains events
         data = self.get_info(proxy)
         if not data is None and 'quoteType' in data and data['quoteType'] in ('MUTUALFUND', 'ETF'):
             params["events"] = "div,splits,capitalGains"
@@ -311,17 +333,17 @@ class TickerBase:
             # https://github.com/python/cpython/issues/81708
             startDt = _pd.Timestamp(start, unit='s')
             if dividends is not None:
-                dividends = dividends[dividends.index>=startDt]
+                dividends = dividends[dividends.index >= startDt]
             if "capitalGains" in params["events"] and capital_gains is not None:
-                capital_gains = capital_gains[capital_gains.index>=startDt]
+                capital_gains = capital_gains[capital_gains.index >= startDt]
             if splits is not None:
                 splits = splits[splits.index >= startDt]
         if end is not None:
             endDt = _pd.Timestamp(end, unit='s')
             if dividends is not None:
-                dividends = dividends[dividends.index<endDt]
+                dividends = dividends[dividends.index < endDt]
             if "capitalGains" in params["events"] and capital_gains is not None:
-                capital_gains = capital_gains[capital_gains.index<endDt]
+                capital_gains = capital_gains[capital_gains.index < endDt]
             if splits is not None:
                 splits = splits[splits.index < endDt]
         if splits is not None:
@@ -336,11 +358,14 @@ class TickerBase:
         if not intraday:
             # If localizing a midnight during DST transition hour when clocks roll back,
             # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
+            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True,
+                                                                          nonexistent='shift_forward')
             if dividends.shape[0] > 0:
-                dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
+                dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True,
+                                                                                    nonexistent='shift_forward')
             if splits.shape[0] > 0:
-                splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
+                splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True,
+                                                                              nonexistent='shift_forward')
 
         # Combine
         df = quotes.sort_index()
@@ -360,7 +385,7 @@ class TickerBase:
             if capital_gains.shape[0] > 0:
                 df = utils.safe_merge_dfs(df, capital_gains, interval)
             if "Capital Gains" in df.columns:
-                df.loc[df["Capital Gains"].isna(),"Capital Gains"] = 0
+                df.loc[df["Capital Gains"].isna(), "Capital Gains"] = 0
             else:
                 df["Capital Gains"] = 0.0
 

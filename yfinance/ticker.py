@@ -130,8 +130,12 @@ class Ticker(TickerBase):
         return self.get_actions()
 
     @property
-    def shares(self) -> _pd.DataFrame :
+    def shares(self) -> _pd.DataFrame:
         return self.get_shares()
+
+    @property
+    def metadata(self) -> dict:
+        return self.get_metadata()
 
     @property
     def info(self) -> dict:
