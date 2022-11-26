@@ -195,13 +195,17 @@ class Financials:
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
-        end = (datetime.datetime.now() + datetime.timedelta(days=366))
+        end = datetime.datetime.combine(datetime.date.today(), datetime.time(0)) + datetime.timedelta(days=1)
         url += "&period1={}&period2={}".format(int(start_dt.timestamp()), int(end.timestamp()))
 
         # Step 3: fetch and reshape data
         json_str = self._data.cache_get(url=url, proxy=proxy).text
-        json_data = json.loads(json_str)
-        data_raw = json_data["timeseries"]["result"]
+        try:
+            json_data = json.loads(json_str)
+            data_raw = json_data["timeseries"]["result"]
+        except:
+            self._data.session_cache_prune_url(url)
+            return None
         # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
         for d in data_raw:
             del d["meta"]

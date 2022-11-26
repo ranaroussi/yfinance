@@ -126,6 +126,26 @@ class TestTicker(unittest.TestCase):
         dat.history(start="2022-01-01", end="2022-03-01")
         yf.download([tkr], period="1wk")
 
+    def test_session_pruning(self):
+        url = "https://finance.yahoo.com/quote/IBM"
+
+        dat = yf.Ticker("IBM", session=self.session)
+
+        # Reset session
+        yf.enable_prune_session_cache()
+        dat._data.session_cache_prune_url(url)
+
+        # Trigger info fetch
+        dat.info
+
+        yf.disable_prune_session_cache()
+        dat._data.session_cache_prune_url(url)
+        self.assertTrue(self.session.cache.contains(url=url), "Url wrongly pruned from session")
+
+        yf.enable_prune_session_cache()
+        dat._data.session_cache_prune_url(url)
+        self.assertFalse(self.session.cache.contains(url=url), "Url not pruned from session")
+
 
 class TestTickerHistory(unittest.TestCase):
     session = None

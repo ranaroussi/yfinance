@@ -24,6 +24,8 @@ except ImportError:
 
 cache_maxsize = 64
 
+prune_session_cache = True
+
 
 def lru_cache_freezeargs(func):
     """
@@ -119,6 +121,13 @@ def decrypt_cryptojs_aes(data):
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
 
+def enable_prune_session_cache():
+    global prune_session_cache
+    prune_session_cache = True
+def disable_prune_session_cache():
+    global prune_session_cache
+    prune_session_cache = False
+
 class TickerData:
     """
     Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations
@@ -152,6 +161,29 @@ class TickerData:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
         return proxy
+
+    def session_cache_prune_url(self, url):
+        global prune_session_cache
+        if not prune_session_cache:
+            return
+
+        if not isinstance(url, str):
+            return
+
+        try:
+            c = self._session.cache
+        except AttributeError:
+            # Not a caching session
+            return
+
+        # Only import requests_cache if session has a cache attribute, 
+        # because it's an optional module
+        import requests_cache
+        if not isinstance(c, requests_cache.BaseCache):
+            # Unlikely but technically possible
+            return
+
+        c.delete(urls=[url])
 
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
@@ -188,4 +220,12 @@ class TickerData:
         new_data = re.sub(
             r'{[\'|\"]raw[\'|\"]:(.*?),(.*?)}', r'\1', new_data)
 
-        return json.loads(new_data)
+        json_data = json.loads(new_data)
+
+        try:
+            quote_summary_store = json_data['QuoteSummaryStore']
+        except KeyError:
+            # Problem with data so clear from session cache
+            self.session_cache_prune_url(ticker_url)
+
+        return json_data

@@ -37,6 +37,7 @@ class Holders:
             resp = self._data.cache_get(ticker_url + '/holders', proxy)
             holders = pd.read_html(resp.text)
         except Exception:
+            self._data.session_cache_prune_url(ticker_url + '/holders')
             holders = []
 
         if len(holders) >= 3:
