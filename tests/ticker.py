@@ -273,6 +273,14 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.quarterly_income_stmt
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_income_statement_formatting(self):
+        expected_keys = ["Total Revenue", "Basic EPS"]
+        data = self.ticker.get_income_stmt(pretty=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+
     def test_balance_sheet(self):
         expected_row = "TotalAssets"
         data = self.ticker.balance_sheet
@@ -293,6 +301,14 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.quarterly_balance_sheet
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_balance_sheet_formatting(self):
+        expected_keys = ["Total Assets", "Net PPE"]
+        data = self.ticker.get_balance_sheet(pretty=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+
     def test_cashflow(self):
         expected_row = "OperatingCashFlow"
         data = self.ticker.cashflow
@@ -312,6 +328,14 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
         data_cached = self.ticker.quarterly_cashflow
         self.assertIs(data, data_cached, "data not cached")
+
+    def test_cashflow_formatting(self):
+        expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
+        data = self.ticker.get_cashflow(pretty=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
 
     def test_sustainability(self):
         data = self.ticker.sustainability
