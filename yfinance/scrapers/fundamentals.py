@@ -100,29 +100,36 @@ class Fundamentals:
 class Fiancials:
     def __init__(self, data: TickerData):
         self._data = data
-        self._income = {}
-        self._balance_sheet = {}
-        self._cash_flow = {}
+        self._income_time_series = {}
+        self._balance_sheet_time_series = {}
+        self._cash_flow_time_series = {}
+        self._income_scraped = {}
+        self._balance_sheet_scraped = {}
+        self._cash_flow_scraped = {}
 
-    def get_income(self, freq="yearly", proxy=None) -> pd.DataFrame:
-        res = self._income
+    def get_income_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._income_time_series
         if freq not in res:
-            res[freq] = self._scrape("income", freq, proxy=None)
+            res[freq] = self._fetch_time_series("income", freq, proxy=None)
         return res[freq]
 
-    def get_balance_sheet(self, freq="yearly", proxy=None) -> pd.DataFrame:
-        res = self._balance_sheet
+    def get_balance_sheet_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._balance_sheet_time_series
         if freq not in res:
-            res[freq] = self._scrape("balance-sheet", freq, proxy=None)
+            res[freq] = self._fetch_time_series("balance-sheet", freq, proxy=None)
         return res[freq]
 
-    def get_cash_flow(self, freq="yearly", proxy=None) -> pd.DataFrame:
-        res = self._cash_flow
+    def get_cash_flow_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._cash_flow_time_series
         if freq not in res:
-            res[freq] = self._scrape("cash-flow", freq, proxy=None)
+            res[freq] = self._fetch_time_series("cash-flow", freq, proxy=None)
         return res[freq]
 
-    def _scrape(self, name, timescale, proxy=None):
+    def _fetch_time_series(self, name, timescale, proxy=None):
+        # Fetching time series preferred over scraping 'QuoteSummaryStore',
+        # because it matches what Yahoo shows. But for some tickers returns nothing, 
+        # despite 'QuoteSummaryStore' containing valid data.
+
         allowed_names = ["income", "balance-sheet", "cash-flow"]
         allowed_timescales = ["yearly", "quarterly"]
 
@@ -133,12 +140,6 @@ class Fiancials:
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
-
-            if statement.shape[0] == 0:
-                # Normally table only empty when nothing on Yahoo. So good?
-                # Except 'QuoteSummaryStore' still contains the old financial data, 
-                # is it useful to return?
-                statement = self._create_financials_table_old(name, timescale, proxy)
 
             if statement is not None:
                 return statement
@@ -162,34 +163,6 @@ class Fiancials:
 
         except Exception as e:
             pass
-
-    def _create_financials_table_old(self, name, timescale, proxy):
-        data_stores = self._data.get_json_data_stores(name, proxy)
-
-        # Fetch raw data
-        data = data_stores["QuoteSummaryStore"]
-        key1 = name.replace('-','') + "StatementHistory"
-        if timescale == "quarterly":
-            key1 += "Quarterly"
-        key2 = name.replace('-','') + "Statements"
-        data = data.get(key1)[key2]
-
-        # Tabulate
-        df = pd.DataFrame(data).drop(columns=['maxAge'])
-        for col in df.columns:
-            df[col] = df[col].replace('-', np.nan)
-        df.set_index('endDate', inplace=True)
-        try:
-            df.index = pd.to_datetime(df.index, unit='s')
-        except ValueError:
-            df.index = pd.to_datetime(df.index)
-        df = df.T
-        df.columns.name = ''
-        df.index.name = 'Breakdown'
-        # rename incorrect yahoo key
-        df.rename(index={'treasuryStock': 'Gains Losses Not Affecting Retained Earnings'}, inplace=True)
-        df.index = utils.camel2title(df.index)
-        return df
 
     def _get_datastore_keys(self, sub_page, proxy) -> list:
         data_stores = self._data.get_json_data_stores(sub_page, proxy)
@@ -263,4 +236,72 @@ class Fiancials:
         df = df.reindex([k for k in keys if k in df.index])
         df = df[sorted(df.columns, reverse=True)]
 
+        return df
+
+    def get_income_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._income_scraped
+        if freq not in res:
+            res[freq] = self._scrape("income", freq, proxy=None)
+        return res[freq]
+
+    def get_balance_sheet_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._balance_sheet_scraped
+        if freq not in res:
+            res[freq] = self._scrape("income", freq, proxy=None)
+        return res[freq]
+
+    def get_cash_flow_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
+        res = self._cash_flow_scraped
+        if freq not in res:
+            res[freq] = self._scrape("income", freq, proxy=None)
+        return res[freq]
+
+    def _scrape(self, name, timescale, proxy=None):
+        # Backup in case _fetch_time_series() fails to return data
+
+        allowed_names = ["income", "balance-sheet", "cash-flow"]
+        allowed_timescales = ["yearly", "quarterly"]
+
+        if name not in allowed_names:
+            raise ValueError("Illegal argument: name must be one of: {}".format(allowed_names))
+        if timescale not in allowed_timescales:
+            raise ValueError("Illegal argument: timescale must be one of: {}".format(allowed_names))
+
+        try:
+            # Normally table only empty when nothing on Yahoo. So good?
+            # Except 'QuoteSummaryStore' still contains the old financial data, 
+            # is it useful to return?
+            statement = self._create_financials_table_old(name, timescale, proxy)
+
+            if statement is not None:
+                return statement
+        except YFianceException as e:
+            print("Failed to create financials table for {} reason: {}".format(name, repr(e)))
+        return pd.DataFrame()
+
+    def _create_financials_table_old(self, name, timescale, proxy):
+        data_stores = self._data.get_json_data_stores("financials", proxy)
+
+        # Fetch raw data
+        data = data_stores["QuoteSummaryStore"]
+        key2 = name.replace('-','') + "StatementHistory"
+        if timescale == "quarterly":
+            key1 = key2 + "Quarterly"
+        data = data.get(key1)[key2]
+
+        # Tabulate
+        df = pd.DataFrame(data).drop(columns=['maxAge'])
+        for col in df.columns:
+            df[col] = df[col].replace('-', np.nan)
+        df.set_index('endDate', inplace=True)
+        try:
+            df.index = pd.to_datetime(df.index, unit='s')
+        except ValueError:
+            df.index = pd.to_datetime(df.index)
+        df = df.T
+        df.columns.name = ''
+        df.index.name = 'Breakdown'
+        # rename incorrect yahoo key
+        df.rename(index={'treasuryStock': 'Gains Losses Not Affecting Retained Earnings'}, inplace=True)
+        df.index = utils.camel2title(df.index)
         return df

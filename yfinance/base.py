@@ -757,23 +757,38 @@ class TickerBase:
             return dict_data
         return data
 
-    def get_income_stmt(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_income_stmt(self, proxy=None, as_dict=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_income(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
+
+        if (data is None or data.empty) and fallback:
+            print(f"{self.ticker}: Yahoo not displaying {freq}-income so falling back to old table format")
+            data = self._fundamentals.financials.get_income_scrape(freq=freq, proxy=proxy)
+
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_balance_sheet(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_balance_sheet(self, proxy=None, as_dict=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_balance_sheet(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
+
+        if (data is None or data.empty) and fallback:
+            print(f"{self.ticker}: Yahoo not displaying {freq}-balance-sheet so falling back to old table format")
+            data = self._fundamentals.financials.get_balance_sheet_scrape(freq=freq, proxy=proxy)
+
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_cashflow(self, proxy=None, as_dict=False, freq="yearly"):
+    def get_cashflow(self, proxy=None, as_dict=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_cash_flow(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
+
+        if (data is None or data.empty) and fallback:
+            print(f"{self.ticker}: Yahoo not displaying {freq}-cashflow so falling back to old table format")
+            data = self._fundamentals.financials.get_cash_flow_scrape(freq=freq, proxy=proxy)
+
         if as_dict:
             return data.to_dict()
         return data
