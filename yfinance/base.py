@@ -761,6 +761,7 @@ class TickerBase:
         self._fundamentals.proxy = proxy
         data = self._fundamentals.financials.get_income(freq=freq, proxy=proxy)
         if pretty:
+            data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
         if as_dict:
             return data.to_dict()
@@ -770,6 +771,7 @@ class TickerBase:
         self._fundamentals.proxy = proxy
         data = self._fundamentals.financials.get_balance_sheet(freq=freq, proxy=proxy)
         if pretty:
+            data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
@@ -779,6 +781,7 @@ class TickerBase:
         self._fundamentals.proxy = proxy
         data = self._fundamentals.financials.get_cash_flow(freq=freq, proxy=proxy)
         if pretty:
+            data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
