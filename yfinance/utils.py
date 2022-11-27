@@ -241,8 +241,46 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
     return _statement
 
 
-def camel2title(o):
-    return [_re.sub("([a-z])([A-Z])", r"\g<1> \g<2>", i).title() for i in o]
+def camel2title(strings: list[str], sep: str=' ', acronyms: list[str] | None =None) -> list[str]:
+    if isinstance(strings, str) or not hasattr(strings, '__iter__') or not isinstance(strings[0], str):
+        raise Exception("camel2title() 'strings' argument must be iterable of strings")
+    if not isinstance(sep, str) or len(sep) != 1:
+        raise Exception(f"camel2title() 'sep' argument = '{sep}' must be single character")
+    if _re.match("[a-zA-Z0-9]", sep):
+        raise Exception(f"camel2title() 'sep' argument = '{sep}' cannot be alpha-numeric")
+    if _re.escape(sep) != sep and sep not in {' ', '-'}:
+        # Permit some exceptions, I don't understand why they get escaped
+        raise Exception(f"camel2title() 'sep' argument = '{sep}' cannot be special character")
+
+    if acronyms is None:
+        pat = "([a-z])([A-Z])"
+        rep = rf"\g<1>{sep}\g<2>"
+        return [_re.sub(pat, rep, s).title() for s in strings]
+
+    # Handling acronyms requires more care. Assumes Yahoo returns acronym strings upper-case
+    if isinstance(acronyms, str) or not hasattr(acronyms, '__iter__') or not isinstance(acronyms[0], str):
+        raise Exception("camel2title() 'acronyms' argument must be iterable of strings")
+    for a in acronyms:
+        if not _re.match("^[A-Z]+$", a):
+            raise Exception(f"camel2title() 'acronyms' argument must only contain upper-case, but '{a}' detected")
+
+    # Insert 'sep' between lower-then-upper-case
+    pat = "([a-z])([A-Z])"
+    rep = rf"\g<1>{sep}\g<2>"
+    strings = [_re.sub(pat, rep, s) for s in strings]
+
+    # Insert 'sep' after acronyms
+    for a in acronyms:
+        pat = f"({a})([A-Z][a-z])"
+        rep = rf"\g<1>{sep}\g<2>"
+        strings = [_re.sub(pat, rep, s) for s in strings]
+
+    # Apply str.title() to non-acronym words
+    strings = [s.split(sep) for s in strings]
+    strings = [ [j.title() if not j in acronyms else j for j in s] for s in strings]
+    strings = [sep.join(s) for s in strings]
+
+    return strings
 
 
 def _parse_user_dt(dt, exchange_tz):
@@ -481,7 +519,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
         new_index = None
 
     if new_index is not None:
-        new_index = new_index.tz_localize(df.index.tz, ambiguous=True)
+        new_index = new_index.tz_localize(df.index.tz, ambiguous=True, nonexistent='shift_forward')
         df_sub = _reindex_events(df_sub, new_index, data_col)
         df = df_main.join(df_sub)
 

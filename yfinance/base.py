@@ -336,11 +336,11 @@ class TickerBase:
         if not intraday:
             # If localizing a midnight during DST transition hour when clocks roll back,
             # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True)
+            quotes.index = _pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
             if dividends.shape[0] > 0:
-                dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True)
+                dividends.index = _pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
             if splits.shape[0] > 0:
-                splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True)
+                splits.index = _pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
 
         # Combine
         df = quotes.sort_index()
@@ -757,38 +757,44 @@ class TickerBase:
             return dict_data
         return data
 
-    def get_income_stmt(self, proxy=None, as_dict=False, freq="yearly", fallback=True):
+    def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_income(freq=freq, proxy=proxy)
 
         if (data is None or data.empty) and fallback:
             print(f"{self.ticker}: Yahoo not displaying {freq}-income so falling back to old table format")
             data = self._fundamentals.financials.get_income_scrape(freq=freq, proxy=proxy)
-
+            
+        if pretty:
+            data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_balance_sheet(self, proxy=None, as_dict=False, freq="yearly", fallback=True):
+    def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_balance_sheet(freq=freq, proxy=proxy)
 
         if (data is None or data.empty) and fallback:
             print(f"{self.ticker}: Yahoo not displaying {freq}-balance-sheet so falling back to old table format")
             data = self._fundamentals.financials.get_balance_sheet_scrape(freq=freq, proxy=proxy)
-
+            
+        if pretty:
+            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_cashflow(self, proxy=None, as_dict=False, freq="yearly", fallback=True):
+    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
-
+        data = self._fundamentals.financials.get_cash_flow(freq=freq, proxy=proxy)
+        
         if (data is None or data.empty) and fallback:
             print(f"{self.ticker}: Yahoo not displaying {freq}-cashflow so falling back to old table format")
             data = self._fundamentals.financials.get_cash_flow_scrape(freq=freq, proxy=proxy)
 
+        if pretty:
+            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
