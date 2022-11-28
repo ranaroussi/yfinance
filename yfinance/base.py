@@ -694,6 +694,16 @@ class TickerBase:
             pass
 
         try:
+            if 'fundProfile' in data:
+                # replace annual report expense ratio with fund profile expense ratio
+                self.info['annualReportExpenseRatio'] = data.get(
+                    'fundProfile', {}).get('feesExpensesInvestment',
+                                           {}).get('annualReportExpenseRatio',
+                                                   None)
+        except Exception:
+            pass
+
+        try:
             if not isinstance(data.get('summaryDetail'), dict):
                 # For some reason summaryDetail did not give any results. The price dict
                 # usually has most of the same info
