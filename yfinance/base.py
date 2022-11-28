@@ -177,11 +177,7 @@ class TickerBase:
             proxy = {"https": proxy}
 
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
-        data = self.get_info(proxy)
-        if not data is None and 'quoteType' in data and data['quoteType'] in ('MUTUALFUND', 'ETF'):
-            params["events"] = "div,splits,capitalGains"
-        else:
-            params["events"] = "div,splits"
+        params["events"] = "div,splits,capitalGains"
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
@@ -269,6 +265,9 @@ class TickerBase:
             except Exception:
                 pass
 
+        # Select useful info from metadata
+        quote_type = data["chart"]["result"][0]["meta"]["instrumentType"]
+        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
         # Note: ordering is important. If you change order, run the tests!
@@ -306,13 +305,16 @@ class TickerBase:
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
+        if not expect_capital_gains:
+            capital_gains = None
+
         if start is not None:
             # Note: use pandas Timestamp as datetime.utcfromtimestamp has bugs on windows
             # https://github.com/python/cpython/issues/81708
             startDt = _pd.Timestamp(start, unit='s')
             if dividends is not None:
                 dividends = dividends[dividends.index>=startDt]
-            if "capitalGains" in params["events"] and capital_gains is not None:
+            if capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index>=startDt]
             if splits is not None:
                 splits = splits[splits.index >= startDt]
@@ -320,7 +322,7 @@ class TickerBase:
             endDt = _pd.Timestamp(end, unit='s')
             if dividends is not None:
                 dividends = dividends[dividends.index<endDt]
-            if "capitalGains" in params["events"] and capital_gains is not None:
+            if capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index<endDt]
             if splits is not None:
                 splits = splits[splits.index < endDt]
@@ -356,7 +358,7 @@ class TickerBase:
             df.loc[df["Stock Splits"].isna(), "Stock Splits"] = 0
         else:
             df["Stock Splits"] = 0.0
-        if "capitalGains" in params["events"]:
+        if expect_capital_gains:
             if capital_gains.shape[0] > 0:
                 df = utils.safe_merge_dfs(df, capital_gains, interval)
             if "Capital Gains" in df.columns:
