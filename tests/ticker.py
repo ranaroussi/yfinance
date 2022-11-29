@@ -135,6 +135,26 @@ class TestTickerHistory(unittest.TestCase):
     def tearDown(self):
         self.ticker = None
 
+    def test_history(self):
+        data = self.ticker.history("1y")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+    def test_no_expensive_calls_introduced(self):
+        """
+        Make sure calling history to get price data has not introduced more calls to yahoo than absolutely necessary.
+        As doing other type of scraping calls than "query2.finance.yahoo.com/v8/finance/chart" to yahoo website
+        will quickly trigger spam-block when doing bulk download of history data.
+        """
+        session = requests_cache.CachedSession(backend='memory')
+        ticker = yf.Ticker("GOOGL", session=session)
+        ticker.history("1y")
+        actual_urls_called = tuple(session.cache.urls)
+        expected_urls = (
+            'https://query2.finance.yahoo.com/v8/finance/chart/GOOGL?range=1y&interval=1d&includePrePost=False&events=div%2Csplits%2CcapitalGains',
+        )
+        self.assertEquals(expected_urls, actual_urls_called, "Different than expected url used to fetch history.")
+
     def test_dividends(self):
         data = self.ticker.dividends
         self.assertIsInstance(data, pd.Series, "data has wrong type")
