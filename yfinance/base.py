@@ -378,7 +378,7 @@ class TickerBase:
 
         data_cols = [c for c in ["Open","High","Low","Close","Adj Close"] if c in df_row.index]
 
-        # If interval is weekly then can construct with daily. But if smaller intervals then 
+        # If interval is weekly then can construct with daily. But if smaller intervals then
         # restricted to recent times:
         # - daily = hourly restricted to last 730 days
         sub_interval = None
@@ -963,7 +963,7 @@ class TickerBase:
             self._analyst_price_target = None
         earnings_estimate = []
         revenue_estimate = []
-        if len(self._analyst_trend_details) != 0:
+        if self._analyst_trend_details:
             for key in analysis_data['earningsTrend']['trend']:
                 try:
                     earnings_dict = key['earningsEstimate']
