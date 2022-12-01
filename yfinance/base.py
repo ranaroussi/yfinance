@@ -759,7 +759,7 @@ class TickerBase:
 
     def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_income(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
 
         if (data is None or data.empty) and fallback:
             print(f"{self.ticker}: Yahoo not displaying {freq}-income so falling back to old table format")
@@ -773,7 +773,7 @@ class TickerBase:
 
     def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_balance_sheet(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
 
         if (data is None or data.empty) and fallback:
             print(f"{self.ticker}: Yahoo not displaying {freq}-balance-sheet so falling back to old table format")
@@ -787,7 +787,7 @@ class TickerBase:
 
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", fallback=True):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_cash_flow(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
         
         if (data is None or data.empty) and fallback:
             print(f"{self.ticker}: Yahoo not displaying {freq}-cashflow so falling back to old table format")

@@ -247,13 +247,13 @@ class Fiancials:
     def get_balance_sheet_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._balance_sheet_scraped
         if freq not in res:
-            res[freq] = self._scrape("income", freq, proxy=None)
+            res[freq] = self._scrape("balance-sheet", freq, proxy=None)
         return res[freq]
 
     def get_cash_flow_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._cash_flow_scraped
         if freq not in res:
-            res[freq] = self._scrape("income", freq, proxy=None)
+            res[freq] = self._scrape("cash-flow", freq, proxy=None)
         return res[freq]
 
     def _scrape(self, name, timescale, proxy=None):
@@ -268,9 +268,6 @@ class Fiancials:
             raise ValueError("Illegal argument: timescale must be one of: {}".format(allowed_names))
 
         try:
-            # Normally table only empty when nothing on Yahoo. So good?
-            # Except 'QuoteSummaryStore' still contains the old financial data, 
-            # is it useful to return?
             statement = self._create_financials_table_old(name, timescale, proxy)
 
             if statement is not None:
@@ -283,14 +280,29 @@ class Fiancials:
         data_stores = self._data.get_json_data_stores("financials", proxy)
 
         # Fetch raw data
+        if not "QuoteSummaryStore" in data_stores:
+            return pd.DataFrame()
         data = data_stores["QuoteSummaryStore"]
-        key2 = name.replace('-','') + "StatementHistory"
+
+        if name == "cash-flow":
+            key1 = "cashflowStatement"
+            key2 = "cashflowStatements"
+        elif name == "balance-sheet":
+            key1 = "balanceSheet"
+            key2 = "balanceSheetStatements"
+        else:
+            key1 = "incomeStatement"
+            key2 = "incomeStatementHistory"
+        key1 += "History"
         if timescale == "quarterly":
-            key1 = key2 + "Quarterly"
+            key1 += "Quarterly"
         data = data.get(key1)[key2]
 
         # Tabulate
-        df = pd.DataFrame(data).drop(columns=['maxAge'])
+        df = pd.DataFrame(data)
+        if len(df) == 0:
+            return pd.DataFrame()
+        df = df.drop(columns=['maxAge'])
         for col in df.columns:
             df[col] = df[col].replace('-', np.nan)
         df.set_index('endDate', inplace=True)
@@ -302,6 +314,10 @@ class Fiancials:
         df.columns.name = ''
         df.index.name = 'Breakdown'
         # rename incorrect yahoo key
-        df.rename(index={'treasuryStock': 'Gains Losses Not Affecting Retained Earnings'}, inplace=True)
-        df.index = utils.camel2title(df.index)
+        df.rename(index={'treasuryStock': 'gainsLossesNotAffectingRetainedEarnings'}, inplace=True)
+
+        # Upper-case first letter, leave rest unchanged:
+        s0 = df.index[0]
+        df.index = [s[0].upper()+s[1:] for s in df.index]
+
         return df
