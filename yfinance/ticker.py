@@ -155,19 +155,19 @@ class Ticker(TickerBase):
 
     @property
     def income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt()
+        return self.get_income_stmt(pretty=True)
 
     @property
     def quarterly_income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(freq='quarterly')
+        return self.get_income_stmt(pretty=True, freq='quarterly')
 
     @property
     def balance_sheet(self) -> _pd.DataFrame:
-        return self.get_balance_sheet()
+        return self.get_balance_sheet(pretty=True)
 
     @property
     def quarterly_balance_sheet(self) -> _pd.DataFrame:
-        return self.get_balance_sheet(freq='quarterly')
+        return self.get_balance_sheet(pretty=True, freq='quarterly')
 
     @property
     def balancesheet(self) -> _pd.DataFrame:
@@ -179,11 +179,11 @@ class Ticker(TickerBase):
 
     @property
     def cashflow(self) -> _pd.DataFrame:
-        return self.get_cashflow(freq="yearly")
+        return self.get_cashflow(pretty=True, freq="yearly")
 
     @property
     def quarterly_cashflow(self) -> _pd.DataFrame:
-        return self.get_cashflow(freq='quarterly')
+        return self.get_cashflow(pretty=True, freq='quarterly')
 
     @property
     def recommendations_summary(self):
