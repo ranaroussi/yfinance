@@ -36,6 +36,26 @@ class TestPriceHistory(unittest.TestCase):
                 f = df.index.time == _dt.time(0)
                 self.assertTrue(f.all())
 
+    def test_duplicatingHourly(self):
+        tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+
+            dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
+            dt = dt_utc.astimezone(_tz.timezone(tz))
+
+            df = dat.history(start=dt.date() - _dt.timedelta(days=1), interval="1h")
+
+            dt0 = df.index[-2]
+            dt1 = df.index[-1]
+            try:
+                self.assertNotEqual(dt0.hour, dt1.hour)
+            except:
+                print("Ticker = ", tkr)
+                raise
+
+
     def test_duplicatingDaily(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         test_run = False
