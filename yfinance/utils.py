@@ -301,6 +301,7 @@ def _parse_user_dt(dt, exchange_tz):
 
 
 def auto_adjust(data):
+    col_order = data.columns
     df = data.copy()
     ratio = df["Close"] / df["Adj Close"]
     df["Adj Open"] = df["Open"] / ratio
@@ -316,13 +317,13 @@ def auto_adjust(data):
         "Adj Low": "Low", "Adj Close": "Close"
     }, inplace=True)
 
-    df = df[["Open", "High", "Low", "Close", "Volume"]]
-    return df[["Open", "High", "Low", "Close", "Volume"]]
+    return df[[c for c in col_order if c in df.columns]]
 
 
 def back_adjust(data):
     """ back-adjusted data to mimic true historical prices """
 
+    col_order = data.columns
     df = data.copy()
     ratio = df["Adj Close"] / df["Close"]
     df["Adj Open"] = df["Open"] * ratio
@@ -338,7 +339,7 @@ def back_adjust(data):
         "Adj Low": "Low"
     }, inplace=True)
 
-    return df[["Open", "High", "Low", "Close", "Volume"]]
+    return df[[c for c in col_order if c in df.columns]]
 
 
 def parse_quotes(data):
@@ -589,13 +590,15 @@ def safe_merge_dfs(df_main, df_sub, interval):
         ## Not always possible to match events with trading, e.g. when released pre-market.
         ## So have to append to bottom with nan prices.
         ## But should only be impossible with intra-day price data.
-        if interval.endswith('m') or interval.endswith('h'):
+        if interval.endswith('m') or interval.endswith('h') or interval == "1d":
+            # Update: is possible with daily data when dividend very recent
             f_missing = ~df_sub.index.isin(df.index)
             df_sub_missing = df_sub[f_missing]
             keys = {"Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close",
                     "Close"}.intersection(df.columns)
             df_sub_missing[list(keys)] = _np.nan
-            df = _pd.concat([df, df_sub_missing], sort=True)
+            col_ordering = df.columns
+            df = _pd.concat([df, df_sub_missing], sort=True)[col_ordering]
         else:
             raise Exception("Lost data during merge despite all attempts to align data (see above)")
 
