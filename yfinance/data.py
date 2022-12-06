@@ -49,8 +49,6 @@ class TickerData:
         self.ticker = ticker
         self._session = session or requests
 
-    @lru_cache_freezeargs
-    @lru_cache(maxsize=cache_maxsize)
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
         proxy = self._get_proxy(proxy)
         response = self._session.get(
@@ -60,6 +58,11 @@ class TickerData:
             timeout=timeout,
             headers=user_agent_headers or self.user_agent_headers)
         return response
+
+    @lru_cache_freezeargs
+    @lru_cache(maxsize=cache_maxsize)
+    def cache_get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        return self.get(url, user_agent_headers, params, proxy, timeout)
 
     def _get_proxy(self, proxy):
         # setup proxy in requests format
