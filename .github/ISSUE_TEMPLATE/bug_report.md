@@ -27,6 +27,10 @@ Visit `finance.yahoo.com` and confim they have your data. Maybe your ticker was 
 
 Then check that you are spelling ticker *exactly* same as Yahoo.
 
+### Are you spamming Yahoo?
+
+Yahoo Finance free service has limit on query rate (roughly 100/s). Them delaying or blocking your spam is not a bug.
+
 ### Still think it's a bug?
 
 Delete this default message and submit your bug report here, providing the following as best you can:
