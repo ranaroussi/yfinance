@@ -185,7 +185,15 @@ class TickerBase:
         data = None
 
         try:
-            data = self._data.get(
+            get_fn = self._data.get
+            if end is not None:
+                end_dt = _pd.Timestamp(end, unit='s').tz_localize("UTC")
+                dt_now = end_dt.tzinfo.localize(_datetime.datetime.utcnow())
+                data_delay = _datetime.timedelta(minutes=30)
+                if end_dt+data_delay <= dt_now:
+                    # Date range in past so safe to fetch through cache:
+                    get_fn = self._data.cache_get
+            data = get_fn(
                 url=url,
                 params=params,
                 timeout=timeout
@@ -639,7 +647,7 @@ class TickerBase:
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
 
         try:
-            data = self._data.get(url=url, params=params, proxy=proxy, timeout=timeout)
+            data = self._data.cache_get(url=url, params=params, proxy=proxy, timeout=timeout)
             data = data.json()
         except Exception as e:
             if debug_mode:
@@ -874,7 +882,7 @@ class TickerBase:
         url = 'https://markets.businessinsider.com/ajax/' \
               'SearchController_Suggest?max_results=25&query=%s' \
               % urlencode(q)
-        data = self._data.get(url=url, proxy=proxy).text
+        data = self._data.cache_get(url=url, proxy=proxy).text
 
         search_str = '"{}|'.format(ticker)
         if search_str not in data:
@@ -896,7 +904,7 @@ class TickerBase:
 
         # Getting data from json
         url = "{}/v1/finance/search?q={}".format(self._base_url, self.ticker)
-        data = self._data.get(url=url, proxy=proxy)
+        data = self._data.cache_get(url=url, proxy=proxy)
         if "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -927,7 +935,7 @@ class TickerBase:
             url = "{}/calendar/earnings?symbol={}&offset={}&size={}".format(
                 _ROOT_URL_, self.ticker, page_offset, page_size)
 
-            data = self._data.get(url=url, proxy=proxy).text
+            data = self._data.cache_get(url=url, proxy=proxy).text
 
             if "Will be right back" in data:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"

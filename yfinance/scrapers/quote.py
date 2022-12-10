@@ -198,7 +198,7 @@ class Quote:
                 int((datetime.datetime.now() - datetime.timedelta(days=365 // 2)).timestamp()))
             url += "&period2={}".format(int((datetime.datetime.now() + datetime.timedelta(days=1)).timestamp()))
 
-            json_str = self._data.get(url=url, proxy=proxy).text
+            json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
             key_stats = json_data["timeseries"]["result"][0]
             if k not in key_stats:
