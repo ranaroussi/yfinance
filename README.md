@@ -75,17 +75,17 @@ msft.capital_gains
 # show share count
 msft.shares
 
-# show income statement
+# Financials:
+# - income statement
 msft.income_stmt
 msft.quarterly_income_stmt
-
-# show balance sheet
+# - balance sheet
 msft.balance_sheet
 msft.quarterly_balance_sheet
-
-# show cash flow statement
+# - cash flow statement
 msft.cashflow
 msft.quarterly_cashflow
+# see `Ticker.get_income_stmt()` for more options
 
 # show major holders
 msft.major_holders
