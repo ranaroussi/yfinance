@@ -149,11 +149,12 @@ class TestTickerHistory(unittest.TestCase):
         session = requests_cache.CachedSession(backend='memory')
         ticker = yf.Ticker("GOOGL", session=session)
         ticker.history("1y")
-        actual_urls_called = tuple(session.cache.urls)
+        actual_urls_called = tuple([r.url for r in session.cache.filter()])
+        session.close()
         expected_urls = (
             'https://query2.finance.yahoo.com/v8/finance/chart/GOOGL?range=1y&interval=1d&includePrePost=False&events=div%2Csplits%2CcapitalGains',
         )
-        self.assertEquals(expected_urls, actual_urls_called, "Different than expected url used to fetch history.")
+        self.assertEqual(expected_urls, actual_urls_called, "Different than expected url used to fetch history.")
 
     def test_dividends(self):
         data = self.ticker.dividends
