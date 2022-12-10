@@ -177,11 +177,7 @@ class TickerBase:
             proxy = {"https": proxy}
 
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
-        data = self.get_info(proxy)
-        if not data is None and 'quoteType' in data and data['quoteType'] in ('MUTUALFUND', 'ETF'):
-            params["events"] = "div,splits,capitalGains"
-        else:
-            params["events"] = "div,splits"
+        params["events"] = "div,splits,capitalGains"
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
@@ -269,50 +265,28 @@ class TickerBase:
             except Exception:
                 pass
 
+        # Select useful info from metadata
+        quote_type = data["chart"]["result"][0]["meta"]["instrumentType"]
+        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
         tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
 
         # Note: ordering is important. If you change order, run the tests!
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
-        if repair:
-            # Do this before auto/back adjust
-            quotes = self._fix_zero_prices(quotes, interval, tz_exchange)
-            quotes = self._fix_unit_mixups(quotes, interval, tz_exchange)
-
-        # Auto/back adjust
-        try:
-            if auto_adjust:
-                quotes = utils.auto_adjust(quotes)
-            elif back_adjust:
-                quotes = utils.back_adjust(quotes)
-        except Exception as e:
-            if auto_adjust:
-                err_msg = "auto_adjust failed with %s" % e
-            else:
-                err_msg = "back_adjust failed with %s" % e
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
-            if debug:
-                if raise_errors:
-                    raise Exception('%s: %s' % (self.ticker, err_msg))
-                else:
-                    print('%s: %s' % (self.ticker, err_msg))
-
-        if rounding:
-            quotes = _np.round(quotes, data[
-                "chart"]["result"][0]["meta"]["priceHint"])
-        quotes['Volume'] = quotes['Volume'].fillna(0).astype(_np.int64)
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
+        if not expect_capital_gains:
+            capital_gains = None
+
         if start is not None:
             # Note: use pandas Timestamp as datetime.utcfromtimestamp has bugs on windows
             # https://github.com/python/cpython/issues/81708
             startDt = _pd.Timestamp(start, unit='s')
             if dividends is not None:
                 dividends = dividends[dividends.index>=startDt]
-            if "capitalGains" in params["events"] and capital_gains is not None:
+            if capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index>=startDt]
             if splits is not None:
                 splits = splits[splits.index >= startDt]
@@ -320,7 +294,7 @@ class TickerBase:
             endDt = _pd.Timestamp(end, unit='s')
             if dividends is not None:
                 dividends = dividends[dividends.index<endDt]
-            if "capitalGains" in params["events"] and capital_gains is not None:
+            if capital_gains is not None:
                 capital_gains = capital_gains[capital_gains.index<endDt]
             if splits is not None:
                 splits = splits[splits.index < endDt]
@@ -356,13 +330,42 @@ class TickerBase:
             df.loc[df["Stock Splits"].isna(), "Stock Splits"] = 0
         else:
             df["Stock Splits"] = 0.0
-        if "capitalGains" in params["events"]:
+        if expect_capital_gains:
             if capital_gains.shape[0] > 0:
                 df = utils.safe_merge_dfs(df, capital_gains, interval)
             if "Capital Gains" in df.columns:
                 df.loc[df["Capital Gains"].isna(),"Capital Gains"] = 0
             else:
                 df["Capital Gains"] = 0.0
+
+        if repair:
+            # Do this before auto/back adjust
+            df = self._fix_zero_prices(df, interval, tz_exchange)
+            df = self._fix_unit_mixups(df, interval, tz_exchange)
+
+        # Auto/back adjust
+        try:
+            if auto_adjust:
+                df = utils.auto_adjust(df)
+            elif back_adjust:
+                df = utils.back_adjust(df)
+        except Exception as e:
+            if auto_adjust:
+                err_msg = "auto_adjust failed with %s" % e
+            else:
+                err_msg = "back_adjust failed with %s" % e
+            shared._DFS[self.ticker] = utils.empty_df()
+            shared._ERRORS[self.ticker] = err_msg
+            if debug:
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
+                else:
+                    print('%s: %s' % (self.ticker, err_msg))
+
+        if rounding:
+            df = _np.round(df, data[
+                "chart"]["result"][0]["meta"]["priceHint"])
+        df['Volume'] = df['Volume'].fillna(0).astype(_np.int64)
 
         if intraday:
             df.index.name = "Datetime"
@@ -416,48 +419,46 @@ class TickerBase:
             new_vals = {}
 
             if sub_interval == "1h":
-                df_fine = self.history(start=start, end=start + td_range, interval=sub_interval, auto_adjust=False)
+                df_fine = self.history(start=start, end=start + td_range, interval=sub_interval, auto_adjust=False, prepost=True)
             else:
                 df_fine = self.history(start=start - td_range, end=start + td_range, interval=sub_interval,
                                        auto_adjust=False)
 
             # First, check whether df_fine has different split-adjustment than df_row.
-            # If it is different, then adjust df_fine to match df_row
+            # If different, then adjust df_fine to match df_row
             good_fields = list(set(data_cols) - set(bad_fields) - set("Adj Close"))
-            if len(good_fields) == 0:
-                raise Exception(
-                    "No good fields, so cannot determine whether different split-adjustment. Contact developers")
-            # median = df_row.loc[good_fields].median()
-            # median_fine = _np.median(df_fine[good_fields].values)
-            # ratio = median/median_fine
-            # Better method to calculate split-adjustment:
-            df_fine_from_idx = df_fine[df_fine.index >= idx]
-            ratios = []
-            for f in good_fields:
-                if f == "Low":
-                    ratios.append(df_row[f] / df_fine_from_idx[f].min())
-                elif f == "High":
-                    ratios.append(df_row[f] / df_fine_from_idx[f].max())
-                elif f == "Open":
-                    ratios.append(df_row[f] / df_fine_from_idx[f].iloc[0])
-                elif f == "Close":
-                    ratios.append(df_row[f] / df_fine_from_idx[f].iloc[-1])
-            ratio = _np.mean(ratios)
-            #
-            ratio_rcp = round(1.0 / ratio, 1)
-            ratio = round(ratio, 1)
-            if ratio == 1 and ratio_rcp == 1:
-                # Good!
-                pass
-            else:
-                if ratio > 1:
-                    # data has different split-adjustment than fine-grained data
-                    # Adjust fine-grained to match
-                    df_fine[data_cols] *= ratio
-                elif ratio_rcp > 1:
-                    # data has different split-adjustment than fine-grained data
-                    # Adjust fine-grained to match
-                    df_fine[data_cols] *= 1.0 / ratio_rcp
+            if len(good_fields) > 0:
+                # median = df_row.loc[good_fields].median()
+                # median_fine = _np.median(df_fine[good_fields].values)
+                # ratio = median/median_fine
+                # Better method to calculate split-adjustment:
+                df_fine_from_idx = df_fine[df_fine.index >= idx]
+                ratios = []
+                for f in good_fields:
+                    if f == "Low":
+                        ratios.append(df_row[f] / df_fine_from_idx[f].min())
+                    elif f == "High":
+                        ratios.append(df_row[f] / df_fine_from_idx[f].max())
+                    elif f == "Open":
+                        ratios.append(df_row[f] / df_fine_from_idx[f].iloc[0])
+                    elif f == "Close":
+                        ratios.append(df_row[f] / df_fine_from_idx[f].iloc[-1])
+                ratio = _np.mean(ratios)
+                #
+                ratio_rcp = round(1.0 / ratio, 1)
+                ratio = round(ratio, 1)
+                if ratio == 1 and ratio_rcp == 1:
+                    # Good!
+                    pass
+                else:
+                    if ratio > 1:
+                        # data has different split-adjustment than fine-grained data
+                        # Adjust fine-grained to match
+                        df_fine[data_cols] *= ratio
+                    elif ratio_rcp > 1:
+                        # data has different split-adjustment than fine-grained data
+                        # Adjust fine-grained to match
+                        df_fine[data_cols] *= 1.0 / ratio_rcp
 
             if sub_interval != "1h":
                 df_last_week = df_fine[df_fine.index < idx]
@@ -481,6 +482,8 @@ class TickerBase:
                 new_vals["Close"] = df_fine["Close"].iloc[-1]
                 # Assume 'Adj Close' also corrupted, easier than detecting whether true
                 new_vals["Adj Close"] = df_fine["Adj Close"].iloc[-1]
+            if "Volume" in bad_fields:
+                new_vals["Volume"] = df_fine["Volume"].sum()
 
         return new_vals
 
@@ -565,7 +568,9 @@ class TickerBase:
         return df2
 
     def _fix_zero_prices(self, df, interval, tz_exchange):
-        # Sometimes Yahoo returns prices=0 when obviously wrong e.g. Volume>0 and Close>0.
+        # Sometimes Yahoo returns prices=0 or NaN, but obviously wrong because e.g.:
+        # - Volume > 0 and Close > 0
+        # - Dividends or Stock Splits > 0
         # Easy to detect and fix
 
         if df.shape[0] == 0:
@@ -581,15 +586,17 @@ class TickerBase:
         else:
             df2.index = df2.index.tz_convert(tz_exchange)
 
-        data_cols = ["Open", "High", "Low", "Close"]
-        data_cols = [c for c in data_cols if c in df2.columns]
-        f_zeroes = (df2[data_cols] == 0.0).values.any(axis=1)
+        data_cols = [c for c in ["Open", "High", "Low", "Close"] if c in df2.columns]
+        f_zero_or_nan = (df2[data_cols] == 0.0).values.any(axis=1) | df2[data_cols].isna().values.any(axis=1)
+        f_fixable = (df2[[c for c in ["Close","Volume","Dividends","Stock Splits"] if c in df2.columns]]>0).any(axis=1)
+        f_repair = f_zero_or_nan & f_fixable
 
         n_fixed = 0
-        for i in _np.where(f_zeroes)[0]:
+        data_cols += ["Adj Close", "Volume"]
+        for i in _np.where(f_repair)[0]:
             idx = df2.index[i]
-            df_row = df2.loc[idx]
-            bad_fields = df2.columns[df_row.values == 0.0].values
+            df_row = df2.loc[idx, data_cols]
+            bad_fields = df_row.index[(df_row.values==0.0)|df_row.isna().values].values
             new_values = self._reconstruct_interval(df2.loc[idx], interval, bad_fields)
             if not new_values is None:
                 for k in new_values:
@@ -766,6 +773,7 @@ class TickerBase:
             data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
             
         if pretty:
+            data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
         if as_dict:
             return data.to_dict()
@@ -780,6 +788,7 @@ class TickerBase:
             data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
 
         if pretty:
+            data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
@@ -794,6 +803,7 @@ class TickerBase:
             data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
 
         if pretty:
+            data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()

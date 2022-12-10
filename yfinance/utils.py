@@ -22,7 +22,7 @@
 from __future__ import print_function
 
 import datetime as _datetime
-from typing import Dict, Union
+from typing import Dict, Union, List, Optional
 
 import pytz as _tz
 import requests as _requests
@@ -216,7 +216,7 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
     else:
         _statement = Annual
 
-    _statement.index = camel2title(_statement.T)
+    _statement.index = camel2title(_statement.T.index)
     _statement['level_detail'] = level_detail
     _statement = _statement.set_index([_statement.index, 'level_detail'])
     _statement = _statement[sorted(_statement.columns, reverse=True)]
@@ -241,16 +241,16 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
     return _statement
 
 
-def camel2title(strings: list[str], sep: str=' ', acronyms: list[str] | None =None) -> list[str]:
+def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]] = None) -> List[str]:
     if isinstance(strings, str) or not hasattr(strings, '__iter__') or not isinstance(strings[0], str):
-        raise Exception("camel2title() 'strings' argument must be iterable of strings")
+        raise TypeError("camel2title() 'strings' argument must be iterable of strings")
     if not isinstance(sep, str) or len(sep) != 1:
-        raise Exception(f"camel2title() 'sep' argument = '{sep}' must be single character")
+        raise ValueError(f"camel2title() 'sep' argument = '{sep}' must be single character")
     if _re.match("[a-zA-Z0-9]", sep):
-        raise Exception(f"camel2title() 'sep' argument = '{sep}' cannot be alpha-numeric")
+        raise ValueError(f"camel2title() 'sep' argument = '{sep}' cannot be alpha-numeric")
     if _re.escape(sep) != sep and sep not in {' ', '-'}:
         # Permit some exceptions, I don't understand why they get escaped
-        raise Exception(f"camel2title() 'sep' argument = '{sep}' cannot be special character")
+        raise ValueError(f"camel2title() 'sep' argument = '{sep}' cannot be special character")
 
     if acronyms is None:
         pat = "([a-z])([A-Z])"
@@ -259,10 +259,10 @@ def camel2title(strings: list[str], sep: str=' ', acronyms: list[str] | None =No
 
     # Handling acronyms requires more care. Assumes Yahoo returns acronym strings upper-case
     if isinstance(acronyms, str) or not hasattr(acronyms, '__iter__') or not isinstance(acronyms[0], str):
-        raise Exception("camel2title() 'acronyms' argument must be iterable of strings")
+        raise TypeError("camel2title() 'acronyms' argument must be iterable of strings")
     for a in acronyms:
         if not _re.match("^[A-Z]+$", a):
-            raise Exception(f"camel2title() 'acronyms' argument must only contain upper-case, but '{a}' detected")
+            raise ValueError(f"camel2title() 'acronyms' argument must only contain upper-case, but '{a}' detected")
 
     # Insert 'sep' between lower-then-upper-case
     pat = "([a-z])([A-Z])"
@@ -277,7 +277,7 @@ def camel2title(strings: list[str], sep: str=' ', acronyms: list[str] | None =No
 
     # Apply str.title() to non-acronym words
     strings = [s.split(sep) for s in strings]
-    strings = [ [j.title() if not j in acronyms else j for j in s] for s in strings]
+    strings = [[j.title() if not j in acronyms else j for j in s] for s in strings]
     strings = [sep.join(s) for s in strings]
 
     return strings
@@ -301,6 +301,7 @@ def _parse_user_dt(dt, exchange_tz):
 
 
 def auto_adjust(data):
+    col_order = data.columns
     df = data.copy()
     ratio = df["Close"] / df["Adj Close"]
     df["Adj Open"] = df["Open"] / ratio
@@ -316,13 +317,13 @@ def auto_adjust(data):
         "Adj Low": "Low", "Adj Close": "Close"
     }, inplace=True)
 
-    df = df[["Open", "High", "Low", "Close", "Volume"]]
-    return df[["Open", "High", "Low", "Close", "Volume"]]
+    return df[[c for c in col_order if c in df.columns]]
 
 
 def back_adjust(data):
     """ back-adjusted data to mimic true historical prices """
 
+    col_order = data.columns
     df = data.copy()
     ratio = df["Adj Close"] / df["Close"]
     df["Adj Open"] = df["Open"] * ratio
@@ -338,7 +339,7 @@ def back_adjust(data):
         "Adj Low": "Low"
     }, inplace=True)
 
-    return df[["Open", "High", "Low", "Close", "Volume"]]
+    return df[[c for c in col_order if c in df.columns]]
 
 
 def parse_quotes(data):
@@ -440,7 +441,7 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
             elif interval == "3mo":
                 last_rows_same_interval = dt1.year == dt2.year and dt1.quarter == dt2.quarter
             else:
-                last_rows_same_interval = False
+                last_rows_same_interval = (dt1-dt2) < _pd.Timedelta(interval)
 
             if last_rows_same_interval:
                 # Last two rows are within same interval
@@ -589,13 +590,15 @@ def safe_merge_dfs(df_main, df_sub, interval):
         ## Not always possible to match events with trading, e.g. when released pre-market.
         ## So have to append to bottom with nan prices.
         ## But should only be impossible with intra-day price data.
-        if interval.endswith('m') or interval.endswith('h'):
+        if interval.endswith('m') or interval.endswith('h') or interval == "1d":
+            # Update: is possible with daily data when dividend very recent
             f_missing = ~df_sub.index.isin(df.index)
             df_sub_missing = df_sub[f_missing]
             keys = {"Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close",
                     "Close"}.intersection(df.columns)
             df_sub_missing[list(keys)] = _np.nan
-            df = _pd.concat([df, df_sub_missing], sort=True)
+            col_ordering = df.columns
+            df = _pd.concat([df, df_sub_missing], sort=True)[col_ordering]
         else:
             raise Exception("Lost data during merge despite all attempts to align data (see above)")
 
