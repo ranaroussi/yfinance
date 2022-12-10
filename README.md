@@ -85,7 +85,7 @@ msft.quarterly_balance_sheet
 # - cash flow statement
 msft.cashflow
 msft.quarterly_cashflow
-# other presentations available, see `Ticker.get_income_stmt(as_dict, pretty)`
+# see `Ticker.get_income_stmt()` for more options
 
 # show major holders
 msft.major_holders

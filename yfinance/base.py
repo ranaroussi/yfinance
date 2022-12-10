@@ -764,9 +764,14 @@ class TickerBase:
             return dict_data
         return data
 
-    def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+    def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_income(freq=freq, proxy=proxy)
+
+        if legacy:
+            data = self._fundamentals.financials.get_income_scrape(freq=freq, proxy=proxy)
+        else:
+            data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
+            
         if pretty:
             data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
@@ -774,9 +779,14 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+    def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_balance_sheet(freq=freq, proxy=proxy)
+
+        if legacy:
+            data = self._fundamentals.financials.get_balance_sheet_scrape(freq=freq, proxy=proxy)
+        else:
+            data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
+
         if pretty:
             data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
@@ -784,9 +794,14 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
         self._fundamentals.proxy = proxy
-        data = self._fundamentals.financials.get_cash_flow(freq=freq, proxy=proxy)
+
+        if legacy:
+            data = self._fundamentals.financials.get_cash_flow_scrape(freq=freq, proxy=proxy)
+        else:
+            data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
+
         if pretty:
             data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
