@@ -188,12 +188,9 @@ class TickerBase:
             get_fn = self._data.get
             if end is not None:
                 end_dt = _pd.Timestamp(end, unit='s').tz_localize("UTC")
-                dt_now = _datetime.datetime.utcnow().astimezone(end_dt.tzinfo)
-                print(dt_now)
                 dt_now = end_dt.tzinfo.localize(_datetime.datetime.utcnow())
-                print(dt_now)
-                # if end_dt.date() <= dt_now.date():
-                if end_dt <= dt_now:
+                data_delay = _datetime.timedelta(minutes=30)
+                if end_dt+data_delay <= dt_now:
                     # Date range in past so safe to fetch through cache:
                     get_fn = self._data.cache_get
             data = get_fn(
@@ -208,7 +205,6 @@ class TickerBase:
 
             data = data.json()
         except Exception:
-            raise
             pass
 
         err_msg = "No data found for this date range, symbol may be delisted"
