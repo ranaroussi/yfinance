@@ -75,7 +75,7 @@ msft.capital_gains
 # show share count
 msft.shares
 
-# Financials:
+# show financials:
 # - income statement
 msft.income_stmt
 msft.quarterly_income_stmt
@@ -108,9 +108,9 @@ msft.recommendations
 msft.recommendations_summary
 # show analysts other work
 msft.analyst_price_target
-mfst.revenue_forecasts
-mfst.earnings_forecasts
-mfst.earnings_trend
+msft.revenue_forecasts
+msft.earnings_forecasts
+msft.earnings_trend
 
 # show next event (earnings, etc)
 msft.calendar
@@ -160,7 +160,7 @@ the Ticker constructor.
 import requests_cache
 session = requests_cache.CachedSession('yfinance.cache')
 session.headers['User-agent'] = 'my-program/1.0'
-ticker = yf.Ticker('msft aapl goog', session=session)
+ticker = yf.Ticker('msft', session=session)
 # The scraped response will be stored in the cache
 ticker.actions
 ```
@@ -171,7 +171,6 @@ To initialize multiple `Ticker` objects, use
 import yfinance as yf
 
 tickers = yf.Tickers('msft aapl goog')
-# ^ returns a named tuple of Ticker objects
 
 # access each ticker using (example)
 tickers.tickers['MSFT'].info
@@ -201,7 +200,7 @@ data = yf.download(  # or pdr.get_data_yahoo(...
         # fetch data by interval (including intraday if period < 60 days)
         # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
         # (optional, default is '1d')
-        interval = "1m",
+        interval = "5d",
 
         # Whether to ignore timezone when aligning ticker data from 
         # different timezones. Default is True. False may be useful for 
