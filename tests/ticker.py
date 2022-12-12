@@ -136,7 +136,10 @@ class TestTickerHistory(unittest.TestCase):
         self.ticker = None
 
     def test_history(self):
+        with self.assertRaises(RuntimeError):
+            self.ticker.history_metadata
         data = self.ticker.history("1y")
+        self.assertIn("IBM", self.ticker.history_metadata.values(), "metadata missing")
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
