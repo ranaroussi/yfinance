@@ -270,11 +270,7 @@ class TestPriceHistory(unittest.TestCase):
         df = dat.history(start=start, interval="1wk")
         self.assertTrue((df.index.weekday == 0).all())
 
-    def test_repair_weekly_100x(self):
-        # Sometimes, Yahoo returns prices 100x the correct value.
-        # Suspect mixup between £/pence or $/cents etc.
-        # E.g. ticker PNL.L
-
+    def test_repair_100x_weekly(self):
         # Setup:
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -291,6 +287,7 @@ class TestPriceHistory(unittest.TestCase):
                                                        _dt.date(2022, 10, 16),
                                                        _dt.date(2022, 10, 9),
                                                        _dt.date(2022, 10, 2)]))
+        df = df.sort_index()
         df.index.name = "Date"
         df_bad = df.copy()
         df_bad.loc["2022-10-23", "Close"] *= 100
@@ -305,7 +302,13 @@ class TestPriceHistory(unittest.TestCase):
 
         # First test - no errors left
         for c in data_cols:
-            self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+            try:
+                self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+            except:
+                print(df[c])
+                print(df_repaired[c])
+                raise
+
 
         # Second test - all differences should be either ~1x or ~100x
         ratio = df_bad[data_cols].values / df[data_cols].values
@@ -318,11 +321,7 @@ class TestPriceHistory(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
-    def test_repair_weekly_preSplit_100x(self):
-        # Sometimes, Yahoo returns prices 100x the correct value.
-        # Suspect mixup between £/pence or $/cents etc.
-        # E.g. ticker PNL.L
-
+    def test_repair_100x_weekly_preSplit(self):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
         tkr = "PNL.L"
@@ -340,6 +339,7 @@ class TestPriceHistory(unittest.TestCase):
                                                        _dt.date(2020, 3, 23),
                                                        _dt.date(2020, 3, 16),
                                                        _dt.date(2020, 3, 9)]))
+        df = df.sort_index()
         # Simulate data missing split-adjustment:
         df[data_cols] *= 100.0
         df["Volume"] *= 0.01
@@ -378,11 +378,7 @@ class TestPriceHistory(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
-    def test_repair_daily_100x(self):
-        # Sometimes, Yahoo returns prices 100x the correct value.
-        # Suspect mixup between £/pence or $/cents etc.
-        # E.g. ticker PNL.L
-
+    def test_repair_100x_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.info["exchangeTimezoneName"]
@@ -398,6 +394,7 @@ class TestPriceHistory(unittest.TestCase):
                                                    _dt.date(2022, 10, 31),
                                                    _dt.date(2022, 10, 28),
                                                    _dt.date(2022, 10, 27)]))
+        df = df.sort_index()
         df.index.name = "Date"
         df_bad = df.copy()
         df_bad.loc["2022-11-01", "Close"] *= 100
@@ -423,10 +420,7 @@ class TestPriceHistory(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
-    def test_repair_daily_zeroes(self):
-        # Sometimes Yahoo returns price=0.0 when price obviously not zero
-        # E.g. ticker BBIL.L
-
+    def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.info["exchangeTimezoneName"]
@@ -440,17 +434,58 @@ class TestPriceHistory(unittest.TestCase):
                                 index=_pd.to_datetime([_dt.datetime(2022, 11, 1),
                                                        _dt.datetime(2022, 10, 31),
                                                        _dt.datetime(2022, 10, 30)]))
+        df_bad = df_bad.sort_index()
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        repaired_df = dat._fix_zero_prices(df_bad, "1d", tz_exchange)
+        repaired_df = dat._fix_zeroes(df_bad, "1d", tz_exchange)
 
         correct_df = df_bad.copy()
-        correct_df.loc[correct_df.index[0], "Open"] = 102.080002
-        correct_df.loc[correct_df.index[0], "Low"] = 102.032501
-        correct_df.loc[correct_df.index[0], "High"] = 102.080002
+        correct_df.loc["2022-11-01", "Open"] = 102.080002
+        correct_df.loc["2022-11-01", "Low"] = 102.032501
+        correct_df.loc["2022-11-01", "High"] = 102.080002
         for c in ["Open", "Low", "High", "Close"]:
             self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-8).all())
+
+    def test_repair_zeroes_hourly(self):
+        tkr = "INTC"
+        dat = yf.Ticker(tkr, session=self.session)
+        tz_exchange = dat.info["exchangeTimezoneName"]
+
+        df_bad = _pd.DataFrame(data={"Open":      [29.68, 29.49, 29.545, _np.nan, 29.485],
+                                     "High":      [29.68, 29.625, 29.58, _np.nan, 29.49],
+                                     "Low":       [29.46, 29.4, 29.45, _np.nan, 29.31],
+                                     "Close":     [29.485, 29.545, 29.485, _np.nan, 29.325],
+                                     "Adj Close": [29.485, 29.545, 29.485, _np.nan, 29.325],
+                                     "Volume": [3258528, 2140195, 1621010, 0, 0]},
+                                index=_pd.to_datetime([_dt.datetime(2022,11,25, 9,30),
+                                                       _dt.datetime(2022,11,25, 10,30),
+                                                       _dt.datetime(2022,11,25, 11,30),
+                                                       _dt.datetime(2022,11,25, 12,30),
+                                                       _dt.datetime(2022,11,25, 13,00)]))
+        df_bad = df_bad.sort_index()
+        df_bad.index.name = "Date"
+        df_bad.index = df_bad.index.tz_localize(tz_exchange)
+
+        repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange)
+
+        correct_df = df_bad.copy()
+        idx = _pd.Timestamp(2022,11,25, 12,30).tz_localize(tz_exchange)
+        correct_df.loc[idx, "Open"] = 29.485001
+        correct_df.loc[idx, "High"] = 29.49
+        correct_df.loc[idx, "Low"] = 29.43
+        correct_df.loc[idx, "Close"] = 29.455
+        correct_df.loc[idx, "Adj Close"] = 29.455
+        correct_df.loc[idx, "Volume"] = 609164
+        for c in ["Open", "Low", "High", "Close"]:
+            try:
+                self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-7).all())
+            except:
+                print("COLUMN", c)
+                print(repaired_df)
+                print(correct_df[c])
+                print(repaired_df[c] - correct_df[c])
+                raise
 
 if __name__ == '__main__':
     unittest.main()
