@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.1.88
+------
+- Remove unused incompatible dependency #1222
+- Fix minimum Pandas version #1230
+
 0.1.87
 ------
 - Fix localizing midnight when non-existent (DST) #1176
