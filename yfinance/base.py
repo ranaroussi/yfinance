@@ -51,6 +51,7 @@ class TickerBase:
         self.ticker = ticker.upper()
         self.session = session
         self._history = None
+        self._history_metadata = None
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
         self._tz = None
@@ -234,6 +235,12 @@ class TickerBase:
                 else:
                     print('%s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
+        
+        # Store the meta data that gets retrieved simultaneously:
+        try:
+            self._history_metadata = data["chart"]["result"][0]["meta"]
+        except KeyError:
+            self._history_metadata = {}
 
         # parse quotes
         try:
@@ -1003,3 +1010,9 @@ class TickerBase:
         self._earnings_dates[limit] = dates
 
         return dates
+
+    def get_history_metadata(self) -> dict:
+        if self._history_metadata is None:
+            raise RuntimeError("Metadata was never retrieved so far, "
+                               "call history() to retrieve it")
+        return self._history_metadata
