@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-0.1.88
+0.1.89
 ------
 - Remove unused incompatible dependency #1222
 - Fix minimum Pandas version #1230
