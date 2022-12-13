@@ -208,6 +208,12 @@ class TickerBase:
         except Exception:
             pass
 
+        # Store the meta data that gets retrieved simultaneously
+        try:
+            self._history_metadata = data["chart"]["result"][0]["meta"]
+        except KeyError:
+            self._history_metadata = {}
+
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
         if data is None or not type(data) is dict:
@@ -221,9 +227,9 @@ class TickerBase:
         elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"]:
             fail = True
         elif period is not None and "timestamp" not in data["chart"]["result"][0] and period not in \
-                data["chart"]["result"][0]["meta"]["validRanges"]:
+                self._history_metadata["validRanges"]:
             # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
-            err_msg = "Period '{}' is invalid, must be one of {}".format(period, data["chart"]["result"][0]["meta"][
+            err_msg = "Period '{}' is invalid, must be one of {}".format(period, self._history_metadata[
                 "validRanges"])
             fail = True
         if fail:
@@ -236,12 +242,6 @@ class TickerBase:
                     print('%s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
         
-        # Store the meta data that gets retrieved simultaneously:
-        try:
-            self._history_metadata = data["chart"]["result"][0]["meta"]
-        except KeyError:
-            self._history_metadata = {}
-
         # parse quotes
         try:
             quotes = utils.parse_quotes(data["chart"]["result"][0])
@@ -281,9 +281,9 @@ class TickerBase:
                 pass
 
         # Select useful info from metadata
-        quote_type = data["chart"]["result"][0]["meta"]["instrumentType"]
+        quote_type = self._history_metadata["instrumentType"]
         expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
-        tz_exchange = data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        tz_exchange = self._history_metadata["exchangeTimezoneName"]
 
         # Note: ordering is important. If you change order, run the tests!
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
