@@ -211,7 +211,7 @@ class TickerBase:
         # Store the meta data that gets retrieved simultaneously
         try:
             self._history_metadata = data["chart"]["result"][0]["meta"]
-        except KeyError:
+        except Exception:
             self._history_metadata = {}
 
         err_msg = "No data found for this date range, symbol may be delisted"

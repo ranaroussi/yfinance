@@ -128,9 +128,20 @@ class TestTicker(unittest.TestCase):
 
 
 class TestTickerHistory(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
     def setUp(self):
         # use a ticker that has dividends
-        self.ticker = yf.Ticker("IBM")
+        self.ticker = yf.Ticker("IBM", session=self.session)
 
     def tearDown(self):
         self.ticker = None
@@ -176,9 +187,19 @@ class TestTickerHistory(unittest.TestCase):
 
 
 class TestTickerEarnings(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL")
+        self.ticker = yf.Ticker("GOOGL", session=self.session)
 
     def tearDown(self):
         self.ticker = None
@@ -237,9 +258,19 @@ class TestTickerEarnings(unittest.TestCase):
 
 
 class TestTickerHolders(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL")
+        self.ticker = yf.Ticker("GOOGL", session=self.session)
 
     def tearDown(self):
         self.ticker = None
@@ -274,7 +305,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession(backend='memory')
+        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
 
     @classmethod
     def tearDownClass(cls):
@@ -283,7 +314,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
-
+        
         # For ticker 'BSE.AX' (and others), Yahoo not returning 
         # full quarterly financials (usually cash-flow) with all entries, 
         # instead returns a smaller version in different data store.
@@ -353,12 +384,12 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def test_quarterly_income_statement_old_fmt(self):
         expected_row = "TotalRevenue"
-        data = self.ticker_old_fmt.quarterly_income_stmt
+        data = self.ticker_old_fmt.get_income_stmt(freq="quarterly", legacy=True)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
         self.assertIn(expected_row, data.index, "Did not find expected row in index")
 
-        data_cached = self.ticker_old_fmt.quarterly_income_stmt
+        data_cached = self.ticker_old_fmt.get_income_stmt(freq="quarterly", legacy=True)
         self.assertIs(data, data_cached, "data not cached")
 
     def test_balance_sheet(self):
@@ -387,18 +418,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
             self.assertIn(k, data.index, "Did not find expected row in index")
 
         # Test to_dict
-        data = self.ticker.get_income_stmt(as_dict=True)
+        data = self.ticker.get_balance_sheet(as_dict=True)
         self.assertIsInstance(data, dict, "data has wrong type")
-
-    def test_quarterly_balance_sheet_old_fmt(self):
-        expected_row = "TotalAssets"
-        data = self.ticker_old_fmt.quarterly_balance_sheet
-        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-        self.assertFalse(data.empty, "data is empty")
-        self.assertIn(expected_row, data.index, "Did not find expected row in index")
-
-        data_cached = self.ticker_old_fmt.quarterly_balance_sheet
-        self.assertIs(data, data_cached, "data not cached")
 
     def test_quarterly_balance_sheet(self):
         expected_keys = ["Total Assets", "Net PPE"]
@@ -426,8 +447,18 @@ class TestTickerMiscFinancials(unittest.TestCase):
             self.assertIn(k, data.index, "Did not find expected row in index")
 
         # Test to_dict
-        data = self.ticker.get_income_stmt(as_dict=True)
+        data = self.ticker.get_balance_sheet(as_dict=True, freq="quarterly")
         self.assertIsInstance(data, dict, "data has wrong type")
+
+    def test_quarterly_balance_sheet_old_fmt(self):
+        expected_row = "TotalAssets"
+        data = self.ticker_old_fmt.get_balance_sheet(freq="quarterly", legacy=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
+
+        data_cached = self.ticker_old_fmt.get_balance_sheet(freq="quarterly", legacy=True)
+        self.assertIs(data, data_cached, "data not cached")
 
     def test_cash_flow(self):
         expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
@@ -455,18 +486,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
             self.assertIn(k, data.index, "Did not find expected row in index")
 
         # Test to_dict
-        data = self.ticker.get_income_stmt(as_dict=True)
+        data = self.ticker.get_cashflow(as_dict=True)
         self.assertIsInstance(data, dict, "data has wrong type")
-
-    def test_quarterly_cashflow_old_fmt(self):
-        expected_row = "NetIncome"
-        data = self.ticker_old_fmt.quarterly_cashflow
-        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-        self.assertFalse(data.empty, "data is empty")
-        self.assertIn(expected_row, data.index, "Did not find expected row in index")
-
-        data_cached = self.ticker_old_fmt.quarterly_cashflow
-        self.assertIs(data, data_cached, "data not cached")
 
     def test_quarterly_cash_flow(self):
         expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
@@ -494,8 +515,18 @@ class TestTickerMiscFinancials(unittest.TestCase):
             self.assertIn(k, data.index, "Did not find expected row in index")
 
         # Test to_dict
-        data = self.ticker.get_income_stmt(as_dict=True)
+        data = self.ticker.get_cashflow(as_dict=True)
         self.assertIsInstance(data, dict, "data has wrong type")
+
+    def test_quarterly_cashflow_old_fmt(self):
+        expected_row = "NetIncome"
+        data = self.ticker_old_fmt.get_cashflow(legacy=True, freq="quarterly")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertIn(expected_row, data.index, "Did not find expected row in index")
+
+        data_cached = self.ticker_old_fmt.get_cashflow(legacy=True, freq="quarterly")
+        self.assertIs(data, data_cached, "data not cached")
 
     def test_sustainability(self):
         data = self.ticker.sustainability
