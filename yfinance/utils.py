@@ -243,7 +243,11 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
 
 
 def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]] = None) -> List[str]:
-    if isinstance(strings, str) or not hasattr(strings, '__iter__') or not isinstance(strings[0], str):
+    if isinstance(strings, str) or not hasattr(strings, '__iter__'):
+        raise TypeError("camel2title() 'strings' argument must be iterable of strings")
+    if len(strings) == 0:
+        return strings
+    if not isinstance(strings[0], str):
         raise TypeError("camel2title() 'strings' argument must be iterable of strings")
     if not isinstance(sep, str) or len(sep) != 1:
         raise ValueError(f"camel2title() 'sep' argument = '{sep}' must be single character")
