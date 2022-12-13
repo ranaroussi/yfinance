@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+0.2.0rc4
+--------
+- Access to old financials tables via `get_income_stmt(legacy=True)`
+- Optimise scraping financials & fundamentals, 2x faster
+- Add 'capital gains' alongside dividends & splits for ETFs, and metadata available via `history_metadata`, plus a bunch of price fixes
+For full list of changes see #1238
+
 0.2.0rc2
 --------
 Financials
