@@ -63,7 +63,7 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
     install_requires=['pandas>=1.3.0', 'numpy>=1.16.5',
                       'requests>=2.26', 'multitasking>=0.0.7',
-                      'appdirs>=1.4.4'],
+                      'lxml>=4.9.1', 'appdirs>=1.4.4'],
     entry_points={
         'console_scripts': [
             'sample=sample:main',
