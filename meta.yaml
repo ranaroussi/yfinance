@@ -1,5 +1,5 @@
 {% set name = "yfinance" %}
-{% set version = "0.1.58" %}
+{% set version = "0.2.0" %}
 
 package:
   name: "{{ name|lower }}"
@@ -16,22 +16,30 @@ build:
 
 requirements:
   host:
-    - pandas >=0.24.0
+    - pandas >=1.3.0
     - numpy >=1.16.5
-    - requests >=2.21
+    - requests >=2.26
     - multitasking >=0.0.7
-    - lxml >=4.5.1
-    - appdirs >= 1.4.4
+    - lxml >=4.9.1
+    - appdirs >=1.4.4
+    - pytz >=2022.5
+    - frozendict >=2.3.4
+    - beautifulsoup4 >=4.11.1
+    - html5lib >=1.1
     - pip
     - python
 
   run:
-    - pandas >=0.24.0
+    - pandas >=1.3.0
     - numpy >=1.16.5
-    - requests >=2.21
+    - requests >=2.26
     - multitasking >=0.0.7
-    - lxml >=4.5.1
-    - appdirs >= 1.4.4
+    - lxml >=4.9.1
+    - appdirs >=1.4.4
+    - pytz >=2022.5
+    - frozendict >=2.3.4
+    - beautifulsoup4 >=4.11.1
+    - html5lib >=1.1
     - python
 
 test:
