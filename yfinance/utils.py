@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import datetime as _datetime
+import dateutil as _dateutil
 from typing import Dict, Union, List, Optional
 
 import pytz as _tz
@@ -298,6 +299,15 @@ def _parse_user_dt(dt, exchange_tz):
             dt = _tz.timezone(exchange_tz).localize(dt)
         dt = int(dt.timestamp())
     return dt
+
+
+def _interval_to_timedelta(interval):
+    if interval == "1mo":
+        return _dateutil.relativedelta(months=1)
+    elif interval == "1wk":
+        return _pd.Timedelta(days=7, unit='d')
+    else: 
+        return _pd.Timedelta(interval)
 
 
 def auto_adjust(data):
