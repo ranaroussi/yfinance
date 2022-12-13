@@ -545,27 +545,29 @@ class TickerBase:
             # If different, then adjust to match 'df'
             df_block_calib = df_block[price_cols]
             calib_filter = df_block_calib.to_numpy() != tag
-            if calib_filter.any():
-                df_new_calib = df_new[df_new.index.isin(df_block_calib.index)][price_cols]
-                ratios = (df_block_calib[price_cols].to_numpy() / df_new_calib[price_cols].to_numpy())[calib_filter]
-                ratio = _np.mean(ratios)
-                #
-                ratio_rcp = round(1.0 / ratio, 1)
-                ratio = round(ratio, 1)
-                if ratio == 1 and ratio_rcp == 1:
-                    # Good!
-                    pass
-                else:
-                    if ratio > 1:
-                        # data has different split-adjustment than fine-grained data
-                        # Adjust fine-grained to match
-                        df_new[price_cols] *= ratio
-                        df_new["Volume"] /= ratio
-                    elif ratio_rcp > 1:
-                        # data has different split-adjustment than fine-grained data
-                        # Adjust fine-grained to match
-                        df_new[price_cols] *= 1.0 / ratio_rcp
-                        df_new["Volume"] *= ratio_rcp
+            if not calib_filter.any():
+                # Can't calibrate so don't attempt repair
+                continue
+            df_new_calib = df_new[df_new.index.isin(df_block_calib.index)][price_cols]
+            ratios = (df_block_calib[price_cols].to_numpy() / df_new_calib[price_cols].to_numpy())[calib_filter]
+            ratio = _np.mean(ratios)
+            #
+            ratio_rcp = round(1.0 / ratio, 1)
+            ratio = round(ratio, 1)
+            if ratio == 1 and ratio_rcp == 1:
+                # Good!
+                pass
+            else:
+                if ratio > 1:
+                    # data has different split-adjustment than fine-grained data
+                    # Adjust fine-grained to match
+                    df_new[price_cols] *= ratio
+                    df_new["Volume"] /= ratio
+                elif ratio_rcp > 1:
+                    # data has different split-adjustment than fine-grained data
+                    # Adjust fine-grained to match
+                    df_new[price_cols] *= 1.0 / ratio_rcp
+                    df_new["Volume"] *= ratio_rcp
 
             # Repair!
             bad_dts = df_block.index[(df_block[price_cols]==tag).any(axis=1)]
