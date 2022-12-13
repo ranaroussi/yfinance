@@ -222,3 +222,7 @@ class Ticker(TickerBase):
     @property
     def earnings_forecasts(self) -> _pd.DataFrame:
         return self.get_earnings_forecast()
+
+    @property
+    def history_metadata(self) -> dict:
+        return self.get_history_metadata()
