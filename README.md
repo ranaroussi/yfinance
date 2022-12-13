@@ -59,7 +59,10 @@ msft.info
 # get historical market data
 hist = msft.history(period="max")
 
-# show actions (dividends, splits)
+# show meta information about the history (requires history() to be called first)
+msft.history_metadata
+
+# show actions (dividends, splits, capital gains)
 msft.actions
 
 # show dividends
@@ -68,20 +71,24 @@ msft.dividends
 # show splits
 msft.splits
 
+
+# show capital gains (for mutual funds & etfs)
+msft.capital_gains
+
 # show share count
 msft.shares
 
-# show income statement
+# show financials:
+# - income statement
 msft.income_stmt
 msft.quarterly_income_stmt
-
-# show balance sheet
+# - balance sheet
 msft.balance_sheet
 msft.quarterly_balance_sheet
-
-# show cash flow statement
+# - cash flow statement
 msft.cashflow
 msft.quarterly_cashflow
+# see `Ticker.get_income_stmt()` for more options
 
 # show major holders
 msft.major_holders
@@ -104,14 +111,15 @@ msft.recommendations
 msft.recommendations_summary
 # show analysts other work
 msft.analyst_price_target
-mfst.revenue_forecasts
-mfst.earnings_forecasts
-mfst.earnings_trend
+msft.revenue_forecasts
+msft.earnings_forecasts
+msft.earnings_trend
 
 # show next event (earnings, etc)
 msft.calendar
 
-# show all earnings dates
+# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
+# Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates
 
 # show ISIN code - *experimental*
@@ -140,6 +148,7 @@ msft.history(..., proxy="PROXY_SERVER")
 msft.get_actions(proxy="PROXY_SERVER")
 msft.get_dividends(proxy="PROXY_SERVER")
 msft.get_splits(proxy="PROXY_SERVER")
+msft.get_capital_gains(proxy="PROXY_SERVER")
 msft.get_balance_sheet(proxy="PROXY_SERVER")
 msft.get_cashflow(proxy="PROXY_SERVER")
 msft.option_chain(..., proxy="PROXY_SERVER")
@@ -154,7 +163,7 @@ the Ticker constructor.
 import requests_cache
 session = requests_cache.CachedSession('yfinance.cache')
 session.headers['User-agent'] = 'my-program/1.0'
-ticker = yf.Ticker('msft aapl goog', session=session)
+ticker = yf.Ticker('msft', session=session)
 # The scraped response will be stored in the cache
 ticker.actions
 ```
@@ -165,7 +174,6 @@ To initialize multiple `Ticker` objects, use
 import yfinance as yf
 
 tickers = yf.Tickers('msft aapl goog')
-# ^ returns a named tuple of Ticker objects
 
 # access each ticker using (example)
 tickers.tickers['MSFT'].info
@@ -195,7 +203,7 @@ data = yf.download(  # or pdr.get_data_yahoo(...
         # fetch data by interval (including intraday if period < 60 days)
         # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
         # (optional, default is '1d')
-        interval = "1m",
+        interval = "5d",
 
         # Whether to ignore timezone when aligning ticker data from 
         # different timezones. Default is True. False may be useful for 
@@ -289,12 +297,15 @@ To install `yfinance` using `conda`, see
 ### Requirements
 
 -   [Python](https://www.python.org) \>= 2.7, 3.4+
--   [Pandas](https://github.com/pydata/pandas) (tested to work with
-    \>=0.23.1)
--   [Numpy](http://www.numpy.org) \>= 1.11.1
--   [requests](http://docs.python-requests.org/en/master/) \>= 2.14.2
--   [lxml](https://pypi.org/project/lxml/) \>= 4.5.1
--   [appdirs](https://pypi.org/project/appdirs) \>=1.4.4
+-   [Pandas](https://github.com/pydata/pandas) \>= 1.3.0
+-   [Numpy](http://www.numpy.org) \>= 1.16.5
+-   [requests](http://docs.python-requests.org/en/master) \>= 2.26
+-   [lxml](https://pypi.org/project/lxml) \>= 4.9.1
+-   [appdirs](https://pypi.org/project/appdirs) \>= 1.4.4
+-   [pytz](https://pypi.org/project/pytz) \>=2022.5
+-   [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
+-   [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
+-   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
 
 ### Optional (if you want to use `pandas_datareader`)
 
