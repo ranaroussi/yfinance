@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.90
+------
+- Restore lxml req, increase min ver #1237
+
 0.1.89
 ------
 - Remove unused incompatible dependency #1222
