@@ -199,10 +199,16 @@ def _download_one_threaded(ticker, start=None, end=None,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
-    data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
-                         actions, period, interval, prepost, proxy, rounding,
-                         keepna, timeout)
-    shared._DFS[ticker.upper()] = data
+    try:
+        data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
+                             actions, period, interval, prepost, proxy, rounding,
+                             keepna, timeout)
+    except Exception as e:
+        # glob try/except needed as current thead implementation breaks if exception is raised.
+        shared._DFS[ticker] = utils.empty_df()
+        shared._ERRORS[ticker] = repr(e)
+    else:
+        shared._DFS[ticker.upper()] = data
     if progress:
         shared._PROGRESS_BAR.animate()
 
