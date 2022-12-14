@@ -1124,6 +1124,8 @@ class TickerBase:
 
         # Implement some smart caching, only requesting data from Yahoo if not 
         # in self._shares_full:
+        if start is None and end is None:
+            start = dt_now - _datetime.timedelta(days=365)
         if start is not None:
             tz = self._get_ticker_tz()
             start_ts = utils._parse_user_dt(start, tz)
