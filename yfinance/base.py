@@ -591,7 +591,7 @@ class TickerBase:
                 if not idx in df_new.index:
                     # Yahoo didn't return finer-grain data for this interval, 
                     # so probably no trading happened.
-                    print("no fine data")
+                    # print("no fine data")
                     continue
                 df_new_row = df_new.loc[idx]
 
@@ -646,10 +646,15 @@ class TickerBase:
 
         data_cols = ["High", "Open", "Low", "Close"]  # Order important, separate High from Low
         data_cols = [c for c in data_cols if c in df2.columns]
+        f_zeroes = (df2[data_cols]==0).any(axis=1)
+        if f_zeroes.any():
+            df2_zeroes = df2[f_zeroes]
+            df2 = df2[~f_zeroes]
+        else:
+            df2_zeroes = None
+        if df2.shape[0] <= 1:
+            return df
         median = _ndimage.median_filter(df2[data_cols].values, size=(3, 3), mode="wrap")
-
-        if (median == 0).any():
-            raise Exception("median contains zeroes, why?")
         ratio = df2[data_cols].values / median
         ratio_rounded = (ratio / 20).round() * 20  # round ratio to nearest 20
         f = ratio_rounded == 100
@@ -715,6 +720,9 @@ class TickerBase:
             if fj.any():
                 c = data_cols[j]
                 df2.loc[fj, c] = df.loc[fj, c]
+        if df2_zeroes is not None:
+            df2 = _pd.concat([df2, df2_zeroes]).sort_index()
+            df2.index = _pd.to_datetime()
 
         return df2
 
