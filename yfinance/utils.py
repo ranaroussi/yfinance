@@ -282,7 +282,7 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
 
     # Apply str.title() to non-acronym words
     strings = [s.split(sep) for s in strings]
-    strings = [[j.title() if not j in acronyms else j for j in s] for s in strings]
+    strings = [[j.title() if j not in acronyms else j for j in s] for s in strings]
     strings = [sep.join(s) for s in strings]
 
     return strings
@@ -310,7 +310,7 @@ def _interval_to_timedelta(interval):
         return _dateutil.relativedelta(months=1)
     elif interval == "1wk":
         return _pd.Timedelta(days=7, unit='d')
-    else: 
+    else:
         return _pd.Timedelta(interval)
 
 
@@ -428,8 +428,8 @@ def set_df_tz(df, interval, tz):
 
 
 def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
-    # Yahoo bug fix. If market is open today then Yahoo normally returns 
-    # todays data as a separate row from rest-of week/month interval in above row. 
+    # Yahoo bug fix. If market is open today then Yahoo normally returns
+    # todays data as a separate row from rest-of week/month interval in above row.
     # Seems to depend on what exchange e.g. crypto OK.
     # Fix = merge them together
     n = quotes.shape[0]
@@ -621,9 +621,9 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
 def fix_Yahoo_dst_issue(df, interval):
     if interval in ["1d", "1w", "1wk"]:
-        # These intervals should start at time 00:00. But for some combinations of date and timezone, 
+        # These intervals should start at time 00:00. But for some combinations of date and timezone,
         # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
-        # The clue is (a) minutes=0 and (b) hour near 0. 
+        # The clue is (a) minutes=0 and (b) hour near 0.
         # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
         f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22, 23]))
         dst_error_hours = _np.array([0] * df.shape[0])

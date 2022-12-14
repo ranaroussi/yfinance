@@ -127,7 +127,7 @@ class Fiancials:
 
     def _fetch_time_series(self, name, timescale, proxy=None):
         # Fetching time series preferred over scraping 'QuoteSummaryStore',
-        # because it matches what Yahoo shows. But for some tickers returns nothing, 
+        # because it matches what Yahoo shows. But for some tickers returns nothing,
         # despite 'QuoteSummaryStore' containing valid data.
 
         allowed_names = ["income", "balance-sheet", "cash-flow"]
@@ -280,7 +280,7 @@ class Fiancials:
         data_stores = self._data.get_json_data_stores("financials", proxy)
 
         # Fetch raw data
-        if not "QuoteSummaryStore" in data_stores:
+        if "QuoteSummaryStore" not in data_stores:
             return pd.DataFrame()
         data = data_stores["QuoteSummaryStore"]
 
