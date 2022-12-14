@@ -1,0 +1,16 @@
+name: ci
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+      - uses: py-actions/flake8@v2
