@@ -120,7 +120,7 @@ class Quote:
 
         self._info['logo_url'] = ""
         try:
-            if not 'website' in self._info:
+            if 'website' not in self._info:
                 self._info['logo_url'] = 'https://logo.clearbit.com/%s.com' % \
                                          self._info['shortName'].split(' ')[0].split(',')[0]
             else:

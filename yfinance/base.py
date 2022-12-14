@@ -216,7 +216,7 @@ class TickerBase:
 
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
-        if data is None or not type(data) is dict:
+        if data is None or type(data) is not dict:
             fail = True
         elif type(data) is dict and 'status_code' in data:
             err_msg += "(Yahoo status_code = {})".format(data["status_code"])
@@ -241,7 +241,7 @@ class TickerBase:
                 else:
                     print('%s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
-        
+
         # parse quotes
         try:
             quotes = utils.parse_quotes(data["chart"]["result"][0])
@@ -588,8 +588,8 @@ class TickerBase:
             bad_dts = df_block.index[(df_block[price_cols]==tag).any(axis=1)]
 
             for idx in bad_dts:
-                if not idx in df_new.index:
-                    # Yahoo didn't return finer-grain data for this interval, 
+                if idx not in df_new.index:
+                    # Yahoo didn't return finer-grain data for this interval,
                     # so probably no trading happened.
                     print("no fine data")
                     continue
@@ -938,7 +938,7 @@ class TickerBase:
             data = self._fundamentals.financials.get_income_scrape(freq=freq, proxy=proxy)
         else:
             data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
-            
+
         if pretty:
             data = data.copy()
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
