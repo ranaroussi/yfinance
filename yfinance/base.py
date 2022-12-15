@@ -559,12 +559,21 @@ class TickerBase:
             # Calibrate! Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
             df_block_calib = df_block[price_cols]
-            calib_filter = df_block_calib.to_numpy() != tag
+            calib_filter = (df_block_calib != tag).to_numpy()
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
                 continue
             df_new_calib = df_new[df_new.index.isin(df_block_calib.index)][price_cols]
-            ratios = (df_block_calib[price_cols].to_numpy() / df_new_calib[price_cols].to_numpy())[calib_filter]
+            # Avoid divide-by-zero warnings printing:
+            df_new_calib = df_new_calib.to_numpy()
+            df_block_calib = df_block_calib.to_numpy()
+            for j in range(len(price_cols)):
+                c = price_cols[j]
+                f = ~calib_filter[:,j]
+                if f.any():
+                    df_block_calib[f,j] = 1
+                    df_new_calib[f,j] = 1
+            ratios = (df_block_calib / df_new_calib)[calib_filter]
             ratio = _np.mean(ratios)
             #
             ratio_rcp = round(1.0 / ratio, 1)
