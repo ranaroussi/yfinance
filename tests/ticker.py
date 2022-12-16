@@ -128,9 +128,20 @@ class TestTicker(unittest.TestCase):
 
 
 class TestTickerHistory(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
     def setUp(self):
         # use a ticker that has dividends
-        self.ticker = yf.Ticker("IBM")
+        self.ticker = yf.Ticker("IBM", session=self.session)
 
     def tearDown(self):
         self.ticker = None
@@ -176,9 +187,19 @@ class TestTickerHistory(unittest.TestCase):
 
 
 class TestTickerEarnings(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL")
+        self.ticker = yf.Ticker("GOOGL", session=self.session)
 
     def tearDown(self):
         self.ticker = None
@@ -237,9 +258,19 @@ class TestTickerEarnings(unittest.TestCase):
 
 
 class TestTickerHolders(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL")
+        self.ticker = yf.Ticker("GOOGL", session=self.session)
 
     def tearDown(self):
         self.ticker = None
@@ -283,7 +314,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
-
+        
         # For ticker 'BSE.AX' (and others), Yahoo not returning 
         # full quarterly financials (usually cash-flow) with all entries, 
         # instead returns a smaller version in different data store.

@@ -559,12 +559,21 @@ class TickerBase:
             # Calibrate! Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
             df_block_calib = df_block[price_cols]
-            calib_filter = df_block_calib.to_numpy() != tag
+            calib_filter = (df_block_calib != tag).to_numpy()
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
                 continue
             df_new_calib = df_new[df_new.index.isin(df_block_calib.index)][price_cols]
-            ratios = (df_block_calib[price_cols].to_numpy() / df_new_calib[price_cols].to_numpy())[calib_filter]
+            # Avoid divide-by-zero warnings printing:
+            df_new_calib = df_new_calib.to_numpy()
+            df_block_calib = df_block_calib.to_numpy()
+            for j in range(len(price_cols)):
+                c = price_cols[j]
+                f = ~calib_filter[:,j]
+                if f.any():
+                    df_block_calib[f,j] = 1
+                    df_new_calib[f,j] = 1
+            ratios = (df_block_calib / df_new_calib)[calib_filter]
             ratio = _np.mean(ratios)
             #
             ratio_rcp = round(1.0 / ratio, 1)
@@ -591,7 +600,7 @@ class TickerBase:
                 if not idx in df_new.index:
                     # Yahoo didn't return finer-grain data for this interval, 
                     # so probably no trading happened.
-                    print("no fine data")
+                    # print("no fine data")
                     continue
                 df_new_row = df_new.loc[idx]
 
@@ -646,10 +655,15 @@ class TickerBase:
 
         data_cols = ["High", "Open", "Low", "Close"]  # Order important, separate High from Low
         data_cols = [c for c in data_cols if c in df2.columns]
+        f_zeroes = (df2[data_cols]==0).any(axis=1)
+        if f_zeroes.any():
+            df2_zeroes = df2[f_zeroes]
+            df2 = df2[~f_zeroes]
+        else:
+            df2_zeroes = None
+        if df2.shape[0] <= 1:
+            return df
         median = _ndimage.median_filter(df2[data_cols].values, size=(3, 3), mode="wrap")
-
-        if (median == 0).any():
-            raise Exception("median contains zeroes, why?")
         ratio = df2[data_cols].values / median
         ratio_rounded = (ratio / 20).round() * 20  # round ratio to nearest 20
         f = ratio_rounded == 100
@@ -715,6 +729,9 @@ class TickerBase:
             if fj.any():
                 c = data_cols[j]
                 df2.loc[fj, c] = df.loc[fj, c]
+        if df2_zeroes is not None:
+            df2 = _pd.concat([df2, df2_zeroes]).sort_index()
+            df2.index = _pd.to_datetime()
 
         return df2
 
@@ -922,6 +939,18 @@ class TickerBase:
         return data
 
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
         data = self._fundamentals.earnings[freq]
         if as_dict:
@@ -932,6 +961,24 @@ class TickerBase:
         return data
 
     def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            pretty: bool
+                Format row names nicely for readability
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            legacy: bool
+                Return old financials tables. Useful for when new tables not available
+                Default is False
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
 
         if legacy:
@@ -947,6 +994,24 @@ class TickerBase:
         return data
 
     def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            pretty: bool
+                Format row names nicely for readability
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            legacy: bool
+                Return old financials tables. Useful for when new tables not available
+                Default is False
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
 
         if legacy:
@@ -962,6 +1027,24 @@ class TickerBase:
         return data
 
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            pretty: bool
+                Format row names nicely for readability
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            legacy: bool
+                Return old financials tables. Useful for when new tables not available
+                Default is False
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
 
         if legacy:
