@@ -939,6 +939,18 @@ class TickerBase:
         return data
 
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
         data = self._fundamentals.earnings[freq]
         if as_dict:
@@ -949,6 +961,24 @@ class TickerBase:
         return data
 
     def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            pretty: bool
+                Format row names nicely for readability
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            legacy: bool
+                Return old financials tables. Useful for when new tables not available
+                Default is False
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
 
         if legacy:
@@ -964,6 +994,24 @@ class TickerBase:
         return data
 
     def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            pretty: bool
+                Format row names nicely for readability
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            legacy: bool
+                Return old financials tables. Useful for when new tables not available
+                Default is False
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
 
         if legacy:
@@ -979,6 +1027,24 @@ class TickerBase:
         return data
 
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        """
+        :Parameters:
+            as_dict: bool
+                Return table as Python dict
+                Default is False
+            pretty: bool
+                Format row names nicely for readability
+                Default is False
+            freq: str
+                "yearly" or "quarterly"
+                Default is "yearly"
+            legacy: bool
+                Return old financials tables. Useful for when new tables not available
+                Default is False
+            proxy: str
+                Optional. Proxy server URL scheme
+                Default is None
+        """
         self._fundamentals.proxy = proxy
 
         if legacy:
