@@ -1,6 +1,6 @@
-class YFianceException(Exception):
+class YFinanceException(Exception):
     pass
 
 
-class YFianceDataException(YFianceException):
+class YFinanceDataException(YFinanceException):
     pass
