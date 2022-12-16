@@ -6,7 +6,7 @@ import numpy as np
 
 from yfinance import utils
 from yfinance.data import TickerData
-from yfinance.exceptions import YFianceDataException, YFianceException
+from yfinance.exceptions import YFinanceDataException, YFinanceException
 
 
 class Fundamentals:
@@ -22,10 +22,10 @@ class Fundamentals:
         self._financials_data = None
         self._fin_data_quote = None
         self._basics_already_scraped = False
-        self._financials = Fiancials(data)
+        self._financials = Financials(data)
 
     @property
-    def financials(self) -> "Fiancials":
+    def financials(self) -> "Financials":
         return self._financials
 
     @property
@@ -97,7 +97,7 @@ class Fundamentals:
             pass
 
 
-class Fiancials:
+class Financials:
     def __init__(self, data: TickerData):
         self._data = data
         self._income_time_series = {}
@@ -143,8 +143,8 @@ class Fiancials:
 
             if statement is not None:
                 return statement
-        except YFianceException as e:
-            print("Failed to create financials table for {} reason: {}".format(name, repr(e)))
+        except YFinanceException as e:
+            print(f"- {self._data.ticker}: Failed to create {name} financials table for reason: {repr(e)}")
         return pd.DataFrame()
 
     def _create_financials_table(self, name, timescale, proxy):
@@ -153,14 +153,8 @@ class Fiancials:
             name = "financials"
 
         keys = self._get_datastore_keys(name, proxy)
-
         try:
-            # Developers note: TTM and template stuff allows for reproducing the nested structure
-            # visible on Yahoo website. But more work needed to make it user-friendly! Ideally
-            # return a tree data structure instead of Pandas MultiIndex
-            # So until this is implemented, just return simple tables
             return self.get_financials_time_series(timescale, keys, proxy)
-
         except Exception as e:
             pass
 
@@ -183,10 +177,10 @@ class Fiancials:
         try:
             keys = _finditem1("key", data_stores['FinancialTemplateStore'])
         except KeyError as e:
-            raise YFianceDataException("Parsing FinancialTemplateStore failed, reason: {}".format(repr(e)))
+            raise YFinanceDataException("Parsing FinancialTemplateStore failed, reason: {}".format(repr(e)))
 
         if not keys:
-            raise YFianceDataException("No keys in FinancialTemplateStore")
+            raise YFinanceDataException("No keys in FinancialTemplateStore")
         return keys
 
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
@@ -272,8 +266,8 @@ class Fiancials:
 
             if statement is not None:
                 return statement
-        except YFianceException as e:
-            print("Failed to create financials table for {} reason: {}".format(name, repr(e)))
+        except YFinanceException as e:
+            print(f"- {self._data.ticker}: Failed to create financials table for {name} reason: {repr(e)}")
         return pd.DataFrame()
 
     def _create_financials_table_old(self, name, timescale, proxy):
@@ -281,7 +275,7 @@ class Fiancials:
 
         # Fetch raw data
         if not "QuoteSummaryStore" in data_stores:
-            return pd.DataFrame()
+            raise YFinanceDataException(f"Yahoo not returning legacy financials data")
         data = data_stores["QuoteSummaryStore"]
 
         if name == "cash-flow":
@@ -296,12 +290,14 @@ class Fiancials:
         key1 += "History"
         if timescale == "quarterly":
             key1 += "Quarterly"
-        data = data.get(key1)[key2]
+        if key1 not in data or data[key1] is None or key2 not in data[key1]:
+            raise YFinanceDataException(f"Yahoo not returning legacy {name} financials data")
+        data = data[key1][key2]
 
         # Tabulate
         df = pd.DataFrame(data)
         if len(df) == 0:
-            return pd.DataFrame()
+            raise YFinanceDataException(f"Yahoo not returning legacy {name} financials data")
         df = df.drop(columns=['maxAge'])
         for col in df.columns:
             df[col] = df[col].replace('-', np.nan)

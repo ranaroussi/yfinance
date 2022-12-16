@@ -86,8 +86,12 @@ class TickerData:
         html = self.get(url=ticker_url, proxy=proxy).text
 
         # The actual json-data for stores is in a javascript assignment in the webpage
-        json_str = html.split('root.App.main =')[1].split(
-            '(this)')[0].split(';\n}')[0].strip()
+        try:
+            json_str = html.split('root.App.main =')[1].split(
+                '(this)')[0].split(';\n}')[0].strip()
+        except IndexError:
+            # Fetch failed, probably because Yahoo spam triggered
+            return {}
         data = json.loads(json_str)['context']['dispatcher']['stores']
 
         # return data
