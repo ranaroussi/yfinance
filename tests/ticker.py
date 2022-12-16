@@ -132,7 +132,7 @@ class TestTickerHistory(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
+        cls.session = requests_cache.CachedSession(backend='memory')
 
     @classmethod
     def tearDownClass(cls):
@@ -191,7 +191,7 @@ class TestTickerEarnings(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
+        cls.session = requests_cache.CachedSession(backend='memory')
 
     @classmethod
     def tearDownClass(cls):
@@ -262,7 +262,7 @@ class TestTickerHolders(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
+        cls.session = requests_cache.CachedSession(backend='memory')
 
     @classmethod
     def tearDownClass(cls):
@@ -305,7 +305,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession("/home/gonzo/.cache/yfinance.cache")
+        cls.session = requests_cache.CachedSession(backend='memory')
 
     @classmethod
     def tearDownClass(cls):
