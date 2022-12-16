@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.0rc5
+--------
+- Improve financials error handling #1243
+- Fix '100x price' repair #1244
+
 0.2.0rc4
 --------
 - Access to old financials tables via `get_income_stmt(legacy=True)`
