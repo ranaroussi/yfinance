@@ -39,6 +39,75 @@ def lru_cache_freezeargs(func):
     return wrapped
 
 
+def decrypt_cryptojs_aes(data):
+    encrypted_stores = data['context']['dispatcher']['stores']
+    _cs = data["_cs"]
+    _cr = data["_cr"]
+
+    _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
+    password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
+
+    encrypted_stores = b64decode(encrypted_stores)
+    assert encrypted_stores[0:8] == b"Salted__"
+    salt = encrypted_stores[8:16]
+    encrypted_stores = encrypted_stores[16:]
+
+    def EVPKDF(
+        password,
+        salt,
+        keySize=32,
+        ivSize=16,
+        iterations=1,
+        hashAlgorithm="md5",
+    ) -> tuple:
+        """OpenSSL EVP Key Derivation Function
+        Args:
+            password (Union[str, bytes, bytearray]): Password to generate key from.
+            salt (Union[bytes, bytearray]): Salt to use.
+            keySize (int, optional): Output key length in bytes. Defaults to 32.
+            ivSize (int, optional): Output Initialization Vector (IV) length in bytes. Defaults to 16.
+            iterations (int, optional): Number of iterations to perform. Defaults to 1.
+            hashAlgorithm (str, optional): Hash algorithm to use for the KDF. Defaults to 'md5'.
+        Returns:
+            key, iv: Derived key and Initialization Vector (IV) bytes.
+
+        Taken from: https://gist.github.com/rafiibrahim8/0cd0f8c46896cafef6486cb1a50a16d3
+        OpenSSL original code: https://github.com/openssl/openssl/blob/master/crypto/evp/evp_key.c#L78
+        """
+
+        assert iterations > 0, "Iterations can not be less than 1."
+
+        if isinstance(password, str):
+            password = password.encode("utf-8")
+
+        final_length = keySize + ivSize
+        key_iv = b""
+        block = None
+
+        while len(key_iv) < final_length:
+            hasher = hashlib.new(hashAlgorithm)
+            if block:
+                hasher.update(block)
+            hasher.update(password)
+            hasher.update(salt)
+            block = hasher.digest()
+            for _ in range(1, iterations):
+                block = hashlib.new(hashAlgorithm, block).digest()
+            key_iv += block
+
+        key, iv = key_iv[:keySize], key_iv[keySize:final_length]
+        return key, iv
+
+    key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+
+    cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+    plaintext = cipher.decrypt(encrypted_stores)
+    plaintext = unpad(plaintext, 16, style="pkcs7")
+    decoded_stores = json.loads(plaintext)
+    return decoded_stores
+
+
+
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
 
@@ -98,69 +167,17 @@ class TickerData:
             return {}
 
         data = json.loads(json_str)
-        encrypted_stores = data['context']['dispatcher']['stores']
-        _cs = data["_cs"]
-        _cr = data["_cr"]
 
-        _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
-        password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
+        if "_cs" in data and "_cr" in data:
+            data = decrypt_cryptojs_aes(data)
 
-        encrypted_stores = b64decode(encrypted_stores)
-        assert encrypted_stores[0:8] == b"Salted__"
-        salt = encrypted_stores[8:16]
-        encrypted_stores = encrypted_stores[16:]
+        if "context" in data and "dispatcher" in data["context"]:
+            # Keep old code, just in case
+            data = data['context']['dispatcher']['stores']
 
-        def EVPKDF(
-            password,
-            salt,
-            keySize=32,
-            ivSize=16,
-            iterations=1,
-            hashAlgorithm="md5",
-        ) -> tuple:
-            """OpenSSL EVP Key Derivation Function
-            Args:
-                password (Union[str, bytes, bytearray]): Password to generate key from.
-                salt (Union[bytes, bytearray]): Salt to use.
-                keySize (int, optional): Output key length in bytes. Defaults to 32.
-                ivSize (int, optional): Output Initialization Vector (IV) length in bytes. Defaults to 16.
-                iterations (int, optional): Number of iterations to perform. Defaults to 1.
-                hashAlgorithm (str, optional): Hash algorithm to use for the KDF. Defaults to 'md5'.
-            Returns:
-                key, iv: Derived key and Initialization Vector (IV) bytes.
+        # return data
+        new_data = json.dumps(data).replace('{}', 'null')
+        new_data = re.sub(
+            r'{[\'|\"]raw[\'|\"]:(.*?),(.*?)}', r'\1', new_data)
 
-            Taken from: https://gist.github.com/rafiibrahim8/0cd0f8c46896cafef6486cb1a50a16d3
-            OpenSSL original code: https://github.com/openssl/openssl/blob/master/crypto/evp/evp_key.c#L78
-            """
-
-            assert iterations > 0, "Iterations can not be less than 1."
-
-            if isinstance(password, str):
-                password = password.encode("utf-8")
-
-            final_length = keySize + ivSize
-            key_iv = b""
-            block = None
-
-            while len(key_iv) < final_length:
-                hasher = hashlib.new(hashAlgorithm)
-                if block:
-                    hasher.update(block)
-                hasher.update(password)
-                hasher.update(salt)
-                block = hasher.digest()
-                for _ in range(1, iterations):
-                    block = hashlib.new(hashAlgorithm, block).digest()
-                key_iv += block
-
-            key, iv = key_iv[:keySize], key_iv[keySize:final_length]
-            return key, iv
-
-        key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
-
-        cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-        plaintext = cipher.decrypt(encrypted_stores)
-        plaintext = unpad(plaintext, 16, style="pkcs7")
-        decoded_stores = json.loads(plaintext)
-
-        return decoded_stores
+        return json.loads(new_data)
