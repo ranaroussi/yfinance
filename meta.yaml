@@ -22,6 +22,7 @@ requirements:
     - multitasking >=0.0.7
     - lxml >=4.9.1
     - appdirs >= 1.4.4
+    - cryptography >= 3.3.2
     - pip
     - python
 
@@ -32,6 +33,7 @@ requirements:
     - multitasking >=0.0.7
     - lxml >=4.9.1
     - appdirs >= 1.4.4
+    - cryptography >= 3.3.2
     - python
 
 test:
