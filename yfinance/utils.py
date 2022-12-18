@@ -207,18 +207,19 @@ def get_json(url, proxy=None, session=None):
     data = _json.loads(json_str)
 
     if "_cs" in data and "_cr" in data:
-        data = _json.loads(decrypt_cryptojs_stores(data))
+        data_stores = _json.loads(decrypt_cryptojs_stores(data))
+    else:
+        if "context" in data and "dispatcher" in data["context"]:
+            # Keep old code, just in case
+            data_stores = data['context']['dispatcher']['stores']
+        else:
+            data_stores = data
 
-    if "context" in data and "dispatcher" in data["context"]:
-        # Keep old code, just in case
-        data = data['context']['dispatcher']['stores']
-
-    data = data['QuoteSummaryStore']
+    data = data_stores['QuoteSummaryStore']
     # add data about Shares Outstanding for companies' tickers if they are available
     try:
-        data['annualBasicAverageShares'] = _json.loads(
-            json_str)['context']['dispatcher']['stores'][
-                'QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
+        data['annualBasicAverageShares'] = \
+            data_stores['QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
     except Exception:
         pass
 
