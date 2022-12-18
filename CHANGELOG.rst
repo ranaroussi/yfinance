@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-0.1.91
+0.1.92
 ------
 - Decrypt new Yahoo encryption #1255
 
