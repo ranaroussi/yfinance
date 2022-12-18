@@ -1,5 +1,5 @@
 {% set name = "yfinance" %}
-{% set version = "0.1.90" %}
+{% set version = "0.1.91" %}
 
 package:
   name: "{{ name|lower }}"
