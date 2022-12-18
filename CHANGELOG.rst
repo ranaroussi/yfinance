@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.91
+------
+- Decrypt new Yahoo encryption #1255
+
 0.1.90
 ------
 - Restore lxml req, increase min ver #1237
