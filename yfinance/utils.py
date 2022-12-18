@@ -36,6 +36,7 @@ import hashlib
 usePycryptodome = False  # slightly faster
 # usePycryptodome = True
 if usePycryptodome:
+    # NOTE: if decide to use 'pycryptodome', set min version to 3.6.6
     from Crypto.Cipher import AES
     from Crypto.Util.Padding import unpad
 else:

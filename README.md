@@ -279,6 +279,7 @@ To install `yfinance` using `conda`, see
 -   [requests](http://docs.python-requests.org/en/master/) \>= 2.26
 -   [lxml](https://pypi.org/project/lxml/) \>= 4.9.1
 -   [appdirs](https://pypi.org/project/appdirs) \>= 1.4.4
+-   [cryptography](https://pypi.org/project/cryptography) \>=3.3.2
 
 ### Optional (if you want to use `pandas_datareader`)
 
