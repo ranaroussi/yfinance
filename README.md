@@ -306,6 +306,7 @@ To install `yfinance` using `conda`, see
 -   [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
 -   [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
 -   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
+-   [cryptography](https://pypi.org/project/cryptography) \>= 3.3.2
 
 ### Optional (if you want to use `pandas_datareader`)
 
