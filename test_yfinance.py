@@ -20,8 +20,15 @@ import datetime
 session = None
 import requests_cache ; session = requests_cache.CachedSession("yfinance.cache", expire_after=24*60*60)
 
-symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
-tickers = [yf.Ticker(symbol, session=session) for symbol in symbols]
+# Good symbols = all attributes should work
+good_symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
+good_tickers = [yf.Ticker(symbol, session=session) for symbol in good_symbols]
+# Dodgy symbols = Yahoo data incomplete, so exclude from some tests
+dodgy_symbols = ["G7W.DU"]
+dodgy_tickers = [yf.Ticker(symbol, session=session) for symbol in dodgy_symbols]
+symbols = good_symbols + dodgy_symbols
+tickers = good_tickers + dodgy_tickers
+# Delisted = no data expected but yfinance shouldn't raise exception
 delisted_symbols = ["BRK.B", "SDLP"]
 delisted_tickers = [yf.Ticker(symbol, session=session) for symbol in delisted_symbols]
 
@@ -118,8 +125,7 @@ class TestTicker(unittest.TestCase):
             ticker.earnings_dates
 
     def test_holders(self):
-        for ticker in tickers:
-            assert(ticker.info is not None and ticker.info != {})
+        for ticker in good_tickers:
             assert(ticker.major_holders is not None)
             assert(ticker.institutional_holders is not None)
 
