@@ -1,9 +1,16 @@
 import functools
 from functools import lru_cache
+
 import hashlib
 from base64 import b64decode
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
+usePycryptodome = False  # slightly faster
+# usePycryptodome = True
+if usePycryptodome:
+    from Crypto.Cipher import AES
+    from Crypto.Util.Padding import unpad
+else:
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 import requests as requests
 import re
@@ -52,14 +59,7 @@ def decrypt_cryptojs_aes(data):
     salt = encrypted_stores[8:16]
     encrypted_stores = encrypted_stores[16:]
 
-    def EVPKDF(
-        password,
-        salt,
-        keySize=32,
-        ivSize=16,
-        iterations=1,
-        hashAlgorithm="md5",
-    ) -> tuple:
+    def EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5") -> tuple:
         """OpenSSL EVP Key Derivation Function
         Args:
             password (Union[str, bytes, bytearray]): Password to generate key from.
@@ -100,12 +100,20 @@ def decrypt_cryptojs_aes(data):
 
     key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
 
-    cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-    plaintext = cipher.decrypt(encrypted_stores)
-    plaintext = unpad(plaintext, 16, style="pkcs7")
+    if usePycryptodome:
+        cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+        plaintext = cipher.decrypt(encrypted_stores)
+        plaintext = unpad(plaintext, 16, style="pkcs7")
+    else:
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+        decryptor = cipher.decryptor()
+        plaintext = decryptor.update(encrypted_stores) + decryptor.finalize()
+        unpadder = padding.PKCS7(128).unpadder()
+        plaintext = unpadder.update(plaintext) + unpadder.finalize()
+        plaintext = plaintext.decode("utf-8")
+
     decoded_stores = json.loads(plaintext)
     return decoded_stores
-
 
 
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
