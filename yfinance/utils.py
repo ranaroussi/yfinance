@@ -215,6 +215,10 @@ def get_json(url, proxy=None, session=None):
         else:
             data_stores = data
 
+    if not 'QuoteSummaryStore' in data_stores:
+        # Problem in data. Either delisted, or Yahoo spam triggered
+        return {}
+
     data = data_stores['QuoteSummaryStore']
     # add data about Shares Outstanding for companies' tickers if they are available
     try:
