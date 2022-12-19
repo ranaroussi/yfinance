@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.94
+------
+- Fix delisted ticker info[]
+
 0.1.93
 ------
 - Fix Ticker.shares
