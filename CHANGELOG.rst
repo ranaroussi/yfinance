@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.1
+-----
+Release!
+
 0.2.0rc5
 --------
 - Improve financials error handling #1243
