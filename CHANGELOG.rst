@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.95
+------
+- Fix info[] bug #1257
+
 0.1.94
 ------
 - Fix delisted ticker info[]
