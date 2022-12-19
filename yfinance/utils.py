@@ -202,6 +202,9 @@ def get_json(url, proxy=None, session=None):
     session = session or _requests
     html = session.get(url=url, proxies=proxy, headers=user_agent_headers).text
 
+    if not "root.App.main =" in html:
+        return {}
+
     json_str = html.split('root.App.main =')[1].split(
         '(this)')[0].split(';\n}')[0].strip()
     data = _json.loads(json_str)
