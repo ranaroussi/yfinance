@@ -26,7 +26,8 @@ requirements:
     - frozendict >=2.3.4
     - beautifulsoup4 >=4.11.1
     - html5lib >=1.1
-    - pycryptodome >=3.6.6
+    # - pycryptodome >=3.6.6
+    - cryptography >=3.3.2
     - pip
     - python
 
@@ -41,7 +42,8 @@ requirements:
     - frozendict >=2.3.4
     - beautifulsoup4 >=4.11.1
     - html5lib >=1.1
-    - pycryptodome >=3.6.6
+    # - pycryptodome >=3.6.6
+    - cryptography >=3.3.2
     - python
 
 test:
