@@ -528,6 +528,65 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker_old_fmt.get_cashflow(legacy=True, freq="quarterly")
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_income_alt_names(self):
+        i1 = self.ticker.income_stmt
+        i2 = self.ticker.incomestmt
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.financials
+        self.assertTrue(i1.equals(i3))
+
+        i1 = self.ticker.get_income_stmt()
+        i2 = self.ticker.get_incomestmt()
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.get_financials()
+        self.assertTrue(i1.equals(i3))
+
+        i1 = self.ticker.quarterly_income_stmt
+        i2 = self.ticker.quarterly_incomestmt
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.quarterly_financials
+        self.assertTrue(i1.equals(i3))
+
+        i1 = self.ticker.get_income_stmt(freq="quarterly")
+        i2 = self.ticker.get_incomestmt(freq="quarterly")
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.get_financials(freq="quarterly")
+        self.assertTrue(i1.equals(i3))
+
+    def test_balance_sheet_alt_names(self):
+        i1 = self.ticker.balance_sheet
+        i2 = self.ticker.balancesheet
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.get_balance_sheet()
+        i2 = self.ticker.get_balancesheet()
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.quarterly_balance_sheet
+        i2 = self.ticker.quarterly_balancesheet
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.get_balance_sheet(freq="quarterly")
+        i2 = self.ticker.get_balancesheet(freq="quarterly")
+        self.assertTrue(i1.equals(i2))
+
+    def test_cash_flow_alt_names(self):
+        i1 = self.ticker.cash_flow
+        i2 = self.ticker.cashflow
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.get_cash_flow()
+        i2 = self.ticker.get_cashflow()
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.quarterly_cash_flow
+        i2 = self.ticker.quarterly_cashflow
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.get_cash_flow(freq="quarterly")
+        i2 = self.ticker.get_cashflow(freq="quarterly")
+        self.assertTrue(i1.equals(i2))
+
     def test_sustainability(self):
         data = self.ticker.sustainability
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
