@@ -42,6 +42,13 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
+## What's new in version 0.2
+
+- Optimised web scraping
+- All 3 financials tables now match website so expect keys to change. If you really want old tables, use [`Ticker.get_[income_stmt|balance_sheet|cashflow](legacy=True, ...)`](https://github.com/ranaroussi/yfinance/blob/85783da515761a145411d742c2a8a3c1517264b0/yfinance/base.py#L968)
+- price data improvements: fix bug NaN rows with dividend; new repair feature for missing or 100x prices `download(repair=True)`; new attribute `Ticker.history_metadata`
+[See release notes for full list of changes](https://github.com/ranaroussi/yfinance/releases/tag/0.2.1)
+
 ## Quick Start
 
 ### The Ticker module
