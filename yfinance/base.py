@@ -439,7 +439,10 @@ class TickerBase():
 
                 self._sustainability = s[~s.index.isin(
                     ['maxAge', 'ratingYear', 'ratingMonth'])]
+            else:
+                self._sustainability = utils.empty_df()
         except Exception:
+            self._sustainability = utils.empty_df()
             pass
 
         # info (be nice to python 2)
@@ -515,6 +518,7 @@ class TickerBase():
             self._recommendations = rec[[
                 'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
         except Exception:
+            self._recommendations = utils.empty_df()
             pass
 
         # Complementary key-statistics. For now just want 'trailing PEG ratio'
