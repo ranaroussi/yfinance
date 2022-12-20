@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.2
+-----
+- Restore 'financials' attribute (map to 'income_stmt')
+
 0.2.1
 -----
 Release!
