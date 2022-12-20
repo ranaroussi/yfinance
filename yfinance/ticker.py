@@ -154,6 +154,14 @@ class Ticker(TickerBase):
         return self.get_earnings(freq='quarterly')
 
     @property
+    def financials(self) -> _pd.DataFrame:
+        return self.income_stmt
+
+    @property
+    def quarterly_financials(self) -> _pd.DataFrame:
+        return self.quarterly_income_stmt
+
+    @property
     def income_stmt(self) -> _pd.DataFrame:
         return self.get_income_stmt(pretty=True)
 
