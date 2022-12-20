@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.1.96
+------
+- Fix info[] not caching #1258
+
 0.1.95
 ------
 - Fix info[] bug #1257
