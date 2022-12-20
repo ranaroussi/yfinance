@@ -250,3 +250,7 @@ class Ticker(TickerBase):
     @property
     def history_metadata(self) -> dict:
         return self.get_history_metadata()
+
+    @property
+    def esg_risk_rating(self) -> _pd.DataFrame:
+        pass
