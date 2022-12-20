@@ -1,8 +1,46 @@
 Change Log
 ===========
 
+0.2.3
+-----
+- Make financials API '_' use consistent
+
+0.2.2
+-----
+- Restore 'financials' attribute (map to 'income_stmt')
+
+0.2.1
+-----
+Release!
+
+0.2.0rc5
+--------
+- Improve financials error handling #1243
+- Fix '100x price' repair #1244
+
+0.2.0rc4
+--------
+- Access to old financials tables via `get_income_stmt(legacy=True)`
+- Optimise scraping financials & fundamentals, 2x faster
+- Add 'capital gains' alongside dividends & splits for ETFs, and metadata available via `history_metadata`, plus a bunch of price fixes
+For full list of changes see #1238
+
+0.2.0rc2
+--------
+Financials
+- fix financials tables to match website  #1128 #1157
+- lru_cache to optimise web requests  #1147
+Prices
+- improve price repair  #1148
+- fix merging dividends/splits with day/week/monthly prices  #1161
+- fix the Yahoo DST fixes  #1143
+- improve bad/delisted ticker handling  #1140
+Misc
+- fix 'trailingPegRatio'  #1138
+- improve error handling  #1118
+
 0.2.0rc1
-------
+--------
 Jumping to 0.2 for this big update. 0.1.* will continue to receive bug-fixes
 - timezone cache performance massively improved. Thanks @fredrik-corneliusson #1113 #1112 #1109 #1105 #1099
 - price repair feature #1110
