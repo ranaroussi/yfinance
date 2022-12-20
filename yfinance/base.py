@@ -559,11 +559,16 @@ class TickerBase:
             # Calibrate! Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
             df_block_calib = df_block[price_cols]
+            common_index = df_block_calib.index[df_block_calib.index.isin(df_new.index)]
+            if len(common_index) == 0:
+                # Can't calibrate so don't attempt repair
+                continue
+            df_new_calib = df_new[df_new.index.isin(common_index)][price_cols]
+            df_block_calib = df_block_calib[df_block_calib.index.isin(common_index)]
             calib_filter = (df_block_calib != tag).to_numpy()
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
                 continue
-            df_new_calib = df_new[df_new.index.isin(df_block_calib.index)][price_cols]
             # Avoid divide-by-zero warnings printing:
             df_new_calib = df_new_calib.to_numpy()
             df_block_calib = df_block_calib.to_numpy()
@@ -993,6 +998,12 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    def get_incomestmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        return self.get_income_stmt(proxy, as_dict, pretty, freq, legacy)
+
+    def get_financials(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        return self.get_income_stmt(proxy, as_dict, pretty, freq, legacy)
+
     def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
         """
         :Parameters:
@@ -1026,7 +1037,10 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+    def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        return self.get_balance_sheet(proxy, as_dict, pretty, freq, legacy)
+
+    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
         """
         :Parameters:
             as_dict: bool
@@ -1058,6 +1072,9 @@ class TickerBase:
         if as_dict:
             return data.to_dict()
         return data
+
+    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+        return self.get_cash_flow(proxy, as_dict, pretty, freq, legacy)
 
     def get_dividends(self, proxy=None):
         if self._history is None:

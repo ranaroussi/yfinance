@@ -42,6 +42,13 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
+## What's new in version 0.2
+
+- Optimised web scraping
+- All 3 financials tables now match website so expect keys to change. If you really want old tables, use [`Ticker.get_[income_stmt|balance_sheet|cashflow](legacy=True, ...)`](https://github.com/ranaroussi/yfinance/blob/85783da515761a145411d742c2a8a3c1517264b0/yfinance/base.py#L968)
+- price data improvements: fix bug NaN rows with dividend; new repair feature for missing or 100x prices `download(repair=True)`; new attribute `Ticker.history_metadata`
+[See release notes for full list of changes](https://github.com/ranaroussi/yfinance/releases/tag/0.2.1)
+
 ## Quick Start
 
 ### The Ticker module
@@ -218,7 +225,7 @@ data = yf.download(  # or pdr.get_data_yahoo(...
         # (optional, default is False)
         auto_adjust = True,
 
-        # identify and attempt repair of currency unit mixups e.g. $/cents
+        # attempt repair of missing data or currency mixups e.g. $/cents
         repair = False,
 
         # download pre/post regular market hours data
@@ -306,6 +313,7 @@ To install `yfinance` using `conda`, see
 -   [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
 -   [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
 -   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
+-   [cryptography](https://pypi.org/project/cryptography) \>= 3.3.2
 
 ### Optional (if you want to use `pandas_datareader`)
 
