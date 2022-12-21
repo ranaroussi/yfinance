@@ -189,8 +189,8 @@ ticker = yf.Ticker('msft aapl goog', session=session)
 # The scraped response will be stored in the cache
 ticker.actions
 ```
-To assist, `yfinance` removes bad/mangled data returned by Yahoo from the session. 
-To disable this feature call `yfinance.disable_prune_session_cache()` at start.
+To assist, `yfinance` can remove requests from session that failed to parse.
+To enable this feature call `yfinance.enable_prune_session_cache()`.
 
 Add expiration to the session to prune old data:
 ```python

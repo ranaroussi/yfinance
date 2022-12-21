@@ -24,7 +24,7 @@ except ImportError:
 
 cache_maxsize = 64
 
-prune_session_cache = True
+prune_session_cache = False
 
 
 def lru_cache_freezeargs(func):
@@ -163,6 +163,10 @@ class TickerData:
         return proxy
 
     def session_cache_prune_url(self, url):
+        '''
+        Prune 'url' from requests_cache if in use, but only if prune_session_cache=True
+        User can toggle prune_session_cache via en|disable_prune_session_cache
+        '''
         global prune_session_cache
         if not prune_session_cache:
             return
@@ -203,7 +207,9 @@ class TickerData:
             json_str = html.split('root.App.main =')[1].split(
                 '(this)')[0].split(';\n}')[0].strip()
         except IndexError:
-            # Fetch failed, probably because Yahoo spam triggered
+            # Problem with data so clear from session cache
+            self.session_cache_prune_url(ticker_url)
+            # Then exit
             return {}
 
         data = json.loads(json_str)
