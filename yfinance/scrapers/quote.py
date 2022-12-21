@@ -194,9 +194,9 @@ class Quote:
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data
-            start = datetime.datetime.combine(datetime.date.today(), datetime.time(0)) - datetime.timedelta(days=365 // 2)
+            start = pd.Timestamp.utcnow().floor("D") - datetime.timedelta(days=365 // 2)
             start = int(start.timestamp())
-            end = datetime.datetime.combine(datetime.date.today(), datetime.time(0)) + datetime.timedelta(days=1)
+            end = pd.Timestamp.utcnow().ceil("D")
             end = int(end.timestamp())
             url += f"&period1={start}&period2={end}"
 
