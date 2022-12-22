@@ -14,6 +14,7 @@ else:
 
 import requests as requests
 import re
+import pandas as _pd
 
 from frozendict import frozendict
 
@@ -24,7 +25,7 @@ except ImportError:
 
 cache_maxsize = 64
 
-prune_session_cache = False
+prune_session_cache = True
 
 
 def lru_cache_freezeargs(func):
@@ -127,6 +128,101 @@ def enable_prune_session_cache():
 def disable_prune_session_cache():
     global prune_session_cache
     prune_session_cache = False
+def check_Yahoo_response(r, *args, **kwargs):
+    # Parse the data returned by Yahoo to determine if corrupt/incomplete.
+    # If bad, set 'status_code' to 204 "No content" , that stops it 
+    # entering a requests_cache.
+
+    # Because this involves parsing, the output is added to response object 
+    # with prefix "yf_" and reused elsewhere.
+
+    if not "yahoo.com/" in r.url:
+        # Only check Yahoo responses
+        return
+
+    attrs = dir(r)
+    r_from_cache = "from_cache" in attrs and r.from_cache
+    if "yf_data" in attrs or "yf_json" in attrs or "yf_html_pd" in attrs:
+        # Have already parsed this response, successfully
+        return
+
+    if "Will be right back" in r.text:
+        # Simple check, no parsing needed
+        r.status_code = 204
+        return r
+
+    parse_failed = False
+    r_modified = False
+
+    if "/ws/fundamentals-timeseries" in r.url:
+        # Timeseries
+        try:
+            data = r.json()
+            r.yf_json = data
+            r_modified = True
+            data["timeseries"]["result"]
+        except:
+            parse_failed = True
+    elif "/finance/chart/" in r.url:
+        # Prices
+        try:
+            data = r.json()
+            r.yf_json = data
+            r_modified = True
+            if data["chart"]["error"] is not None:
+                parse_failed = True
+        except Exception:
+            parse_failed = True
+    elif "/finance/options/" in r.url:
+        # Options
+        if not "expirationDates" in r.text:
+            # Parse will fail
+            parse_failed = True
+    elif "/finance/search?" in r.url:
+        # News, can't be bothered to check
+        return
+    elif "/calendar/earnings?" in r.url:
+        try:
+            dfs = _pd.read_html(r.text)
+        except Exception:
+            parse_failed = True
+        else:
+            r.yf_html_pd = dfs
+            r_modified = True
+    elif "root.App.main" in r.text:
+        # JSON data stores
+        try:
+            json_str = r.text.split('root.App.main =')[1].split(
+                '(this)')[0].split(';\n}')[0].strip()
+        except IndexError:
+            parse_failed = True
+
+        if not parse_failed:
+            data = json.loads(json_str)
+            if "_cs" in data and "_cr" in data:
+                data = decrypt_cryptojs_aes(data)
+            if "context" in data and "dispatcher" in data["context"]:
+                # Keep old code, just in case
+                data = data['context']['dispatcher']['stores']
+
+            if not "yf_data" in attrs:
+                r.yf_data = data
+                r_modified = True
+
+            if "QuoteSummaryStore" not in data:
+                parse_failed = True
+
+    else:
+        return
+
+    if parse_failed:
+        if not r_from_cache:
+            r.status_code = 204  # No content
+            r_modified = True
+
+    if r_modified:
+        return r
+
 
 class TickerData:
     """
@@ -139,7 +235,21 @@ class TickerData:
         self.ticker = ticker
         self._session = session or requests
 
+    def check_requests_cache_hook(self):
+        try:
+            c = self._session.cache
+        except AttributeError:
+            # Not a caching session
+            return
+        global prune_session_cache
+        if not prune_session_cache:
+            self._session.hooks["response"] = []
+        elif prune_session_cache and not check_Yahoo_response in self._session.hooks["response"]:
+            self._session.hooks["response"].append(check_Yahoo_response)
+
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        self.check_requests_cache_hook()
+
         proxy = self._get_proxy(proxy)
         response = self._session.get(
             url=url,
@@ -162,33 +272,6 @@ class TickerData:
             proxy = {"https": proxy}
         return proxy
 
-    def session_cache_prune_url(self, url):
-        '''
-        Prune 'url' from requests_cache if in use, but only if prune_session_cache=True
-        User can toggle prune_session_cache via en|disable_prune_session_cache
-        '''
-        global prune_session_cache
-        if not prune_session_cache:
-            return
-
-        if not isinstance(url, str):
-            return
-
-        try:
-            c = self._session.cache
-        except AttributeError:
-            # Not a caching session
-            return
-
-        # Only import requests_cache if session has a cache attribute, 
-        # because it's an optional module
-        import requests_cache
-        if not isinstance(c, requests_cache.BaseCache):
-            # Unlikely but technically possible
-            return
-
-        c.delete(urls=[url])
-
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
     def get_json_data_stores(self, sub_page: str = None, proxy=None) -> dict:
@@ -200,26 +283,33 @@ class TickerData:
         else:
             ticker_url = "{}/{}".format(_SCRAPE_URL_, self.ticker)
 
-        html = self.get(url=ticker_url, proxy=proxy).text
+        self.check_requests_cache_hook()
 
-        # The actual json-data for stores is in a javascript assignment in the webpage
-        try:
-            json_str = html.split('root.App.main =')[1].split(
-                '(this)')[0].split(';\n}')[0].strip()
-        except IndexError:
-            # Problem with data so clear from session cache
-            self.session_cache_prune_url(ticker_url)
-            # Then exit
-            return {}
+        response = self.get(url=ticker_url, proxy=proxy)
 
-        data = json.loads(json_str)
+        if "yf_data" in dir(response):
+            data = response.yf_data
+        else:
+            html = response.text
 
-        if "_cs" in data and "_cr" in data:
-            data = decrypt_cryptojs_aes(data)
+            # The actual json-data for stores is in a javascript assignment in the webpage
+            try:
+                json_str = html.split('root.App.main =')[1].split(
+                    '(this)')[0].split(';\n}')[0].strip()
+            except IndexError:
+                # Problem with data so clear from session cache
+                # self.session_cache_prune_url(ticker_url)
+                # Then exit
+                return {}
 
-        if "context" in data and "dispatcher" in data["context"]:
-            # Keep old code, just in case
-            data = data['context']['dispatcher']['stores']
+            data = json.loads(json_str)
+
+            if "_cs" in data and "_cr" in data:
+                data = decrypt_cryptojs_aes(data)
+
+            if "context" in data and "dispatcher" in data["context"]:
+                # Keep old code, just in case
+                data = data['context']['dispatcher']['stores']
 
         # return data
         new_data = json.dumps(data).replace('{}', 'null')
@@ -227,11 +317,5 @@ class TickerData:
             r'{[\'|\"]raw[\'|\"]:(.*?),(.*?)}', r'\1', new_data)
 
         json_data = json.loads(new_data)
-
-        try:
-            quote_summary_store = json_data['QuoteSummaryStore']
-        except KeyError:
-            # Problem with data so clear from session cache
-            self.session_cache_prune_url(ticker_url)
 
         return json_data
