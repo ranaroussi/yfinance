@@ -1308,7 +1308,7 @@ class TickerBase:
                                "call history() to retrieve it")
         return self._history_metadata
 
-    def get_esg_risk_rating(self, proxy=None) -> None:
+    def get_esg_risk_rating(self, proxy=None) -> pd.DataFrame:
         self._esg_data = self._esg.get_esg_scrape(proxy)
         self._esg_data_ticker = {}
         for data in self._esg_data:
