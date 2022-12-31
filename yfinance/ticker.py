@@ -130,7 +130,7 @@ class Ticker(TickerBase):
         return self.get_actions()
 
     @property
-    def shares(self) -> _pd.DataFrame :
+    def shares(self) -> _pd.DataFrame:
         return self.get_shares()
 
     @property
@@ -253,4 +253,4 @@ class Ticker(TickerBase):
 
     @property
     def esg_risk_rating(self) -> _pd.DataFrame:
-        pass
+        return self.get_esg_risk_rating()
