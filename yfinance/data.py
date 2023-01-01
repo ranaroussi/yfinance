@@ -1,3 +1,6 @@
+from frozendict import frozendict
+import re
+import requests as requests
 import functools
 from functools import lru_cache
 
@@ -12,10 +15,6 @@ else:
     from cryptography.hazmat.primitives import padding
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-import requests as requests
-import re
-
-from frozendict import frozendict
 
 try:
     import ujson as json
@@ -33,10 +32,14 @@ def lru_cache_freezeargs(func):
 
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
-        args = tuple([frozendict(arg) if isinstance(arg, dict) else arg for arg in args])
-        kwargs = {k: frozendict(v) if isinstance(v, dict) else v for k, v in kwargs.items()}
-        args = tuple([tuple(arg) if isinstance(arg, list) else arg for arg in args])
-        kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
+        args = tuple([frozendict(arg) if isinstance(
+            arg, dict) else arg for arg in args])
+        kwargs = {k: frozendict(v) if isinstance(
+            v, dict) else v for k, v in kwargs.items()}
+        args = tuple([tuple(arg) if isinstance(
+            arg, list) else arg for arg in args])
+        kwargs = {k: tuple(v) if isinstance(v, list)
+                  else v for k, v in kwargs.items()}
         return func(*args, **kwargs)
 
     # copy over the lru_cache extra methods to this wrapper to be able to access them
@@ -51,8 +54,10 @@ def decrypt_cryptojs_aes(data):
     _cs = data["_cs"]
     _cr = data["_cr"]
 
-    _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
-    password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
+    _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True)
+                   for i in json.loads(_cr)["words"])
+    password = hashlib.pbkdf2_hmac(
+        "sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
 
     encrypted_stores = b64decode(encrypted_stores)
     assert encrypted_stores[0:8] == b"Salted__"
@@ -98,7 +103,8 @@ def decrypt_cryptojs_aes(data):
         key, iv = key_iv[:keySize], key_iv[keySize:final_length]
         return key, iv
 
-    key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+    key, iv = EVPKDF(password, salt, keySize=32, ivSize=16,
+                     iterations=1, hashAlgorithm="md5")
 
     if usePycryptodome:
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
