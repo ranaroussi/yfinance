@@ -745,6 +745,8 @@ class _TzCache:
     def __init__(self):
         self._tz_db = None
         self._setup_cache_folder()
+        # Initialize db instance in constructor to avoid databse lock error
+        self.tz_db
 
     def _setup_cache_folder(self):
         if not _os.path.isdir(self._db_dir):
