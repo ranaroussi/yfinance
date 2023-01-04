@@ -743,10 +743,10 @@ class _TzCache:
     """Simple sqlite file cache of ticker->timezone"""
 
     def __init__(self):
-        self._tz_db = None
         self._setup_cache_folder()
-        # Initialize db instance in constructor to avoid databse lock error
-        self.tz_db
+        # Must init db here, where is thread-safe
+        self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+        self._migrate_cache_tkr_tz()
 
     def _setup_cache_folder(self):
         if not _os.path.isdir(self._db_dir):
@@ -778,11 +778,6 @@ class _TzCache:
 
     @property
     def tz_db(self):
-        # lazy init
-        if self._tz_db is None:
-            self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
-            self._migrate_cache_tkr_tz()
-
         return self._tz_db
 
     def _migrate_cache_tkr_tz(self):
