@@ -171,12 +171,6 @@ class TickerBase:
         if params["interval"] == "30m":
             params["interval"] = "15m"
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
         params["events"] = "div,splits,capitalGains"
 
@@ -197,7 +191,8 @@ class TickerBase:
             data = get_fn(
                 url=url,
                 params=params,
-                timeout=timeout
+                timeout=timeout,
+                proxy=proxy
             )
             if "Will be right back" in data.text or data is None:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
