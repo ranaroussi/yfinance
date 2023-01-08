@@ -152,8 +152,9 @@ class TickerBase:
             else:
                 end = utils._parse_user_dt(end, tz)
             if start is None:
-                if interval == "1m":
-                    start = end - 604800  # Subtract 7 days
+                limits = {"1m": 8, "2m": 60, "5m": 60, "15m": 60, "30m": 60, "60m": 60, "90m": 60, "1h": 730}
+                if interval in limits:
+                    start = end - (limits[interval] - 1) * 86400
                 else:
                     _UNIX_TIMESTAMP_1900 = -2208994789
                     start = _UNIX_TIMESTAMP_1900
