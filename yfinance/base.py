@@ -152,9 +152,13 @@ class TickerBase:
             else:
                 end = utils._parse_user_dt(end, tz)
             if start is None:
-                limits = {"1m": 8, "2m": 60, "5m": 60, "15m": 60, "30m": 60, "60m": 60, "90m": 60, "1h": 730}
-                if interval in limits:
-                    start = end - (limits[interval] - 1) * 86400
+                start_limits = {"1m": 30, "2m": 60, "5m": 60, "15m": 60, "30m": 60, "60m": 60, "90m": 60, "1h": 730}
+                range_limits = {"1m": 7,  "2m": 60, "5m": 60, "15m": 60, "30m": 60, "60m": 60, "90m": 60, "1h": 730}
+                if interval in start_limits:
+                    start = end - int(range_limits[interval] * 86400)
+                    start_min = int(_time.time()) - int(start_limits[interval] * 86400)
+                    start = max(start, start_min)
+                    start += 5  # Allow 5 seconds for Yahoo to process request
                 else:
                     _UNIX_TIMESTAMP_1900 = -2208994789
                     start = _UNIX_TIMESTAMP_1900
