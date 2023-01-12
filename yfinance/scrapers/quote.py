@@ -194,9 +194,11 @@ class Quote:
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data
-            url += "&period1={}".format(
-                int((datetime.datetime.now() - datetime.timedelta(days=365 // 2)).timestamp()))
-            url += "&period2={}".format(int((datetime.datetime.now() + datetime.timedelta(days=1)).timestamp()))
+            start = pd.Timestamp.utcnow().floor("D") - datetime.timedelta(days=365 // 2)
+            start = int(start.timestamp())
+            end = pd.Timestamp.utcnow().ceil("D")
+            end = int(end.timestamp())
+            url += f"&period1={start}&period2={end}"
 
             json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
