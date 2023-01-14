@@ -1134,7 +1134,7 @@ class TickerBase:
         if end is None:
             end = dt_now
         if start is None:
-            start = end - _pd.Timedelta(days=365)
+            start = end - _pd.Timedelta(days=548)  # 18 months
         if start >= end:
             print("ERROR: start date must be before end")
             return None
@@ -1159,10 +1159,13 @@ class TickerBase:
             return None
 
         shares_data = json_data["timeseries"]["result"]
+        if not "shares_out" in shares_data[0]:
+            print(f"{self.ticker}: Yahoo did not return share count in date range {start} -> {end}")
+            return None
         try:
             df = _pd.Series(shares_data[0]["shares_out"], index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
-        except:
-            print(f"{self.ticker}: Failed to parse shares count data")
+        except Exception as e:
+            print(f"{self.ticker}: Failed to parse shares count data: "+str(e))
             return None
 
         df.index = df.index.tz_localize(tz)
@@ -1305,8 +1308,8 @@ class TickerBase:
         dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
         # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
         self._quote.proxy = proxy
-        dates[cn] = dates[cn].dt.tz_localize(
-            tz=self._quote.info["exchangeTimezoneName"])
+        tz = self._get_ticker_tz(debug_mode=False, proxy=proxy, timeout=30)
+        dates[cn] = dates[cn].dt.tz_localize(tz)
 
         dates = dates.set_index("Earnings Date")
 
