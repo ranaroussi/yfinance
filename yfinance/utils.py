@@ -607,7 +607,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
         if interval.endswith('m') or interval.endswith('h') or interval == "1d":
             # Update: is possible with daily data when dividend very recent
             f_missing = ~df_sub.index.isin(df.index)
-            df_sub_missing = df_sub[f_missing]
+            df_sub_missing = df_sub[f_missing].copy()
             keys = {"Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close",
                     "Close"}.intersection(df.columns)
             df_sub_missing[list(keys)] = _np.nan
@@ -743,8 +743,10 @@ class _TzCache:
     """Simple sqlite file cache of ticker->timezone"""
 
     def __init__(self):
-        self._tz_db = None
         self._setup_cache_folder()
+        # Must init db here, where is thread-safe
+        self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+        self._migrate_cache_tkr_tz()
 
     def _setup_cache_folder(self):
         if not _os.path.isdir(self._db_dir):
@@ -776,11 +778,6 @@ class _TzCache:
 
     @property
     def tz_db(self):
-        # lazy init
-        if self._tz_db is None:
-            self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
-            self._migrate_cache_tkr_tz()
-
         return self._tz_db
 
     def _migrate_cache_tkr_tz(self):

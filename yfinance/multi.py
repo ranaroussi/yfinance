@@ -29,7 +29,7 @@ from . import Ticker, utils
 from . import shared
 
 
-def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=True,
+def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=False,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
              proxy=None, rounding=False, timeout=10):
@@ -68,7 +68,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             How many threads to use for mass downloading. Default is True
         ignore_tz: bool
             When combining from different timezones, ignore that part of datetime.
-            Default is True
+            Default is False
         proxy: str
             Optional. Proxy server URL scheme. Default is None
         rounding: bool

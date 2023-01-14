@@ -84,6 +84,7 @@ msft.capital_gains
 
 # show share count
 msft.shares
+msft.get_shares_full()
 
 # show financials:
 # - income statement
@@ -213,8 +214,7 @@ data = yf.download(  # or pdr.get_data_yahoo(...
         interval = "5d",
 
         # Whether to ignore timezone when aligning ticker data from 
-        # different timezones. Default is True. False may be useful for 
-        # minute/hourly data.
+        # different timezones. Default is False.
         ignore_tz = False,
 
         # group by ticker (to access via data['SPY'])
