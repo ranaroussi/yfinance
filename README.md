@@ -84,6 +84,7 @@ msft.capital_gains
 
 # show share count
 msft.shares
+msft.get_shares_full()
 
 # show financials:
 # - income statement
