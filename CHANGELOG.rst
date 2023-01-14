@@ -1,6 +1,14 @@
 Change Log
 ===========
 
+0.2.4
+-----
+- Fix Yahoo data decryption #1297
+- New feature: 'Ticker.get_shares_full()' #1301
+- Improve caching of financials data #1284
+- Restore download() original alignment behaviour #1283
+- Fix the database lock error in multithread download #1276
+
 0.2.3
 -----
 - Make financials API '_' use consistent
