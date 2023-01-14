@@ -1160,7 +1160,7 @@ class TickerBase:
 
         shares_data = json_data["timeseries"]["result"]
         try:
-            df = _pd.DataFrame(data={"count":shares_data[0]["shares_out"]}, index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
+            df = _pd.Series(shares_data[0]["shares_out"], index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except:
             print(f"{self.ticker}: Failed to parse shares count data")
             return None
