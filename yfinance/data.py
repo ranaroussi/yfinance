@@ -46,10 +46,20 @@ def lru_cache_freezeargs(func):
     return wrapped
 
 
-def decrypt_cryptojs_aes(data):
+def decrypt_cryptojs_aes_stores(data):
     encrypted_stores = data['context']['dispatcher']['stores']
-    password_key = next(key for key in data.keys() if key not in ["context", "plugins"])
-    password = data[password_key]
+
+    if "_cs" in data and "_cr" in data:
+        _cs = data["_cs"]
+        _cr = data["_cr"]
+        _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
+        password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
+    else:
+        try:
+            password_key = next(key for key in data.keys() if key not in ["context", "plugins"])
+        except:
+            return None
+        password = data[password_key]
 
     encrypted_stores = b64decode(encrypted_stores)
     assert encrypted_stores[0:8] == b"Salted__"
@@ -173,14 +183,16 @@ class TickerData:
 
         data = json.loads(json_str)
 
-        if "context" in data and "dispatcher" in data["context"]:
-            stores = data['context']['dispatcher']['stores']
-            if isinstance(stores, str):
-                stores = decrypt_cryptojs_aes(data)
-            data = stores
+        stores = decrypt_cryptojs_aes_stores(data)
+        if stores is None:
+            # Maybe Yahoo returned old format, not encrypted
+            if "context" in data and "dispatcher" in data["context"]:
+                stores = data['context']['dispatcher']['stores']
+        if stores is None:
+            raise Exception(f"{self.ticker}: Failed to extract data stores from web request")
 
         # return data
-        new_data = json.dumps(data).replace('{}', 'null')
+        new_data = json.dumps(stores).replace('{}', 'null')
         new_data = re.sub(
             r'{[\'|\"]raw[\'|\"]:(.*?),(.*?)}', r'\1', new_data)
 
