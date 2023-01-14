@@ -60,7 +60,6 @@ class TickerBase:
         self._isin = None
         self._news = []
         self._shares = None
-        self._shares_full = None
 
         self._earnings_dates = {}
 
@@ -1121,122 +1120,54 @@ class TickerBase:
         return data
 
     def get_shares_full(self, start=None, end=None, proxy=None):
-        dt_now = _pd.Timestamp.utcnow()
-
+        # Process dates
         tz = self._get_ticker_tz(debug_mode=False, proxy=None, timeout=10)
-
-        # Implement some smart caching, only requesting data from Yahoo if not 
-        # in self._shares_full:
-        if start is None and end is None:
-            start = dt_now - _datetime.timedelta(days=365)
+        dt_now = _pd.Timestamp.utcnow().tz_convert(tz)
         if start is not None:
             start_ts = utils._parse_user_dt(start, tz)
-            start = _pd.Timestamp.fromtimestamp(start_ts).tz_localize("UTC").tz_convert(tz).floor("D")
+            start = _pd.Timestamp.fromtimestamp(start_ts).tz_localize("UTC").tz_convert(tz)
             start_d = start.date()
         if end is not None:
             end_ts = utils._parse_user_dt(end, tz)
-            end = _pd.Timestamp.fromtimestamp(end_ts).tz_localize("UTC").tz_convert(tz).ceil("D")
+            end = _pd.Timestamp.fromtimestamp(end_ts).tz_localize("UTC").tz_convert(tz)
             end_d = end.date()
-
-        if self._shares_full is None:
-            if start is None:
-                start_d = _datetime.datetime(1950,1,1)
-                start = _pd.Timestamp(start_d).tz_localize(tz)
-            if end is None:
-                end_d = dt_now.date()+_datetime.timedelta(days=1)
-                end = _pd.Timestamp(end_d).tz_localize(tz)
-        else:
-            inception_d = None
-            try:
-                inception_d = self._shares_full.inception_d
-            except AttributeError:
-                pass
-            if inception_d is not None:
-                if start is None:
-                    print("capping start to inception=",inception_d)
-                    start_d = inception_d
-                    start = _pd.Timestamp(start_d).tz_localize(tz)
-                elif start.date() < inception_d:
-                    print("capping start to inception=",inception_d)
-                    start_d = inception_d
-                    start = _pd.Timestamp(inception_d).tz_localize(tz)
-
-            start_later = start_d >= self._shares_full.index[0].date()
-            end_earlier = (end is not None) and end_d <= self._shares_full.index[-1].date()
-            if start_later and end_earlier:
-                return self._shares_full
-
-        # If here then data to fetch
-        range1 = None
-        range2 = None
-        if self._shares_full is None:
-            range1 = (start, end)
-        else:
-            if (start is not None) and start_d < self._shares_full.index[0].date():
-                range1 = (start, self._shares_full.index[0])
-            if (end is not None) and end_d > self._shares_full.index[-1]:
-                range1 = (end, dt_now)
-
-        # Using this url without populating 'type' parameter returns full share count history
-        ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(self.ticker)
-
-        def fetch_range(start, end):
-            start = start.floor("D") ; end = end.ceil("D")
-            shares_url = ts_url_base + "&period1={}&period2={}".format(int(start.timestamp()), int(end.timestamp()))
-            try:
-                json_str = self._data.cache_get(shares_url).text
-                json_data = _json.loads(json_str)
-            except:
-                raise Exception("Yahoo web request for share count failed")
-            try:
-                fail = json_data["finance"]["error"]["code"] == "Bad Request"
-            except:
-                fail = False
-            if fail:
-                raise Exception("Failed to parse shares count data")
-
-            shares_data = json_data["timeseries"]["result"]
-            df = _pd.DataFrame(data={"count":shares_data[0]["shares_out"]}, index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
-            f_dup = df.index.duplicated(keep='first')
-            if f_dup.any():
-                df = df[~f_dup]
-            df.index = df.index.tz_localize(tz)
-            return df
-
-        inception_d = None
-        if self._shares_full is not None:
-            try:
-                inception_d = self._shares_full.inception_d
-            except AttributeError:
-                pass
-        if range1 is not None:
-            df = fetch_range(range1[0], range1[1])
-
-            if range1[0].date() < (df.index[0].date()-_datetime.timedelta(days=700)):
-                inception_d = df.index[0]
-
-            if self._shares_full is None:
-                self._shares_full = df
-            else:
-                self._shares_full = _pd.concat([self._shares_full, df])
-
-        if range2 is not None:
-            df = fetch_range(range1[2], range1[2])
-            if self._shares_full is None:
-                self._shares_full = df
-            else:
-                self._shares_full = _pd.concat([self._shares_full, df])
-
-        self._shares_full = self._shares_full.sort_index()
-        f_dup = self._shares_full.index.duplicated(keep='first')
-        if f_dup.any():
-            self._shares_full = self._shares_full[~f_dup]
-
-        if not inception_d is None:
-            print("inception_d =", inception_d)
-            self._shares_full.inception_d = inception_d
+        if end is None:
+            end = dt_now
+        if start is None:
+            start = end - _pd.Timedelta(days=365)
+        if start >= end:
+            print("ERROR: start date must be before end")
+            return None
+        start = start.floor("D")
+        end = end.ceil("D")
         
-        return self._shares_full
+        # Fetch
+        ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(self.ticker)
+        shares_url = ts_url_base + "&period1={}&period2={}".format(int(start.timestamp()), int(end.timestamp()))
+        try:
+            json_str = self._data.cache_get(shares_url).text
+            json_data = _json.loads(json_str)
+        except:
+            print(f"{self.ticker}: Yahoo web request for share count failed")
+            return None
+        try:
+            fail = json_data["finance"]["error"]["code"] == "Bad Request"
+        except:
+            fail = False
+        if fail:
+            print(f"{self.ticker}: Yahoo web request for share count failed")
+            return None
+
+        shares_data = json_data["timeseries"]["result"]
+        try:
+            df = _pd.DataFrame(data={"count":shares_data[0]["shares_out"]}, index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
+        except:
+            print(f"{self.ticker}: Failed to parse shares count data")
+            return None
+
+        df.index = df.index.tz_localize(tz)
+        df = df.sort_index()
+        return df
 
     def get_isin(self, proxy=None) -> Optional[str]:
         # *** experimental ***
