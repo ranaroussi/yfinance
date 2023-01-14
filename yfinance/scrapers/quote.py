@@ -7,6 +7,52 @@ from yfinance import utils
 from yfinance.data import TickerData
 
 
+from collections.abc import MutableMapping
+class InfoDictWrapper(MutableMapping):
+    """ Simple wrapper around info dict, to print messages for specific keys
+    instructing how to retrieve with new methods"""
+
+
+    def __init__(self, info):
+        self.info = info
+
+        self.redundant_keys_price = ["currentPrice", "dayHigh", "dayLow", "open", "previousClose"]
+        self.redundant_keys_price += ["regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price"]]
+        self.redundant_keys_exchange = ["currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"]
+        self.redundant_keys_marketCap = ["marketCap"]
+
+    def __contains__(self, k):
+        if k in self.redundant_keys_price:
+            print(f"Price data removed from info. Use Ticker.history(period='1wk') instead")
+            return False
+        elif k in self.redundant_keys_exchange:
+            print(f"Exchange data removed from info. Use Ticker.get_history_metadata() instead")
+            return False
+        elif k in self.redundant_keys_marketCap:
+            print(f"Market cap removed from info. Calculate using new Ticker.get_shares_full() * price")
+            return False
+        return k in self.info.keys()
+
+    def __getitem__(self, key):
+        return self.info[self._keytransform(key)]
+
+    def __setitem__(self, key, value):
+        self.info[self._keytransform(key)] = value
+
+    def __delitem__(self, key):
+        del self.info[self._keytransform(key)]
+
+    def __iter__(self):
+        return iter(self.info)
+    
+    def __len__(self):
+        return len(self.info)
+
+    def _keytransform(self, key):
+        return key
+
+
+
 class Quote:
 
     def __init__(self, data: TickerData, proxy=None):
@@ -129,6 +175,18 @@ class Quote:
                 self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
         except Exception:
             pass
+
+        # Delete redundant info[] keys, because values can be accessed faster
+        # elsewhere - e.g. price keys. Hope is reduces Yahoo spam effect.
+        redundant_keys = ["currentPrice", "dayHigh", "dayLow", "open", "previousClose"]
+        redundant_keys += ["regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price"]]
+        redundant_keys += ["currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"]
+        redundant_keys += ["marketCap"]
+        for k in redundant_keys:
+            if k in self._info:
+                del self._info[k]
+        # InfoDictWrapper will explain how to access above data elsewhere
+        self._info = InfoDictWrapper(self._info)
 
         # events
         try:
