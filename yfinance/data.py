@@ -55,10 +55,23 @@ def decrypt_cryptojs_aes_stores(data):
         _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
         password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
     else:
-        try:
-            password_key = next(key for key in data.keys() if key not in ["context", "plugins"])
-        except:
+        # Currently assume one extra key in dict, which is password. Print error if 
+        # more extra keys detected.
+        new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
+        l = len(new_keys)
+        if l == 0:
             return None
+        elif l == 1 and isinstance(data[new_keys[0]], str):
+            password_key = new_keys[0]
+        else:
+            msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
+            k = new_keys[0]
+            k_str = k if len(k) < 32 else k[:32-3]+"..."
+            msg += f" '{k_str}'->{type(data[k])}"
+            for i in range(1, len(new_keys)):
+                msg += f" , '{k_str}'->{type(data[k])}"
+            raise Exception(msg)
+        password_key = new_keys[0]
         password = data[password_key]
 
     encrypted_stores = b64decode(encrypted_stores)
@@ -105,7 +118,10 @@ def decrypt_cryptojs_aes_stores(data):
         key, iv = key_iv[:keySize], key_iv[keySize:final_length]
         return key, iv
 
-    key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+    try:
+        key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+    except:
+        raise Exception("yfinance failed to decrypt Yahoo data response")
 
     if usePycryptodome:
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
