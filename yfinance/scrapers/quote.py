@@ -22,25 +22,25 @@ class InfoDictWrapper(MutableMapping):
         self.redundant_keys_marketCap = ["marketCap"]
 
     def __contains__(self, k):
-        if k in self.redundant_keys_price:
-            print(f"Price data removed from info. Use Ticker.history(period='1wk') instead")
-            return False
-        elif k in self.redundant_keys_exchange:
-            print(f"Exchange data removed from info. Use Ticker.get_history_metadata() instead")
-            return False
-        elif k in self.redundant_keys_marketCap:
-            print(f"Market cap removed from info. Calculate using new Ticker.get_shares_full() * price")
-            return False
         return k in self.info.keys()
 
-    def __getitem__(self, key):
-        return self.info[self._keytransform(key)]
+    def __getitem__(self, k):
+        if k in self.redundant_keys_price:
+            print(f"Price data removed from info. Use Ticker.history(period='1wk') instead")
+            return None
+        elif k in self.redundant_keys_exchange:
+            print(f"Exchange data removed from info. Use Ticker.get_history_metadata() instead")
+            return None
+        elif k in self.redundant_keys_marketCap:
+            print(f"Market cap removed from info. Calculate using new Ticker.get_shares_full() * price")
+            return None
+        return self.info[self._keytransform(k)]
 
-    def __setitem__(self, key, value):
-        self.info[self._keytransform(key)] = value
+    def __setitem__(self, k, value):
+        self.info[self._keytransform(k)] = value
 
-    def __delitem__(self, key):
-        del self.info[self._keytransform(key)]
+    def __delitem__(self, k):
+        del self.info[self._keytransform(k)]
 
     def __iter__(self):
         return iter(self.info)
@@ -48,8 +48,8 @@ class InfoDictWrapper(MutableMapping):
     def __len__(self):
         return len(self.info)
 
-    def _keytransform(self, key):
-        return key
+    def _keytransform(self, k):
+        return k
 
 
 
