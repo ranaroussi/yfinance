@@ -65,6 +65,7 @@ class TestTicker(unittest.TestCase):
         dat.splits
         dat.actions
         dat.shares
+        dat.shares_full
         dat.info
         dat.calendar
         dat.recommendations
@@ -100,6 +101,7 @@ class TestTicker(unittest.TestCase):
         dat.splits
         dat.actions
         dat.shares
+        dat.shares_full
         dat.info
         dat.calendar
         dat.recommendations
@@ -651,6 +653,11 @@ class TestTickerMiscFinancials(unittest.TestCase):
     def test_shares(self):
         data = self.ticker.shares
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+    def test_shares_full(self):
+        data = self.ticker.get_shares_full()
+        self.assertIsInstance(data, pd.Series, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
     def test_info(self):
