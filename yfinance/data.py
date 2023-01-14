@@ -48,11 +48,8 @@ def lru_cache_freezeargs(func):
 
 def decrypt_cryptojs_aes(data):
     encrypted_stores = data['context']['dispatcher']['stores']
-    _cs = data["_cs"]
-    _cr = data["_cr"]
-
-    _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
-    password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
+    password_key = next(key for key in data.keys() if key not in ["context", "plugins"])
+    password = data[password_key]
 
     encrypted_stores = b64decode(encrypted_stores)
     assert encrypted_stores[0:8] == b"Salted__"
@@ -176,12 +173,11 @@ class TickerData:
 
         data = json.loads(json_str)
 
-        if "_cs" in data and "_cr" in data:
-            data = decrypt_cryptojs_aes(data)
-
         if "context" in data and "dispatcher" in data["context"]:
-            # Keep old code, just in case
-            data = data['context']['dispatcher']['stores']
+            stores = data['context']['dispatcher']['stores']
+            if isinstance(stores, str):
+                stores = decrypt_cryptojs_aes(data)
+            data = stores
 
         # return data
         new_data = json.dumps(data).replace('{}', 'null')
