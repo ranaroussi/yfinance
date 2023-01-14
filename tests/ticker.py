@@ -65,7 +65,7 @@ class TestTicker(unittest.TestCase):
         dat.splits
         dat.actions
         dat.shares
-        dat.shares_full
+        dat.get_shares_full()
         dat.info
         dat.calendar
         dat.recommendations
@@ -101,7 +101,7 @@ class TestTicker(unittest.TestCase):
         dat.splits
         dat.actions
         dat.shares
-        dat.shares_full
+        dat.get_shares_full()
         dat.info
         dat.calendar
         dat.recommendations
