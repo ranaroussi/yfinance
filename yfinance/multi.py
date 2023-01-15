@@ -27,11 +27,13 @@ import pandas as _pd
 
 from . import Ticker, utils
 from . import shared
-
+from .types import TickerInterval, TickerPeriod
+from typing import Union
 
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=False,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
-             progress=True, period="max", show_errors=True, interval="1d", prepost=False,
+             progress=True, period: Union[str, TickerPeriod]=TickerPeriod.MAX, show_errors=True,
+             interval: Union[str, TickerInterval]=TickerInterval.ONE_DAY, prepost=False,
              proxy=None, rounding=False, timeout=10):
     """Download yahoo tickers
     :Parameters:
@@ -196,8 +198,8 @@ def _realign_dfs():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
-                           actions=False, progress=True, period="max",
-                           interval="1d", prepost=False, proxy=None,
+                           actions=False, progress=True, period=TickerPeriod.MAX,
+                           interval=TickerInterval.ONE_DAY, prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
     try:
         data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
@@ -215,7 +217,7 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
-                  actions=False, period="max", interval="1d",
+                  actions=False, period=TickerPeriod.MAX, interval=TickerInterval.ONE_DAY,
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
     return Ticker(ticker).history(
