@@ -354,25 +354,11 @@ class TickerBase:
             else:
                 df["Capital Gains"] = 0.0
 
-        # # Drop any rows that are too close in time to previous row
-        # td = utils._interval_to_timedelta(interval)
-        # steps = _np.full(df.shape[0], td)
-        # steps[1:] = df.index[1:] - df.index[0:df.shape[0]-1]
-        # df["step"] = steps ; print(df) ; raise Exception("here")
-        # if td >= pd.Timedelta("1d"):
-        #     # Allow for DST
-        #     f_drop = steps < (td-pd.Timedelta('1h'))
-        # else:
-        #     f_drop = steps < td
-        # if f_drop.any():
-        #     print(df)
-        #     raise Exception("Dropping too-close rows @", df.index[f_drop])
-        #     df = df[~f_drop].copy()
 
         if repair:
             # Do this before auto/back adjust
-            df = self._fix_zeroes(df, interval, tz_exchange)
-            df = self._fix_unit_mixups(df, interval, tz_exchange)
+            df = self._fix_zeroes(df, interval, tz_exchange, prepost)
+            df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
 
         # Auto/back adjust
         try:
@@ -416,7 +402,7 @@ class TickerBase:
 
     # ------------------------
 
-    def _reconstruct_intervals_batch(self, df, interval, tag=-1):
+    def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1):
         if not isinstance(df, _pd.DataFrame):
             raise Exception("'df' must be a Pandas DataFrame not", type(df))
 
@@ -424,6 +410,10 @@ class TickerBase:
 
         debug = False
         # debug = True
+
+        if interval[1:] in ['d', 'wk', 'mo']:
+            # Interday data always includes pre & post
+            prepost = True
 
         price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df]
         data_cols = price_cols + ["Volume"]
@@ -546,7 +536,6 @@ class TickerBase:
                 fetch_start = g[0]
                 fetch_end = g[-1] + td_range
 
-            prepost = interval == "1d"
             df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, prepost=prepost, repair=False, keepna=True)
             if df_fine is None or df_fine.empty:
                 print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
@@ -671,7 +660,7 @@ class TickerBase:
 
         return df_v2
 
-    def _fix_unit_mixups(self, df, interval, tz_exchange):
+    def _fix_unit_mixups(self, df, interval, tz_exchange, prepost):
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
         # Easy to detect and fix, just look for outliers = ~100x local median
@@ -718,7 +707,7 @@ class TickerBase:
             df2.loc[fi, c] = tag
 
         n_before = (df2[data_cols].to_numpy()==tag).sum()
-        df2 = self._reconstruct_intervals_batch(df2, interval, tag=tag)
+        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag=tag)
         n_after = (df2[data_cols].to_numpy()==tag).sum()
 
         if n_after > 0:
@@ -780,7 +769,7 @@ class TickerBase:
 
         return df2
 
-    def _fix_zeroes(self, df, interval, tz_exchange):
+    def _fix_zeroes(self, df, interval, tz_exchange, prepost):
         # Sometimes Yahoo returns prices=0 or NaN when trades occurred.
         # But most times when prices=0 or NaN returned is because no trades.
         # Impossible to distinguish, so only attempt repair if few or rare.
@@ -842,7 +831,7 @@ class TickerBase:
         df2.loc[f_change & f_vol_zero_or_nan, "Volume"] = tag
 
         n_before = (df2[data_cols].to_numpy()==tag).sum()
-        df2 = self._reconstruct_intervals_batch(df2, interval, tag=tag)
+        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag=tag)
         n_after = (df2[data_cols].to_numpy()==tag).sum()
         n_fixed = n_before - n_after
         if n_fixed > 0:
