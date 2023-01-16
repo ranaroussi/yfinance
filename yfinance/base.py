@@ -214,6 +214,7 @@ class TickerBase:
             self._history_metadata = data["chart"]["result"][0]["meta"]
         except Exception:
             self._history_metadata = {}
+        self._history_metadata = utils.format_history_metadata(self._history_metadata)
 
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
