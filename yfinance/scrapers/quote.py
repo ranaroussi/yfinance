@@ -7,32 +7,37 @@ from yfinance import utils
 from yfinance.data import TickerData
 
 
+info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose"}
+info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price"]})
+info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"}
+info_retired_keys_marketCap = {"marketCap"}
+info_retired_keys_symbol = {"symbol"}
+info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
+
+
 from collections.abc import MutableMapping
 class InfoDictWrapper(MutableMapping):
     """ Simple wrapper around info dict, to print messages for specific keys
     instructing how to retrieve with new methods"""
 
-
     def __init__(self, info):
         self.info = info
-
-        self.redundant_keys_price = ["currentPrice", "dayHigh", "dayLow", "open", "previousClose"]
-        self.redundant_keys_price += ["regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price"]]
-        self.redundant_keys_exchange = ["currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"]
-        self.redundant_keys_marketCap = ["marketCap"]
 
     def __contains__(self, k):
         return k in self.info.keys()
 
     def __getitem__(self, k):
-        if k in self.redundant_keys_price:
+        if k in info_retired_keys_price:
             print(f"Price data removed from info. Use Ticker.history(period='1wk') instead")
             return None
-        elif k in self.redundant_keys_exchange:
+        elif k in info_retired_keys_exchange:
             print(f"Exchange data removed from info. Use Ticker.get_history_metadata() instead")
             return None
-        elif k in self.redundant_keys_marketCap:
+        elif k in info_retired_keys_marketCap:
             print(f"Market cap removed from info. Calculate using new Ticker.get_shares_full() * price")
+            return None
+        elif k in info_retired_keys_symbol:
+            print(f"Symbol removed from info. You know this already")
             return None
         return self.info[self._keytransform(k)]
 
@@ -178,11 +183,7 @@ class Quote:
 
         # Delete redundant info[] keys, because values can be accessed faster
         # elsewhere - e.g. price keys. Hope is reduces Yahoo spam effect.
-        redundant_keys = ["currentPrice", "dayHigh", "dayLow", "open", "previousClose"]
-        redundant_keys += ["regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price"]]
-        redundant_keys += ["currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"]
-        redundant_keys += ["marketCap"]
-        for k in redundant_keys:
+        for k in info_retired_keys:
             if k in self._info:
                 del self._info[k]
         # InfoDictWrapper will explain how to access above data elsewhere
