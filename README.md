@@ -86,6 +86,9 @@ msft.capital_gains
 msft.shares
 msft.get_shares_full()
 
+# calculate market cap
+msft.market_cap
+
 # show financials:
 # - income statement
 msft.income_stmt

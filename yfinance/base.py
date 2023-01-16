@@ -1172,6 +1172,24 @@ class TickerBase:
         df = df.sort_index()
         return df
 
+    def calc_market_cap(self, proxy=None):
+        shares = self.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548), proxy=proxy)
+        if shares is None:
+            # Requesting 18 months failed, so fallback to shares which should include last year
+            shares = self.get_shares(proxy=proxy)
+        if shares is None:
+            raise Exception(f"{self.ticker}: Cannot retrieve share count for calculating market cap")
+        if isinstance(shares, pd.DataFrame):
+            shares = shares[shares.columns[0]]
+        shares = shares.iloc[-1]
+        # price = self.history(period="1wk")["Close"].iloc[-1]
+        # Use metadata, in case history() returns empty because stock hasn't traded for long time
+        df = self.history(period="1d")
+        md = self.get_history_metadata()
+        price = md["regularMarketPrice"]
+        mcap = price * shares
+        return mcap
+
     def get_isin(self, proxy=None) -> Optional[str]:
         # *** experimental ***
         if self._isin is not None:
