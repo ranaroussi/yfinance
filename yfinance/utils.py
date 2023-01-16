@@ -640,6 +640,66 @@ def is_valid_timezone(tz: str) -> bool:
     return True
 
 
+def format_history_metadata(md):
+    if not isinstance(md, dict):
+        return md
+    if len(md) == 0:
+        return md
+
+    tz = md["exchangeTimezoneName"]
+
+    for k in ["firstTradeDate", "regularMarketTime"]:
+        if k in md:
+            md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
+
+    if "currentTradingPeriod" in md:
+        for m in ["regular", "pre", "post"]:
+            if m in md["currentTradingPeriod"]:
+                for t in ["start", "end"]:
+                    md["currentTradingPeriod"][m][t] = \
+                        _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
+                del md["currentTradingPeriod"][m]["gmtoffset"]
+                del md["currentTradingPeriod"][m]["timezone"]
+
+    if "tradingPeriods" in md:
+        tps = md["tradingPeriods"]
+        if isinstance(tps, list):
+            # Only regular times
+            regs_dict = [tps[i][0] for i in range(len(tps))]
+            pres_dict = None
+            posts_dict = None
+        elif isinstance(tps, dict):
+            # Includes pre- and post-market
+            pres_dict = [tps["pre"][i][0] for i in range(len(tps["pre"]))]
+            posts_dict = [tps["post"][i][0] for i in range(len(tps["post"]))]
+            regs_dict = [tps["regular"][i][0] for i in range(len(tps["regular"]))]
+        else:
+            raise Exception()
+
+        def _dict_to_table(d):
+            df = _pd.DataFrame.from_dict(d).drop(["timezone", "gmtoffset"], axis=1)
+            df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
+            df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
+            df.index = _pd.to_datetime(df["start"].dt.date)
+            df.index = df.index.tz_localize(tz)
+            return df
+
+        df = _dict_to_table(regs_dict)
+        df_cols = ["start", "end"]
+        if pres_dict is not None:
+            pre_df = _dict_to_table(pres_dict)
+            df = df.merge(pre_df.rename(columns={"start":"pre_start", "end":"pre_end"}), left_index=True, right_index=True)
+            df_cols = ["pre_start", "pre_end"]+df_cols
+        if posts_dict is not None:
+            post_df = _dict_to_table(posts_dict)
+            df = df.merge(post_df.rename(columns={"start":"post_start", "end":"post_end"}), left_index=True, right_index=True)
+            df_cols = df_cols+["post_start", "post_end"]
+        df = df[df_cols]
+
+        md["tradingPeriods"] = df
+
+    return md
+
 class ProgressBar:
     def __init__(self, iterations, text='completed'):
         self.text = text
