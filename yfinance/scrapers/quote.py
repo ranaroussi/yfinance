@@ -8,7 +8,8 @@ from yfinance.data import TickerData
 
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose"}
-info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price"]})
+info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
+info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh"})
 info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"}
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
@@ -17,11 +18,21 @@ info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_
 
 from collections.abc import MutableMapping
 class InfoDictWrapper(MutableMapping):
-    """ Simple wrapper around info dict, to print messages for specific keys
-    instructing how to retrieve with new methods"""
+    """ Simple wrapper around info dict, intercepting 'gets' to 
+    print how-to-migrate messages for specific keys. Requires
+    override dict API"""
 
     def __init__(self, info):
         self.info = info
+
+    def keys(self):
+        return self.info.keys()
+
+    def __str__(self):
+        return self.info.__str__()
+
+    def __repr__(self):
+        return self.info.__repr__()
 
     def __contains__(self, k):
         return k in self.info.keys()
