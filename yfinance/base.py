@@ -47,6 +47,106 @@ _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
 
+class BasicInfo:
+    # Contain small subset of info[] items that can be fetched faster elsewhere.
+    # Imitates a dict.
+    def __init__(self, tickerBaseObject):
+        self._tkr = tickerBaseObject
+
+        self._currency = None
+        self._exchange = None
+        self._timezone = None
+
+        self._shares = None
+        self._last_price = None
+        self._mcap = None
+
+    # dict imitation:
+    def keys(self):
+        attrs = utils.attributes(self)
+        return attrs.keys()
+    def items(self):
+        return [(k,self[k]) for k in self.keys()]
+    def __getitem__(self, k):
+        if not isinstance(k, str):
+            raise KeyError(f"key must be a string")
+        if not k in self.keys():
+            raise KeyError(f"'{k}' not valid key. Examine 'BasicInfo.keys()'")
+        return getattr(self, k)
+    def __contains__(self, k):
+        return k in self.keys()
+    def __iter__(self):
+        return iter(self.keys())
+    
+    @property
+    def currency(self):
+        if self._currency is not None:
+            return self._currency
+
+        if self._tkr._history_metadata is None:
+            self._tkr.history(period="1d")
+        md = self._tkr.get_history_metadata()
+        self._currency = md["currency"]
+        return self._currency
+
+    @property
+    def exchange(self):
+        if self._exchange is not None:
+            return self._exchange
+
+        if self._tkr._history_metadata is None:
+            self._tkr.history(period="1d")
+        md = self._tkr.get_history_metadata()
+        self._exchange = md["exchangeName"]
+        return self._exchange
+
+    @property
+    def timezone(self):
+        if self._timezone is not None:
+            return self._timezone
+
+        if self._tkr._history_metadata is None:
+            self._tkr.history(period="1d")
+        md = self._tkr.get_history_metadata()
+        self._timezone = md["exchangeTimezoneName"]
+        return self._currency
+
+    @property
+    def shares(self):
+        if self._shares is not None:
+            return self._shares
+
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
+        if shares is None:
+            # Requesting 18 months failed, so fallback to shares which should include last year
+            shares = self._tkr.get_shares()
+        if shares is None:
+            raise Exception(f"{self._tkr.ticker}: Cannot retrieve share count for calculating market cap")
+        if isinstance(shares, pd.DataFrame):
+            shares = shares[shares.columns[0]]
+        self._shares = shares.iloc[-1]
+        return self._shares
+
+    @property
+    def last_price(self):
+        if self._last_price is not None:
+            return self._last_price
+
+        if self._tkr._history_metadata is None:
+            self._tkr.history(period="1d")
+        md = self._tkr.get_history_metadata()
+        self._last_price = md["regularMarketPrice"]
+        return self._last_price
+
+    @property
+    def market_cap(self):
+        if self._mcap is not None:
+            return self._mcap
+
+        self._mcap = self.shares * self.last_price
+        return self._mcap
+
+
 class TickerBase:
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
@@ -76,6 +176,8 @@ class TickerBase:
         self._holders = Holders(self._data)
         self._quote = Quote(self._data)
         self._fundamentals = Fundamentals(self._data)
+
+        self._basic_info = BasicInfo(self)
 
     def stats(self, proxy=None):
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
@@ -895,6 +997,10 @@ class TickerBase:
         data = self._quote.info
         return data
 
+    @property
+    def basic_info(self):
+        return self._basic_info
+
     def get_sustainability(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy
         data = self._quote.sustainability
@@ -1171,24 +1277,6 @@ class TickerBase:
         df.index = df.index.tz_localize(tz)
         df = df.sort_index()
         return df
-
-    def calc_market_cap(self, proxy=None):
-        shares = self.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548), proxy=proxy)
-        if shares is None:
-            # Requesting 18 months failed, so fallback to shares which should include last year
-            shares = self.get_shares(proxy=proxy)
-        if shares is None:
-            raise Exception(f"{self.ticker}: Cannot retrieve share count for calculating market cap")
-        if isinstance(shares, pd.DataFrame):
-            shares = shares[shares.columns[0]]
-        shares = shares.iloc[-1]
-        # price = self.history(period="1wk")["Close"].iloc[-1]
-        # Use metadata, in case history() returns empty because stock hasn't traded for long time
-        df = self.history(period="1d")
-        md = self.get_history_metadata()
-        price = md["regularMarketPrice"]
-        mcap = price * shares
-        return mcap
 
     def get_isin(self, proxy=None) -> Optional[str]:
         # *** experimental ***
