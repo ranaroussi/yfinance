@@ -27,13 +27,16 @@ import pandas as _pd
 
 from . import Ticker, utils
 from . import shared
-from .types import TickerInterval, TickerPeriod
-from typing import Union
+from typing import Union, Literal
+
+period_options = Literal["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]
+interval_options = Literal["1m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]
+
 
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=False,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
-             progress=True, period: Union[str, TickerPeriod]=TickerPeriod.MAX, show_errors=True,
-             interval: Union[str, TickerInterval]=TickerInterval.ONE_DAY, prepost=False,
+             progress=True, period: period_options = "max", show_errors=True,
+             interval: interval_options = "1d", prepost=False,
              proxy=None, rounding=False, timeout=10):
     """Download yahoo tickers
     :Parameters:
@@ -198,8 +201,8 @@ def _realign_dfs():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
-                           actions=False, progress=True, period=TickerPeriod.MAX,
-                           interval=TickerInterval.ONE_DAY, prepost=False, proxy=None,
+                           actions=False, progress=True, period: period_options = "max",
+                           interval: interval_options = "1d", prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
     try:
         data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
@@ -217,7 +220,7 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
-                  actions=False, period=TickerPeriod.MAX, interval=TickerInterval.ONE_DAY,
+                  actions=False, period: period_options = "max", interval: interval_options = "1m",
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
     return Ticker(ticker).history(

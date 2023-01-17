@@ -40,7 +40,8 @@ from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote
-from .types import TickerInterval, TickerPeriod
+from .multi import  period_options, interval_options
+
 import json as _json
 
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
@@ -85,7 +86,7 @@ class TickerBase:
         data = self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
         return data
 
-    def history(self, period=TickerPeriod.ONE_MONTH, interval=TickerInterval.ONE_DAY,
+    def history(self, period: period_options = "1mo", interval:interval_options = "1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
@@ -133,12 +134,6 @@ class TickerBase:
                 If True, then raise errors as
                 exceptions instead of printing to console.
         """
-
-        if isinstance(period, TickerPeriod):
-            period = period.value
-
-        if isinstance(interval, TickerInterval):
-            interval = interval.value
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
