@@ -28,13 +28,13 @@ class InfoDictWrapper(MutableMapping):
 
     def __getitem__(self, k):
         if k in info_retired_keys_price:
-            print(f"Price data removed from info. Use Ticker.history(period='1wk') instead")
+            print(f"Price data removed from info. Use Ticker.basic_info or history() instead")
             return None
         elif k in info_retired_keys_exchange:
-            print(f"Exchange data removed from info. Use Ticker.get_history_metadata() instead")
+            print(f"Exchange data removed from info. Use Ticker.basic_info or Ticker.get_history_metadata() instead")
             return None
         elif k in info_retired_keys_marketCap:
-            print(f"Market cap removed from info. Calculate using new Ticker.get_shares_full() * price")
+            print(f"Market cap removed from info. Use Ticker.basic_info instead")
             return None
         elif k in info_retired_keys_symbol:
             print(f"Symbol removed from info. You know this already")
