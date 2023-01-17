@@ -77,6 +77,11 @@ class BasicInfo:
         return k in self.keys()
     def __iter__(self):
         return iter(self.keys())
+
+    def __str__(self):
+        return "lazy-loading dict with keys = " + str(self.keys())
+    def __repr__(self):
+        return self.__str__()
     
     @property
     def currency(self):
