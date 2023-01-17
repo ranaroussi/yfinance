@@ -53,13 +53,21 @@ class BasicInfo:
     def __init__(self, tickerBaseObject):
         self._tkr = tickerBaseObject
 
+        self._prices_1y = None
+        self._md = None
+
         self._currency = None
         self._exchange = None
         self._timezone = None
 
         self._shares = None
-        self._last_price = None
         self._mcap = None
+
+        self._last_price = None
+        self._last_volume = None
+        self._fifty_day_average = None
+        self._year_high = None
+        self._year_low = None
 
     # dict imitation:
     def keys(self):
@@ -82,6 +90,21 @@ class BasicInfo:
         return "lazy-loading dict with keys = " + str(self.keys())
     def __repr__(self):
         return self.__str__()
+
+    def _get_1y_prices(self):
+        if self._prices_1y is not None:
+            return self._prices_1y
+
+        self._prices_1y = self._tkr.history(period="1y")
+        return self._prices_1y
+
+    def _get_exchange_metadata(self):
+        if self._md is not None:
+            return self._md
+
+        self._get_1y_prices()
+        self._md = self._tkr.get_history_metadata()
+        return self._md
     
     @property
     def currency(self):
@@ -89,7 +112,7 @@ class BasicInfo:
             return self._currency
 
         if self._tkr._history_metadata is None:
-            self._tkr.history(period="1d")
+            self._get_1y_prices()
         md = self._tkr.get_history_metadata()
         self._currency = md["currency"]
         return self._currency
@@ -99,10 +122,7 @@ class BasicInfo:
         if self._exchange is not None:
             return self._exchange
 
-        if self._tkr._history_metadata is None:
-            self._tkr.history(period="1d")
-        md = self._tkr.get_history_metadata()
-        self._exchange = md["exchangeName"]
+        self._exchange = self._get_exchange_metadata()["exchangeName"]
         return self._exchange
 
     @property
@@ -110,10 +130,7 @@ class BasicInfo:
         if self._timezone is not None:
             return self._timezone
 
-        if self._tkr._history_metadata is None:
-            self._tkr.history(period="1d")
-        md = self._tkr.get_history_metadata()
-        self._timezone = md["exchangeTimezoneName"]
+        self._timezone = self._get_exchange_metadata()["exchangeTimezoneName"]
         return self._currency
 
     @property
@@ -137,11 +154,48 @@ class BasicInfo:
         if self._last_price is not None:
             return self._last_price
 
-        if self._tkr._history_metadata is None:
-            self._tkr.history(period="1d")
-        md = self._tkr.get_history_metadata()
-        self._last_price = md["regularMarketPrice"]
+        self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
         return self._last_price
+
+    @property
+    def last_volume(self):
+        if self._last_volume is not None:
+            return self._last_volume
+
+        prices = self._get_1y_prices()
+        self._last_volume = prices["Volume"].iloc[-1]
+        return self._last_volume
+
+    # @property
+    # def fifty_day_average(self):
+    #     if self._fifty_day_average is not None:
+    #         return self._fifty_day_average
+
+    #     prices = self._get_1y_prices()
+    #     n = prices.shape[0]
+    #     if n <= 50:
+    #         self._fifty_day_average = prices["Close"].mean()
+    #     else:
+    #         self._fifty_day_average = prices["Close"].iloc[n-50:].mean()
+    #     return self._fifty_day_average
+
+    @property
+    def year_high(self):
+        if self._year_high is not None:
+            return self._year_high
+
+        prices = self._get_1y_prices()
+        self._year_high = prices["High"].max()
+        return self._year_high
+
+    @property
+    def year_low(self):
+        if self._year_low is not None:
+            return self._year_low
+
+        prices = self._get_1y_prices()
+        self._year_low = prices["Low"].min()
+        return self._year_low
 
     @property
     def market_cap(self):
