@@ -65,9 +65,12 @@ class BasicInfo:
 
         self._last_price = None
         self._last_volume = None
-        self._fifty_day_average = None
+        self._50d_day_average = None
+        self._200d_day_average = None
         self._year_high = None
         self._year_low = None
+        self._10d_avg_vol = None
+        self._3mo_avg_vol = None
 
     # dict imitation:
     def keys(self):
@@ -96,6 +99,12 @@ class BasicInfo:
             return self._prices_1y
 
         self._prices_1y = self._tkr.history(period="1y")
+        self._md = self._tkr.get_history_metadata()
+        try:
+            self._today_close = pd.to_datetime(self._md["currentTradingPeriod"]["regular"]["end"], unit='s', utc=True).tz_convert(self._md["exchangeTimezoneName"])
+        except:
+            pass
+
         return self._prices_1y
 
     def _get_exchange_metadata(self):
@@ -163,21 +172,88 @@ class BasicInfo:
             return self._last_volume
 
         prices = self._get_1y_prices()
-        self._last_volume = prices["Volume"].iloc[-1]
+        if prices.empty:
+            self._last_volume = 0
+        else:
+            self._last_volume = prices["Volume"].iloc[-1]
+
         return self._last_volume
 
-    # @property
-    # def fifty_day_average(self):
-    #     if self._fifty_day_average is not None:
-    #         return self._fifty_day_average
+    @property
+    def fifty_day_average(self):
+        if self._50d_day_average is not None:
+            return self._50d_day_average
 
-    #     prices = self._get_1y_prices()
-    #     n = prices.shape[0]
-    #     if n <= 50:
-    #         self._fifty_day_average = prices["Close"].mean()
-    #     else:
-    #         self._fifty_day_average = prices["Close"].iloc[n-50:].mean()
-    #     return self._fifty_day_average
+        prices = self._get_1y_prices()
+        if prices.empty:
+            self._50d_day_average = _np.nan
+        else:
+            n = prices.shape[0]
+            a = n-50
+            b = n
+            if a < 0:
+                b = 0
+            self._50d_day_average = prices["Close"].iloc[a:b].mean()
+
+        return self._50d_day_average
+
+    @property
+    def two_hundred_day_average(self):
+        if self._200d_day_average is not None:
+            return self._200d_day_average
+
+        prices = self._get_1y_prices()
+        if prices.empty:
+            self._200d_day_average = _np.nan
+        else:
+            n = prices.shape[0]
+            a = n-200
+            b = n
+            if a < 0:
+                b = 0
+            self._200d_day_average = prices["Close"].iloc[a:b].mean()
+
+        return self._200d_day_average
+
+    @property
+    def ten_day_average_volume(self):
+        if self._10d_avg_vol is not None:
+            return self._10d_avg_vol
+
+        prices = self._get_1y_prices()
+        if prices.empty:
+            self._10d_avg_vol = 0
+        else:
+            n = prices.shape[0]
+            a = n-10
+            b = n
+            if self._today_close is not None and pd.Timestamp.utcnow() < self._today_close:
+                # Exclude today
+                a -= 1
+                b -= 1
+            if a < 0:
+                a = 0
+            self._10d_avg_vol = prices["Volume"].iloc[a:b].mean()
+
+        return self._10d_avg_vol
+
+    @property
+    def three_month_average_volume(self):
+        if self._3mo_avg_vol is not None:
+            return self._3mo_avg_vol
+
+        prices = self._get_1y_prices()
+        if prices.empty:
+            self._3mo_avg_vol = 0
+        else:
+            dt1 = prices.index[-1]
+            dt0 = dt1 - utils._interval_to_timedelta("3mo")
+            if self._today_close is not None and pd.Timestamp.utcnow() < self._today_close:
+                # Exclude today
+                dt1 -= utils._interval_to_timedelta("1d")
+            self._3mo_avg_vol = prices.loc[dt0:dt1, "Volume"].mean()
+
+        return self._3mo_avg_vol
 
     @property
     def year_high(self):

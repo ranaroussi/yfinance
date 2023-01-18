@@ -319,7 +319,9 @@ def _parse_user_dt(dt, exchange_tz):
 
 def _interval_to_timedelta(interval):
     if interval == "1mo":
-        return _dateutil.relativedelta(months=1)
+        return _dateutil.relativedelta.relativedelta(months=1)
+    elif interval == "3mo":
+        return _dateutil.relativedelta.relativedelta(months=3)
     elif interval == "1wk":
         return _pd.Timedelta(days=7, unit='d')
     else: 

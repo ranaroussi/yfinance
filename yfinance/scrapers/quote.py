@@ -7,9 +7,10 @@ from yfinance import utils
 from yfinance.data import TickerData
 
 
-info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose"}
+info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
-info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh"})
+info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyDayAverage", "twoHundredDayAverage"})
+info_retired_keys_price.update({"averageDailyVolume10Day", "averageVolume10days", "averageVolume"})
 info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"}
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
