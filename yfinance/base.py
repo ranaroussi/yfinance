@@ -571,6 +571,7 @@ class TickerBase:
             data = get_fn(
                 url=url,
                 params=params,
+                proxy=proxy,
                 timeout=timeout
             )
             if "Will be right back" in data.text or data is None:
@@ -1503,7 +1504,7 @@ class TickerBase:
 
     def get_shares_full(self, start=None, end=None, proxy=None):
         # Process dates
-        tz = self._get_ticker_tz(debug_mode=False, proxy=None, timeout=10)
+        tz = self._get_ticker_tz(debug_mode=False, proxy=proxy, timeout=10)
         dt_now = _pd.Timestamp.utcnow().tz_convert(tz)
         if start is not None:
             start_ts = utils._parse_user_dt(start, tz)

@@ -110,19 +110,19 @@ class Financials:
     def get_income_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._income_time_series
         if freq not in res:
-            res[freq] = self._fetch_time_series("income", freq, proxy=None)
+            res[freq] = self._fetch_time_series("income", freq, proxy)
         return res[freq]
 
     def get_balance_sheet_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._balance_sheet_time_series
         if freq not in res:
-            res[freq] = self._fetch_time_series("balance-sheet", freq, proxy=None)
+            res[freq] = self._fetch_time_series("balance-sheet", freq, proxy)
         return res[freq]
 
     def get_cash_flow_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._cash_flow_time_series
         if freq not in res:
-            res[freq] = self._fetch_time_series("cash-flow", freq, proxy=None)
+            res[freq] = self._fetch_time_series("cash-flow", freq, proxy)
         return res[freq]
 
     def _fetch_time_series(self, name, timescale, proxy=None):
@@ -235,19 +235,19 @@ class Financials:
     def get_income_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._income_scraped
         if freq not in res:
-            res[freq] = self._scrape("income", freq, proxy=None)
+            res[freq] = self._scrape("income", freq, proxy)
         return res[freq]
 
     def get_balance_sheet_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._balance_sheet_scraped
         if freq not in res:
-            res[freq] = self._scrape("balance-sheet", freq, proxy=None)
+            res[freq] = self._scrape("balance-sheet", freq, proxy)
         return res[freq]
 
     def get_cash_flow_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._cash_flow_scraped
         if freq not in res:
-            res[freq] = self._scrape("cash-flow", freq, proxy=None)
+            res[freq] = self._scrape("cash-flow", freq, proxy)
         return res[freq]
 
     def _scrape(self, name, timescale, proxy=None):
