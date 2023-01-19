@@ -63,13 +63,20 @@ class BasicInfo:
         self._shares = None
         self._mcap = None
 
+        self._open = None
+        self._day_high = None
+        self._day_low = None
         self._last_price = None
         self._last_volume = None
+
+        self._prev_close = None
+
         self._50d_day_average = None
         self._200d_day_average = None
         self._year_high = None
         self._year_low = None
         self._year_change = None
+
         self._10d_avg_vol = None
         self._3mo_avg_vol = None
 
@@ -150,7 +157,7 @@ class BasicInfo:
 
         # print("_exchange_open_now() returning", r)
         return r
-    
+
     @property
     def currency(self):
         if self._currency is not None:
@@ -163,7 +170,7 @@ class BasicInfo:
         return self._currency
 
     def _currency_is_cents(self):
-        return self.currency in ["GBp"]
+        return self.currency in ["GBp", "ILA"]
 
     @property
     def exchange(self):
@@ -201,21 +208,49 @@ class BasicInfo:
     def last_price(self):
         if self._last_price is not None:
             return self._last_price
-
-        self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
+        # self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
+        prices = self._get_1y_prices()
+        self._last_price = _np.nan if prices.empty else prices["Close"].iloc[-1]
         return self._last_price
+
+    @property
+    def previous_close(self):
+        if self._prev_close is not None:
+            return self._prev_close
+        prices = self._get_1y_prices()
+        self._prev_close = _np.nan if prices.empty else prices["Close"].iloc[-2]
+        return self._prev_close
+
+    @property
+    def open(self):
+        if self._open is not None:
+            return self._open
+        prices = self._get_1y_prices()
+        self._open = _np.nan if prices.empty else prices["Open"].iloc[-1]
+        return self._open
+
+    @property
+    def day_high(self):
+        if self._day_high is not None:
+            return self._day_high
+        prices = self._get_1y_prices()
+        self._day_high = _np.nan if prices.empty else prices["High"].iloc[-1]
+        return self._day_high
+
+    @property
+    def day_low(self):
+        if self._day_low is not None:
+            return self._day_low
+        prices = self._get_1y_prices()
+        self._day_low = _np.nan if prices.empty else prices["Low"].iloc[-1]
+        return self._day_low
 
     @property
     def last_volume(self):
         if self._last_volume is not None:
             return self._last_volume
-
         prices = self._get_1y_prices()
-        if prices.empty:
-            self._last_volume = 0
-        else:
-            self._last_volume = prices["Volume"].iloc[-1]
-
+        self._last_volume = 0 if prices.empty else prices["Volume"].iloc[-1]
         return self._last_volume
 
     @property
