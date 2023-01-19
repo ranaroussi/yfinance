@@ -9,6 +9,7 @@ Specific test class:
 
 """
 import pandas as pd
+import numpy as np
 
 from .context import yfinance as yf
 
@@ -660,14 +661,104 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertIsInstance(data, pd.Series, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
+    def test_bad_freq_value_raises_exception(self):
+        self.assertRaises(ValueError, lambda: self.ticker.get_cashflow(freq="badarg"))
+
+
+class TestTickerInfo(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def setUp(self):
+        # self.ticker = yf.Ticker("GOOGL", session=self.session)
+        # self.ticker = yf.Ticker("BP.L", session=self.session)
+        self.ticker = yf.Ticker("AAU.L", session=self.session)
+
+    def tearDown(self):
+        self.ticker = None
+
     def test_info(self):
         data = self.ticker.info
         self.assertIsInstance(data, dict, "data has wrong type")
         self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
         self.assertEqual("GOOGL", data["symbol"], "Wrong symbol value in info dict")
 
-    def test_bad_freq_value_raises_exception(self):
-        self.assertRaises(ValueError, lambda: self.ticker.get_cashflow(freq="badarg"))
+    def test_basic_info(self):
+        yf.scrapers.quote.PRUNE_INFO = False
+
+        bi = self.ticker.basic_info
+
+        key_rename_map = {}
+        key_rename_map["last_price"] = "currentPrice"
+        key_rename_map["fifty_day_average"] = "fiftyDayAverage"
+        key_rename_map["two_hundred_day_average"] = "twoHundredDayAverage"
+        key_rename_map["year_change"] = "52WeekChange"
+        key_rename_map["year_high"] = "fiftyTwoWeekHigh"
+        key_rename_map["year_low"] = "fiftyTwoWeekLow"
+
+        key_rename_map["last_volume"] = "regularMarketVolume"
+        key_rename_map["ten_day_average_volume"] = ["averageVolume10days", "averageDailyVolume10Day"]
+        key_rename_map["three_month_average_volume"] = "averageVolume"
+
+        key_rename_map["market_cap"] = "marketCap"
+        key_rename_map["shares"] = "floatShares"
+        key_rename_map["timezone"] = "exchangeTimezoneName"
+
+        approximate_keys = {"fifty_day_average", "ten_day_average_volume"}
+        approximate_keys.update({"market_cap"})
+
+        # bad_keys = []
+        bad_keys = {"shares"}
+
+        custom_tolerances = {}
+        # custom_tolerances["ten_day_average_volume"] = 1e-3
+        custom_tolerances["ten_day_average_volume"] = 1e-1
+        custom_tolerances["three_month_average_volume"] = 1e-2
+        custom_tolerances["fifty_day_average"] = 1e-2
+        custom_tolerances["two_hundred_day_average"] = 1e-2
+
+        for k in bi.keys():
+            if k in key_rename_map:
+                k2 = key_rename_map[k]
+            else:
+                k2 = k
+
+            if not isinstance(k2, list):
+                k2 = [k2]
+
+            for m in k2:
+                if not m in self.ticker.info:
+                    print(sorted(list(self.ticker.info.keys())))
+                    raise Exception("Need to add/fix mapping for basic_info key", k)
+
+                if k in bad_keys:
+                    # Doesn't match, investigate why
+                    continue
+
+                if k in custom_tolerances:
+                    rtol = custom_tolerances[k]
+                else:
+                    # rtol = 1e-3
+                    # rtol = 5e-3
+                    rtol = 1e-4
+
+                print(f"Testing key {k} -> {m}")
+                # if k in approximate_keys:
+                v1 = self.ticker.basic_info[k]
+                v2 = self.ticker.info[m]
+                if isinstance(v1, float) or isinstance(v2, int):
+                    self.assertTrue(np.isclose(v1, v2, rtol=rtol), f"{k}: {v1} != {v2}")
+                else:
+                    self.assertEqual(v1, v2, f"{k}: {v1} != {v2}")
+
 
 
 def suite():

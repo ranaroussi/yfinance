@@ -9,12 +9,18 @@ from yfinance.data import TickerData
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
-info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyDayAverage", "twoHundredDayAverage"})
+info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyTwoWeekChange", "fiftyDayAverage", "twoHundredDayAverage"})
 info_retired_keys_price.update({"averageDailyVolume10Day", "averageVolume10days", "averageVolume"})
 info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"}
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
+#
+info_retired_keys = []
+
+
+PRUNE_INFO = True
+# PRUNE_INFO = False
 
 
 from collections.abc import MutableMapping
@@ -195,11 +201,12 @@ class Quote:
 
         # Delete redundant info[] keys, because values can be accessed faster
         # elsewhere - e.g. price keys. Hope is reduces Yahoo spam effect.
-        for k in info_retired_keys:
-            if k in self._info:
-                del self._info[k]
-        # InfoDictWrapper will explain how to access above data elsewhere
-        self._info = InfoDictWrapper(self._info)
+        if PRUNE_INFO:
+            for k in info_retired_keys:
+                if k in self._info:
+                    del self._info[k]
+            # InfoDictWrapper will explain how to access above data elsewhere
+            self._info = InfoDictWrapper(self._info)
 
         # events
         try:

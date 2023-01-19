@@ -322,6 +322,8 @@ def _interval_to_timedelta(interval):
         return _dateutil.relativedelta.relativedelta(months=1)
     elif interval == "3mo":
         return _dateutil.relativedelta.relativedelta(months=3)
+    elif interval == "1y":
+        return _dateutil.relativedelta.relativedelta(years=1)
     elif interval == "1wk":
         return _pd.Timedelta(days=7, unit='d')
     else: 
