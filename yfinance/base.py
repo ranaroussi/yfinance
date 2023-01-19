@@ -69,6 +69,7 @@ class BasicInfo:
         self._200d_day_average = None
         self._year_high = None
         self._year_low = None
+        self._year_change = None
         self._10d_avg_vol = None
         self._3mo_avg_vol = None
 
@@ -94,18 +95,30 @@ class BasicInfo:
     def __repr__(self):
         return self.__str__()
 
-    def _get_1y_prices(self):
-        if self._prices_1y is not None:
-            return self._prices_1y
+    def _get_1y_prices(self, fullDaysOnly=False):
+        if self._prices_1y is None:
+            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False)
+            self._md = self._tkr.get_history_metadata()
+            try:
+                ctp = self._md["currentTradingPeriod"]
+                self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
+                self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
+                self._today_midnight = self._today_close.ceil("D")
+            except:
+                self._today_open = None
+                self._today_close = None
+                self._today_midnight = None
+                raise
 
-        self._prices_1y = self._tkr.history(period="1y")
-        self._md = self._tkr.get_history_metadata()
-        try:
-            self._today_close = pd.to_datetime(self._md["currentTradingPeriod"]["regular"]["end"], unit='s', utc=True).tz_convert(self._md["exchangeTimezoneName"])
-        except:
-            pass
+        if self._prices_1y.empty:
+            return self.self._prices_1y
 
-        return self._prices_1y
+        dt1 = self._prices_1y.index[-1]
+        if fullDaysOnly and self._exchange_open_now():
+            # Exclude today
+            dt1 -= utils._interval_to_timedelta("1h")
+        dt0 = dt1 - utils._interval_to_timedelta("1y") + utils._interval_to_timedelta("1d")
+        return self._prices_1y.loc[dt0:dt1]
 
     def _get_exchange_metadata(self):
         if self._md is not None:
@@ -114,6 +127,29 @@ class BasicInfo:
         self._get_1y_prices()
         self._md = self._tkr.get_history_metadata()
         return self._md
+
+    def _exchange_open_now(self):
+        t = pd.Timestamp.utcnow()
+        self._get_exchange_metadata()
+
+        # if self._today_open is None and self._today_close is None:
+        #     r = False
+        # else:
+        #     r = self._today_open <= t and t < self._today_close
+
+        # if self._today_midnight is None:
+        #     r = False
+        # elif self._today_midnight.date() > t.tz_convert(self.timezone).date():
+        #     r = False
+        # else:
+        #     r = t < self._today_midnight
+
+        last_day_cutoff = self._get_1y_prices().index[-1] + _datetime.timedelta(days=1)
+        last_day_cutoff += _datetime.timedelta(minutes=20)
+        r = t < last_day_cutoff
+
+        # print("_exchange_open_now() returning", r)
+        return r
     
     @property
     def currency(self):
@@ -125,6 +161,9 @@ class BasicInfo:
         md = self._tkr.get_history_metadata()
         self._currency = md["currency"]
         return self._currency
+
+    def _currency_is_cents(self):
+        return self.currency in ["GBp"]
 
     @property
     def exchange(self):
@@ -140,7 +179,7 @@ class BasicInfo:
             return self._timezone
 
         self._timezone = self._get_exchange_metadata()["exchangeTimezoneName"]
-        return self._currency
+        return self._timezone
 
     @property
     def shares(self):
@@ -184,7 +223,7 @@ class BasicInfo:
         if self._50d_day_average is not None:
             return self._50d_day_average
 
-        prices = self._get_1y_prices()
+        prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
             self._50d_day_average = _np.nan
         else:
@@ -192,7 +231,7 @@ class BasicInfo:
             a = n-50
             b = n
             if a < 0:
-                b = 0
+                a = 0
             self._50d_day_average = prices["Close"].iloc[a:b].mean()
 
         return self._50d_day_average
@@ -202,7 +241,7 @@ class BasicInfo:
         if self._200d_day_average is not None:
             return self._200d_day_average
 
-        prices = self._get_1y_prices()
+        prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
             self._200d_day_average = _np.nan
         else:
@@ -210,7 +249,8 @@ class BasicInfo:
             a = n-200
             b = n
             if a < 0:
-                b = 0
+                a = 0
+
             self._200d_day_average = prices["Close"].iloc[a:b].mean()
 
         return self._200d_day_average
@@ -220,17 +260,13 @@ class BasicInfo:
         if self._10d_avg_vol is not None:
             return self._10d_avg_vol
 
-        prices = self._get_1y_prices()
+        prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
             self._10d_avg_vol = 0
         else:
             n = prices.shape[0]
             a = n-10
             b = n
-            if self._today_close is not None and pd.Timestamp.utcnow() < self._today_close:
-                # Exclude today
-                a -= 1
-                b -= 1
             if a < 0:
                 a = 0
             self._10d_avg_vol = prices["Volume"].iloc[a:b].mean()
@@ -242,15 +278,12 @@ class BasicInfo:
         if self._3mo_avg_vol is not None:
             return self._3mo_avg_vol
 
-        prices = self._get_1y_prices()
+        prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
             self._3mo_avg_vol = 0
         else:
             dt1 = prices.index[-1]
-            dt0 = dt1 - utils._interval_to_timedelta("3mo")
-            if self._today_close is not None and pd.Timestamp.utcnow() < self._today_close:
-                # Exclude today
-                dt1 -= utils._interval_to_timedelta("1d")
+            dt0 = dt1 - utils._interval_to_timedelta("3mo") + utils._interval_to_timedelta("1d")
             self._3mo_avg_vol = prices.loc[dt0:dt1, "Volume"].mean()
 
         return self._3mo_avg_vol
@@ -260,7 +293,7 @@ class BasicInfo:
         if self._year_high is not None:
             return self._year_high
 
-        prices = self._get_1y_prices()
+        prices = self._get_1y_prices(fullDaysOnly=True)
         self._year_high = prices["High"].max()
         return self._year_high
 
@@ -269,9 +302,18 @@ class BasicInfo:
         if self._year_low is not None:
             return self._year_low
 
-        prices = self._get_1y_prices()
+        prices = self._get_1y_prices(fullDaysOnly=True)
         self._year_low = prices["Low"].min()
         return self._year_low
+
+    @property
+    def year_change(self):
+        if self._year_change is not None:
+            return self._year_change
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+        return self._year_change
 
     @property
     def market_cap(self):
@@ -279,6 +321,8 @@ class BasicInfo:
             return self._mcap
 
         self._mcap = self.shares * self.last_price
+        if self._currency_is_cents():
+            self._mcap *= 0.01
         return self._mcap
 
 
