@@ -49,6 +49,11 @@ user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
+def TypeCheckSeries(var, varName):
+    if not isinstance(var, _pd.Series) or isinstance(var, _pd.DataFrame):
+        raise TypeError(f"'{varName}' must be _pd.Series not {type(var)}")
+
+
 def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9]{1})$", string))
 
@@ -307,7 +312,7 @@ def _parse_user_dt(dt, exchange_tz):
 
 def _interval_to_timedelta(interval):
     if interval == "1mo":
-        return _dateutil.relativedelta(months=1)
+        return _dateutil.relativedelta.relativedelta(months=1)
     elif interval == "1wk":
         return _pd.Timedelta(days=7, unit='d')
     else: 
@@ -459,24 +464,112 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
 
             if last_rows_same_interval:
                 # Last two rows are within same interval
-                idx1 = quotes.index[n - 1]
-                idx2 = quotes.index[n - 2]
-                if _np.isnan(quotes.loc[idx2, "Open"]):
-                    quotes.loc[idx2, "Open"] = quotes["Open"][n - 1]
-                # Note: nanmax() & nanmin() ignores NaNs
-                quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
-                quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
-                quotes.loc[idx2, "Close"] = quotes["Close"][n - 1]
-                if "Adj High" in quotes.columns:
-                    quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
-                if "Adj Low" in quotes.columns:
-                    quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
-                if "Adj Close" in quotes.columns:
-                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
-                quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
-                quotes = quotes.drop(quotes.index[n - 1])
+                ia = quotes.index[n - 2]
+                ib = quotes.index[n - 1]
+                quotes.loc[ia] = merge_two_prices_intervals(quotes.loc[ia], quotes.loc[ib])
+                quotes = quotes.drop(ib)
 
     return quotes
+
+
+def fix_Yahoo_including_unaligned_intervals(quotes, interval):
+    if interval[1] not in ['m', 'h']:
+        # Only correct intraday
+        return quotes
+
+    # Merge adjacent rows if in same interval
+    # e.g. 13:02pm with 13:00pm 1h interval
+    n = quotes.shape[0]
+    itd = _interval_to_timedelta(interval)
+    td0 = _pd.Timedelta(0)
+    iend = quotes.index + itd
+    if interval[1:] in ["d", "wk", "mo"]:
+        # # Allow for DST
+        # iend -= _pd.Timedelta('2h')
+        return quotes
+    steps = _np.full(n, td0)
+    steps[1:] = quotes.index[1:] - iend[0:n-1]
+    f_overlap = steps < td0
+    if f_overlap.any():
+        # Process overlaps one-at-time because some may be false positives. 
+        # Recalculate subsequent step after removing an overlap.
+        overlaps_exist = True
+        n_merged = 0
+        dts_to_drop = []
+        while overlaps_exist:
+            indices = _np.where(f_overlap)[0]
+            i = indices[0]
+            dt1 = quotes.index[i-1]
+            dt2 = quotes.index[i]
+            dt3 = quotes.index[i+1]
+
+            dropped_dt = dt2
+            quotes.loc[dt1] = merge_two_prices_intervals(quotes.iloc[i-1], quotes.iloc[i])
+
+            # Remove record of i:
+            dts_to_drop.append(dt2)
+            f_overlap[i] = False
+            steps[i] = td0
+            # Recalc step of following dt:
+            steps[i+1] = quotes.index[i+1] - iend[i-1]
+
+            f_overlap[i+1] = steps[i+1] < td0
+            overlaps_exist = f_overlap[i+1:].any()
+        # Useful debug code:
+        # for d in [str(dt.date()) for dt in dts_to_drop]:
+        #     print(quotes.loc[d])
+        print("Dropping unaligned intervals:", dts_to_drop)
+        quotes = quotes.drop(dts_to_drop)
+    return quotes
+
+
+def merge_two_prices_intervals(i1, i2):
+    TypeCheckSeries(i1, "i1")
+    TypeCheckSeries(i2, "i2")
+
+    price_cols = ["Open", "High", "Low", "Close"]
+    na1 = i1[price_cols].isna().all()
+    na2 = i2[price_cols].isna().all()
+    if na1 and na2:
+        return i1
+    elif na1:
+        return i2
+    elif na2:
+        return i1
+
+    # First check if two intervals are almost identical. If yes, keep 2nd
+    ratio = _np.mean(i2[price_cols+["Volume"]] / i1[price_cols+["Volume"]])
+    if ratio > 0.99 and ratio < 1.01:
+        return i2
+
+    m = i1.copy()
+
+    if _np.isnan(m["Open"]):
+        m["Open"] = i2["Open"]
+        if "Adj Open" in m.index:
+            m["Adj Open"] = i2["Adj Open"]
+
+    # Note: nanmax() & nanmin() ignores NaNs
+    m["High"] = _np.nanmax([i2["High"], i1["High"]])
+    m["Low"] = _np.nanmin([i2["Low"], i1["Low"]])
+    if not _np.isnan(i2["Close"]):
+        m["Close"] = i2["Close"]
+
+    if "Adj High" in m.index:
+        m["Adj High"] = _np.nanmax([i2["Adj High"], i1["Adj High"]])
+    if "Adj Low" in m.index:
+        m["Adj Low"] = _np.nanmin([i2["Adj Low"], i1["Adj Low"]])
+    if "Adj Close" in m.index:
+        m["Adj Close"] = i2["Adj Close"]
+
+    if _np.isnan(m["Volume"]):
+        m["Volume"] = i2["Volume"]
+    elif _np.isnan(i2["Volume"]):
+        pass
+    else:
+        m["Volume"] += i2["Volume"]
+
+    return m
 
 
 def safe_merge_dfs(df_main, df_sub, interval):

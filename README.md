@@ -225,8 +225,9 @@ data = yf.download(  # or pdr.get_data_yahoo(...
         # (optional, default is False)
         auto_adjust = True,
 
-        # attempt repair of missing data or currency mixups e.g. $/cents
-        repair = False,
+        # attempt repair of Yahoo data issues
+        repair_prices = False,
+        repair_intervals = False,
 
         # download pre/post regular market hours data
         # (optional, default is False)

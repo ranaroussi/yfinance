@@ -261,6 +261,44 @@ class TestPriceHistory(unittest.TestCase):
             print("Weekly data not aligned to Monday")
             raise
 
+    def test_correct_early_close(self):
+        # Stockholm exchange closed early on 2022-12-23 @ 13:02. 
+        # For hourly intervals, Yahoo returns:
+        # - 13:00 filled with NaNs
+        # - 13:02 contains data for 13:00
+        # Test that 'repair' fixes this without affecting other intervals.
+        tkr = "AEC.ST"
+        d = "2022-12-23"
+        start = "2022-12-01"
+        end = "2023-01-01"
+        data_cols = ["Open","High","Low","Close","Volume","Dividends","Stock Splits"]
+
+        dat = yf.Ticker(tkr, session=self.session)
+        df_old = dat.history(start=start, end=end, interval="1h", keepna=True)
+        df_repair = dat.history(start=start, end=end, interval="1h", keepna=True, repair_intervals=True)
+
+        tz = df_old.index.tz
+        expected_intervals_fixed = []
+        expected_intervals_fixed.append(tz.localize(_dt.datetime(2022,12,23,13,0)))
+        expected_intervals_lost = []
+        expected_intervals_lost.append(tz.localize(_dt.datetime(2022,12,23,13,2)))
+
+        # Test no unexpected intervals lost
+        dts_lost = df_old.index[~df_old.index.isin(df_repair.index)]
+        self.assertTrue(_np.equal(dts_lost.to_numpy(), expected_intervals_lost))
+
+        # Test only the expected interval changed
+        dts_shared = df_old.index[df_old.index.isin(df_repair.index)]
+        f_changed = (df_old.loc[dts_shared, data_cols].to_numpy() != df_repair.loc[dts_shared, data_cols].to_numpy()).any(axis=1)
+        self.assertTrue(f_changed.any(), "Expected data to change")
+        dts_changed = dts_shared[f_changed]
+        self.assertEqual(len(dts_changed), len(expected_intervals_fixed), "Different number of intervals changed")
+        self.assertTrue(_np.equal(dts_shared[f_changed], expected_intervals_fixed), "Unexpected intervals were changed")
+
+        # Test the expected interval is valid data
+        f_na = df_repair.loc[expected_intervals_fixed, data_cols].isna().any(axis=1)
+        self.assertFalse(f_na.any(), "Repaired interval still contains NaNs")
+
     def test_weekly_2rows_fix(self):
         tkr = "AMZN"
         start = _dt.date.today() - _dt.timedelta(days=14)
@@ -298,7 +336,7 @@ class TestPriceHistory(unittest.TestCase):
 
         # Run test
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange)
+        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -353,7 +391,7 @@ class TestPriceHistory(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange)
+        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -403,7 +441,7 @@ class TestPriceHistory(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1d", tz_exchange)
+        df_repaired = dat._fix_unit_mixups(df_bad, "1d", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -438,7 +476,7 @@ class TestPriceHistory(unittest.TestCase):
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        repaired_df = dat._fix_zeroes(df_bad, "1d", tz_exchange)
+        repaired_df = dat._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
 
         correct_df = df_bad.copy()
         correct_df.loc["2022-11-01", "Open"] = 102.080002
@@ -467,7 +505,7 @@ class TestPriceHistory(unittest.TestCase):
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange)
+        repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange, prepost=False)
 
         correct_df = df_bad.copy()
         idx = _pd.Timestamp(2022,11,25, 12,30).tz_localize(tz_exchange)
