@@ -463,7 +463,7 @@ class TickerBase:
             f_recent = _datetime.date.today() - df.index.date < m
             f_repair_rows = f_repair_rows & f_recent
             if not f_repair_rows.any():
-                print("data too old to fix")
+                # print("data too old to repair")
                 return df
 
         dts_to_repair = df.index[f_repair_rows]

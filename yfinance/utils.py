@@ -496,6 +496,7 @@ def fix_Yahoo_including_unaligned_intervals(quotes, interval):
         overlaps_exist = True
         n_merged = 0
         dts_to_drop = []
+        dts_merged = []
         while overlaps_exist:
             indices = _np.where(f_overlap)[0]
             i = indices[0]
@@ -505,6 +506,7 @@ def fix_Yahoo_including_unaligned_intervals(quotes, interval):
 
             dropped_dt = dt2
             quotes.loc[dt1] = merge_two_prices_intervals(quotes.iloc[i-1], quotes.iloc[i])
+            dts_merged.append((dt2, dt1))
 
             # Remove record of i:
             dts_to_drop.append(dt2)
@@ -515,10 +517,15 @@ def fix_Yahoo_including_unaligned_intervals(quotes, interval):
 
             f_overlap[i+1] = steps[i+1] < td0
             overlaps_exist = f_overlap[i+1:].any()
+
         # Useful debug code:
         # for d in [str(dt.date()) for dt in dts_to_drop]:
         #     print(quotes.loc[d])
-        print("Dropping unaligned intervals:", dts_to_drop)
+        #
+        # print("Dropped unaligned intervals:", dts_to_drop)
+        print(f"Removed {len(dts_merged)} unaligned intervals by merging:")
+        for i in range(len(dts_merged)):
+            print(f"- {dts_merged[i][0].date()}: {dts_merged[i][0].time()} -> {dts_merged[i][1].time()}")
         quotes = quotes.drop(dts_to_drop)
     return quotes
 
