@@ -288,21 +288,30 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
     return strings
 
 
-def _parse_user_dt(dt, exchange_tz):
+def _parse_user_dt(dt, tz_name):
     if isinstance(dt, int):
         # Should already be epoch, test with conversion:
-        _datetime.datetime.fromtimestamp(dt)
-    else:
-        # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
-        if isinstance(dt, str):
-            dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
-        if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
-            dt = _datetime.datetime.combine(dt, _datetime.time(0))
-        if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
-            # Assume user is referring to exchange's timezone
-            dt = _tz.timezone(exchange_tz).localize(dt)
-        dt = int(dt.timestamp())
-    return dt
+        try:
+            _datetime.datetime.fromtimestamp(dt)
+        except:
+            raise Exception(f"'dt' is not a valid epoch: '{dt}'")
+        return dt
+
+    # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
+    dt2 = dt
+    if isinstance(dt2, str):
+        dt2 = _datetime.datetime.strptime(str(dt2), '%Y-%m-%d')
+    if isinstance(dt2, _datetime.date) and not isinstance(dt2, _datetime.datetime):
+        dt2 = _datetime.datetime.combine(dt2, _datetime.time(0))
+    if isinstance(dt2, _datetime.datetime) and dt2.tzinfo is None:
+        # Assume user is referring to exchange's timezone
+        if tz_name is None:
+            raise Exception(f"Must provide a timezone for localizing '{dt}'")
+        dt2 = _tz.timezone(tz_name).localize(dt2)
+    if not isinstance(dt2, _datetime.datetime):
+        raise Exception(f"'dt' is not a date-like value: '{dt}'")
+    dt2 = int(dt2.timestamp())
+    return dt2
 
 
 def _interval_to_timedelta(interval):
