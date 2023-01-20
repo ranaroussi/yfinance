@@ -419,6 +419,9 @@ class TickerBase:
     def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1):
         if not isinstance(df, _pd.DataFrame):
             raise Exception("'df' must be a Pandas DataFrame not", type(df))
+        if interval == "1m":
+            # Can't go smaller than 1m so can't reconstruct
+            return df
 
         # Reconstruct values in df using finer-grained price data. Delimiter marks what to reconstruct
 
