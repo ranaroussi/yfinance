@@ -86,9 +86,7 @@ class TickerBase:
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False, 
-                repair=None, # deprecated
-                repair_prices=False, repair_intervals=False,
+                auto_adjust=True, back_adjust=False, repair=None, 
                 keepna=False,
                 proxy=None, rounding=False, timeout=10,
                 debug=True, raise_errors=False) -> pd.DataFrame:
@@ -113,11 +111,8 @@ class TickerBase:
                 Adjust all OHLC automatically? Default is True
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
-            repair_prices: bool
+            repair: bool
                 Detect currency unit 100x mixups and attempt repair
-                Default is False
-            repair_intervals: bool
-                Detect
                 Default is False
             keepna: bool
                 Keep NaN rows returned by Yahoo?
@@ -138,11 +133,6 @@ class TickerBase:
                 If True, then raise errors as
                 exceptions instead of printing to console.
         """
-
-        # Handle deprecated arguments
-        if repair is not None:
-            print("WARNING: 'repair' is deprecated and will be removed in future version. Use 'repair_prices' instead")
-            repair_prices = repair
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
@@ -302,9 +292,6 @@ class TickerBase:
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
 
-        if repair_intervals:
-            quotes = utils.fix_Yahoo_including_unaligned_intervals(quotes, params["interval"])
-
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
         if not expect_capital_gains:
@@ -368,8 +355,7 @@ class TickerBase:
             else:
                 df["Capital Gains"] = 0.0
 
-
-        if repair_prices:
+        if repair:
             # Do this before auto/back adjust
             df = self._fix_zeroes(df, interval, tz_exchange, prepost)
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
@@ -553,7 +539,7 @@ class TickerBase:
                 fetch_start = g[0]
                 fetch_end = g[-1] + td_range
 
-            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, prepost=prepost, repair_prices=False, keepna=True)
+            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, prepost=prepost, repair=False, keepna=True)
             if df_fine is None or df_fine.empty:
                 print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
                 continue

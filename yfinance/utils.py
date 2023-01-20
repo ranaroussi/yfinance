@@ -472,64 +472,6 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
     return quotes
 
 
-def fix_Yahoo_including_unaligned_intervals(quotes, interval):
-    if interval[1] not in ['m', 'h']:
-        # Only correct intraday
-        return quotes
-
-    # Merge adjacent rows if in same interval
-    # e.g. 13:02pm with 13:00pm 1h interval
-    n = quotes.shape[0]
-    itd = _interval_to_timedelta(interval)
-    td0 = _pd.Timedelta(0)
-    iend = quotes.index + itd
-    if interval[1:] in ["d", "wk", "mo"]:
-        # # Allow for DST
-        # iend -= _pd.Timedelta('2h')
-        return quotes
-    steps = _np.full(n, td0)
-    steps[1:] = quotes.index[1:] - iend[0:n-1]
-    f_overlap = steps < td0
-    if f_overlap.any():
-        # Process overlaps one-at-time because some may be false positives. 
-        # Recalculate subsequent step after removing an overlap.
-        overlaps_exist = True
-        n_merged = 0
-        dts_to_drop = []
-        dts_merged = []
-        while overlaps_exist:
-            indices = _np.where(f_overlap)[0]
-            i = indices[0]
-            dt1 = quotes.index[i-1]
-            dt2 = quotes.index[i]
-            dt3 = quotes.index[i+1]
-
-            dropped_dt = dt2
-            quotes.loc[dt1] = merge_two_prices_intervals(quotes.iloc[i-1], quotes.iloc[i])
-            dts_merged.append((dt2, dt1))
-
-            # Remove record of i:
-            dts_to_drop.append(dt2)
-            f_overlap[i] = False
-            steps[i] = td0
-            # Recalc step of following dt:
-            steps[i+1] = quotes.index[i+1] - iend[i-1]
-
-            f_overlap[i+1] = steps[i+1] < td0
-            overlaps_exist = f_overlap[i+1:].any()
-
-        # Useful debug code:
-        # for d in [str(dt.date()) for dt in dts_to_drop]:
-        #     print(quotes.loc[d])
-        #
-        # print("Dropped unaligned intervals:", dts_to_drop)
-        print(f"Removed {len(dts_merged)} unaligned intervals by merging:")
-        for i in range(len(dts_merged)):
-            print(f"- {dts_merged[i][0].date()}: {dts_merged[i][0].time()} -> {dts_merged[i][1].time()}")
-        quotes = quotes.drop(dts_to_drop)
-    return quotes
-
-
 def merge_two_prices_intervals(i1, i2):
     TypeCheckSeries(i1, "i1")
     TypeCheckSeries(i2, "i2")
