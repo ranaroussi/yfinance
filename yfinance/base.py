@@ -40,6 +40,7 @@ from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote
+from .scrapers.stats import KeyStats
 import json as _json
 
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
@@ -75,14 +76,11 @@ class TickerBase:
         self._analysis = Analysis(self._data)
         self._holders = Holders(self._data)
         self._quote = Quote(self._data)
+        self._stats = KeyStats(self._data)
         self._fundamentals = Fundamentals(self._data)
 
     def stats(self, proxy=None):
-        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
-
-        # get info and sustainability
-        data = self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
-        return data
+        return self.get_stats(proxy)
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
@@ -893,6 +891,11 @@ class TickerBase:
     def get_info(self, proxy=None) -> dict:
         self._quote.proxy = proxy
         data = self._quote.info
+        return data
+
+    def get_stats(self, proxy=None) -> dict:
+        self._stats.proxy = proxy
+        data = self._stats.stats
         return data
 
     def get_sustainability(self, proxy=None, as_dict=False):
