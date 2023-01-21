@@ -89,10 +89,23 @@ class KeyStats:
                 k = _re.sub("^quarterly", "", k)
                 year_series.append(_pd.Series(values, index=dates, name=k))
 
-        year_table = _pd.concat(year_series, axis=1)
-        trailing_table = _pd.concat(trailing_series, axis=1)
-        table = _pd.concat([year_table, trailing_table], axis=0)
-        table = table.T
-        table = table[table.columns.sort_values(ascending=False)]
+        year_table = None
+        if len(year_series) > 0:
+            year_table = _pd.concat(year_series, axis=1)
+
+        trailing_table = None
+        if len(trailing_series) > 0:
+            trailing_table = _pd.concat(trailing_series, axis=1)
+
+        tables = [t for t in [year_table, trailing_table] if not t is None]
+        if len(tables) == 0:
+            table = _pd.DataFrame()
+        else:
+            if len(tables) == 1:
+                table = tables[0]
+            else:
+                table = _pd.concat(tables, axis=0)
+            table = table.T
+            table = table[table.columns.sort_values(ascending=False)]
 
         self._valuations = table
