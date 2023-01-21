@@ -15,6 +15,7 @@ class KeyStats:
         self.proxy = proxy
 
         self._stats = None
+        self._valuations = None
 
         self._already_scraped = False
 
@@ -22,56 +23,76 @@ class KeyStats:
     def stats(self) -> dict:
         if self._stats is None:
             self._scrape(self.proxy)
-
         return self._stats
+
+    @property
+    def valuations(self) -> dict:
+        if self._valuations is None:
+            self._scrape(self.proxy)
+        return self._valuations
 
     def _scrape(self, proxy):
         if self._already_scraped:
             return
         self._already_scraped = True
 
-        data = self._data.get_json_data_stores('key-statistics', proxy)
-        key_stats = data['QuoteTimeSeriesStore']["timeSeries"]
 
-        stats_trailing_series = []
-        # stats_year_index = None
-        stats_year_series = []
-        for k in key_stats:
-            if len(key_stats[k]) == 0:
+        data = self._data.get_json_data_stores('key-statistics', proxy)
+
+
+        self._stats = data['QuoteSummaryStore']
+        del self._stats["defaultKeyStatistics"]  # available in Ticker.info
+        del self._stats["financialData"]  # available in Ticker.info
+        exchange_tz = self._stats["quoteType"]["exchangeTimezoneName"]
+        try:
+            c = "calendarEvents"
+            for k in ["dividendDate", "exDividendDate"]:
+                self._stats[c][k] = _pd.to_datetime(self._stats[c][k], unit='s', utc=True)
+                if self._stats[c][k].time() == _dt.time(0):
+                    # Probably not UTC but meant to be in exchange timezone
+                    self._stats[c][k] = self._stats[c][k].tz_convert(None).tz_localize(exchange_tz)
+        except:
+            pass
+
+
+        ts = data['QuoteTimeSeriesStore']["timeSeries"]
+        trailing_series = []
+        year_series = []
+        for k in ts:
+            if len(ts[k]) == 0:
                 # Yahoo website prints N/A, indicates Yahoo lacks necessary data to calculate
                 continue
 
-            if len(key_stats[k]) == 1:
-                date = _pd.to_datetime(key_stats[k][0]["asOfDate"])
+            if len(ts[k]) == 1:
+                date = _pd.to_datetime(ts[k][0]["asOfDate"])
 
-                v = key_stats[k][0]["reportedValue"]
+                v = ts[k][0]["reportedValue"]
                 if isinstance(v, dict):
                     v = v["raw"]
 
                 k = _re.sub("^trailing", "", k)
-                stats_trailing_series.append(_pd.Series([v], index=[date], name=k))
+                trailing_series.append(_pd.Series([v], index=[date], name=k))
 
             else:
                 if k == "timestamp":
-                    # stats_year_index = _pd.to_datetime(key_stats[k], unit='s')
                     continue
 
-                dates = [d["asOfDate"] for d in key_stats[k]]
+                dates = [d["asOfDate"] for d in ts[k]]
                 dates = _pd.to_datetime(dates)
 
-                has_raw = isinstance(key_stats[k][0]["reportedValue"], dict) and "raw" in key_stats[k][0]["reportedValue"]
+                has_raw = isinstance(ts[k][0]["reportedValue"], dict) and "raw" in ts[k][0]["reportedValue"]
                 if has_raw:
-                    values = [d["reportedValue"]["raw"] for d in key_stats[k]]
+                    values = [d["reportedValue"]["raw"] for d in ts[k]]
                 else:
-                    values = [d["reportedValue"] for d in key_stats[k]]
+                    values = [d["reportedValue"] for d in ts[k]]
 
                 k = _re.sub("^quarterly", "", k)
-                stats_year_series.append(_pd.Series(values, index=dates, name=k))
+                year_series.append(_pd.Series(values, index=dates, name=k))
 
-        stats_year_table = _pd.concat(stats_year_series, axis=1)
-        stats_trailing_table = _pd.concat(stats_trailing_series, axis=1)
-        stats_table = _pd.concat([stats_year_table, stats_trailing_table], axis=0)
-        stats_table = stats_table.T
-        stats_table = stats_table[stats_table.columns.sort_values(ascending=False)]
+        year_table = _pd.concat(year_series, axis=1)
+        trailing_table = _pd.concat(trailing_series, axis=1)
+        table = _pd.concat([year_table, trailing_table], axis=0)
+        table = table.T
+        table = table[table.columns.sort_values(ascending=False)]
 
-        self._stats = stats_table
+        self._valuations = table

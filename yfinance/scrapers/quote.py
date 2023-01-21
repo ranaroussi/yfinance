@@ -19,13 +19,11 @@ class Quote:
         self._calendar = None
 
         self._already_scraped = False
-        self._already_scraped_complementary = False
 
     @property
     def info(self) -> dict:
         if self._info is None:
             self._scrape(self.proxy)
-            self._scrape_complementary(self.proxy)
 
         return self._info
 
@@ -154,59 +152,3 @@ class Quote:
                 'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
         except Exception:
             pass
-
-    def _scrape_complementary(self, proxy):
-        if self._already_scraped_complementary:
-            return
-        self._already_scraped_complementary = True
-
-        self._scrape(proxy)
-        if self._info is None:
-            return
-
-        # Complementary key-statistics. For now just want 'trailing PEG ratio'
-        keys = {"trailingPegRatio"}
-        if keys:
-            # Simplified the original scrape code for key-statistics. Very expensive for fetching
-            # just one value, best if scraping most/all:
-            #
-            # p = _re.compile(r'root\.App\.main = (.*);')
-            # url = 'https://finance.yahoo.com/quote/{}/key-statistics?p={}'.format(self._ticker.ticker, self._ticker.ticker)
-            # try:
-            #     r = session.get(url, headers=utils.user_agent_headers)
-            #     data = _json.loads(p.findall(r.text)[0])
-            #     key_stats = data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']["timeSeries"]
-            #     for k in keys:
-            #         if k not in key_stats or len(key_stats[k])==0:
-            #             # Yahoo website prints N/A, indicates Yahoo lacks necessary data to calculate
-            #             v = None
-            #         else:
-            #             # Select most recent (last) raw value in list:
-            #             v = key_stats[k][-1]["reportedValue"]["raw"]
-            #         self._info[k] = v
-            # except Exception:
-            #     raise
-            #     pass
-            #
-            # For just one/few variable is faster to query directly:
-            url = "https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{}?symbol={}".format(
-                self._data.ticker, self._data.ticker)
-            for k in keys:
-                url += "&type=" + k
-            # Request 6 months of data
-            start = pd.Timestamp.utcnow().floor("D") - datetime.timedelta(days=365 // 2)
-            start = int(start.timestamp())
-            end = pd.Timestamp.utcnow().ceil("D")
-            end = int(end.timestamp())
-            url += f"&period1={start}&period2={end}"
-
-            json_str = self._data.cache_get(url=url, proxy=proxy).text
-            json_data = json.loads(json_str)
-            key_stats = json_data["timeseries"]["result"][0]
-            if k not in key_stats:
-                # Yahoo website prints N/A, indicates Yahoo lacks necessary data to calculate
-                v = None
-            else:
-                # Select most recent (last) raw value in list:
-                v = key_stats[k][-1]["reportedValue"]["raw"]
-            self._info[k] = v

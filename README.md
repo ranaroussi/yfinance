@@ -65,6 +65,7 @@ msft.info
 
 # get stock price statistics
 msft.stats
+msft.valuations
 
 # get historical market data
 hist = msft.history(period="max")

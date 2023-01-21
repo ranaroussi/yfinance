@@ -79,9 +79,6 @@ class TickerBase:
         self._stats = KeyStats(self._data)
         self._fundamentals = Fundamentals(self._data)
 
-    def stats(self, proxy=None):
-        return self.get_stats(proxy)
-
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
@@ -896,6 +893,11 @@ class TickerBase:
     def get_stats(self, proxy=None) -> dict:
         self._stats.proxy = proxy
         data = self._stats.stats
+        return data
+
+    def get_valuations(self, proxy=None) -> dict:
+        self._stats.proxy = proxy
+        data = self._stats.valuations
         return data
 
     def get_sustainability(self, proxy=None, as_dict=False):
