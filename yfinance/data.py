@@ -69,6 +69,8 @@ def decrypt_cryptojs_aes_stores(data):
             k_str = k if len(k) < 32 else k[:32-3]+"..."
             msg += f" '{k_str}'->{type(data[k])}"
             for i in range(1, len(new_keys)):
+                k = new_keys[i]
+                k_str = k if len(k) < 32 else k[:32-3]+"..."
                 msg += f" , '{k_str}'->{type(data[k])}"
             raise Exception(msg)
         password_key = new_keys[0]
