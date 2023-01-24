@@ -65,13 +65,17 @@ def decrypt_cryptojs_aes_stores(data):
             password_key = new_keys[0]
         else:
             msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
-            k = new_keys[0]
-            k_str = k if len(k) < 32 else k[:32-3]+"..."
-            msg += f" '{k_str}'->{type(data[k])}"
-            for i in range(1, len(new_keys)):
+            for i in range(0, len(new_keys)):
                 k = new_keys[i]
                 k_str = k if len(k) < 32 else k[:32-3]+"..."
-                msg += f" , '{k_str}'->{type(data[k])}"
+                v = data[k]
+                v_type = type(v)
+                v_str = str(v)
+                if len(v_str) > 64:
+                    v_str = v_str[:64]+"..."
+                msg += f"'{k_str}' -> '{v_str}' ({v_type})"
+                if i < len(new_keys)-1:
+                    msg += " , "
             raise Exception(msg)
         password_key = new_keys[0]
         password = data[password_key]
