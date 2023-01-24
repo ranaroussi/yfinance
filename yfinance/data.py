@@ -58,6 +58,18 @@ def decrypt_cryptojs_aes_stores(data):
         # Currently assume one extra key in dict, which is password. Print error if 
         # more extra keys detected.
         new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
+        # Maybe multiple keys have same value - keep one of each
+        new_keys2 = []
+        for k in new_keys:
+            add = True
+            for k2 in new_keys2:
+                if data[k] == data[k2]:
+                    add = False
+                    break
+            if add:
+                new_keys2.append(k)
+        new_keys = new_keys2
+
         l = len(new_keys)
         if l == 0:
             return None
