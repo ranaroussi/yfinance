@@ -14,6 +14,7 @@ else:
 
 import requests as requests
 import re
+from pprint import pprint
 
 from frozendict import frozendict
 
@@ -47,51 +48,59 @@ def lru_cache_freezeargs(func):
 
 
 def decrypt_cryptojs_aes_stores(data):
+    print("decrypt_cryptojs_aes_stores()")
     encrypted_stores = data['context']['dispatcher']['stores']
 
+    password = None
+    candidate_passwords = None
     if "_cs" in data and "_cr" in data:
         _cs = data["_cs"]
         _cr = data["_cr"]
         _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
         password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
     else:
-        # Currently assume one extra key in dict, which is password. Print error if 
-        # more extra keys detected.
-        new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
-        # Maybe multiple keys have same value - keep one of each
-        new_keys2 = []
-        for k in new_keys:
-            add = True
-            for k2 in new_keys2:
-                if data[k] == data[k2]:
-                    add = False
-                    break
-            if add:
-                new_keys2.append(k)
-        new_keys = new_keys2
+        # # Currently assume one extra key in dict, which is password. Print error if 
+        # # more extra keys detected.
+        # new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
+        # # Maybe multiple keys have same value - keep one of each
+        # new_keys2 = []
+        # for k in new_keys:
+        #     add = True
+        #     for k2 in new_keys2:
+        #         if data[k] == data[k2]:
+        #             add = False
+        #             break
+        #     if add:
+        #         new_keys2.append(k)
+        # new_keys = new_keys2
 
-        l = len(new_keys)
-        if l == 0:
-            return None
-        elif l == 1 and isinstance(data[new_keys[0]], str):
-            password_key = new_keys[0]
-        else:
-            msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
-            new_keys_pretty = {}
-            for i in range(0, len(new_keys)):
-                k = new_keys[i]
-                k_str = k if len(k) < 32 else k[:32-3]+"..."
-                v = data[k]
-                v_type = type(v)
-                v_str = str(v)
-                if len(v_str) > 256:
-                    v_str = v_str[:256]+"..."
-                new_keys_pretty[k_str] = f"{v_str}' ({v_type})"
-            for k in new_keys_pretty:
-                msg += '\n' + f"'{k}' -> '{new_keys_pretty[k]}'"
-            raise Exception(msg)
-        password_key = new_keys[0]
-        password = data[password_key]
+        # l = len(new_keys)
+        # if l == 0:
+        #     return None
+        # elif l == 1 and isinstance(data[new_keys[0]], str):
+        #     password_key = new_keys[0]
+        # else:
+        #     msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
+        #     new_keys_pretty = {}
+        #     for i in range(0, len(new_keys)):
+        #         k = new_keys[i]
+        #         k_str = k if len(k) < 32 else k[:32-3]+"..."
+        #         v = data[k]
+        #         v_type = type(v)
+        #         v_str = str(v)
+        #         if len(v_str) > 256:
+        #             v_str = v_str[:256]+"..."
+        #         new_keys_pretty[k_str] = f"{v_str}' ({v_type})"
+        #     for k in new_keys_pretty:
+        #         msg += '\n' + f"'{k}' -> '{new_keys_pretty[k]}'"
+        #     raise Exception(msg)
+
+        # password_key = new_keys[0]
+        # password = data[password_key]
+        
+        # The above attempt to smartly pick out decryption key is not working for small % of users.
+        # Fortunately the keys Yahoo use are currently hardcoded in their JSON:
+        candidate_passwords = ["ad4d90b3c9f2e1d156ef98eadfa0ff93e4042f6960e54aa2a13f06f528e6b50ba4265a26a1fd5b9cd3db0d268a9c34e1d080592424309429a58bce4adc893c87", "e9a8ab8e5620b712ebc2fb4f33d5c8b9c80c0d07e8c371911c785cf674789f1747d76a909510158a7b7419e86857f2d7abbd777813ff64840e4cbc514d12bcae"]
 
     encrypted_stores = b64decode(encrypted_stores)
     assert encrypted_stores[0:8] == b"Salted__"
@@ -137,10 +146,22 @@ def decrypt_cryptojs_aes_stores(data):
         key, iv = key_iv[:keySize], key_iv[keySize:final_length]
         return key, iv
 
-    try:
-        key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
-    except:
-        raise Exception("yfinance failed to decrypt Yahoo data response")
+    if not password is None:
+        try:
+            key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+        except:
+            raise Exception("yfinance failed to decrypt Yahoo data response")
+    else:
+        success = False
+        for password in candidate_passwords:
+            try:
+                key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+                success = True
+                break
+            except:
+                pass
+        if not success:
+            raise Exception("yfinance failed to decrypt Yahoo data response with hardcoded keys, contact developers")
 
     if usePycryptodome:
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
