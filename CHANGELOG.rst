@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.6
+-----
+- Fix Ticker.basic_info lazy-loading #1342
+
 0.2.5
 -----
 - Fix Yahoo data decryption again #1336
