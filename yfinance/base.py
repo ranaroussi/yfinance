@@ -47,6 +47,320 @@ _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
 
+class BasicInfo:
+    # Contain small subset of info[] items that can be fetched faster elsewhere.
+    # Imitates a dict.
+    def __init__(self, tickerBaseObject):
+        self._tkr = tickerBaseObject
+
+        self._prices_1y = None
+        self._md = None
+
+        self._currency = None
+        self._exchange = None
+        self._timezone = None
+
+        self._shares = None
+        self._mcap = None
+
+        self._open = None
+        self._day_high = None
+        self._day_low = None
+        self._last_price = None
+        self._last_volume = None
+
+        self._prev_close = None
+
+        self._50d_day_average = None
+        self._200d_day_average = None
+        self._year_high = None
+        self._year_low = None
+        self._year_change = None
+
+        self._10d_avg_vol = None
+        self._3mo_avg_vol = None
+
+    # dict imitation:
+    def keys(self):
+        attrs = utils.attributes(self)
+        return attrs.keys()
+    def items(self):
+        return [(k,self[k]) for k in self.keys()]
+    def __getitem__(self, k):
+        if not isinstance(k, str):
+            raise KeyError(f"key must be a string")
+        if not k in self.keys():
+            raise KeyError(f"'{k}' not valid key. Examine 'BasicInfo.keys()'")
+        return getattr(self, k)
+    def __contains__(self, k):
+        return k in self.keys()
+    def __iter__(self):
+        return iter(self.keys())
+
+    def __str__(self):
+        return "lazy-loading dict with keys = " + str(self.keys())
+    def __repr__(self):
+        return self.__str__()
+
+    def _get_1y_prices(self, fullDaysOnly=False):
+        if self._prices_1y is None:
+            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False)
+            self._md = self._tkr.get_history_metadata()
+            try:
+                ctp = self._md["currentTradingPeriod"]
+                self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
+                self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
+                self._today_midnight = self._today_close.ceil("D")
+            except:
+                self._today_open = None
+                self._today_close = None
+                self._today_midnight = None
+                raise
+
+        if self._prices_1y.empty:
+            return self.self._prices_1y
+
+        dt1 = self._prices_1y.index[-1]
+        if fullDaysOnly and self._exchange_open_now():
+            # Exclude today
+            dt1 -= utils._interval_to_timedelta("1h")
+        dt0 = dt1 - utils._interval_to_timedelta("1y") + utils._interval_to_timedelta("1d")
+        return self._prices_1y.loc[dt0:dt1]
+
+    def _get_exchange_metadata(self):
+        if self._md is not None:
+            return self._md
+
+        self._get_1y_prices()
+        self._md = self._tkr.get_history_metadata()
+        return self._md
+
+    def _exchange_open_now(self):
+        t = pd.Timestamp.utcnow()
+        self._get_exchange_metadata()
+
+        # if self._today_open is None and self._today_close is None:
+        #     r = False
+        # else:
+        #     r = self._today_open <= t and t < self._today_close
+
+        # if self._today_midnight is None:
+        #     r = False
+        # elif self._today_midnight.date() > t.tz_convert(self.timezone).date():
+        #     r = False
+        # else:
+        #     r = t < self._today_midnight
+
+        last_day_cutoff = self._get_1y_prices().index[-1] + _datetime.timedelta(days=1)
+        last_day_cutoff += _datetime.timedelta(minutes=20)
+        r = t < last_day_cutoff
+
+        # print("_exchange_open_now() returning", r)
+        return r
+
+    @property
+    def currency(self):
+        if self._currency is not None:
+            return self._currency
+
+        if self._tkr._history_metadata is None:
+            self._get_1y_prices()
+        md = self._tkr.get_history_metadata()
+        self._currency = md["currency"]
+        return self._currency
+
+    def _currency_is_cents(self):
+        return self.currency in ["GBp", "ILA"]
+
+    @property
+    def exchange(self):
+        if self._exchange is not None:
+            return self._exchange
+
+        self._exchange = self._get_exchange_metadata()["exchangeName"]
+        return self._exchange
+
+    @property
+    def timezone(self):
+        if self._timezone is not None:
+            return self._timezone
+
+        self._timezone = self._get_exchange_metadata()["exchangeTimezoneName"]
+        return self._timezone
+
+    @property
+    def shares(self):
+        if self._shares is not None:
+            return self._shares
+
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
+        if shares is None:
+            # Requesting 18 months failed, so fallback to shares which should include last year
+            shares = self._tkr.get_shares()
+        if shares is None:
+            raise Exception(f"{self._tkr.ticker}: Cannot retrieve share count for calculating market cap")
+        if isinstance(shares, pd.DataFrame):
+            shares = shares[shares.columns[0]]
+        self._shares = shares.iloc[-1]
+        return self._shares
+
+    @property
+    def last_price(self):
+        if self._last_price is not None:
+            return self._last_price
+        # self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
+        prices = self._get_1y_prices()
+        self._last_price = _np.nan if prices.empty else prices["Close"].iloc[-1]
+        return self._last_price
+
+    @property
+    def previous_close(self):
+        if self._prev_close is not None:
+            return self._prev_close
+        prices = self._get_1y_prices()
+        self._prev_close = _np.nan if prices.empty else prices["Close"].iloc[-2]
+        return self._prev_close
+
+    @property
+    def open(self):
+        if self._open is not None:
+            return self._open
+        prices = self._get_1y_prices()
+        self._open = _np.nan if prices.empty else prices["Open"].iloc[-1]
+        return self._open
+
+    @property
+    def day_high(self):
+        if self._day_high is not None:
+            return self._day_high
+        prices = self._get_1y_prices()
+        self._day_high = _np.nan if prices.empty else prices["High"].iloc[-1]
+        return self._day_high
+
+    @property
+    def day_low(self):
+        if self._day_low is not None:
+            return self._day_low
+        prices = self._get_1y_prices()
+        self._day_low = _np.nan if prices.empty else prices["Low"].iloc[-1]
+        return self._day_low
+
+    @property
+    def last_volume(self):
+        if self._last_volume is not None:
+            return self._last_volume
+        prices = self._get_1y_prices()
+        self._last_volume = 0 if prices.empty else prices["Volume"].iloc[-1]
+        return self._last_volume
+
+    @property
+    def fifty_day_average(self):
+        if self._50d_day_average is not None:
+            return self._50d_day_average
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            self._50d_day_average = _np.nan
+        else:
+            n = prices.shape[0]
+            a = n-50
+            b = n
+            if a < 0:
+                a = 0
+            self._50d_day_average = prices["Close"].iloc[a:b].mean()
+
+        return self._50d_day_average
+
+    @property
+    def two_hundred_day_average(self):
+        if self._200d_day_average is not None:
+            return self._200d_day_average
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            self._200d_day_average = _np.nan
+        else:
+            n = prices.shape[0]
+            a = n-200
+            b = n
+            if a < 0:
+                a = 0
+
+            self._200d_day_average = prices["Close"].iloc[a:b].mean()
+
+        return self._200d_day_average
+
+    @property
+    def ten_day_average_volume(self):
+        if self._10d_avg_vol is not None:
+            return self._10d_avg_vol
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            self._10d_avg_vol = 0
+        else:
+            n = prices.shape[0]
+            a = n-10
+            b = n
+            if a < 0:
+                a = 0
+            self._10d_avg_vol = prices["Volume"].iloc[a:b].mean()
+
+        return self._10d_avg_vol
+
+    @property
+    def three_month_average_volume(self):
+        if self._3mo_avg_vol is not None:
+            return self._3mo_avg_vol
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            self._3mo_avg_vol = 0
+        else:
+            dt1 = prices.index[-1]
+            dt0 = dt1 - utils._interval_to_timedelta("3mo") + utils._interval_to_timedelta("1d")
+            self._3mo_avg_vol = prices.loc[dt0:dt1, "Volume"].mean()
+
+        return self._3mo_avg_vol
+
+    @property
+    def year_high(self):
+        if self._year_high is not None:
+            return self._year_high
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        self._year_high = prices["High"].max()
+        return self._year_high
+
+    @property
+    def year_low(self):
+        if self._year_low is not None:
+            return self._year_low
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        self._year_low = prices["Low"].min()
+        return self._year_low
+
+    @property
+    def year_change(self):
+        if self._year_change is not None:
+            return self._year_change
+
+        prices = self._get_1y_prices(fullDaysOnly=True)
+        self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+        return self._year_change
+
+    @property
+    def market_cap(self):
+        if self._mcap is not None:
+            return self._mcap
+
+        self._mcap = self.shares * self.last_price
+        if self._currency_is_cents():
+            self._mcap *= 0.01
+        return self._mcap
+
+
 class TickerBase:
     def __init__(self, ticker, session=None):
         self.ticker = ticker.upper()
@@ -76,6 +390,8 @@ class TickerBase:
         self._holders = Holders(self._data)
         self._quote = Quote(self._data)
         self._fundamentals = Fundamentals(self._data)
+
+        self._basic_info = BasicInfo(self)
 
     def stats(self, proxy=None):
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
@@ -894,6 +1210,10 @@ class TickerBase:
         self._quote.proxy = proxy
         data = self._quote.info
         return data
+
+    @property
+    def basic_info(self):
+        return self._basic_info
 
     def get_sustainability(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy

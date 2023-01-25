@@ -49,6 +49,18 @@ user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
+# From https://stackoverflow.com/a/59128615
+from types import FunctionType
+from inspect import getmembers
+def attributes(obj):
+    disallowed_names = {
+      name for name, value in getmembers(type(obj)) 
+        if isinstance(value, FunctionType)}
+    return {
+      name: getattr(obj, name) for name in dir(obj) 
+        if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
+
+
 def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9]{1})$", string))
 
@@ -307,7 +319,11 @@ def _parse_user_dt(dt, exchange_tz):
 
 def _interval_to_timedelta(interval):
     if interval == "1mo":
-        return _dateutil.relativedelta(months=1)
+        return _dateutil.relativedelta.relativedelta(months=1)
+    elif interval == "3mo":
+        return _dateutil.relativedelta.relativedelta(months=3)
+    elif interval == "1y":
+        return _dateutil.relativedelta.relativedelta(years=1)
     elif interval == "1wk":
         return _pd.Timedelta(days=7, unit='d')
     else: 
