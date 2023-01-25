@@ -60,7 +60,9 @@ import yfinance as yf
 
 msft = yf.Ticker("MSFT")
 
-# get stock info
+# fast access to subset of stock info
+msft.basic_info
+# slow access to all stock info
 msft.info
 
 # get historical market data
