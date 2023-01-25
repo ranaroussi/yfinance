@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
+import dateutil as _dateutil
 from typing import Optional
 
 import pandas as _pd
@@ -416,6 +417,9 @@ class TickerBase:
         if interval[1:] in ['d', 'wk', 'mo']:
             # Interday data always includes pre & post
             prepost = True
+            intraday = False
+        else:
+            intraday = True
 
         price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df]
         data_cols = price_cols + ["Volume"]
@@ -447,8 +451,14 @@ class TickerBase:
 
         # Ignore old intervals for which Yahoo won't return finer data:
         m = min_lookbacks[sub_interval]
-        if m is not None:
-            f_recent = _datetime.date.today() - df.index.date < m
+        if m is None:
+            min_dt = None
+        else:
+            min_dt = _pd.Timestamp.utcnow() - m
+        if debug:
+            print(f"- min_dt={min_dt} interval={interval} sub_interval={sub_interval}")
+        if min_dt is not None:
+            f_recent = df.index >= min_dt
             f_repair_rows = f_repair_rows & f_recent
             if not f_repair_rows.any():
                 # print("data too old to repair")
@@ -470,27 +480,35 @@ class TickerBase:
         last_dt = dts_to_repair[0]
         last_ind = indices_to_repair[0]
         td = utils._interval_to_timedelta(interval)
-        if interval == "1mo":
-            grp_td_threshold = _datetime.timedelta(days=28)
-        elif interval == "1wk":
-            grp_td_threshold = _datetime.timedelta(days=28)
-        elif interval == "1d":
-            grp_td_threshold = _datetime.timedelta(days=14)
-        elif interval == "1h":
-            grp_td_threshold = _datetime.timedelta(days=7)
+        # Note on setting max size: have to allow space for adding good data
+        if sub_interval == "1mo":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=2)
+        elif sub_interval == "1wk":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=2)
+        elif sub_interval == "1d":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=2)
+        elif sub_interval == "1h":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=1)
+        elif sub_interval == "1m":
+            grp_max_size = _datetime.timedelta(days=5)  # allow 2 days for buffer below
         else:
-            grp_td_threshold = _datetime.timedelta(days=2)
+            grp_max_size = _datetime.timedelta(days=30)
+        if debug:
+            print("- grp_max_size =", grp_max_size)
         for i in range(1, len(dts_to_repair)):
             ind = indices_to_repair[i]
             dt = dts_to_repair[i]
-            if (dt-dts_groups[-1][-1]) < grp_td_threshold:
-                dts_groups[-1].append(dt)
-            elif ind - last_ind <= 3:
+            if dt.date() < dts_groups[-1][0].date()+grp_max_size:
                 dts_groups[-1].append(dt)
             else:
                 dts_groups.append([dt])
             last_dt = dt
             last_ind = ind
+
+        if debug:
+            print("Repair groups:")
+            for g in dts_groups:
+                print(f"- {g[0]} -> {g[-1]}")
 
         # Add some good data to each group, so can calibrate later:
         for i in range(len(dts_groups)):
@@ -498,11 +516,14 @@ class TickerBase:
             g0 = g[0]
             i0 = df_good.index.get_indexer([g0], method="nearest")[0]
             if i0 > 0:
-                i0 -= 1
+                if (min_dt is None or df_good.index[i0-1] >= min_dt) and \
+                    ((not intraday) or df_good.index[i0-1].date()==g0.date()):
+                    i0 -= 1
             gl = g[-1]
             il = df_good.index.get_indexer([gl], method="nearest")[0]
             if il < len(df_good)-1:
-                il += 1
+                if (not intraday) or df_good.index[il+1].date()==gl.date():
+                    il += 1
             good_dts = df_good.index[i0:il+1]
             dts_groups[i] += good_dts.to_list()
             dts_groups[i].sort()
@@ -538,7 +559,13 @@ class TickerBase:
                 fetch_start = g[0]
                 fetch_end = g[-1] + td_range
 
-            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, prepost=prepost, repair=False, keepna=True)
+            # The first and last day returned by Yahoo can be slightly wrong, so add buffer:
+            fetch_start -= td_1d
+            fetch_end += td_1d
+            if intraday:
+                df_fine = self.history(start=fetch_start.date(), end=fetch_end.date()+td_1d, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=False, keepna=True)
+            else:
+                df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=False, keepna=True)
             if df_fine is None or df_fine.empty:
                 print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
                 continue
@@ -602,7 +629,7 @@ class TickerBase:
             ratios = df_block_calib[calib_filter] / df_new_calib[calib_filter]
             ratio = _np.mean(ratios)
             if debug:
-                print(f"- price calibration ratio = {ratio}")
+                print(f"- price calibration ratio (raw) = {ratio}")
             ratio_rcp = round(1.0 / ratio, 1)
             ratio = round(ratio, 1)
             if ratio == 1 and ratio_rcp == 1:
@@ -623,12 +650,20 @@ class TickerBase:
             # Repair!
             bad_dts = df_block.index[(df_block[price_cols+["Volume"]]==tag).any(axis=1)]
 
+            if debug:
+                no_fine_data_dts = []
+                for idx in bad_dts:
+                    if not idx in df_new.index:
+                        # Yahoo didn't return finer-grain data for this interval, 
+                        # so probably no trading happened.
+                        no_fine_data_dts.append(idx)
+                if len(no_fine_data_dts) > 0:
+                    print(f"Yahoo didn't return finer-grain data for these intervals:")
+                    print(no_fine_data_dts)
             for idx in bad_dts:
                 if not idx in df_new.index:
                     # Yahoo didn't return finer-grain data for this interval, 
                     # so probably no trading happened.
-                    if debug:
-                        print(f"Yahoo didn't return finer-grain data for interval {idx}")
                     continue
                 df_new_row = df_new.loc[idx]
 
@@ -839,11 +874,17 @@ class TickerBase:
         df2.loc[f_change & f_vol_zero_or_nan, "Volume"] = tag
 
         n_before = (df2[data_cols].to_numpy()==tag).sum()
+        dts_tagged = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
         df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag=tag)
         n_after = (df2[data_cols].to_numpy()==tag).sum()
+        dts_not_repaired = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
         n_fixed = n_before - n_after
         if n_fixed > 0:
-            print(f"{self.ticker}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data")
+            msg = f"{self.ticker}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data"
+            if n_fixed < 4:
+                dts_repaired = sorted(list(set(dts_tagged).difference(dts_not_repaired)))
+                msg += f": {dts_repaired}"
+            print(msg)
 
         if df2_reserve is not None:
             df2 = _pd.concat([df2, df2_reserve])
