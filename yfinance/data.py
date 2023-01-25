@@ -80,33 +80,33 @@ def decrypt_cryptojs_aes_stores(data):
             return None
         elif l == 1 and isinstance(data[new_keys[0]], str):
             password_key = new_keys[0]
-        else:
-            msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
-            new_keys_pretty = {}
-            l = min(10, len(new_keys))
-            for i in range(0, l):
-                k = new_keys[i]
-                k_str = k if len(k) < 32 else k[:32-3]+"..."
-                v = data[k]
-                v_type = type(v)
-                v_str = str(v)
-                if len(v_str) > 256:
-                    v_str = v_str[:256]+"..."
-                new_keys_pretty[k_str] = f"{v_str}' ({v_type})"
-            for k in new_keys_pretty:
-                msg += '\n' + f"'{k}' -> '{new_keys_pretty[k]}'"
-            if len(new_keys) > l:
-                d = len(new_keys) - l
-                msg += '\n' + "..."
-                msg += '\n' + f"{d} more options!"
-            raise Exception(msg)
+        # else:
+        #     msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
+        #     new_keys_pretty = {}
+        #     l = min(10, len(new_keys))
+        #     for i in range(0, l):
+        #         k = new_keys[i]
+        #         k_str = k if len(k) < 32 else k[:32-3]+"..."
+        #         v = data[k]
+        #         v_type = type(v)
+        #         v_str = str(v)
+        #         if len(v_str) > 256:
+        #             v_str = v_str[:256]+"..."
+        #         new_keys_pretty[k_str] = f"{v_str}' ({v_type})"
+        #     for k in new_keys_pretty:
+        #         msg += '\n' + f"'{k}' -> '{new_keys_pretty[k]}'"
+        #     if len(new_keys) > l:
+        #         d = len(new_keys) - l
+        #         msg += '\n' + "..."
+        #         msg += '\n' + f"{d} more options!"
+        #     raise Exception(msg)
 
         # password_key = new_keys[0]
         # password = data[password_key]
 
         # The above attempt to smartly pick out decryption key is not working for small % of users.
         # Fortunately the keys Yahoo use are currently hardcoded in their JSON:
-        candidate_passwords += ["ad4d90b3c9f2e1d156ef98eadfa0ff93e4042f6960e54aa2a13f06f528e6b50ba4265a26a1fd5b9cd3db0d268a9c34e1d080592424309429a58bce4adc893c87", "e9a8ab8e5620b712ebc2fb4f33d5c8b9c80c0d07e8c371911c785cf674789f1747d76a909510158a7b7419e86857f2d7abbd777813ff64840e4cbc514d12bcae"]
+        candidate_passwords += ["ad4d90b3c9f2e1d156ef98eadfa0ff93e4042f6960e54aa2a13f06f528e6b50ba4265a26a1fd5b9cd3db0d268a9c34e1d080592424309429a58bce4adc893c87", "e9a8ab8e5620b712ebc2fb4f33d5c8b9c80c0d07e8c371911c785cf674789f1747d76a909510158a7b7419e86857f2d7abbd777813ff64840e4cbc514d12bcae", "6ae2523aeafa283dad746556540145bf603f44edbf37ad404d3766a8420bb5eb1d3738f52a227b88283cca9cae44060d5f0bba84b6a495082589f5fe7acbdc9e"]
 
         candidate_passwords += [data[k] for k in new_keys]
 
