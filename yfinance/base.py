@@ -82,8 +82,17 @@ class BasicInfo:
 
     # dict imitation:
     def keys(self):
-        attrs = utils.attributes(self)
-        return attrs.keys()
+        # attrs = utils.attributes(self)
+        # return attrs.keys()
+        # utils.attributes is calling each method, bad!
+        # Have to hardcode
+        keys = ["currency", "exchange", "timezone"]
+        keys += ["shares", "market_cap"]
+        keys += ["last_price", "previous_close", "open", "day_high", "day_low"]
+        keys += ["last_volume"]
+        keys += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
+        keys += ["year_high", "year_low", "year_change"]
+        return keys
     def items(self):
         return [(k,self[k]) for k in self.keys()]
     def __getitem__(self, k):
@@ -198,7 +207,7 @@ class BasicInfo:
             # Requesting 18 months failed, so fallback to shares which should include last year
             shares = self._tkr.get_shares()
         if shares is None:
-            raise Exception(f"{self._tkr.ticker}: Cannot retrieve share count for calculating market cap")
+            raise Exception(f"{self._tkr.ticker}: Cannot retrieve share count")
         if isinstance(shares, pd.DataFrame):
             shares = shares[shares.columns[0]]
         self._shares = shares.iloc[-1]
