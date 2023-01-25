@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.5
+-----
+- Fix Yahoo data decryption again #1336
+- New: Ticker.basic_info - faster Ticker.info #1317
+
 0.2.4
 -----
 - Fix Yahoo data decryption #1297
