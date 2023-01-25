@@ -34,12 +34,8 @@ class Tickers:
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
-        ticker_objects = {}
+        self.tickers = {ticker:Ticker(ticker, session=session) for ticker in self.symbols}
 
-        for ticker in self.symbols:
-            ticker_objects[ticker] = Ticker(ticker, session=session)
-
-        self.tickers = ticker_objects
         # self.tickers = _namedtuple(
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
