@@ -49,6 +49,8 @@ def lru_cache_freezeargs(func):
 def decrypt_cryptojs_aes_stores(data):
     encrypted_stores = data['context']['dispatcher']['stores']
 
+    password = None
+    candidate_passwords = []
     if "_cs" in data and "_cr" in data:
         _cs = data["_cs"]
         _cr = data["_cr"]
@@ -58,28 +60,60 @@ def decrypt_cryptojs_aes_stores(data):
         # Currently assume one extra key in dict, which is password. Print error if 
         # more extra keys detected.
         new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
+        new_keys_values = set([data[k] for k in new_keys])
+
+        # Maybe multiple keys have same value - keep one of each
+        new_keys2 = []
+        new_keys2_values = set()
+        for k in new_keys:
+            v = data[k]
+            if not v in new_keys2_values:
+                new_keys2.append(k)
+                new_keys2_values.add(v)
+
         l = len(new_keys)
         if l == 0:
             return None
         elif l == 1 and isinstance(data[new_keys[0]], str):
             password_key = new_keys[0]
-        else:
-            msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
-            k = new_keys[0]
-            k_str = k if len(k) < 32 else k[:32-3]+"..."
-            msg += f" '{k_str}'->{type(data[k])}"
-            for i in range(1, len(new_keys)):
-                msg += f" , '{k_str}'->{type(data[k])}"
-            raise Exception(msg)
-        password_key = new_keys[0]
-        password = data[password_key]
+        # else:
+        #     msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
+        #     new_keys_pretty = {}
+        #     l = min(10, len(new_keys))
+        #     for i in range(0, l):
+        #         k = new_keys[i]
+        #         k_str = k if len(k) < 32 else k[:32-3]+"..."
+        #         v = data[k]
+        #         v_type = type(v)
+        #         v_str = str(v)
+        #         if len(v_str) > 256:
+        #             v_str = v_str[:256]+"..."
+        #         new_keys_pretty[k_str] = f"{v_str}' ({v_type})"
+        #     for k in new_keys_pretty:
+        #         msg += '\n' + f"'{k}' -> '{new_keys_pretty[k]}'"
+        #     if len(new_keys) > l:
+        #         d = len(new_keys) - l
+        #         msg += '\n' + "..."
+        #         msg += '\n' + f"{d} more options!"
+        #     raise Exception(msg)
+        # password_key = new_keys[0]
+        # password = data[password_key]
+
+        # The above attempt to smartly pick out decryption key has stopped working.
+        # Fortunately the keys Yahoo use are currently hardcoded in their JSON:
+        candidate_passwords += ["ad4d90b3c9f2e1d156ef98eadfa0ff93e4042f6960e54aa2a13f06f528e6b50ba4265a26a1fd5b9cd3db0d268a9c34e1d080592424309429a58bce4adc893c87", \
+            "e9a8ab8e5620b712ebc2fb4f33d5c8b9c80c0d07e8c371911c785cf674789f1747d76a909510158a7b7419e86857f2d7abbd777813ff64840e4cbc514d12bcae", 
+            "6ae2523aeafa283dad746556540145bf603f44edbf37ad404d3766a8420bb5eb1d3738f52a227b88283cca9cae44060d5f0bba84b6a495082589f5fe7acbdc9e",
+            "3365117c2a368ffa5df7313a4a84988f73926a86358e8eea9497c5ff799ce27d104b68e5f2fbffa6f8f92c1fef41765a7066fa6bcf050810a9c4c7872fd3ebf0"]
+
+        # candidate_passwords += [data[k] for k in new_keys]  # don't do these, none work
 
     encrypted_stores = b64decode(encrypted_stores)
     assert encrypted_stores[0:8] == b"Salted__"
     salt = encrypted_stores[8:16]
     encrypted_stores = encrypted_stores[16:]
 
-    def EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5") -> tuple:
+    def _EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5") -> tuple:
         """OpenSSL EVP Key Derivation Function
         Args:
             password (Union[str, bytes, bytearray]): Password to generate key from.
@@ -118,22 +152,42 @@ def decrypt_cryptojs_aes_stores(data):
         key, iv = key_iv[:keySize], key_iv[keySize:final_length]
         return key, iv
 
-    try:
-        key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
-    except:
-        raise Exception("yfinance failed to decrypt Yahoo data response")
+    def _decrypt(encrypted_stores, password, key, iv):
+        if usePycryptodome:
+            cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+            plaintext = cipher.decrypt(encrypted_stores)
+            plaintext = unpad(plaintext, 16, style="pkcs7")
+        else:
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+            decryptor = cipher.decryptor()
+            plaintext = decryptor.update(encrypted_stores) + decryptor.finalize()
+            unpadder = padding.PKCS7(128).unpadder()
+            plaintext = unpadder.update(plaintext) + unpadder.finalize()
+            plaintext = plaintext.decode("utf-8")
+        return plaintext
 
-    if usePycryptodome:
-        cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-        plaintext = cipher.decrypt(encrypted_stores)
-        plaintext = unpad(plaintext, 16, style="pkcs7")
+    if not password is None:
+        try:
+            key, iv = _EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+        except:
+            raise Exception("yfinance failed to decrypt Yahoo data response")
+        plaintext = _decrypt(encrypted_stores, password, key, iv)
     else:
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-        decryptor = cipher.decryptor()
-        plaintext = decryptor.update(encrypted_stores) + decryptor.finalize()
-        unpadder = padding.PKCS7(128).unpadder()
-        plaintext = unpadder.update(plaintext) + unpadder.finalize()
-        plaintext = plaintext.decode("utf-8")
+        success = False
+        for i in range(len(candidate_passwords)):
+            # print(f"Trying candiate pw {i+1}/{len(candidate_passwords)}")
+            password = candidate_passwords[i]
+            try:
+                key, iv = _EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+
+                plaintext = _decrypt(encrypted_stores, password, key, iv)
+
+                success = True
+                break
+            except:
+                pass
+        if not success:
+            raise Exception("yfinance failed to decrypt Yahoo data response with hardcoded keys, contact developers")
 
     decoded_stores = json.loads(plaintext)
     return decoded_stores
