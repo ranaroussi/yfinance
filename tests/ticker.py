@@ -685,19 +685,18 @@ class TestTickerInfo(unittest.TestCase):
         self.ticker = None
 
     def test_info(self):
-        data = self.ticker.info
+        data = self.tickers[0].info
         self.assertIsInstance(data, dict, "data has wrong type")
         self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
-        self.assertEqual("GOOGL", data["symbol"], "Wrong symbol value in info dict")
+        self.assertEqual("ESLT.TA", data["symbol"], "Wrong symbol value in info dict")
 
-    def test_basic_info(self):
+    def test_fast_info(self):
         yf.scrapers.quote.PRUNE_INFO = False
 
-        # basic_info_keys = self.ticker.basic_info.keys()
-        basic_info_keys = set()
+        fast_info_keys = set()
         for ticker in self.tickers:
-            basic_info_keys.update(set(ticker.basic_info.keys()))
-        basic_info_keys = sorted(list(basic_info_keys))
+            fast_info_keys.update(set(ticker.fast_info.keys()))
+        fast_info_keys = sorted(list(fast_info_keys))
 
         key_rename_map = {}
         key_rename_map["last_price"] = ["currentPrice", "regularMarketPrice"]
@@ -737,7 +736,7 @@ class TestTickerInfo(unittest.TestCase):
         custom_tolerances["fifty_day_average"] = 1e-2
         custom_tolerances["two_hundred_day_average"] = 1e-2
 
-        for k in basic_info_keys:
+        for k in fast_info_keys:
             if k in key_rename_map:
                 k2 = key_rename_map[k]
             else:
@@ -750,7 +749,7 @@ class TestTickerInfo(unittest.TestCase):
                 for ticker in self.tickers:
                     if not m in ticker.info:
                         print(sorted(list(ticker.info.keys())))
-                        raise Exception("Need to add/fix mapping for basic_info key", k)
+                        raise Exception("Need to add/fix mapping for fast_info key", k)
 
                     if k in bad_keys:
                         # Doesn't match, investigate why
@@ -762,9 +761,11 @@ class TestTickerInfo(unittest.TestCase):
                         rtol = 5e-3
                         # rtol = 1e-4
 
-                    print(f"Testing key {m} -> {k} ticker={ticker.ticker}")
                     # if k in approximate_keys:
-                    v1 = ticker.basic_info[k]
+                    v1 = ticker.fast_info[k]
+                    if k == "market_cap" and ticker.fast_info["currency"] in ["GBp", "ILA"]:
+                        # Adjust for currency to match Yahoo:
+                        v1 *= 0.01
                     v2 = ticker.info[m]
                     if isinstance(v1, float) or isinstance(v2, int):
                         self.assertTrue(np.isclose(v1, v2, rtol=rtol), f"{k}: {v1} != {v2}")
