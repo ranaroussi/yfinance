@@ -118,6 +118,10 @@ class FastInfo:
     def __repr__(self):
         return self.__str__()
 
+    def toJSON(self, indent=4):
+        d = {k:self[k] for k in self.keys()}
+        return _json.dumps({k:self[k] for k in self.keys()}, indent=indent)
+
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
             self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False)
@@ -210,11 +214,10 @@ class FastInfo:
         if shares is None:
             # Requesting 18 months failed, so fallback to shares which should include last year
             shares = self._tkr.get_shares()
-        if shares is None:
-            raise Exception(f"{self._tkr.ticker}: Cannot retrieve share count")
-        if isinstance(shares, pd.DataFrame):
-            shares = shares[shares.columns[0]]
-        self._shares = shares.iloc[-1]
+        if shares is not None:
+            if isinstance(shares, pd.DataFrame):
+                shares = shares[shares.columns[0]]
+            self._shares = int(shares.iloc[-1])
         return self._shares
 
     @property
@@ -225,7 +228,7 @@ class FastInfo:
         if prices.empty:
             self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
         else:
-            self._last_price = prices["Close"].iloc[-1]
+            self._last_price = float(prices["Close"].iloc[-1])
         return self._last_price
 
     @property
@@ -237,10 +240,11 @@ class FastInfo:
             # Very few symbols have previousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
+            self._tkr.info  # trigger fetch
             if "previousClose" in self._tkr._quote._retired_info:
                 self._prev_close = self._tkr._quote._retired_info["previousClose"]
         else:
-            self._prev_close = prices["Close"].iloc[-2]
+            self._prev_close = float(prices["Close"].iloc[-2])
         return self._prev_close
 
     @property
@@ -252,10 +256,11 @@ class FastInfo:
             # Very few symbols have regularMarketPreviousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
+            self._tkr.info  # trigger fetch
             if "regularMarketPreviousClose" in self._tkr._quote._retired_info:
                 self._reg_prev_close = self._tkr._quote._retired_info["regularMarketPreviousClose"]
         else:
-            self._reg_prev_close = prices["Close"].iloc[-2]
+            self._reg_prev_close = float(prices["Close"].iloc[-2])
         return self._reg_prev_close
 
     @property
@@ -263,7 +268,7 @@ class FastInfo:
         if self._open is not None:
             return self._open
         prices = self._get_1y_prices()
-        self._open = None if prices.empty else prices["Open"].iloc[-1]
+        self._open = None if prices.empty else float(prices["Open"].iloc[-1])
         return self._open
 
     @property
@@ -271,7 +276,7 @@ class FastInfo:
         if self._day_high is not None:
             return self._day_high
         prices = self._get_1y_prices()
-        self._day_high = None if prices.empty else prices["High"].iloc[-1]
+        self._day_high = None if prices.empty else float(prices["High"].iloc[-1])
         return self._day_high
 
     @property
@@ -279,7 +284,7 @@ class FastInfo:
         if self._day_low is not None:
             return self._day_low
         prices = self._get_1y_prices()
-        self._day_low = None if prices.empty else prices["Low"].iloc[-1]
+        self._day_low = None if prices.empty else float(prices["Low"].iloc[-1])
         return self._day_low
 
     @property
@@ -287,7 +292,7 @@ class FastInfo:
         if self._last_volume is not None:
             return self._last_volume
         prices = self._get_1y_prices()
-        self._last_volume = None if prices.empty else prices["Volume"].iloc[-1]
+        self._last_volume = None if prices.empty else int(prices["Volume"].iloc[-1])
         return self._last_volume
 
     @property
@@ -297,14 +302,14 @@ class FastInfo:
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
-            self._50d_day_average = _np.nan
+            self._50d_day_average = None
         else:
             n = prices.shape[0]
             a = n-50
             b = n
             if a < 0:
                 a = 0
-            self._50d_day_average = prices["Close"].iloc[a:b].mean()
+            self._50d_day_average = float(prices["Close"].iloc[a:b].mean())
 
         return self._50d_day_average
 
@@ -315,7 +320,7 @@ class FastInfo:
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
-            self._200d_day_average = _np.nan
+            self._200d_day_average = None
         else:
             n = prices.shape[0]
             a = n-200
@@ -323,7 +328,7 @@ class FastInfo:
             if a < 0:
                 a = 0
 
-            self._200d_day_average = prices["Close"].iloc[a:b].mean()
+            self._200d_day_average = float(prices["Close"].iloc[a:b].mean())
 
         return self._200d_day_average
 
@@ -341,7 +346,7 @@ class FastInfo:
             b = n
             if a < 0:
                 a = 0
-            self._10d_avg_vol = prices["Volume"].iloc[a:b].mean()
+            self._10d_avg_vol = int(prices["Volume"].iloc[a:b].mean())
 
         return self._10d_avg_vol
 
@@ -356,7 +361,7 @@ class FastInfo:
         else:
             dt1 = prices.index[-1]
             dt0 = dt1 - utils._interval_to_timedelta("3mo") + utils._interval_to_timedelta("1d")
-            self._3mo_avg_vol = prices.loc[dt0:dt1, "Volume"].mean()
+            self._3mo_avg_vol = int(prices.loc[dt0:dt1, "Volume"].mean())
 
         return self._3mo_avg_vol
 
@@ -366,7 +371,7 @@ class FastInfo:
             return self._year_high
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        self._year_high = prices["High"].max()
+        self._year_high = float(prices["High"].max())
         return self._year_high
 
     @property
@@ -375,7 +380,7 @@ class FastInfo:
             return self._year_low
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        self._year_low = prices["Low"].min()
+        self._year_low = float(prices["Low"].min())
         return self._year_low
 
     @property
@@ -385,6 +390,7 @@ class FastInfo:
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+        self._year_change = float(self._year_change)
         return self._year_change
 
     @property
@@ -396,15 +402,19 @@ class FastInfo:
             shares = self.shares
         except Exception as e:
             if "Cannot retrieve share count" in str(e):
-                # Very few symbols have marketCap despite no share count.
-                # E.g. 'BTC-USD'
-                # So fallback to original info[] if available.
-                if "marketCap" in self._tkr._quote._retired_info:
-                    self._mcap = self._tkr._quote._retired_info["marketCap"]
+                shares = None
             else:
                 raise
+
+        if shares is None:
+            # Very few symbols have marketCap despite no share count.
+            # E.g. 'BTC-USD'
+            # So fallback to original info[] if available.
+            self._tkr.info
+            if "marketCap" in self._tkr._quote._retired_info:
+                self._mcap = self._tkr._quote._retired_info["marketCap"]
         else:
-            self._mcap = shares * self.last_price
+            self._mcap = float(shares * self.last_price)
         return self._mcap
 
 
