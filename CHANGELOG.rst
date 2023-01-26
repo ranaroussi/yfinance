@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.8
+-----
+- Fix fast_info bugs #1362
+
 0.2.7
 -----
 - Fix Yahoo decryption, smarter this time #1353
