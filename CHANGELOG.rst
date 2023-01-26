@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-0.2.8
+0.2.9
 -----
 - Fix fast_info bugs #1362
 
