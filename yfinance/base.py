@@ -98,6 +98,10 @@ class FastInfo:
         return keys
     def items(self):
         return [(k,self[k]) for k in self.keys()]
+    def get(self, key, default=None):
+        if key in self.keys():
+            return self[key]
+        return default
     def __getitem__(self, k):
         if not isinstance(k, str):
             raise KeyError(f"key must be a string")
