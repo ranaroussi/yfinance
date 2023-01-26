@@ -127,7 +127,7 @@ class FastInfo:
                 raise
 
         if self._prices_1y.empty:
-            return self.self._prices_1y
+            return self._prices_1y
 
         dt1 = self._prices_1y.index[-1]
         if fullDaysOnly and self._exchange_open_now():
