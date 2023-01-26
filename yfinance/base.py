@@ -47,7 +47,7 @@ _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
 
-class BasicInfo:
+class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
     def __init__(self, tickerBaseObject):
@@ -99,7 +99,7 @@ class BasicInfo:
         if not isinstance(k, str):
             raise KeyError(f"key must be a string")
         if not k in self.keys():
-            raise KeyError(f"'{k}' not valid key. Examine 'BasicInfo.keys()'")
+            raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
         return getattr(self, k)
     def __contains__(self, k):
         return k in self.keys()
@@ -178,9 +178,6 @@ class BasicInfo:
         self._currency = md["currency"]
         return self._currency
 
-    def _currency_is_cents(self):
-        return self.currency in ["GBp", "ILA"]
-
     @property
     def exchange(self):
         if self._exchange is not None:
@@ -202,7 +199,13 @@ class BasicInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
+        try:
+            shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
+        except Exception as e:
+            if "did not return share count" in str(e):
+                shares = None
+            else:
+                raise
         if shares is None:
             # Requesting 18 months failed, so fallback to shares which should include last year
             shares = self._tkr.get_shares()
@@ -365,8 +368,6 @@ class BasicInfo:
             return self._mcap
 
         self._mcap = self.shares * self.last_price
-        if self._currency_is_cents():
-            self._mcap *= 0.01
         return self._mcap
 
 
@@ -400,7 +401,7 @@ class TickerBase:
         self._quote = Quote(self._data)
         self._fundamentals = Fundamentals(self._data)
 
-        self._basic_info = BasicInfo(self)
+        self._fast_info = FastInfo(self)
 
     def stats(self, proxy=None):
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
@@ -1146,7 +1147,7 @@ class TickerBase:
         return tz
 
     def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
-        # Query Yahoo for basic price data just to get returned timezone
+        # Query Yahoo for fast price data just to get returned timezone
 
         params = {"range": "1d", "interval": "1d"}
 
@@ -1221,8 +1222,13 @@ class TickerBase:
         return data
 
     @property
+    def fast_info(self):
+        return self._fast_info
+
+    @property
     def basic_info(self):
-        return self._basic_info
+        print("WARNING: 'Ticker.basic_info' is renamed to 'Ticker.fast_info', hopefully purpose is clearer")
+        return self.fast_info
 
     def get_sustainability(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy
@@ -1489,8 +1495,7 @@ class TickerBase:
 
         shares_data = json_data["timeseries"]["result"]
         if not "shares_out" in shares_data[0]:
-            print(f"{self.ticker}: Yahoo did not return share count in date range {start} -> {end}")
-            return None
+            raise Exception(f"{self.ticker}: Yahoo did not return share count in date range {start} -> {end}")
         try:
             df = _pd.Series(shares_data[0]["shares_out"], index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except Exception as e:
