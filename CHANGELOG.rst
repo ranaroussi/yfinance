@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.7
+-----
+- Fix Yahoo decryption, smarter this time #1353
+- Rename basic_info -> fast_info #1354
+
 0.2.6
 -----
 - Fix Ticker.basic_info lazy-loading #1342
