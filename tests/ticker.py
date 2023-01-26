@@ -787,6 +787,7 @@ def suite():
     suite.addTest(TestTickerHolders('Test holders'))
     suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
+    suite.addTest(TestTickerInfo('Test info & fast_info'))
     return suite
 
 
