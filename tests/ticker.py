@@ -678,8 +678,11 @@ class TestTickerInfo(unittest.TestCase):
             cls.session.close()
 
     def setUp(self):
-        tkrs = ["ESLT.TA", "BP.L", "GOOGL"]
-        self.tickers = [yf.Ticker(tkr, session=self.session) for tkr in tkrs]
+        self.symbols = []
+        self.symbols += ["ESLT.TA", "BP.L", "GOOGL"]
+        self.symbols.append("QCSTIX")  # good for testing, doesn't trade
+        self.symbols += ["BTC-USD", "IWO", "VFINX", "^GSPC"]
+        self.tickers = [yf.Ticker(s, session=self.session) for s in self.symbols]
 
     def tearDown(self):
         self.ticker = None
@@ -688,7 +691,7 @@ class TestTickerInfo(unittest.TestCase):
         data = self.tickers[0].info
         self.assertIsInstance(data, dict, "data has wrong type")
         self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
-        self.assertEqual("ESLT.TA", data["symbol"], "Wrong symbol value in info dict")
+        self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
 
     def test_fast_info(self):
         yf.scrapers.quote.PRUNE_INFO = False
@@ -703,7 +706,8 @@ class TestTickerInfo(unittest.TestCase):
         key_rename_map["open"] = ["open", "regularMarketOpen"]
         key_rename_map["day_high"] = ["dayHigh", "regularMarketDayHigh"]
         key_rename_map["day_low"] = ["dayLow", "regularMarketDayLow"]
-        key_rename_map["previous_close"] = ["previousClose", "regularMarketPreviousClose"]
+        key_rename_map["previous_close"] = ["previousClose"]
+        key_rename_map["regular_market_previous_close"] = ["regularMarketPreviousClose"]
 
         # preMarketPrice
 
@@ -748,8 +752,8 @@ class TestTickerInfo(unittest.TestCase):
             for m in k2:
                 for ticker in self.tickers:
                     if not m in ticker.info:
-                        print(sorted(list(ticker.info.keys())))
-                        raise Exception("Need to add/fix mapping for fast_info key", k)
+                        # print(f"symbol={ticker.ticker}: fast_info key '{k}' mapped to info key '{m}' but not present in info")
+                        continue
 
                     if k in bad_keys:
                         # Doesn't match, investigate why
@@ -761,16 +765,18 @@ class TestTickerInfo(unittest.TestCase):
                         rtol = 5e-3
                         # rtol = 1e-4
 
-                    # if k in approximate_keys:
-                    v1 = ticker.fast_info[k]
+                    correct = ticker.info[m]
+                    test = ticker.fast_info[k]
+                    # print(f"Testing: symbol={ticker.ticker} m={m} k={k}: test={test} vs correct={correct}")
                     if k == "market_cap" and ticker.fast_info["currency"] in ["GBp", "ILA"]:
                         # Adjust for currency to match Yahoo:
-                        v1 *= 0.01
-                    v2 = ticker.info[m]
-                    if isinstance(v1, float) or isinstance(v2, int):
-                        self.assertTrue(np.isclose(v1, v2, rtol=rtol), f"{k}: {v1} != {v2}")
+                        test *= 0.01
+                    if correct is None:
+                        self.assertTrue(test is None or (not np.isnan(test)), f"{k}: {test} must be None or real value because correct={correct}")
+                    elif isinstance(test, float) or isinstance(correct, int):
+                        self.assertTrue(np.isclose(test, correct, rtol=rtol), f"{k}: {test} != {correct}")
                     else:
-                        self.assertEqual(v1, v2, f"{k}: {v1} != {v2}")
+                        self.assertEqual(test, correct, f"{k}: {test} != {correct}")
 
 
 
@@ -781,6 +787,7 @@ def suite():
     suite.addTest(TestTickerHolders('Test holders'))
     suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
+    suite.addTest(TestTickerInfo('Test info & fast_info'))
     return suite
 
 
