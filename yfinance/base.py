@@ -202,13 +202,7 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        try:
-            shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
-        except Exception as e:
-            if "did not return share count" in str(e):
-                shares = None
-            else:
-                raise
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
         if shares is None:
             # Requesting 18 months failed, so fallback to shares which should include last year
             shares = self._tkr.get_shares()
@@ -1534,7 +1528,7 @@ class TickerBase:
 
         shares_data = json_data["timeseries"]["result"]
         if not "shares_out" in shares_data[0]:
-            raise Exception(f"{self.ticker}: Yahoo did not return share count in date range {start} -> {end}")
+            return None
         try:
             df = _pd.Series(shares_data[0]["shares_out"], index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except Exception as e:
