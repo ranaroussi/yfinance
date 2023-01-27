@@ -15,8 +15,6 @@ info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "e
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
-#
-info_retired_keys = []
 
 
 PRUNE_INFO = True
@@ -46,16 +44,16 @@ class InfoDictWrapper(MutableMapping):
 
     def __getitem__(self, k):
         if k in info_retired_keys_price:
-            print(f"Price data removed from info. Use Ticker.basic_info or history() instead")
+            print(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead")
             return None
         elif k in info_retired_keys_exchange:
-            print(f"Exchange data removed from info. Use Ticker.basic_info or Ticker.get_history_metadata() instead")
+            print(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead")
             return None
         elif k in info_retired_keys_marketCap:
-            print(f"Market cap removed from info. Use Ticker.basic_info instead")
+            print(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead")
             return None
         elif k in info_retired_keys_symbol:
-            print(f"Symbol removed from info. You know this already")
+            print(f"Symbol removed from info (key='{k}'). You know this already")
             return None
         return self.info[self._keytransform(k)]
 
@@ -83,6 +81,7 @@ class Quote:
         self.proxy = proxy
 
         self._info = None
+        self._retired_info = None
         self._sustainability = None
         self._recommendations = None
         self._calendar = None
@@ -201,10 +200,14 @@ class Quote:
 
         # Delete redundant info[] keys, because values can be accessed faster
         # elsewhere - e.g. price keys. Hope is reduces Yahoo spam effect.
-        if PRUNE_INFO:
-            for k in info_retired_keys:
-                if k in self._info:
+        # But record the dropped keys, because in rare cases they are needed.
+        self._retired_info = {}
+        for k in info_retired_keys:
+            if k in self._info:
+                self._retired_info[k] = self._info[k]
+                if PRUNE_INFO:
                     del self._info[k]
+        if PRUNE_INFO:
             # InfoDictWrapper will explain how to access above data elsewhere
             self._info = InfoDictWrapper(self._info)
 
