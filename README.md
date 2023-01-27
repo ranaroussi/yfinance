@@ -42,12 +42,10 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
-## What's new in version 0.2
+## News [2023-01-27]
+Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-market data. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
 
-- Optimised web scraping
-- All 3 financials tables now match website so expect keys to change. If you really want old tables, use [`Ticker.get_[income_stmt|balance_sheet|cashflow](legacy=True, ...)`](https://github.com/ranaroussi/yfinance/blob/85783da515761a145411d742c2a8a3c1517264b0/yfinance/base.py#L968)
-- price data improvements: fix bug NaN rows with dividend; new repair feature for missing or 100x prices `download(repair=True)`; new attribute `Ticker.history_metadata`
-[See release notes for full list of changes](https://github.com/ranaroussi/yfinance/releases/tag/0.2.1)
+Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary). `info` will continue to exist for as long as there are elements without a fast alternative.
 
 ## Quick Start
 
@@ -60,33 +58,28 @@ import yfinance as yf
 
 msft = yf.Ticker("MSFT")
 
-# fast access to subset of stock info
-msft.basic_info
-# slow access to all stock info
+# get all stock info (slow)
 msft.info
+# fast access to subset of stock info (opportunistic)
+msft.fast_info
 
 # get historical market data
-hist = msft.history(period="max")
+hist = msft.history(period="1mo")
 
 # show meta information about the history (requires history() to be called first)
 msft.history_metadata
 
 # show actions (dividends, splits, capital gains)
 msft.actions
-
-# show dividends
 msft.dividends
-
-# show splits
 msft.splits
-
-
-# show capital gains (for mutual funds & etfs)
-msft.capital_gains
+msft.capital_gains  # only for mutual funds & etfs
 
 # show share count
+# - yearly summary:
 msft.shares
-msft.get_shares_full()
+# - accurate time-series count:
+msft.get_shares_full(start="2022-01-01", end=None)
 
 # show financials:
 # - income statement
@@ -100,13 +93,9 @@ msft.cashflow
 msft.quarterly_cashflow
 # see `Ticker.get_income_stmt()` for more options
 
-# show major holders
+# show holders
 msft.major_holders
-
-# show institutional holders
 msft.institutional_holders
-
-# show mutualfund holders
 msft.mutualfund_holders
 
 # show earnings
