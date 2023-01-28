@@ -111,8 +111,9 @@ class TickerBase:
                 Adjust all OHLC automatically? Default is True
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
-            repair: bool
-                Detect currency unit 100x mixups and attempt repair
+            repair: bool or "silent"
+                Detect currency unit 100x mixups and attempt repair.
+                If True, fix & print summary. If "silent", just fix.
                 Default is False
             keepna: bool
                 Keep NaN rows returned by Yahoo?
@@ -355,10 +356,10 @@ class TickerBase:
             else:
                 df["Capital Gains"] = 0.0
 
-        if repair:
+        if repair==True or repair=="silent":
             # Do this before auto/back adjust
-            df = self._fix_zeroes(df, interval, tz_exchange, prepost)
-            df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
+            df = self._fix_zeroes(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
+            df = self._fix_unit_mixups(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
 
         # Auto/back adjust
         try:
@@ -402,7 +403,7 @@ class TickerBase:
 
     # ------------------------
 
-    def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1):
+    def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1, silent=False):
         if not isinstance(df, _pd.DataFrame):
             raise Exception("'df' must be a Pandas DataFrame not", type(df))
         if interval == "1m":
@@ -433,9 +434,6 @@ class TickerBase:
         for i in ["30m", "15m", "5m", "2m"]:
             min_lookbacks[i] = _datetime.timedelta(days=60)
         min_lookbacks["1m"] = _datetime.timedelta(days=30)
-        # Hopefully never have to use max_lengths, because complicates fetch logic
-        # max_lengths = {i:None for i in intervals}
-        # max_lengths["1m"] = _datetime.timedelta(days=7)
         if interval in nexts:
             sub_interval = nexts[interval]
             td_range = itds[interval]
@@ -454,7 +452,9 @@ class TickerBase:
         if m is None:
             min_dt = None
         else:
+            m -= _datetime.timedelta(days=1)  # allow space for 1-day padding
             min_dt = _pd.Timestamp.utcnow() - m
+            min_dt = min_dt.tz_convert(df.index.tz).ceil("D")
         if debug:
             print(f"- min_dt={min_dt} interval={interval} sub_interval={sub_interval}")
         if min_dt is not None:
@@ -563,11 +563,15 @@ class TickerBase:
             fetch_start -= td_1d
             fetch_end += td_1d
             if intraday:
-                df_fine = self.history(start=fetch_start.date(), end=fetch_end.date()+td_1d, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=False, keepna=True)
-            else:
-                df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=False, keepna=True)
+                fetch_start = fetch_start.date()
+                fetch_end = fetch_end.date()+td_1d
+            if debug:
+                print(f"- fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}")
+            r = "silent" if silent else True
+            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
             if df_fine is None or df_fine.empty:
-                print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
+                if not silent:
+                    print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
                 continue
 
             df_fine["ctr"] = 0
@@ -697,7 +701,7 @@ class TickerBase:
 
         return df_v2
 
-    def _fix_unit_mixups(self, df, interval, tz_exchange, prepost):
+    def _fix_unit_mixups(self, df, interval, tz_exchange, prepost, silent=False):
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
         # Easy to detect and fix, just look for outliers = ~100x local median
@@ -744,7 +748,7 @@ class TickerBase:
             df2.loc[fi, c] = tag
 
         n_before = (df2[data_cols].to_numpy()==tag).sum()
-        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag=tag)
+        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
         n_after = (df2[data_cols].to_numpy()==tag).sum()
 
         if n_after > 0:
@@ -786,7 +790,7 @@ class TickerBase:
 
         n_fixed = n_before - n_after_crude
         n_fixed_crudely = n_after - n_after_crude
-        if n_fixed > 0:
+        if not silent and n_fixed > 0:
             report_msg = f"{self.ticker}: fixed {n_fixed}/{n_before} currency unit mixups "
             if n_fixed_crudely > 0:
                 report_msg += f"({n_fixed_crudely} crudely) "
@@ -806,7 +810,7 @@ class TickerBase:
 
         return df2
 
-    def _fix_zeroes(self, df, interval, tz_exchange, prepost):
+    def _fix_zeroes(self, df, interval, tz_exchange, prepost, silent=False):
         # Sometimes Yahoo returns prices=0 or NaN when trades occurred.
         # But most times when prices=0 or NaN returned is because no trades.
         # Impossible to distinguish, so only attempt repair if few or rare.
@@ -875,11 +879,11 @@ class TickerBase:
 
         n_before = (df2[data_cols].to_numpy()==tag).sum()
         dts_tagged = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
-        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag=tag)
+        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
         n_after = (df2[data_cols].to_numpy()==tag).sum()
         dts_not_repaired = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
         n_fixed = n_before - n_after
-        if n_fixed > 0:
+        if not silent and n_fixed > 0:
             msg = f"{self.ticker}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data"
             if n_fixed < 4:
                 dts_repaired = sorted(list(set(dts_tagged).difference(dts_not_repaired)))
