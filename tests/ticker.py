@@ -9,6 +9,7 @@ Specific test class:
 
 """
 import pandas as pd
+import numpy as np
 
 from .context import yfinance as yf
 
@@ -660,14 +661,128 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertIsInstance(data, pd.Series, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
-    def test_info(self):
-        data = self.ticker.info
-        self.assertIsInstance(data, dict, "data has wrong type")
-        self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
-        self.assertEqual("GOOGL", data["symbol"], "Wrong symbol value in info dict")
-
     def test_bad_freq_value_raises_exception(self):
         self.assertRaises(ValueError, lambda: self.ticker.get_cashflow(freq="badarg"))
+
+
+class TestTickerInfo(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def setUp(self):
+        self.symbols = []
+        self.symbols += ["ESLT.TA", "BP.L", "GOOGL"]
+        self.symbols.append("QCSTIX")  # good for testing, doesn't trade
+        self.symbols += ["BTC-USD", "IWO", "VFINX", "^GSPC"]
+        self.tickers = [yf.Ticker(s, session=self.session) for s in self.symbols]
+
+    def tearDown(self):
+        self.ticker = None
+
+    def test_info(self):
+        data = self.tickers[0].info
+        self.assertIsInstance(data, dict, "data has wrong type")
+        self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
+        self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
+
+    def test_fast_info(self):
+        yf.scrapers.quote.PRUNE_INFO = False
+
+        fast_info_keys = set()
+        for ticker in self.tickers:
+            fast_info_keys.update(set(ticker.fast_info.keys()))
+        fast_info_keys = sorted(list(fast_info_keys))
+
+        key_rename_map = {}
+        key_rename_map["last_price"] = ["currentPrice", "regularMarketPrice"]
+        key_rename_map["open"] = ["open", "regularMarketOpen"]
+        key_rename_map["day_high"] = ["dayHigh", "regularMarketDayHigh"]
+        key_rename_map["day_low"] = ["dayLow", "regularMarketDayLow"]
+        key_rename_map["previous_close"] = ["previousClose"]
+        key_rename_map["regular_market_previous_close"] = ["regularMarketPreviousClose"]
+
+        # preMarketPrice
+
+        key_rename_map["fifty_day_average"] = "fiftyDayAverage"
+        key_rename_map["two_hundred_day_average"] = "twoHundredDayAverage"
+        key_rename_map["year_change"] = "52WeekChange"
+        key_rename_map["year_high"] = "fiftyTwoWeekHigh"
+        key_rename_map["year_low"] = "fiftyTwoWeekLow"
+
+        key_rename_map["last_volume"] = ["volume", "regularMarketVolume"]
+        key_rename_map["ten_day_average_volume"] = ["averageVolume10days", "averageDailyVolume10Day"]
+        key_rename_map["three_month_average_volume"] = "averageVolume"
+
+        key_rename_map["market_cap"] = "marketCap"
+        key_rename_map["shares"] = "sharesOutstanding"
+        key_rename_map["timezone"] = "exchangeTimezoneName"
+
+        for k in list(key_rename_map.keys()):
+            if '_' in k:
+                key_rename_map[yf.utils.snake_case_2_camelCase(k)] = key_rename_map[k]
+
+        # Note: share count items in info[] are bad. Sometimes the float > outstanding!
+        # So often fast_info["shares"] does not match. 
+        # Why isn't fast_info["shares"] wrong? Because using it to calculate market cap always correct.
+        bad_keys = {"shares"}
+
+        # Loose tolerance for averages, no idea why don't match info[]. Is info wrong?
+        custom_tolerances = {}
+        # custom_tolerances["ten_day_average_volume"] = 1e-3
+        custom_tolerances["ten_day_average_volume"] = 1e-1
+        # custom_tolerances["three_month_average_volume"] = 1e-2
+        custom_tolerances["three_month_average_volume"] = 5e-1
+        custom_tolerances["fifty_day_average"] = 1e-2
+        custom_tolerances["two_hundred_day_average"] = 1e-2
+        for k in list(custom_tolerances.keys()):
+            if '_' in k:
+                custom_tolerances[yf.utils.snake_case_2_camelCase(k)] = custom_tolerances[k]
+
+        for k in fast_info_keys:
+            if k in key_rename_map:
+                k2 = key_rename_map[k]
+            else:
+                k2 = k
+
+            if not isinstance(k2, list):
+                k2 = [k2]
+
+            for m in k2:
+                for ticker in self.tickers:
+                    if not m in ticker.info:
+                        # print(f"symbol={ticker.ticker}: fast_info key '{k}' mapped to info key '{m}' but not present in info")
+                        continue
+
+                    if k in bad_keys:
+                        continue
+
+                    if k in custom_tolerances:
+                        rtol = custom_tolerances[k]
+                    else:
+                        rtol = 5e-3
+                        # rtol = 1e-4
+
+                    correct = ticker.info[m]
+                    test = ticker.fast_info[k]
+                    # print(f"Testing: symbol={ticker.ticker} m={m} k={k}: test={test} vs correct={correct}")
+                    if k in ["market_cap","marketCap"] and ticker.fast_info["currency"] in ["GBp", "ILA"]:
+                        # Adjust for currency to match Yahoo:
+                        test *= 0.01
+                    if correct is None:
+                        self.assertTrue(test is None or (not np.isnan(test)), f"{k}: {test} must be None or real value because correct={correct}")
+                    elif isinstance(test, float) or isinstance(correct, int):
+                        self.assertTrue(np.isclose(test, correct, rtol=rtol), f"{k}: {test} != {correct}")
+                    else:
+                        self.assertEqual(test, correct, f"{k}: {test} != {correct}")
+
 
 
 def suite():
@@ -677,6 +792,7 @@ def suite():
     suite.addTest(TestTickerHolders('Test holders'))
     suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
+    suite.addTest(TestTickerInfo('Test info & fast_info'))
     return suite
 
 

@@ -54,6 +54,18 @@ def TypeCheckSeries(var, varName):
         raise TypeError(f"'{varName}' must be _pd.Series not {type(var)}")
 
 
+# From https://stackoverflow.com/a/59128615
+from types import FunctionType
+from inspect import getmembers
+def attributes(obj):
+    disallowed_names = {
+      name for name, value in getmembers(type(obj)) 
+        if isinstance(value, FunctionType)}
+    return {
+      name: getattr(obj, name) for name in dir(obj) 
+        if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
+
+
 def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9]{1})$", string))
 
@@ -293,6 +305,11 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
     return strings
 
 
+def snake_case_2_camelCase(s):
+    sc = s.split('_')[0] + ''.join(x.title() for x in s.split('_')[1:])
+    return sc
+
+
 def _parse_user_dt(dt, exchange_tz):
     if isinstance(dt, int):
         # Should already be epoch, test with conversion:
@@ -313,6 +330,10 @@ def _parse_user_dt(dt, exchange_tz):
 def _interval_to_timedelta(interval):
     if interval == "1mo":
         return _dateutil.relativedelta.relativedelta(months=1)
+    elif interval == "3mo":
+        return _dateutil.relativedelta.relativedelta(months=3)
+    elif interval == "1y":
+        return _dateutil.relativedelta.relativedelta(years=1)
     elif interval == "1wk":
         return _pd.Timedelta(days=7, unit='d')
     else: 
