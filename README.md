@@ -154,6 +154,21 @@ msft.option_chain(..., proxy="PROXY_SERVER")
 ...
 ```
 
+To initialize multiple `Ticker` objects, use
+
+```python
+import yfinance as yf
+
+tickers = yf.Tickers('msft aapl goog')
+
+# access each ticker using (example)
+tickers.tickers['MSFT'].info
+tickers.tickers['AAPL'].history(period="1mo")
+tickers.tickers['GOOG'].actions
+```
+
+### Smarter scraping
+
 To use a custom `requests` session (for example to cache calls to the
 API or customize the `User-agent` header), pass a `session=` argument to
 the Ticker constructor.
@@ -167,17 +182,19 @@ ticker = yf.Ticker('msft', session=session)
 ticker.actions
 ```
 
-To initialize multiple `Ticker` objects, use
-
+Combine a `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-limiter/blocker that can corrupt data.
 ```python
-import yfinance as yf
+from requests import Session
+from requests_cache import CacheMixin, SQLiteCache
+from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
+class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
+    """ """
 
-tickers = yf.Tickers('msft aapl goog')
-
-# access each ticker using (example)
-tickers.tickers['MSFT'].info
-tickers.tickers['AAPL'].history(period="1mo")
-tickers.tickers['GOOG'].actions
+session = CachedLimiterSession(
+    per_second=0.9,
+    bucket_class=MemoryQueueBucket,
+    backend=SQLiteCache("yfinance.cache"),
+)
 ```
 
 ### Fetching data for multiple tickers
@@ -233,18 +250,6 @@ data = yf.download(  # or pdr.get_data_yahoo(...
     )
 ```
 
-### Timezone cache store
-
-When fetching price data, all dates are localized to stock exchange timezone. 
-But timezone retrieval is relatively slow, so yfinance attemps to cache them 
-in your users cache folder. 
-You can direct cache to use a different location with `set_tz_cache_location()`:
-```python
-import yfinance as yf
-yf.set_tz_cache_location("custom/cache/location")
-...
-```
-
 ### Managing Multi-Level Columns
 
 The following answer on Stack Overflow is for [How to deal with
@@ -259,6 +264,18 @@ yfinance?](https://stackoverflow.com/questions/63107801)
             saving the dataframe to a csv with `pandas.DataFrame.to_csv`
         -   How to download single or multiple tickers into a single
             dataframe with single level column names and a ticker column
+
+### Timezone cache store
+
+When fetching price data, all dates are localized to stock exchange timezone. 
+But timezone retrieval is relatively slow, so yfinance attemps to cache them 
+in your users cache folder. 
+You can direct cache to use a different location with `set_tz_cache_location()`:
+```python
+import yfinance as yf
+yf.set_tz_cache_location("custom/cache/location")
+...
+```
 
 ---
 
