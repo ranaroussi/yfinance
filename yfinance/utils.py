@@ -300,6 +300,11 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
     return strings
 
 
+def snake_case_2_camelCase(s):
+    sc = s.split('_')[0] + ''.join(x.title() for x in s.split('_')[1:])
+    return sc
+
+
 def _parse_user_dt(dt, exchange_tz):
     if isinstance(dt, int):
         # Should already be epoch, test with conversion:

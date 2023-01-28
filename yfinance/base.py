@@ -82,31 +82,49 @@ class FastInfo:
         self._10d_avg_vol = None
         self._3mo_avg_vol = None
 
+        # attrs = utils.attributes(self)
+        # self.keys = attrs.keys()
+        # utils.attributes is calling each method, bad! Have to hardcode
+        orig_keys = ["currency", "exchange", "timezone"]
+        orig_keys += ["shares", "market_cap"]
+        orig_keys += ["last_price", "previous_close", "open", "day_high", "day_low"]
+        orig_keys += ["regular_market_previous_close"]
+        orig_keys += ["last_volume"]
+        orig_keys += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
+        orig_keys += ["year_high", "year_low", "year_change"]
+
+        # Because released before fixing key case, need to officially support 
+        # camel-case but also secretly support snake-case
+        base_keys = [k for k in orig_keys if not '_' in k]
+
+        sc_keys = [k for k in orig_keys if '_' in k]
+
+        self._sc_to_cc_key = {k:utils.snake_case_2_camelCase(k) for k in sc_keys}
+        self._cc_to_sc_key = {v:k for k,v in self._sc_to_cc_key.items()}
+ 
+        self._public_keys = sorted(base_keys + list(self._sc_to_cc_key.values()))
+        self._keys = sorted(self._public_keys + sc_keys)
+
     # dict imitation:
     def keys(self):
-        # attrs = utils.attributes(self)
-        # return attrs.keys()
-        # utils.attributes is calling each method, bad!
-        # Have to hardcode
-        keys = ["currency", "exchange", "timezone"]
-        keys += ["shares", "market_cap"]
-        keys += ["last_price", "previous_close", "open", "day_high", "day_low"]
-        keys += ["regular_market_previous_close"]
-        keys += ["last_volume"]
-        keys += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
-        keys += ["year_high", "year_low", "year_change"]
-        return keys
+        return self._public_keys
     def items(self):
-        return [(k,self[k]) for k in self.keys()]
+        return [(k,self[k]) for k in self._public_keys]
+    def values(self):
+        return [self[k] for k in self._public_keys]
     def get(self, key, default=None):
         if key in self.keys():
+            if key in self._cc_to_sc_key:
+                key = self._cc_to_sc_key[key]
             return self[key]
         return default
     def __getitem__(self, k):
         if not isinstance(k, str):
             raise KeyError(f"key must be a string")
-        if not k in self.keys():
+        if not k in self._keys:
             raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
+        if k in self._cc_to_sc_key:
+            k = self._cc_to_sc_key[k]
         return getattr(self, k)
     def __contains__(self, k):
         return k in self.keys()
