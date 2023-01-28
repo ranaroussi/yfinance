@@ -7,6 +7,73 @@ from yfinance import utils
 from yfinance.data import TickerData
 
 
+info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume"}
+info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
+info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyTwoWeekChange", "fiftyDayAverage", "twoHundredDayAverage"})
+info_retired_keys_price.update({"averageDailyVolume10Day", "averageVolume10days", "averageVolume"})
+info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName"}
+info_retired_keys_marketCap = {"marketCap"}
+info_retired_keys_symbol = {"symbol"}
+info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
+
+
+PRUNE_INFO = True
+# PRUNE_INFO = False
+
+
+from collections.abc import MutableMapping
+class InfoDictWrapper(MutableMapping):
+    """ Simple wrapper around info dict, intercepting 'gets' to 
+    print how-to-migrate messages for specific keys. Requires
+    override dict API"""
+
+    def __init__(self, info):
+        self.info = info
+
+    def keys(self):
+        return self.info.keys()
+
+    def __str__(self):
+        return self.info.__str__()
+
+    def __repr__(self):
+        return self.info.__repr__()
+
+    def __contains__(self, k):
+        return k in self.info.keys()
+
+    def __getitem__(self, k):
+        if k in info_retired_keys_price:
+            print(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead")
+            return None
+        elif k in info_retired_keys_exchange:
+            print(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead")
+            return None
+        elif k in info_retired_keys_marketCap:
+            print(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead")
+            return None
+        elif k in info_retired_keys_symbol:
+            print(f"Symbol removed from info (key='{k}'). You know this already")
+            return None
+        return self.info[self._keytransform(k)]
+
+    def __setitem__(self, k, value):
+        self.info[self._keytransform(k)] = value
+
+    def __delitem__(self, k):
+        del self.info[self._keytransform(k)]
+
+    def __iter__(self):
+        return iter(self.info)
+    
+    def __len__(self):
+        return len(self.info)
+
+    def _keytransform(self, k):
+        return k
+
+
+
 class Quote:
 
     def __init__(self, data: TickerData, proxy=None):
@@ -14,6 +81,7 @@ class Quote:
         self.proxy = proxy
 
         self._info = None
+        self._retired_info = None
         self._sustainability = None
         self._recommendations = None
         self._calendar = None
@@ -129,6 +197,19 @@ class Quote:
                 self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
         except Exception:
             pass
+
+        # Delete redundant info[] keys, because values can be accessed faster
+        # elsewhere - e.g. price keys. Hope is reduces Yahoo spam effect.
+        # But record the dropped keys, because in rare cases they are needed.
+        self._retired_info = {}
+        for k in info_retired_keys:
+            if k in self._info:
+                self._retired_info[k] = self._info[k]
+                if PRUNE_INFO:
+                    del self._info[k]
+        if PRUNE_INFO:
+            # InfoDictWrapper will explain how to access above data elsewhere
+            self._info = InfoDictWrapper(self._info)
 
         # events
         try:

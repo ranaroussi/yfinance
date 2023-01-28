@@ -14,6 +14,7 @@ else:
 
 import requests as requests
 import re
+from bs4 import BeautifulSoup
 
 from frozendict import frozendict
 
@@ -46,40 +47,45 @@ def lru_cache_freezeargs(func):
     return wrapped
 
 
-def decrypt_cryptojs_aes_stores(data):
+def _extract_extra_keys_from_stores(data):
+    new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
+    new_keys_values = set([data[k] for k in new_keys])
+
+    # Maybe multiple keys have same value - keep one of each
+    new_keys_uniq = []
+    new_keys_uniq_values = set()
+    for k in new_keys:
+        v = data[k]
+        if not v in new_keys_uniq_values:
+            new_keys_uniq.append(k)
+            new_keys_uniq_values.add(v)
+
+    return new_keys_uniq
+
+
+def decrypt_cryptojs_aes_stores(data, keys=None):
     encrypted_stores = data['context']['dispatcher']['stores']
+
+    password = None
+    if keys is not None:
+        if not isinstance(keys, list):
+            raise TypeError("'keys' must be list")
+        candidate_passwords = keys
+    else:
+        candidate_passwords = []
 
     if "_cs" in data and "_cr" in data:
         _cs = data["_cs"]
         _cr = data["_cr"]
         _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
         password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
-    else:
-        # Currently assume one extra key in dict, which is password. Print error if 
-        # more extra keys detected.
-        new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
-        l = len(new_keys)
-        if l == 0:
-            return None
-        elif l == 1 and isinstance(data[new_keys[0]], str):
-            password_key = new_keys[0]
-        else:
-            msg = "Yahoo has again changed data format, yfinance now unsure which key(s) is for decryption:"
-            k = new_keys[0]
-            k_str = k if len(k) < 32 else k[:32-3]+"..."
-            msg += f" '{k_str}'->{type(data[k])}"
-            for i in range(1, len(new_keys)):
-                msg += f" , '{k_str}'->{type(data[k])}"
-            raise Exception(msg)
-        password_key = new_keys[0]
-        password = data[password_key]
 
     encrypted_stores = b64decode(encrypted_stores)
     assert encrypted_stores[0:8] == b"Salted__"
     salt = encrypted_stores[8:16]
     encrypted_stores = encrypted_stores[16:]
 
-    def EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5") -> tuple:
+    def _EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5") -> tuple:
         """OpenSSL EVP Key Derivation Function
         Args:
             password (Union[str, bytes, bytearray]): Password to generate key from.
@@ -118,22 +124,42 @@ def decrypt_cryptojs_aes_stores(data):
         key, iv = key_iv[:keySize], key_iv[keySize:final_length]
         return key, iv
 
-    try:
-        key, iv = EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
-    except:
-        raise Exception("yfinance failed to decrypt Yahoo data response")
+    def _decrypt(encrypted_stores, password, key, iv):
+        if usePycryptodome:
+            cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+            plaintext = cipher.decrypt(encrypted_stores)
+            plaintext = unpad(plaintext, 16, style="pkcs7")
+        else:
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+            decryptor = cipher.decryptor()
+            plaintext = decryptor.update(encrypted_stores) + decryptor.finalize()
+            unpadder = padding.PKCS7(128).unpadder()
+            plaintext = unpadder.update(plaintext) + unpadder.finalize()
+            plaintext = plaintext.decode("utf-8")
+        return plaintext
 
-    if usePycryptodome:
-        cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-        plaintext = cipher.decrypt(encrypted_stores)
-        plaintext = unpad(plaintext, 16, style="pkcs7")
+    if not password is None:
+        try:
+            key, iv = _EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+        except:
+            raise Exception("yfinance failed to decrypt Yahoo data response")
+        plaintext = _decrypt(encrypted_stores, password, key, iv)
     else:
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-        decryptor = cipher.decryptor()
-        plaintext = decryptor.update(encrypted_stores) + decryptor.finalize()
-        unpadder = padding.PKCS7(128).unpadder()
-        plaintext = unpadder.update(plaintext) + unpadder.finalize()
-        plaintext = plaintext.decode("utf-8")
+        success = False
+        for i in range(len(candidate_passwords)):
+            # print(f"Trying candiate pw {i+1}/{len(candidate_passwords)}")
+            password = candidate_passwords[i]
+            try:
+                key, iv = _EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
+
+                plaintext = _decrypt(encrypted_stores, password, key, iv)
+
+                success = True
+                break
+            except:
+                pass
+        if not success:
+            raise Exception("yfinance failed to decrypt Yahoo data response")
 
     decoded_stores = json.loads(plaintext)
     return decoded_stores
@@ -176,6 +202,66 @@ class TickerData:
             proxy = {"https": proxy}
         return proxy
 
+    def _get_decryption_keys_from_yahoo_js(self, soup):
+        result = None
+
+        key_count = 4
+        re_script = soup.find("script", string=re.compile("root.App.main")).text
+        re_data = json.loads(re.search("root.App.main\s+=\s+(\{.*\})", re_script).group(1))
+        re_data.pop("context", None)
+        key_list = list(re_data.keys())
+        if re_data.get("plugins"):  # 1) attempt to get last 4 keys after plugins
+            ind = key_list.index("plugins")
+            if len(key_list) > ind+1:
+                sub_keys = key_list[ind+1:]
+                if len(sub_keys) == key_count:
+                    re_obj = {}
+                    missing_val = False
+                    for k in sub_keys:
+                        if not re_data.get(k):
+                            missing_val = True
+                            break
+                        re_obj.update({k: re_data.get(k)})
+                    if not missing_val:
+                        result = re_obj
+
+        if not result is None:
+            return [''.join(result.values())]
+
+        re_keys = []    # 2) attempt scan main.js file approach to get keys
+        prefix = "https://s.yimg.com/uc/finance/dd-site/js/main."
+        tags = [tag['src'] for tag in soup.find_all('script') if prefix in tag.get('src', '')]
+        for t in tags:
+            response_js = self.cache_get(t)
+            #
+            if response_js.status_code != 200:
+                time.sleep(random.randrange(10, 20))
+                response_js.close()
+            else:
+                r_data = response_js.content.decode("utf8")
+                re_list = [
+                    x.group() for x in re.finditer(r"context.dispatcher.stores=JSON.parse((?:.*?\r?\n?)*)toString", r_data)
+                ]
+                for rl in re_list:
+                    re_sublist = [x.group() for x in re.finditer(r"t\[\"((?:.*?\r?\n?)*)\"\]", rl)]
+                    if len(re_sublist) == key_count:
+                        re_keys = [sl.replace('t["', '').replace('"]', '') for sl in re_sublist]
+                        break
+                response_js.close()
+            if len(re_keys) == key_count:
+                break
+        re_obj = {}
+        missing_val = False
+        for k in re_keys:
+            if not re_data.get(k):
+                missing_val = True
+                break
+            re_obj.update({k: re_data.get(k)})
+        if not missing_val:
+            return [''.join(re_obj.values())]
+
+        return []
+
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
     def get_json_data_stores(self, sub_page: str = None, proxy=None) -> dict:
@@ -187,7 +273,8 @@ class TickerData:
         else:
             ticker_url = "{}/{}".format(_SCRAPE_URL_, self.ticker)
 
-        html = self.get(url=ticker_url, proxy=proxy).text
+        response = self.get(url=ticker_url, proxy=proxy)
+        html = response.text
 
         # The actual json-data for stores is in a javascript assignment in the webpage
         try:
@@ -199,7 +286,25 @@ class TickerData:
 
         data = json.loads(json_str)
 
-        stores = decrypt_cryptojs_aes_stores(data)
+        # Gather decryption keys:
+        soup = BeautifulSoup(response.content, "html.parser")
+        keys = self._get_decryption_keys_from_yahoo_js(soup)
+        if len(keys) == 0:
+            msg = "No decryption keys could be extracted from JS file."
+            if "requests_cache" in str(type(response)):
+                msg += " Try flushing your 'requests_cache', probably parsing old JS."
+            print("WARNING: " + msg + " Falling back to backup decrypt methods.")
+        if len(keys) == 0:
+            keys_url = "https://github.com/ranaroussi/yfinance/raw/main/yfinance/scrapers/yahoo-keys.txt"
+            response_gh = self.cache_get(keys_url)
+            keys = response_gh.text.splitlines()
+            extra_keys = _extract_extra_keys_from_stores(data)
+            if len(extra_keys) < 10:
+                # Only brute-force with these extra keys if few
+                keys += extra_keys
+
+        # Decrypt!
+        stores = decrypt_cryptojs_aes_stores(data, keys)
         if stores is None:
             # Maybe Yahoo returned old format, not encrypted
             if "context" in data and "dispatcher" in data["context"]:
