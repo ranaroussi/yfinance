@@ -722,13 +722,16 @@ class TestTickerInfo(unittest.TestCase):
         key_rename_map["three_month_average_volume"] = "averageVolume"
 
         key_rename_map["market_cap"] = "marketCap"
-        key_rename_map["shares"] = "floatShares"
+        key_rename_map["shares"] = "sharesOutstanding"
         key_rename_map["timezone"] = "exchangeTimezoneName"
 
-        approximate_keys = {"fifty_day_average", "ten_day_average_volume"}
-        approximate_keys.update({"market_cap"})
+        for k in list(key_rename_map.keys()):
+            if '_' in k:
+                key_rename_map[yf.utils.snake_case_2_camelCase(k)] = key_rename_map[k]
 
-        # bad_keys = []
+        # Note: share count items in info[] are bad. Sometimes the float > outstanding!
+        # So often fast_info["shares"] does not match. 
+        # Why isn't fast_info["shares"] wrong? Because using it to calculate market cap always correct.
         bad_keys = {"shares"}
 
         # Loose tolerance for averages, no idea why don't match info[]. Is info wrong?
@@ -739,6 +742,9 @@ class TestTickerInfo(unittest.TestCase):
         custom_tolerances["three_month_average_volume"] = 5e-1
         custom_tolerances["fifty_day_average"] = 1e-2
         custom_tolerances["two_hundred_day_average"] = 1e-2
+        for k in list(custom_tolerances.keys()):
+            if '_' in k:
+                custom_tolerances[yf.utils.snake_case_2_camelCase(k)] = custom_tolerances[k]
 
         for k in fast_info_keys:
             if k in key_rename_map:
@@ -756,7 +762,6 @@ class TestTickerInfo(unittest.TestCase):
                         continue
 
                     if k in bad_keys:
-                        # Doesn't match, investigate why
                         continue
 
                     if k in custom_tolerances:
@@ -768,7 +773,7 @@ class TestTickerInfo(unittest.TestCase):
                     correct = ticker.info[m]
                     test = ticker.fast_info[k]
                     # print(f"Testing: symbol={ticker.ticker} m={m} k={k}: test={test} vs correct={correct}")
-                    if k == "market_cap" and ticker.fast_info["currency"] in ["GBp", "ILA"]:
+                    if k in ["market_cap","marketCap"] and ticker.fast_info["currency"] in ["GBp", "ILA"]:
                         # Adjust for currency to match Yahoo:
                         test *= 0.01
                     if correct is None:
