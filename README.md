@@ -167,19 +167,24 @@ tickers.tickers['AAPL'].history(period="1mo")
 tickers.tickers['GOOG'].actions
 ```
 
-### API documentation
+### Fetching data for multiple tickers
+
+```python
+import yfinance as yf
+data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
+```
 
 `yf.download()` and `Ticker.history()` have many options for configuring fetching and processing, e.g.:
 
 ```python
-yf.download(tickers = "SPY AAPL MSFT",  # list of tickers
-            period = "1y",              # time period
-            interval = "1d",            # trading interval
-            ignore_tz = True,           # ignore timezone when aligning data from different exchanges?
-            prepost = False)            # download pre/post market hours data?
+yf.download(tickers = "SPY AAPL",  # list of tickers
+            period = "1y",         # time period
+            interval = "1d",       # trading interval
+            ignore_tz = True,      # ignore timezone when aligning data from different exchanges?
+            prepost = False)       # download pre/post market hours data?
 ```
 
-Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail. Work in progress.
+Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail.
 
 ### Smarter scraping
 
@@ -209,13 +214,6 @@ session = CachedLimiterSession(
     bucket_class=MemoryQueueBucket,
     backend=SQLiteCache("yfinance.cache"),
 )
-```
-
-### Fetching data for multiple tickers
-
-```python
-import yfinance as yf
-data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
 ```
 
 ### Managing Multi-Level Columns
