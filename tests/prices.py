@@ -24,9 +24,7 @@ class TestPriceHistory(unittest.TestCase):
 
     def test_daily_index(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
-
         intervals = ["1d", "1wk", "1mo"]
-
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
 
@@ -44,8 +42,8 @@ class TestPriceHistory(unittest.TestCase):
 
             dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
             dt = dt_utc.astimezone(_tz.timezone(tz))
-
-            df = dat.history(start=dt.date() - _dt.timedelta(days=1), interval="1h")
+            start_d = dt.date() - _dt.timedelta(days=7)
+            df = dat.history(start=start_d, interval="1h")
 
             dt0 = df.index[-2]
             dt1 = df.index[-1]
@@ -54,7 +52,6 @@ class TestPriceHistory(unittest.TestCase):
             except:
                 print("Ticker = ", tkr)
                 raise
-
 
     def test_duplicatingDaily(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
@@ -110,22 +107,27 @@ class TestPriceHistory(unittest.TestCase):
     def test_intraDayWithEvents(self):
         # TASE dividend release pre-market, doesn't merge nicely with intra-day data so check still present
 
-        tkr = "ICL.TA"
-        # tkr = "ESLT.TA"
-        # tkr = "ONE.TA"
-        # tkr = "MGDL.TA"
-        start_d = _dt.date.today() - _dt.timedelta(days=60)
-        end_d = None
-        df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
-        df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
-        if df_daily_divs.shape[0] == 0:
-            self.skipTest("Skipping test_intraDayWithEvents() because 'ICL.TA' has no dividend in last 60 days")
+        tase_tkrs = ["ICL.TA", "ESLT.TA", "ONE.TA", "MGDL.TA"]
+        test_run = False
+        for tkr in tase_tkrs:
+            start_d = _dt.date.today() - _dt.timedelta(days=59)
+            end_d = None
+            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            if df_daily_divs.shape[0] == 0:
+                # self.skipTest("Skipping test_intraDayWithEvents() because 'ICL.TA' has no dividend in last 60 days")
+                continue
 
-        last_div_date = df_daily_divs.index[-1]
-        start_d = last_div_date.date()
-        end_d = last_div_date.date() + _dt.timedelta(days=1)
-        df = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
-        self.assertTrue((df["Dividends"] != 0.0).any())
+            last_div_date = df_daily_divs.index[-1]
+            start_d = last_div_date.date()
+            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            df = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            self.assertTrue((df["Dividends"] != 0.0).any())
+            test_run = True
+            break
+
+        if not test_run:
+            self.skipTest("Skipping test_intraDayWithEvents() because no tickers had a dividend in last 60 days")
 
     def test_dailyWithEvents(self):
         # Reproduce issue #521
@@ -230,7 +232,6 @@ class TestPriceHistory(unittest.TestCase):
 
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
-
         try:
             yf.Ticker("ESLT.TA", session=self.session).history(start="2002-10-06", end="2002-10-09", interval="1d")
         except _tz.exceptions.AmbiguousTimeError:
@@ -306,7 +307,7 @@ class TestPriceRepair(unittest.TestCase):
         # Setup:
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [470.5, 473.5, 474.5, 470],
@@ -358,7 +359,7 @@ class TestPriceRepair(unittest.TestCase):
 
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [400,   398,    392.5,   417],
@@ -413,7 +414,7 @@ class TestPriceRepair(unittest.TestCase):
     def test_repair_100x_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [478,    476,   476,   472],
@@ -455,7 +456,7 @@ class TestPriceRepair(unittest.TestCase):
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         df_bad = _pd.DataFrame(data={"Open":      [0,      102.04, 102.04],
                                      "High":      [0,      102.1,  102.11],
@@ -482,7 +483,7 @@ class TestPriceRepair(unittest.TestCase):
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         correct_df = dat.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
 
