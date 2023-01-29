@@ -7,7 +7,9 @@ assignees: ''
 
 ---
 
-# READ BEFORE POSTING
+# IMPORTANT
+
+If you want help, you got to read this first. All of it.
 
 ### Are you up-to-date?
 
@@ -25,18 +27,17 @@ and comparing against [PIP](https://pypi.org/project/yfinance/#history).
 
 Are spelling ticker *exactly* same as Yahoo?
 
-Visit `finance.yahoo.com` and confim they have your data. Maybe your ticker was delisted.
+Visit `finance.yahoo.com` and confim they have the data you want. Maybe your ticker was delisted, or your expectations of `yfinance` are wrong.
 
 ### Are you spamming Yahoo?
 
-Yahoo Finance free service has limit on query rate dependent on request - roughly 500/minute for prices, 10/minute for info. Them delaying or blocking your spam is not a bug.
+Yahoo Finance free service has rate-limiting depending on request type - roughly 60/minute for prices, 10/minute for info. Once limit hit, Yahoo can delay, block, or return bad data. Not a `yfinance` bug.
 
 ### Still think it's a bug?
 
-Delete this default message and submit your bug report here, providing the following as best you can:
+Delete this default message (all of it) and submit your bug report here, providing the following as best you can:
 
-- Simple code that reproduces your problem
-- Error message, with traceback if shown
-- Info about your system:
-  - yfinance version
-  - operating system
+- Simple code that reproduces your problem, that we can copy-paste-run
+- Exception message with full traceback
+- `yfinance` version and Python version
+- Operating system type
