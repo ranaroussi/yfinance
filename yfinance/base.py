@@ -159,12 +159,13 @@ class FastInfo:
         if self._prices_1y.empty:
             return self._prices_1y
 
-        dt1 = self._prices_1y.index[-1]
+        dnow = pd.Timestamp.utcnow().tz_convert(self.timezone).date()
+        d1 = dnow
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
-            dt1 -= utils._interval_to_timedelta("1h")
-        dt0 = dt1 - utils._interval_to_timedelta("1y") + utils._interval_to_timedelta("1d")
-        return self._prices_1y.loc[dt0:dt1]
+            d1 -= utils._interval_to_timedelta("1d")
+        d0 = d1 - utils._interval_to_timedelta("1y")
+        return self._prices_1y.loc[str(d0):str(d1)]
 
     def _get_exchange_metadata(self):
         if self._md is not None:
