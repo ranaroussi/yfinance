@@ -49,11 +49,6 @@ user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
-def TypeCheckSeries(var, varName):
-    if not isinstance(var, _pd.Series) or isinstance(var, _pd.DataFrame):
-        raise TypeError(f"'{varName}' must be _pd.Series not {type(var)}")
-
-
 # From https://stackoverflow.com/a/59128615
 from types import FunctionType
 from inspect import getmembers
@@ -485,61 +480,24 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
 
             if last_rows_same_interval:
                 # Last two rows are within same interval
-                ia = quotes.index[n - 2]
-                ib = quotes.index[n - 1]
-                quotes.loc[ia] = merge_two_prices_intervals(quotes.loc[ia], quotes.loc[ib])
-                quotes = quotes.drop(ib)
+                idx1 = quotes.index[n - 1]
+                idx2 = quotes.index[n - 2]
+                if _np.isnan(quotes.loc[idx2, "Open"]):
+                    quotes.loc[idx2, "Open"] = quotes["Open"][n - 1]
+                # Note: nanmax() & nanmin() ignores NaNs
+                quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
+                quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                quotes.loc[idx2, "Close"] = quotes["Close"][n - 1]
+                if "Adj High" in quotes.columns:
+                    quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
+                if "Adj Low" in quotes.columns:
+                    quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
+                if "Adj Close" in quotes.columns:
+                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
+                quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
+                quotes = quotes.drop(quotes.index[n - 1])
 
     return quotes
-
-
-def merge_two_prices_intervals(i1, i2):
-    TypeCheckSeries(i1, "i1")
-    TypeCheckSeries(i2, "i2")
-
-    price_cols = ["Open", "High", "Low", "Close"]
-    na1 = i1[price_cols].isna().all()
-    na2 = i2[price_cols].isna().all()
-    if na1 and na2:
-        return i1
-    elif na1:
-        return i2
-    elif na2:
-        return i1
-
-    # First check if two intervals are almost identical. If yes, keep 2nd
-    ratio = _np.mean(i2[price_cols+["Volume"]] / i1[price_cols+["Volume"]])
-    if ratio > 0.99 and ratio < 1.01:
-        return i2
-
-    m = i1.copy()
-
-    if _np.isnan(m["Open"]):
-        m["Open"] = i2["Open"]
-        if "Adj Open" in m.index:
-            m["Adj Open"] = i2["Adj Open"]
-
-    # Note: nanmax() & nanmin() ignores NaNs
-    m["High"] = _np.nanmax([i2["High"], i1["High"]])
-    m["Low"] = _np.nanmin([i2["Low"], i1["Low"]])
-    if not _np.isnan(i2["Close"]):
-        m["Close"] = i2["Close"]
-
-    if "Adj High" in m.index:
-        m["Adj High"] = _np.nanmax([i2["Adj High"], i1["Adj High"]])
-    if "Adj Low" in m.index:
-        m["Adj Low"] = _np.nanmin([i2["Adj Low"], i1["Adj Low"]])
-    if "Adj Close" in m.index:
-        m["Adj Close"] = i2["Adj Close"]
-
-    if _np.isnan(m["Volume"]):
-        m["Volume"] = i2["Volume"]
-    elif _np.isnan(i2["Volume"]):
-        pass
-    else:
-        m["Volume"] += i2["Volume"]
-
-    return m
 
 
 def safe_merge_dfs(df_main, df_sub, interval):

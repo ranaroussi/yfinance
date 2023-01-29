@@ -270,6 +270,38 @@ class TestPriceHistory(unittest.TestCase):
         df = dat.history(start=start, interval="1wk")
         self.assertTrue((df.index.weekday == 0).all())
 
+class TestPriceRepair(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def test_reconstruct_2m(self):
+        # 2m repair requires 1m data.
+        # Yahoo restricts 1m fetches to 7 days max within last 30 days.
+        # Need to test that '_reconstruct_intervals_batch()' can handle this.
+
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+
+        dt_now = _pd.Timestamp.utcnow()
+        td_7d = _dt.timedelta(days=7)
+        td_60d = _dt.timedelta(days=60)
+
+        # Round time for 'requests_cache' reuse
+        dt_now = dt_now.ceil("1h")
+
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            end_dt = dt_now
+            start_dt = end_dt - td_60d
+            df = dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
+
     def test_repair_100x_weekly(self):
         # Setup:
         tkr = "PNL.L"
@@ -452,38 +484,29 @@ class TestPriceHistory(unittest.TestCase):
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.info["exchangeTimezoneName"]
 
-        df_bad = _pd.DataFrame(data={"Open":      [29.68, 29.49, 29.545, _np.nan, 29.485],
-                                     "High":      [29.68, 29.625, 29.58, _np.nan, 29.49],
-                                     "Low":       [29.46, 29.4, 29.45, _np.nan, 29.31],
-                                     "Close":     [29.485, 29.545, 29.485, _np.nan, 29.325],
-                                     "Adj Close": [29.485, 29.545, 29.485, _np.nan, 29.325],
-                                     "Volume": [3258528, 2140195, 1621010, 0, 0]},
-                                index=_pd.to_datetime([_dt.datetime(2022,11,25, 9,30),
-                                                       _dt.datetime(2022,11,25, 10,30),
-                                                       _dt.datetime(2022,11,25, 11,30),
-                                                       _dt.datetime(2022,11,25, 12,30),
-                                                       _dt.datetime(2022,11,25, 13,00)]))
-        df_bad = df_bad.sort_index()
-        df_bad.index.name = "Date"
-        df_bad.index = df_bad.index.tz_localize(tz_exchange)
+        correct_df = dat.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
+
+        df_bad = correct_df.copy()
+        bad_idx = correct_df.index[10]
+        df_bad.loc[bad_idx, "Open"] = _np.nan
+        df_bad.loc[bad_idx, "High"] = _np.nan
+        df_bad.loc[bad_idx, "Low"] = _np.nan
+        df_bad.loc[bad_idx, "Close"] = _np.nan
+        df_bad.loc[bad_idx, "Adj Close"] = _np.nan
+        df_bad.loc[bad_idx, "Volume"] = 0
 
         repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange, prepost=False)
 
-        correct_df = df_bad.copy()
-        idx = _pd.Timestamp(2022,11,25, 12,30).tz_localize(tz_exchange)
-        correct_df.loc[idx, "Open"] = 29.485001
-        correct_df.loc[idx, "High"] = 29.49
-        correct_df.loc[idx, "Low"] = 29.43
-        correct_df.loc[idx, "Close"] = 29.455
-        correct_df.loc[idx, "Adj Close"] = 29.455
-        correct_df.loc[idx, "Volume"] = 609164
         for c in ["Open", "Low", "High", "Close"]:
             try:
                 self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-7).all())
             except:
                 print("COLUMN", c)
+                print("- repaired_df")
                 print(repaired_df)
+                print("- correct_df[c]:")
                 print(correct_df[c])
+                print("- diff:")
                 print(repaired_df[c] - correct_df[c])
                 raise
 
