@@ -9,7 +9,7 @@ assignees: ''
 
 # IMPORTANT
 
-If you want help, you got to read this first. All of it.
+If you want help, you got to read this first, follow the instructions.
 
 ### Are you up-to-date?
 
@@ -25,9 +25,9 @@ and comparing against [PIP](https://pypi.org/project/yfinance/#history).
 
 ### Does Yahoo actually have the data?
 
-Are spelling ticker *exactly* same as Yahoo?
+Are you spelling ticker *exactly* same as Yahoo?
 
-Visit `finance.yahoo.com` and confim they have the data you want. Maybe your ticker was delisted, or your expectations of `yfinance` are wrong.
+Then visit `finance.yahoo.com` and confirm they have the data you want. Maybe your ticker was delisted, or your expectations of `yfinance` are wrong.
 
 ### Are you spamming Yahoo?
 
@@ -38,6 +38,6 @@ Yahoo Finance free service has rate-limiting depending on request type - roughly
 Delete this default message (all of it) and submit your bug report here, providing the following as best you can:
 
 - Simple code that reproduces your problem, that we can copy-paste-run
-- Exception message with full traceback
+- Exception message with full traceback, or proof `yfinance` returning bad data
 - `yfinance` version and Python version
 - Operating system type
