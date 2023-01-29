@@ -60,7 +60,7 @@ def _extract_extra_keys_from_stores(data):
             new_keys_uniq.append(k)
             new_keys_uniq_values.add(v)
 
-    return new_keys_uniq
+    return [data[k] for k in new_keys_uniq]
 
 
 def decrypt_cryptojs_aes_stores(data, keys=None):
@@ -295,13 +295,16 @@ class TickerData:
                 msg += " Try flushing your 'requests_cache', probably parsing old JS."
             print("WARNING: " + msg + " Falling back to backup decrypt methods.")
         if len(keys) == 0:
+            keys = []
+            try:
+                extra_keys = _extract_extra_keys_from_stores(data)
+                keys = [''.join(extra_keys[-4:])]
+            except:
+                pass
+            #
             keys_url = "https://github.com/ranaroussi/yfinance/raw/main/yfinance/scrapers/yahoo-keys.txt"
             response_gh = self.cache_get(keys_url)
-            keys = response_gh.text.splitlines()
-            extra_keys = _extract_extra_keys_from_stores(data)
-            if len(extra_keys) < 10:
-                # Only brute-force with these extra keys if few
-                keys += extra_keys
+            keys += response_gh.text.splitlines()
 
         # Decrypt!
         stores = decrypt_cryptojs_aes_stores(data, keys)
