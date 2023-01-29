@@ -852,13 +852,16 @@ class TickerBase:
             f_recent = df.index >= min_dt
             f_repair_rows = f_repair_rows & f_recent
             if not f_repair_rows.any():
-                # print("data too old to repair")
+                if debug:
+                    print("data too old to repair")
                 return df
 
         dts_to_repair = df.index[f_repair_rows]
         indices_to_repair = _np.where(f_repair_rows)[0]
 
         if len(dts_to_repair) == 0:
+            if debug:
+                print("dts_to_repair[] is empty")
             return df
 
         df_v2 = df.copy()
