@@ -723,7 +723,14 @@ class _KVStore:
         with self._cache_mutex:
             self.conn = _sqlite3.connect(filename, timeout=10, check_same_thread=False)
             self.conn.execute('pragma journal_mode=wal')
-            self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT) without rowid')
+            try:
+                self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT) without rowid')
+            except Exception as e:
+                if 'near "without": syntax error' in str(e):
+                    # "without rowid" requires sqlite 3.8.2. Older versions will raise exception
+                    self.conn.execute('create table if not exists "kv" (key TEXT primary key, value TEXT)')
+                else:
+                    raise
             self.conn.commit()
         _atexit.register(self.close)
 
