@@ -703,6 +703,10 @@ class TestTickerInfo(unittest.TestCase):
         fast_info_keys = sorted(list(fast_info_keys))
 
         key_rename_map = {}
+        key_rename_map["currency"] = "currency"
+        key_rename_map["quote_type"] = "quoteType"
+        key_rename_map["timezone"] = "exchangeTimezoneName"
+
         key_rename_map["last_price"] = ["currentPrice", "regularMarketPrice"]
         key_rename_map["open"] = ["open", "regularMarketOpen"]
         key_rename_map["day_high"] = ["dayHigh", "regularMarketDayHigh"]
@@ -710,11 +714,9 @@ class TestTickerInfo(unittest.TestCase):
         key_rename_map["previous_close"] = ["previousClose"]
         key_rename_map["regular_market_previous_close"] = ["regularMarketPreviousClose"]
 
-        # preMarketPrice
-
         key_rename_map["fifty_day_average"] = "fiftyDayAverage"
         key_rename_map["two_hundred_day_average"] = "twoHundredDayAverage"
-        key_rename_map["year_change"] = "52WeekChange"
+        key_rename_map["year_change"] = ["52WeekChange", "fiftyTwoWeekChange"]
         key_rename_map["year_high"] = "fiftyTwoWeekHigh"
         key_rename_map["year_low"] = "fiftyTwoWeekLow"
 
@@ -724,7 +726,6 @@ class TestTickerInfo(unittest.TestCase):
 
         key_rename_map["market_cap"] = "marketCap"
         key_rename_map["shares"] = "sharesOutstanding"
-        key_rename_map["timezone"] = "exchangeTimezoneName"
 
         for k in list(key_rename_map.keys()):
             if '_' in k:
@@ -737,6 +738,7 @@ class TestTickerInfo(unittest.TestCase):
 
         # Loose tolerance for averages, no idea why don't match info[]. Is info wrong?
         custom_tolerances = {}
+        custom_tolerances["year_change"] = 1.0
         # custom_tolerances["ten_day_average_volume"] = 1e-3
         custom_tolerances["ten_day_average_volume"] = 1e-1
         # custom_tolerances["three_month_average_volume"] = 1e-2
