@@ -55,6 +55,8 @@ class FastInfo:
         self._tkr = tickerBaseObject
 
         self._prices_1y = None
+        self._prices_1wk_1h_prepost = None
+        self._prices_1wk_1h_reg = None
         self._md = None
 
         self._currency = None
@@ -161,11 +163,21 @@ class FastInfo:
 
         dnow = pd.Timestamp.utcnow().tz_convert(self.timezone).date()
         d1 = dnow
+        d0 = (d1 + _datetime.timedelta(days=1)) - utils._interval_to_timedelta("1y")
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
             d1 -= utils._interval_to_timedelta("1d")
-        d0 = d1 - utils._interval_to_timedelta("1y")
         return self._prices_1y.loc[str(d0):str(d1)]
+
+    def _get_1wk_1h_prepost_prices(self):
+        if self._prices_1wk_1h_prepost is None:
+            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, debug=False)
+        return self._prices_1wk_1h_prepost
+
+    def _get_1wk_1h_reg_prices(self):
+        if self._prices_1wk_1h_reg is None:
+            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, debug=False)
+        return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
         if self._md is not None:
@@ -255,8 +267,9 @@ class FastInfo:
     def previous_close(self):
         if self._prev_close is not None:
             return self._prev_close
-        prices = self._get_1y_prices()
-        if prices.empty:
+        prices = self._get_1wk_1h_prepost_prices()
+        prices = prices[["Close"]].groupby(prices.index.date).last()
+        if prices.shape[0] < 2:
             # Very few symbols have previousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
@@ -272,7 +285,12 @@ class FastInfo:
         if self._reg_prev_close is not None:
             return self._reg_prev_close
         prices = self._get_1y_prices()
-        if prices.empty:
+        if prices.shape[0] == 1:
+            # Tiny % of tickers don't return daily history before last trading day, 
+            # so backup option is hourly history:
+            prices = self._get_1wk_1h_reg_prices()
+            prices = prices[["Close"]].groupby(prices.index.date).last()
+        if prices.shape[0] < 2:
             # Very few symbols have regularMarketPreviousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
@@ -391,6 +409,8 @@ class FastInfo:
             return self._year_high
 
         prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_high = float(prices["High"].max())
         return self._year_high
 
@@ -400,6 +420,8 @@ class FastInfo:
             return self._year_low
 
         prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_low = float(prices["Low"].min())
         return self._year_low
 
@@ -409,8 +431,9 @@ class FastInfo:
             return self._year_change
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
-        self._year_change = float(self._year_change)
+        if prices.shape[0] >= 2:
+            self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+            self._year_change = float(self._year_change)
         return self._year_change
 
     @property
