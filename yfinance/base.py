@@ -55,9 +55,12 @@ class FastInfo:
         self._tkr = tickerBaseObject
 
         self._prices_1y = None
+        self._prices_1wk_1h_prepost = None
+        self._prices_1wk_1h_reg = None
         self._md = None
 
         self._currency = None
+        self._quote_type = None
         self._exchange = None
         self._timezone = None
 
@@ -86,19 +89,19 @@ class FastInfo:
         # attrs = utils.attributes(self)
         # self.keys = attrs.keys()
         # utils.attributes is calling each method, bad! Have to hardcode
-        orig_keys = ["currency", "exchange", "timezone"]
-        orig_keys += ["shares", "market_cap"]
-        orig_keys += ["last_price", "previous_close", "open", "day_high", "day_low"]
-        orig_keys += ["regular_market_previous_close"]
-        orig_keys += ["last_volume"]
-        orig_keys += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
-        orig_keys += ["year_high", "year_low", "year_change"]
+        _properties = ["currency", "quote_type", "exchange", "timezone"]
+        _properties += ["shares", "market_cap"]
+        _properties += ["last_price", "previous_close", "open", "day_high", "day_low"]
+        _properties += ["regular_market_previous_close"]
+        _properties += ["last_volume"]
+        _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
+        _properties += ["year_high", "year_low", "year_change"]
 
         # Because released before fixing key case, need to officially support 
         # camel-case but also secretly support snake-case
-        base_keys = [k for k in orig_keys if not '_' in k]
+        base_keys = [k for k in _properties if not '_' in k]
 
-        sc_keys = [k for k in orig_keys if '_' in k]
+        sc_keys = [k for k in _properties if '_' in k]
 
         self._sc_to_cc_key = {k:utils.snake_case_2_camelCase(k) for k in sc_keys}
         self._cc_to_sc_key = {v:k for k,v in self._sc_to_cc_key.items()}
@@ -143,7 +146,7 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False)
+            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False, keepna=True)
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -161,11 +164,21 @@ class FastInfo:
 
         dnow = pd.Timestamp.utcnow().tz_convert(self.timezone).date()
         d1 = dnow
+        d0 = (d1 + _datetime.timedelta(days=1)) - utils._interval_to_timedelta("1y")
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
             d1 -= utils._interval_to_timedelta("1d")
-        d0 = d1 - utils._interval_to_timedelta("1y")
         return self._prices_1y.loc[str(d0):str(d1)]
+
+    def _get_1wk_1h_prepost_prices(self):
+        if self._prices_1wk_1h_prepost is None:
+            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, debug=False)
+        return self._prices_1wk_1h_prepost
+
+    def _get_1wk_1h_reg_prices(self):
+        if self._prices_1wk_1h_reg is None:
+            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, debug=False)
+        return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
         if self._md is not None:
@@ -210,6 +223,17 @@ class FastInfo:
         return self._currency
 
     @property
+    def quote_type(self):
+        if self._quote_type is not None:
+            return self._quote_type
+
+        if self._tkr._history_metadata is None:
+            self._get_1y_prices()
+        md = self._tkr.get_history_metadata()
+        self._quote_type = md["instrumentType"]
+        return self._quote_type
+
+    @property
     def exchange(self):
         if self._exchange is not None:
             return self._exchange
@@ -249,14 +273,17 @@ class FastInfo:
             self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
         else:
             self._last_price = float(prices["Close"].iloc[-1])
+            if _np.isnan(self._last_price):
+                self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
         return self._last_price
 
     @property
     def previous_close(self):
         if self._prev_close is not None:
             return self._prev_close
-        prices = self._get_1y_prices()
-        if prices.empty:
+        prices = self._get_1wk_1h_prepost_prices()
+        prices = prices[["Close"]].groupby(prices.index.date).last()
+        if prices.shape[0] < 2:
             # Very few symbols have previousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
@@ -272,7 +299,12 @@ class FastInfo:
         if self._reg_prev_close is not None:
             return self._reg_prev_close
         prices = self._get_1y_prices()
-        if prices.empty:
+        if prices.shape[0] == 1:
+            # Tiny % of tickers don't return daily history before last trading day, 
+            # so backup option is hourly history:
+            prices = self._get_1wk_1h_reg_prices()
+            prices = prices[["Close"]].groupby(prices.index.date).last()
+        if prices.shape[0] < 2:
             # Very few symbols have regularMarketPreviousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
@@ -288,7 +320,12 @@ class FastInfo:
         if self._open is not None:
             return self._open
         prices = self._get_1y_prices()
-        self._open = None if prices.empty else float(prices["Open"].iloc[-1])
+        if prices.empty:
+            self._open = None
+        else:
+            self._open = float(prices["Open"].iloc[-1])
+            if _np.isnan(self._open):
+                self._open = None
         return self._open
 
     @property
@@ -296,7 +333,12 @@ class FastInfo:
         if self._day_high is not None:
             return self._day_high
         prices = self._get_1y_prices()
-        self._day_high = None if prices.empty else float(prices["High"].iloc[-1])
+        if prices.empty:
+            self._day_high = None
+        else:
+            self._day_high = float(prices["High"].iloc[-1])
+            if _np.isnan(self._day_high):
+                self._day_high = None
         return self._day_high
 
     @property
@@ -304,7 +346,12 @@ class FastInfo:
         if self._day_low is not None:
             return self._day_low
         prices = self._get_1y_prices()
-        self._day_low = None if prices.empty else float(prices["Low"].iloc[-1])
+        if prices.empty:
+            self._day_low = None
+        else:
+            self._day_low = float(prices["Low"].iloc[-1])
+            if _np.isnan(self._day_low):
+                self._day_low = None
         return self._day_low
 
     @property
@@ -391,6 +438,8 @@ class FastInfo:
             return self._year_high
 
         prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_high = float(prices["High"].max())
         return self._year_high
 
@@ -400,6 +449,8 @@ class FastInfo:
             return self._year_low
 
         prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_low = float(prices["Low"].min())
         return self._year_low
 
@@ -409,8 +460,9 @@ class FastInfo:
             return self._year_change
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
-        self._year_change = float(self._year_change)
+        if prices.shape[0] >= 2:
+            self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+            self._year_change = float(self._year_change)
         return self._year_change
 
     @property
