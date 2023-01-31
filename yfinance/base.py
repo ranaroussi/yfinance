@@ -608,6 +608,7 @@ class TickerBase:
             self._history_metadata = data["chart"]["result"][0]["meta"]
         except Exception:
             self._history_metadata = {}
+        self._history_metadata = utils.format_history_metadata(self._history_metadata)
 
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
@@ -684,6 +685,9 @@ class TickerBase:
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+        intraday = params["interval"][-1] in ("m", 'h')
+        if not prepost and intraday and "tradingPeriods" in self._history_metadata:
+            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], self._history_metadata)
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
@@ -1829,6 +1833,6 @@ class TickerBase:
 
     def get_history_metadata(self) -> dict:
         if self._history_metadata is None:
-            raise RuntimeError("Metadata was never retrieved so far, "
-                               "call history() to retrieve it")
+            # Request intraday data, because then Yahoo returns exchange schedule.
+            self.history(period="1wk", interval="1h", prepost=True)
         return self._history_metadata
