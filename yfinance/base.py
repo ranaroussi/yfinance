@@ -50,8 +50,9 @@ _ROOT_URL_ = 'https://finance.yahoo.com'
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
-    def __init__(self, tickerBaseObject):
+    def __init__(self, tickerBaseObject, proxy=None):
         self._tkr = tickerBaseObject
+        self.proxy = proxy
 
         self._prices_1y = None
         self._md = None
@@ -124,8 +125,8 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False)
-            self._md = self._tkr.get_history_metadata()
+            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False, proxy=self.proxy)
+            self._md = self._tkr.get_history_metadata(proxy=self.proxy)
             try:
                 ctp = self._md["currentTradingPeriod"]
                 self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
@@ -152,7 +153,7 @@ class FastInfo:
             return self._md
 
         self._get_1y_prices()
-        self._md = self._tkr.get_history_metadata()
+        self._md = self._tkr.get_history_metadata(proxy=self.proxy)
         return self._md
 
     def _exchange_open_now(self):
@@ -185,7 +186,7 @@ class FastInfo:
 
         if self._tkr._history_metadata is None:
             self._get_1y_prices()
-        md = self._tkr.get_history_metadata()
+        md = self._tkr.get_history_metadata(proxy=self.proxy)
         self._currency = md["currency"]
         return self._currency
 
@@ -448,7 +449,7 @@ class TickerBase:
         self._quote = Quote(self._data)
         self._fundamentals = Fundamentals(self._data)
 
-        self._fast_info = FastInfo(self)
+        self._fast_info = None
 
     def stats(self, proxy=None):
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
@@ -1269,8 +1270,9 @@ class TickerBase:
         data = self._quote.info
         return data
 
-    @property
-    def fast_info(self):
+    def get_fast_info(self, proxy=None):
+        if self._fast_info is None:
+            self._fast_info = FastInfo(self, proxy=proxy)
         return self._fast_info
 
     @property
@@ -1699,8 +1701,9 @@ class TickerBase:
 
         return dates
 
-    def get_history_metadata(self) -> dict:
+    def get_history_metadata(self, proxy=None) -> dict:
         if self._history_metadata is None:
             raise RuntimeError("Metadata was never retrieved so far, "
                                "call history() to retrieve it")
+            # TODO after merge: use proxy here
         return self._history_metadata
