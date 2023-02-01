@@ -712,6 +712,10 @@ def format_history_metadata(md):
                 del md["currentTradingPeriod"][m]["timezone"]
 
     if "tradingPeriods" in md:
+        if md["tradingPeriods"] == {"pre":[], "post":[]}:
+            del md["tradingPeriods"]
+
+    if "tradingPeriods" in md:
         tps = md["tradingPeriods"]
         if isinstance(tps, list):
             # Only regular times
