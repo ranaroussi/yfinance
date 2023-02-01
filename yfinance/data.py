@@ -200,8 +200,8 @@ class TickerData:
             if isinstance(proxy, dict) and "https" in proxy:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
-        # if isinstance(proxy, frozendict.frozendict):
-        #     proxy = dict(proxy)
+        if isinstance(proxy, frozendict.frozendict):
+            proxy = dict(proxy)
         return proxy
 
     def _get_decryption_keys_from_yahoo_js(self, soup):
