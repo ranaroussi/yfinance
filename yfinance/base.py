@@ -506,6 +506,12 @@ class TickerBase:
                 exceptions instead of printing to console.
         """
 
+        # setup proxy in requests format
+        if proxy is not None:
+            if isinstance(proxy, dict) and "https" in proxy:
+                proxy = proxy["https"]
+            # proxy = {"https": proxy}
+
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
             tz = self._get_ticker_tz(debug, proxy, timeout)
@@ -544,12 +550,6 @@ class TickerBase:
         # 1) fix weired bug with Yahoo! - returning 60m for 30m bars
         if params["interval"] == "30m":
             params["interval"] = "15m"
-
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
 
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
         params["events"] = "div,splits,capitalGains"
