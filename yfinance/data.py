@@ -200,7 +200,7 @@ class TickerData:
             if isinstance(proxy, dict) and "https" in proxy:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
-        if isinstance(proxy, frozendict.frozendict):
+        if isinstance(proxy, frozendict):
             proxy = dict(proxy)
         return proxy
 
