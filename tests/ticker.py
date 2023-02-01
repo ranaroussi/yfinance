@@ -47,7 +47,7 @@ class TestTicker(unittest.TestCase):
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(proxy=None, timeout=None, debug_mode=False, raise_errors=False)
 
             self.assertIsNotNone(tz)
 
@@ -137,8 +137,8 @@ class TestTicker(unittest.TestCase):
         tkr = "IBM"
         dat = yf.Ticker(tkr, session=self.session)
 
-        dat._fetch_ticker_tz(debug_mode=False, proxy=self.proxy, timeout=5)
-        dat._get_ticker_tz(debug_mode=False, proxy=self.proxy, timeout=5)
+        dat._fetch_ticker_tz(proxy=self.proxy, timeout=5, debug_mode=False, raise_errors=False)
+        dat._get_ticker_tz(proxy=self.proxy, timeout=5, debug_mode=False, raise_errors=False)
         dat.history(period="1wk", proxy=self.proxy)
 
         v = dat.stats(proxy=self.proxy)

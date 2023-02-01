@@ -507,15 +507,9 @@ class TickerBase:
                 exceptions instead of printing to console.
         """
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            # proxy = {"https": proxy}
-
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            tz = self._get_ticker_tz(debug, proxy, timeout)
+            tz = self._get_ticker_tz(proxy, timeout, debug, raise_errors)
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
                 err_msg = "No timezone found, symbol may be delisted"
@@ -1172,7 +1166,7 @@ class TickerBase:
 
         return df2
 
-    def _get_ticker_tz(self, debug_mode, proxy, timeout):
+    def _get_ticker_tz(self, proxy, timeout, debug_mode, raise_errors):
         if self._tz is not None:
             return self._tz
         cache = utils.get_tz_cache()
@@ -1184,7 +1178,7 @@ class TickerBase:
             tz = None
 
         if tz is None:
-            tz = self._fetch_ticker_tz(debug_mode, proxy, timeout)
+            tz = self._fetch_ticker_tz(proxy, timeout, debug_mode, raise_errors)
 
             if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
@@ -1195,7 +1189,7 @@ class TickerBase:
         self._tz = tz
         return tz
 
-    def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
+    def _fetch_ticker_tz(self, proxy, timeout, debug_mode, raise_errors):
         # Query Yahoo for fast price data just to get returned timezone
 
         params = {"range": "1d", "interval": "1d"}
@@ -1208,24 +1202,34 @@ class TickerBase:
             data = data.json()
         except Exception as e:
             if debug_mode:
-                print("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
+                err_msg = "GET request failed with error: " + str(e)
+                if raise_errors:
+                    # raise Exception('%s: %s' % (self.ticker, err_msg))
+                    raise
+                else:
+                    print('- %s: %s' % (self.ticker, err_msg))
             return None
         else:
             error = data.get('chart', {}).get('error', None)
             if error:
                 # explicit error from yahoo API
                 if debug_mode:
-                    print("Got error from yahoo api for ticker {}, Error: {}".format(self.ticker, error))
+                    err_msg = "Received error from Yahoo: " + str(error)
+                    if raise_errors:
+                        raise Exception('%s: %s' % (self.ticker, err_msg))
+                    else:
+                        print('- %s: %s' % (self.ticker, err_msg))
             else:
                 try:
                     return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-                except Exception as err:
+                except Exception as e:
                     if debug_mode:
-                        print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
-                        print("Got response: ")
-                        print("-------------")
-                        print(" {}".format(data))
-                        print("-------------")
+                        err_msg = "Failed to extract 'exchangeTimezoneName' from metadata: " + str(e)
+                        if raise_errors:
+                            # raise Exception('%s: %s' % (self.ticker, err_msg))
+                            raise
+                        else:
+                            print('- %s: %s' % (self.ticker, err_msg))
         return None
 
     def get_recommendations(self, proxy=None, as_dict=False):
@@ -1506,7 +1510,7 @@ class TickerBase:
 
     def get_shares_full(self, start=None, end=None, proxy=None):
         # Process dates
-        tz = self._get_ticker_tz(debug_mode=False, proxy=proxy, timeout=10)
+        tz = self._get_ticker_tz(proxy=proxy, timeout=10, debug_mode=False, raise_errors=False)
         dt_now = _pd.Timestamp.utcnow().tz_convert(tz)
         if start is not None:
             start_ts = utils._parse_user_dt(start, tz)
@@ -1692,7 +1696,7 @@ class TickerBase:
         dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
         # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
         self._quote.proxy = proxy
-        tz = self._get_ticker_tz(debug_mode=False, proxy=proxy, timeout=30)
+        tz = self._get_ticker_tz(proxy=proxy, timeout=30, debug_mode=False, raise_errors=False)
         dates[cn] = dates[cn].dt.tz_localize(tz)
 
         dates = dates.set_index("Earnings Date")
@@ -1705,5 +1709,5 @@ class TickerBase:
         if self._history_metadata is None:
             raise RuntimeError("Metadata was never retrieved so far, "
                                "call history() to retrieve it")
-            # TODO after merge: use proxy here
+            # TODO: after future dev->main merge, update this function to pass-through proxy
         return self._history_metadata
