@@ -426,16 +426,16 @@ class TestPriceRepair(unittest.TestCase):
                                  "Close":     [475,   473.5, 472,   473.5],
                                  "Adj Close": [475,   473.5, 472,   473.5],
                                  "Volume": [2295613, 2245604, 3000287, 2635611]},
-                                index=_pd.to_datetime([_dt.date(2022, 10, 23),
-                                                       _dt.date(2022, 10, 16),
-                                                       _dt.date(2022, 10, 9),
-                                                       _dt.date(2022, 10, 2)]))
+                                index=_pd.to_datetime([_dt.date(2022, 10, 24),
+                                                       _dt.date(2022, 10, 17),
+                                                       _dt.date(2022, 10, 10),
+                                                       _dt.date(2022, 10, 3)]))
         df = df.sort_index()
         df.index.name = "Date"
         df_bad = df.copy()
-        df_bad.loc["2022-10-23", "Close"] *= 100
-        df_bad.loc["2022-10-16", "Low"] *= 100
-        df_bad.loc["2022-10-2", "Open"] *= 100
+        df_bad.loc["2022-10-24", "Close"] *= 100
+        df_bad.loc["2022-10-17", "Low"] *= 100
+        df_bad.loc["2022-10-03", "Open"] *= 100
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
