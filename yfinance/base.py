@@ -1281,7 +1281,7 @@ class TickerBase:
 
         if df2.index.tz is None:
             df2.index = df2.index.tz_localize(tz_exchange)
-        else:
+        elif df2.index.tz != tz_exchange:
             df2.index = df2.index.tz_convert(tz_exchange)
 
         price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df2.columns]
@@ -1289,18 +1289,17 @@ class TickerBase:
         df2_reserve = None
         if intraday:
             # Ignore days with >50% intervals containing NaNs
-            df_nans = pd.DataFrame(f_prices_bad.any(axis=1), columns=["nan"])
-            df_nans["_date"] = df_nans.index.date
-            grp = df_nans.groupby("_date")
+            grp = pd.Series(f_prices_bad.any(axis=1), name="nan").groupby(f_prices_bad.index.date)
             nan_pct = grp.sum() / grp.count()
-            dts = nan_pct.index[nan_pct["nan"]>0.5]
+            dts = nan_pct.index[nan_pct>0.5]
             f_zero_or_nan_ignore = _np.isin(f_prices_bad.index.date, dts)
             df2_reserve = df2[f_zero_or_nan_ignore]
             df2 = df2[~f_zero_or_nan_ignore]
             f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
 
-        f_high_low_good = (~df2["High"].isna()) & (~df2["Low"].isna())
-        f_vol_bad = (df2["Volume"]==0).to_numpy() & f_high_low_good & (df2["High"]!=df2["Low"]).to_numpy()
+        f_high_low_good = (~df2["High"].isna().to_numpy()) & (~df2["Low"].isna().to_numpy())
+        f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
+        f_vol_bad = (df2["Volume"]==0).to_numpy() & f_high_low_good & f_change
 
         # Check whether worth attempting repair
         f_prices_bad = f_prices_bad.to_numpy()
@@ -1327,14 +1326,15 @@ class TickerBase:
         f_vol_zero_or_nan = (df2["Volume"].to_numpy()==0) | (df2["Volume"].isna().to_numpy())
         df2.loc[f_prices_bad.any(axis=1) & f_vol_zero_or_nan, "Volume"] = tag
         # If volume=0 or NaN but price moved in interval, then tag volume for repair
-        f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
         df2.loc[f_change & f_vol_zero_or_nan, "Volume"] = tag
 
-        n_before = (df2[data_cols].to_numpy()==tag).sum()
-        dts_tagged = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
-        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
-        n_after = (df2[data_cols].to_numpy()==tag).sum()
-        dts_not_repaired = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
+        df2_tagged = df2[data_cols].to_numpy()==tag
+        n_before = df2_tagged.sum()
+        dts_tagged = df2.index[df2_tagged.any(axis=1)]
+        df3 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
+        df3_tagged = df3[data_cols].to_numpy()==tag
+        n_after = df3_tagged.sum()
+        dts_not_repaired = df3.index[df3_tagged.any(axis=1)]
         n_fixed = n_before - n_after
         if not silent and n_fixed > 0:
             msg = f"{self.ticker}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data"
@@ -1344,18 +1344,17 @@ class TickerBase:
             print(msg)
 
         if df2_reserve is not None:
-            df2 = _pd.concat([df2, df2_reserve])
-        df2 = df2.sort_index()
+            df3 = _pd.concat([df3, df2_reserve]).sort_index()
 
         # Restore original values where repair failed (i.e. remove tag values)
-        f = df2[data_cols].values==tag
+        f = df3[data_cols].to_numpy()==tag
         for j in range(len(data_cols)):
             fj = f[:,j]
             if fj.any():
                 c = data_cols[j]
-                df2.loc[fj, c] = df.loc[fj, c]
+                df3.loc[fj, c] = df.loc[fj, c]
 
-        return df2
+        return df3
 
     def _get_ticker_tz(self, debug_mode, proxy, timeout):
         if self._tz is not None:
