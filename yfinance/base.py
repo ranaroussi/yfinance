@@ -1169,7 +1169,7 @@ class TickerBase:
 
         if df.index.tz is None:
             df2.index = df2.index.tz_localize(tz_exchange)
-        else:
+        elif df2.index.tz != tz_exchange:
             df2.index = df2.index.tz_convert(tz_exchange)
 
         # Only import scipy if users actually want function. To avoid
@@ -1178,7 +1178,7 @@ class TickerBase:
 
         data_cols = ["High", "Open", "Low", "Close", "Adj Close"]  # Order important, separate High from Low
         data_cols = [c for c in data_cols if c in df2.columns]
-        f_zeroes = (df2[data_cols]==0).any(axis=1)
+        f_zeroes = (df2[data_cols]==0).any(axis=1).to_numpy()
         if f_zeroes.any():
             df2_zeroes = df2[f_zeroes]
             df2 = df2[~f_zeroes]
@@ -1186,8 +1186,9 @@ class TickerBase:
             df2_zeroes = None
         if df2.shape[0] <= 1:
             return df
-        median = _ndimage.median_filter(df2[data_cols].values, size=(3, 3), mode="wrap")
-        ratio = df2[data_cols].values / median
+        df2_data = df2[data_cols].to_numpy()
+        median = _ndimage.median_filter(df2_data, size=(3, 3), mode="wrap")
+        ratio = df2_data / median
         ratio_rounded = (ratio / 20).round() * 20  # round ratio to nearest 20
         f = ratio_rounded == 100
         if not f.any():
@@ -1200,14 +1201,15 @@ class TickerBase:
             c = data_cols[i]
             df2.loc[fi, c] = tag
 
-        n_before = (df2[data_cols].to_numpy()==tag).sum()
+        n_before = df2_data.sum()
         df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
+        df2_tagged = df2[data_cols].to_numpy()==tag
         n_after = (df2[data_cols].to_numpy()==tag).sum()
 
         if n_after > 0:
             # This second pass will *crudely* "fix" any remaining errors in High/Low
             # simply by ensuring they don't contradict e.g. Low = 100x High.
-            f = df2[data_cols].to_numpy()==tag
+            f = df2_tagged
             for i in range(f.shape[0]):
                 fi = f[i,:]
                 if not fi.any():
@@ -1239,7 +1241,10 @@ class TickerBase:
                 if fi[j]:
                     df2.loc[idx, c] = df2.loc[idx, ["Open", "Close"]].min()
 
-        n_after_crude = (df2[data_cols].to_numpy()==tag).sum()
+            df2_tagged = df2[data_cols].to_numpy()==tag
+            n_after_crude = df2_tagged.sum()
+        else:
+            n_after_crude = n_after
 
         n_fixed = n_before - n_after_crude
         n_fixed_crudely = n_after - n_after_crude
@@ -1251,7 +1256,7 @@ class TickerBase:
             print(report_msg)
 
         # Restore original values where repair failed
-        f = df2[data_cols].values==tag
+        f = df2_tagged
         for j in range(len(data_cols)):
             fj = f[:,j]
             if fj.any():
