@@ -1534,8 +1534,8 @@ class TickerBase:
         ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(self.ticker)
         shares_url = ts_url_base + "&period1={}&period2={}".format(int(start.timestamp()), int(end.timestamp()))
         try:
-            json_str = self._data.cache_get(shares_url).text
-            json_data = _json.loads(json_str)
+            json_data = self._data.cache_get(url=shares_url, proxy=proxy)
+            json_data = json_data.json()
         except:
             print(f"{self.ticker}: Yahoo web request for share count failed")
             return None
