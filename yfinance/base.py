@@ -961,7 +961,7 @@ class TickerBase:
             for g in dts_groups:
                 print(f"- {g[0]} -> {g[-1]}")
 
-        # Add some good data to each group, so can calibrate later:
+        # Add some good data to each group, so can calibrate prices later:
         for i in range(len(dts_groups)):
             g = dts_groups[i]
             g0 = g[0]
@@ -1105,7 +1105,7 @@ class TickerBase:
                     df_new["Volume"] *= ratio_rcp
 
             # Repair!
-            bad_dts = df_block.index[(df_block[price_cols+["Volume"]]==tag).any(axis=1)]
+            bad_dts = df_block.index[(df_block[price_cols+["Volume"]]==tag).to_numpy().any(axis=1)]
 
             if debug:
                 no_fine_data_dts = []
@@ -1129,7 +1129,7 @@ class TickerBase:
                     df_fine = df_fine.loc[idx:]
 
                 df_bad_row = df.loc[idx]
-                bad_fields = df_bad_row.index[df_bad_row==tag].values
+                bad_fields = df_bad_row.index[df_bad_row==tag].to_numpy()
                 if "High" in bad_fields:
                     df_v2.loc[idx, "High"] = df_new_row["High"]
                 if "Low" in bad_fields:
