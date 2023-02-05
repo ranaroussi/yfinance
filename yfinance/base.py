@@ -1025,7 +1025,7 @@ class TickerBase:
                     print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
                 continue
             # Discard the buffer
-            df_fine = df_fine.loc[g[0]:g[-1]+itds[sub_interval]]
+            df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)]
 
             df_fine["ctr"] = 0
             if interval == "1wk":
