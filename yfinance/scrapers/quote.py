@@ -283,11 +283,14 @@ class Quote:
 
             json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
-            key_stats = json_data["timeseries"]["result"][0]
-            if k not in key_stats:
-                # Yahoo website prints N/A, indicates Yahoo lacks necessary data to calculate
+            try:
+                key_stats = json_data["timeseries"]["result"][0]
+                if k not in key_stats:
+                    # Yahoo website prints N/A, indicates Yahoo lacks necessary data to calculate
+                    v = None
+                else:
+                    # Select most recent (last) raw value in list:
+                    v = key_stats[k][-1]["reportedValue"]["raw"]
+            except Exception:
                 v = None
-            else:
-                # Select most recent (last) raw value in list:
-                v = key_stats[k][-1]["reportedValue"]["raw"]
             self._info[k] = v
