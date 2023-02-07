@@ -1043,7 +1043,8 @@ class TickerBase:
                 grp_col = "intervalID"
             df_fine = df_fine[~df_fine[price_cols].isna().all(axis=1)]
 
-            df_new = df_fine.groupby(grp_col).agg(
+            df_fine_grp = df_fine.groupby(grp_col)
+            df_new = df_fine_grp.agg(
                 Open=("Open", "first"),
                 Close=("Close", "last"),
                 AdjClose=("Adj Close", "last"),
@@ -1084,7 +1085,13 @@ class TickerBase:
                     df_block_calib[f,j] = 1
                     df_new_calib[f,j] = 1
             ratios = df_block_calib[calib_filter] / df_new_calib[calib_filter]
-            ratio = _np.mean(ratios)
+            weights = df_fine_grp.size()
+            weights.index = df_new.index
+            weights = weights[weights.index.isin(common_index)].to_numpy().astype(float)
+            weights = weights[:,None]  # transpose
+            weights = _np.tile(weights, len(price_cols))  # 1D -> 2D
+            weights = weights[calib_filter]  # flatten
+            ratio = _np.average(ratios, weights=weights)
             if debug:
                 print(f"- price calibration ratio (raw) = {ratio}")
             ratio_rcp = round(1.0 / ratio, 1)
