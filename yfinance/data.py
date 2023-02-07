@@ -250,15 +250,16 @@ class TickerData:
                 response_js.close()
             if len(re_keys) == key_count:
                 break
-        re_obj = {}
-        missing_val = False
-        for k in re_keys:
-            if not re_data.get(k):
-                missing_val = True
-                break
-            re_obj.update({k: re_data.get(k)})
-        if not missing_val:
-            return [''.join(re_obj.values())]
+        if len(re_keys) > 0:
+            re_obj = {}
+            missing_val = False
+            for k in re_keys:
+                if not re_data.get(k):
+                    missing_val = True
+                    break
+                re_obj.update({k: re_data.get(k)})
+            if not missing_val:
+                return [''.join(re_obj.values())]
 
         return []
 
