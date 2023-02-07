@@ -177,101 +177,6 @@ def enable_prune_session_cache():
 def disable_prune_session_cache():
     global prune_session_cache
     prune_session_cache = False
-def check_Yahoo_response(r, *args, **kwargs):
-    # Parse the data returned by Yahoo to determine if corrupt/incomplete.
-    # If bad, set 'status_code' to 204 "No content" , that stops it 
-    # entering a requests_cache.
-
-    # Because this involves parsing, the output is added to response object 
-    # with prefix "yf_" and reused elsewhere.
-
-    if not "yahoo.com/" in r.url:
-        # Only check Yahoo responses
-        return
-
-    attrs = dir(r)
-    r_from_cache = "from_cache" in attrs and r.from_cache
-    if "yf_data" in attrs or "yf_json" in attrs or "yf_html_pd" in attrs:
-        # Have already parsed this response, successfully
-        return
-
-    if "Will be right back" in r.text:
-        # Simple check, no parsing needed
-        r.status_code = 204
-        return r
-
-    parse_failed = False
-    r_modified = False
-
-    if "/ws/fundamentals-timeseries" in r.url:
-        # Timeseries
-        try:
-            data = r.json()
-            r.yf_json = data
-            r_modified = True
-            data["timeseries"]["result"]
-        except:
-            parse_failed = True
-    elif "/finance/chart/" in r.url:
-        # Prices
-        try:
-            data = r.json()
-            r.yf_json = data
-            r_modified = True
-            if data["chart"]["error"] is not None:
-                parse_failed = True
-        except Exception:
-            parse_failed = True
-    elif "/finance/options/" in r.url:
-        # Options
-        if not "expirationDates" in r.text:
-            # Parse will fail
-            parse_failed = True
-    elif "/finance/search?" in r.url:
-        # News, can't be bothered to check
-        return
-    elif "/calendar/earnings?" in r.url:
-        try:
-            dfs = _pd.read_html(r.text)
-        except Exception:
-            parse_failed = True
-        else:
-            r.yf_html_pd = dfs
-            r_modified = True
-    elif "root.App.main" in r.text:
-        # JSON data stores
-        try:
-            json_str = r.text.split('root.App.main =')[1].split(
-                '(this)')[0].split(';\n}')[0].strip()
-        except IndexError:
-            parse_failed = True
-
-        if not parse_failed:
-            data = json.loads(json_str)
-            if "_cs" in data and "_cr" in data:
-                data = decrypt_cryptojs_aes(data)
-            if "context" in data and "dispatcher" in data["context"]:
-                # Keep old code, just in case
-                data = data['context']['dispatcher']['stores']
-
-            if not "yf_data" in attrs:
-                r.yf_data = data
-                r_modified = True
-
-            if "QuoteSummaryStore" not in data:
-                parse_failed = True
-
-    else:
-        return
-
-    if parse_failed:
-        if not r_from_cache:
-            r.status_code = 204  # No content
-            r_modified = True
-
-    if r_modified:
-        return r
-
 
 class TickerData:
     """
@@ -284,7 +189,7 @@ class TickerData:
         self.ticker = ticker
         self._session = session or requests
 
-    def check_requests_cache_hook(self):
+    def _check_requests_cache_hook(self):
         try:
             c = self._session.cache
         except AttributeError:
@@ -293,12 +198,10 @@ class TickerData:
         global prune_session_cache
         if not prune_session_cache:
             self._session.hooks["response"] = []
-        elif prune_session_cache and not check_Yahoo_response in self._session.hooks["response"]:
-            self._session.hooks["response"].append(check_Yahoo_response)
+        elif prune_session_cache and not self._check_Yahoo_response in self._session.hooks["response"]:
+            self._session.hooks["response"].append(self._check_Yahoo_response)
 
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
-        self.check_requests_cache_hook()
-
         proxy = self._get_proxy(proxy)
         response = self._session.get(
             url=url,
@@ -381,6 +284,132 @@ class TickerData:
 
         return []
 
+    def _gather_keys_from_response(self, response):
+        # Gather decryption keys:
+        soup = BeautifulSoup(response.content, "html.parser")
+        keys = self._get_decryption_keys_from_yahoo_js(soup)
+        if len(keys) == 0:
+            msg = "No decryption keys could be extracted from JS file."
+            if "requests_cache" in str(type(response)):
+                msg += " Try flushing your 'requests_cache', probably parsing old JS."
+            print("WARNING: " + msg + " Falling back to backup decrypt methods.")
+        if len(keys) == 0:
+            keys = []
+            try:
+                extra_keys = _extract_extra_keys_from_stores(data)
+                keys = [''.join(extra_keys[-4:])]
+            except:
+                pass
+            #
+            keys_url = "https://github.com/ranaroussi/yfinance/raw/main/yfinance/scrapers/yahoo-keys.txt"
+            response_gh = self.cache_get(keys_url)
+            keys += response_gh.text.splitlines()
+        return keys
+
+    def _check_Yahoo_response(self, r, *args, **kwargs):
+        # Parse the data returned by Yahoo to determine if corrupt/incomplete.
+        # If bad, set 'status_code' to 204 "No content" , that stops it 
+        # entering a requests_cache.
+
+        # Because this involves parsing, the output is added to response object 
+        # with prefix "yf_" and reused elsewhere.
+
+        if not "yahoo.com/" in r.url:
+            # Only check Yahoo responses
+            return
+
+        attrs = dir(r)
+        r_from_cache = "from_cache" in attrs and r.from_cache
+        if "yf_data" in attrs or "yf_json" in attrs or "yf_html_pd" in attrs:
+            # Have already parsed this response, successfully
+            return
+
+        if "Will be right back" in r.text:
+            # Simple check, no parsing needed
+            r.status_code = 204
+            return r
+
+        parse_failed = False
+        r_modified = False
+
+        if "/ws/fundamentals-timeseries" in r.url:
+            # Timeseries
+            try:
+                data = r.json()
+                r.yf_json = data
+                r_modified = True
+                data["timeseries"]["result"]
+            except:
+                parse_failed = True
+        elif "/finance/chart/" in r.url:
+            # Prices
+            try:
+                data = r.json()
+                r.yf_json = data
+                r_modified = True
+                if data["chart"]["error"] is not None:
+                    parse_failed = True
+            except Exception:
+                parse_failed = True
+        elif "/finance/options/" in r.url:
+            # Options
+            if not "expirationDates" in r.text:
+                # Parse will fail
+                parse_failed = True
+        elif "/finance/search?" in r.url:
+            # News, can't be bothered to check
+            return
+        elif "/calendar/earnings?" in r.url:
+            try:
+                dfs = _pd.read_html(r.text)
+            except Exception:
+                parse_failed = True
+            else:
+                r.yf_html_pd = dfs
+                r_modified = True
+        elif "root.App.main" in r.text:
+            # JSON data stores
+            try:
+                json_str = r.text.split('root.App.main =')[1].split(
+                    '(this)')[0].split(';\n}')[0].strip()
+            except IndexError:
+                parse_failed = True
+
+            if not parse_failed:
+                data = json.loads(json_str)
+
+                keys = self._gather_keys_from_response(r)
+
+                # Decrypt!
+                stores = decrypt_cryptojs_aes_stores(data, keys)
+                if stores is None:
+                    # Maybe Yahoo returned old format, not encrypted
+                    if "context" in data and "dispatcher" in data["context"]:
+                        stores = data['context']['dispatcher']['stores']
+                if stores is None:
+                    # raise Exception(f"{self.ticker}: Failed to extract data stores from web request")
+                    print(f"{self.ticker}: Failed to decrypt/extract data stores from web request")
+                    parse_failed = True
+
+                if "yf_data" not in attrs:
+                # if not parse_failed and "yf_data" not in attrs:
+                    r.yf_data = stores
+                    r_modified = True
+
+                if stores is not None and "QuoteSummaryStore" not in stores:
+                    parse_failed = True
+
+        else:
+            return
+
+        if parse_failed:
+            if not r_from_cache:
+                r.status_code = 204  # No content
+                r_modified = True
+
+        if r_modified:
+            return r
+
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
     def get_json_data_stores(self, sub_page: str = None, proxy=None) -> dict:
@@ -393,12 +422,12 @@ class TickerData:
             ticker_url = "{}/{}".format(_SCRAPE_URL_, self.ticker)
 
         # Ensure hook ready to intercept get responses
-        self.check_requests_cache_hook()
+        self._check_requests_cache_hook()
 
         response = self.get(url=ticker_url, proxy=proxy)
 
         if "yf_data" in dir(response):
-            # check_requests_cache_hook() already successfully extracted & decrypted
+            # _check_requests_cache_hook() already successfully extracted & decrypted
             stores = response.yf_data
         else:
             # Extract JSON and decrypt
@@ -416,25 +445,7 @@ class TickerData:
 
             data = json.loads(json_str)
 
-            # Gather decryption keys:
-            soup = BeautifulSoup(response.content, "html.parser")
-            keys = self._get_decryption_keys_from_yahoo_js(soup)
-            if len(keys) == 0:
-                msg = "No decryption keys could be extracted from JS file."
-                if "requests_cache" in str(type(response)):
-                    msg += " Try flushing your 'requests_cache', probably parsing old JS."
-                print("WARNING: " + msg + " Falling back to backup decrypt methods.")
-            if len(keys) == 0:
-                keys = []
-                try:
-                    extra_keys = _extract_extra_keys_from_stores(data)
-                    keys = [''.join(extra_keys[-4:])]
-                except:
-                    pass
-                #
-                keys_url = "https://github.com/ranaroussi/yfinance/raw/main/yfinance/scrapers/yahoo-keys.txt"
-                response_gh = self.cache_get(keys_url)
-                keys += response_gh.text.splitlines()
+            keys = self._gather_keys_from_response(response)
 
             # Decrypt!
             stores = decrypt_cryptojs_aes_stores(data, keys)
