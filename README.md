@@ -167,6 +167,29 @@ tickers.tickers['AAPL'].history(period="1mo")
 tickers.tickers['GOOG'].actions
 ```
 
+### Caching
+
+Heavy users will quickly encounter Yahoo's rate limits on free use. 
+A `requests` session can help by caching web requests. 
+To use, pass a `session=` argument to the Ticker constructor:
+
+```python
+import requests_cache
+session = requests_cache.CachedSession('yfinance.cache')
+# session.headers['User-agent'] = 'my-program/1.0'  # <- Optional
+ticker = yf.Ticker('msft aapl goog', session=session)
+# The scraped response will be stored in the cache
+ticker.actions
+```
+To assist, `yfinance` removes requests from cache that failed to parse.
+To disable this feature call `yfinance.disable_prune_session_cache()`.
+
+Add expiration to the session to prune old data:
+```python
+session = requests_cache.CachedSession('yfinance.cache', expire_after=datetime.timedelta(minutes=60))
+```
+More info here: https://requests-cache.readthedocs.io/en/stable/user_guide/expiration.html
+
 ### Fetching data for multiple tickers
 
 ```python

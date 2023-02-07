@@ -44,8 +44,8 @@ class TestTicker(unittest.TestCase):
             yf.utils.get_tz_cache().store(tkr, None)
 
             # Test:
-            dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            ticker = yf.Ticker(tkr, session=self.session)
+            tz = ticker._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
 
             self.assertIsNotNone(tz)
 
@@ -53,81 +53,244 @@ class TestTicker(unittest.TestCase):
         # Check yfinance doesn't die when ticker delisted
 
         tkr = "AM2Z.TA"
-        dat = yf.Ticker(tkr, session=self.session)
-        dat.history(period="1wk")
-        dat.history(start="2022-01-01")
-        dat.history(start="2022-01-01", end="2022-03-01")
+        ticker = yf.Ticker(tkr, session=self.session)
+        ticker.history(period="1wk")
+        ticker.history(start="2022-01-01")
+        ticker.history(start="2022-01-01", end="2022-03-01")
         yf.download([tkr], period="1wk")
-        dat.isin
-        dat.major_holders
-        dat.institutional_holders
-        dat.mutualfund_holders
-        dat.dividends
-        dat.splits
-        dat.actions
-        dat.shares
-        dat.get_shares_full()
-        dat.info
-        dat.calendar
-        dat.recommendations
-        dat.earnings
-        dat.quarterly_earnings
-        dat.income_stmt
-        dat.quarterly_income_stmt
-        dat.balance_sheet
-        dat.quarterly_balance_sheet
-        dat.cashflow
-        dat.quarterly_cashflow
-        dat.recommendations_summary
-        dat.analyst_price_target
-        dat.revenue_forecasts
-        dat.sustainability
-        dat.options
-        dat.news
-        dat.earnings_trend
-        dat.earnings_dates
-        dat.earnings_forecasts
+        ticker.isin
+        ticker.major_holders
+        ticker.institutional_holders
+        ticker.mutualfund_holders
+        ticker.dividends
+        ticker.splits
+        ticker.actions
+        ticker.shares
+        ticker.get_shares_full()
+        ticker.info
+        ticker.calendar
+        ticker.recommendations
+        ticker.earnings
+        ticker.quarterly_earnings
+        ticker.income_stmt
+        ticker.quarterly_income_stmt
+        ticker.balance_sheet
+        ticker.quarterly_balance_sheet
+        ticker.cashflow
+        ticker.quarterly_cashflow
+        ticker.recommendations_summary
+        ticker.analyst_price_target
+        ticker.revenue_forecasts
+        ticker.sustainability
+        ticker.options
+        ticker.news
+        ticker.earnings_trend
+        ticker.earnings_dates
+        ticker.earnings_forecasts
 
     def test_goodTicker(self):
         # that yfinance works when full api is called on same instance of ticker
 
         tkr = "IBM"
-        dat = yf.Ticker(tkr, session=self.session)
+        ticker = yf.Ticker(tkr, session=self.session)
 
-        dat.isin
-        dat.major_holders
-        dat.institutional_holders
-        dat.mutualfund_holders
-        dat.dividends
-        dat.splits
-        dat.actions
-        dat.shares
-        dat.get_shares_full()
-        dat.info
-        dat.calendar
-        dat.recommendations
-        dat.earnings
-        dat.quarterly_earnings
-        dat.income_stmt
-        dat.quarterly_income_stmt
-        dat.balance_sheet
-        dat.quarterly_balance_sheet
-        dat.cashflow
-        dat.quarterly_cashflow
-        dat.recommendations_summary
-        dat.analyst_price_target
-        dat.revenue_forecasts
-        dat.sustainability
-        dat.options
-        dat.news
-        dat.earnings_trend
-        dat.earnings_dates
-        dat.earnings_forecasts
+        ticker.isin
+        ticker.major_holders
+        ticker.institutional_holders
+        ticker.mutualfund_holders
+        ticker.dividends
+        ticker.splits
+        ticker.actions
+        ticker.shares
+        ticker.get_shares_full()
+        ticker.info
+        ticker.calendar
+        ticker.recommendations
+        ticker.earnings
+        ticker.quarterly_earnings
+        ticker.income_stmt
+        ticker.quarterly_income_stmt
+        ticker.balance_sheet
+        ticker.quarterly_balance_sheet
+        ticker.cashflow
+        ticker.quarterly_cashflow
+        ticker.recommendations_summary
+        ticker.analyst_price_target
+        ticker.revenue_forecasts
+        ticker.sustainability
+        ticker.options
+        ticker.news
+        ticker.earnings_trend
+        ticker.earnings_dates
+        ticker.earnings_forecasts
 
-        dat.history(period="1wk")
-        dat.history(start="2022-01-01")
-        dat.history(start="2022-01-01", end="2022-03-01")
+        ticker.history(period="1wk")
+        ticker.history(start="2022-01-01")
+        ticker.history(start="2022-01-01", end="2022-03-01")
         yf.download([tkr], period="1wk")
+
+    def test_session_pruning_goodTkr(self):
+        tkr = "IBM"
+        url = "https://finance.yahoo.com/quote/"+tkr
+        ticker = yf.Ticker(tkr, session=self.session)
+
+        # All requests should succeed, so all urls should be in cache
+
+        yf.enable_prune_session_cache()
+
+        expected_urls = []
+
+        ticker.history(period="1wk")
+        ticker.dividends
+        ticker.splits
+        ticker.actions
+        expected_urls.append(f"https://query2.finance.yahoo.com/v8/finance/chart/{tkr}?range=1wk&interval=1d&includePrePost=False&events=div%2Csplits%2CcapitalGains")
+
+        ticker.info
+        ticker.isin
+        ticker.calendar
+        ticker.recommendations
+        ticker.recommendations_summary
+        ticker.sustainability
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}")
+
+        ticker.analyst_price_target
+        ticker.revenue_forecasts
+        ticker.earnings_trend
+        ticker.earnings_forecasts
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}/analysis")
+
+        ticker.major_holders
+        ticker.institutional_holders
+        ticker.mutualfund_holders
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}/holders")
+
+        ticker.shares
+        ticker.earnings
+        ticker.quarterly_earnings
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}/financials")
+        
+        ticker.income_stmt
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=annualTotalRevenue...")
+        ticker.quarterly_income_stmt
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=quarterlyTotalRevenue...")
+
+        ticker.balance_sheet
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=annualTotalAssets...")
+        ticker.quarterly_balance_sheet
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=quarterlyTotalAssets...")
+
+        ticker.cashflow
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=annualCashFlowsfromusedinOperatingActivitiesDirect...")
+        ticker.quarterly_cashflow
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=quarterlyCashFlowsfromusedinOperatingActivitiesDirect...")
+
+        ticker.options
+        expected_urls.append(f"https://query2.finance.yahoo.com/v7/finance/options/{tkr}")
+
+        ticker.news
+        expected_urls.append(f"https://query2.finance.yahoo.com/v1/finance/search?q={tkr}")
+
+        ticker.earnings_dates
+        expected_urls.append(f"https://finance.yahoo.com/calendar/earnings?symbol={tkr}&offset=0&size=12")
+
+        for url in expected_urls:
+            if url.endswith("..."):
+                # This url ridiculously long so just search for a partial match
+                url2 = url.replace("...", "")
+                in_cache = False
+                # for surl in self.session.cache.urls:
+                for response in self.session.cache.filter():
+                    surl = response.url
+                    if surl.startswith(url2):
+                        in_cache = True
+                        break
+                self.assertTrue(in_cache, "This url missing from requests_cache: "+url)
+            else:
+                self.assertTrue(self.session.cache.contains(url=url), "This url missing from requests_cache: "+url)
+
+    def test_session_pruning_badTkr(self):
+        # Ideally would test a valid ticker after triggering Yahoo block, but
+        # that's not god for me. As a proxy, use invalid ticker
+        tkr = "XYZ-X"
+        url = "https://finance.yahoo.com/quote/"+tkr
+        ticker = yf.Ticker(tkr, session=self.session)
+
+        # All requests should fail, so none of these urls should be in cache
+
+        yf.enable_prune_session_cache()
+
+        expected_urls = []
+
+        ticker.history(period="1wk")
+        ticker.dividends
+        ticker.splits
+        ticker.actions
+        expected_urls.append(f"https://query2.finance.yahoo.com/v8/finance/chart/{tkr}?range=1wk&interval=1d&includePrePost=False&events=div%2Csplits%2CcapitalGains")
+
+        ticker.info
+        ticker.isin
+        ticker.calendar
+        ticker.recommendations
+        ticker.recommendations_summary
+        ticker.sustainability
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}")
+
+        ticker.analyst_price_target
+        ticker.revenue_forecasts
+        ticker.earnings_trend
+        ticker.earnings_forecasts
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}/analysis")
+
+        ticker.major_holders
+        ticker.institutional_holders
+        ticker.mutualfund_holders
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}/holders")
+
+        ticker.shares
+        ticker.earnings
+        ticker.quarterly_earnings
+        expected_urls.append(f"https://finance.yahoo.com/quote/{tkr}/financials")
+        
+        ticker.income_stmt
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=annualTotalRevenue...")
+        ticker.quarterly_income_stmt
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=quarterlyTotalRevenue...")
+
+        ticker.balance_sheet
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=annualTotalAssets...")
+        ticker.quarterly_balance_sheet
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=quarterlyTotalAssets...")
+
+        ticker.cashflow
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=annualCashFlowsfromusedinOperatingActivitiesDirect...")
+        ticker.quarterly_cashflow
+        expected_urls.append(f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{tkr}?symbol={tkr}&type=quarterlyCashFlowsfromusedinOperatingActivitiesDirect...")
+
+        ticker.options
+        expected_urls.append(f"https://query2.finance.yahoo.com/v7/finance/options/{tkr}")
+
+        # Skip news, don't care if in cache
+        # ticker.news
+        # expected_urls.append(f"https://query2.finance.yahoo.com/v1/finance/search?q={tkr}")
+
+        df = ticker.earnings_dates
+        expected_urls.append(f"https://finance.yahoo.com/calendar/earnings?symbol={tkr}&offset=0&size=12")
+
+        for url in expected_urls:
+            if url.endswith("..."):
+                # This url ridiculously long so just search for a partial match
+                url2 = url.replace("...", "")
+                in_cache = False
+                # for surl in self.session.cache.urls:
+                for response in self.session.cache.filter():
+                    surl = response.url
+                    if surl.startswith(url2):
+                        in_cache = True
+                        break
+                self.assertFalse(in_cache, "This url wrongly in requests_cache: "+url)
+            else:
+                self.assertFalse(self.session.cache.contains(url=url), "This url wrongly in requests_cache: "+url)
 
 
 class TestTickerHistory(unittest.TestCase):

@@ -595,7 +595,8 @@ class TickerBase:
                 return utils.empty_df()
 
             if end is None:
-                end = int(_time.time())
+                midnight = pd.Timestamp.utcnow().tz_convert(tz).ceil("D")
+                end = int(midnight.timestamp())
             else:
                 end = utils._parse_user_dt(end, tz)
             if start is None:
@@ -651,7 +652,10 @@ class TickerBase:
                                    "Our engineers are working quickly to resolve "
                                    "the issue. Thank you for your patience.")
 
-            data = data.json()
+            if "yf_json" in dir(data):
+                data = data.yf_json
+            else:
+                data = data.json()
         except Exception:
             pass
 
@@ -1823,22 +1827,25 @@ class TickerBase:
             url = "{}/calendar/earnings?symbol={}&offset={}&size={}".format(
                 _ROOT_URL_, self.ticker, page_offset, page_size)
 
-            data = self._data.cache_get(url=url, proxy=proxy).text
-
+            response = self._data.cache_get(url=url, proxy=proxy)
+            data = response.text
             if "Will be right back" in data:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                    "Our engineers are working quickly to resolve "
                                    "the issue. Thank you for your patience.")
 
-            try:
-                data = _pd.read_html(data)[0]
-            except ValueError:
-                if page_offset == 0:
-                    # Should not fail on first page
-                    if "Showing Earnings for:" in data:
-                        # Actually YF was successful, problem is company doesn't have earnings history
-                        dates = utils.empty_earnings_dates_df()
-                break
+            if "yf_html_pd" in dir(response):
+                data = response.yf_html_pd[0]
+            else:
+                try:
+                    data = _pd.read_html(data)[0]
+                except ValueError:
+                    if page_offset == 0:
+                        # Should not fail on first page
+                        if "Showing Earnings for:" in data:
+                            # Actually YF was successful, problem is company doesn't have earnings history
+                            dates = utils.empty_earnings_dates_df()
+                    break
             if dates is None:
                 dates = data
             else:

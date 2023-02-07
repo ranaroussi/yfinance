@@ -26,10 +26,10 @@ class TestPriceHistory(unittest.TestCase):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         intervals = ["1d", "1wk", "1mo"]
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            ticker = yf.Ticker(tkr, session=self.session)
 
             for interval in intervals:
-                df = dat.history(period="5y", interval=interval)
+                df = ticker.history(period="5y", interval=interval)
 
                 f = df.index.time == _dt.time(0)
                 self.assertTrue(f.all())
@@ -37,13 +37,14 @@ class TestPriceHistory(unittest.TestCase):
     def test_duplicatingHourly(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            ticker = yf.Ticker(tkr, session=self.session)
+            tz = ticker._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
 
             dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
             dt = dt_utc.astimezone(_tz.timezone(tz))
+
             start_d = dt.date() - _dt.timedelta(days=7)
-            df = dat.history(start=start_d, interval="1h")
+            df = ticker.history(start=start_d, interval="1h")
 
             dt0 = df.index[-2]
             dt1 = df.index[-1]
@@ -57,8 +58,8 @@ class TestPriceHistory(unittest.TestCase):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         test_run = False
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            ticker = yf.Ticker(tkr, session=self.session)
+            tz = ticker._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
 
             dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
             dt = dt_utc.astimezone(_tz.timezone(tz))
@@ -66,7 +67,7 @@ class TestPriceHistory(unittest.TestCase):
                 continue
             test_run = True
 
-            df = dat.history(start=dt.date() - _dt.timedelta(days=7), interval="1d")
+            df = ticker.history(start=dt.date() - _dt.timedelta(days=7), interval="1d")
 
             dt0 = df.index[-2]
             dt1 = df.index[-1]
@@ -83,15 +84,15 @@ class TestPriceHistory(unittest.TestCase):
         tkrs = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
         test_run = False
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            ticker = yf.Ticker(tkr, session=self.session)
+            tz = ticker._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
 
             dt = _tz.timezone(tz).localize(_dt.datetime.now())
             if dt.date().weekday() not in [1, 2, 3, 4]:
                 continue
             test_run = True
 
-            df = dat.history(start=dt.date() - _dt.timedelta(days=7), interval="1wk")
+            df = ticker.history(start=dt.date() - _dt.timedelta(days=7), interval="1wk")
             dt0 = df.index[-2]
             dt1 = df.index[-1]
             try:
@@ -246,16 +247,16 @@ class TestPriceHistory(unittest.TestCase):
         # The correction is successful if no days are weekend, and weekly data begins Monday
 
         tkr = "AGRO3.SA"
-        dat = yf.Ticker(tkr, session=self.session)
+        ticker = yf.Ticker(tkr, session=self.session)
         start = "2021-01-11"
         end = "2022-11-05"
 
         interval = "1d"
-        df = dat.history(start=start, end=end, interval=interval)
+        df = ticker.history(start=start, end=end, interval=interval)
         self.assertTrue(((df.index.weekday >= 0) & (df.index.weekday <= 4)).all())
 
         interval = "1wk"
-        df = dat.history(start=start, end=end, interval=interval)
+        df = ticker.history(start=start, end=end, interval=interval)
         try:
             self.assertTrue((df.index.weekday == 0).all())
         except:
@@ -377,8 +378,8 @@ class TestPriceHistory(unittest.TestCase):
         start = _dt.date.today() - _dt.timedelta(days=14)
         start -= _dt.timedelta(days=start.weekday())
 
-        dat = yf.Ticker(tkr)
-        df = dat.history(start=start, interval="1wk")
+        ticker = yf.Ticker(tkr)
+        df = ticker.history(start=start, interval="1wk")
         self.assertTrue((df.index.weekday == 0).all())
 
 class TestPriceRepair(unittest.TestCase):
@@ -417,7 +418,7 @@ class TestPriceRepair(unittest.TestCase):
         # Setup:
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
+        tz_exchange = ticker.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [470.5, 473.5, 474.5, 470],
@@ -441,7 +442,7 @@ class TestPriceRepair(unittest.TestCase):
 
         # Run test
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = ticker._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -468,8 +469,9 @@ class TestPriceRepair(unittest.TestCase):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
         tkr = "PNL.L"
-        dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
+
+        ticker = yf.Ticker(tkr, session=self.session)
+        tz_exchange = ticker.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [400,   398,    392.5,   417],
@@ -496,7 +498,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = ticker._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -523,8 +525,8 @@ class TestPriceRepair(unittest.TestCase):
 
     def test_repair_100x_daily(self):
         tkr = "PNL.L"
-        dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
+        ticker = yf.Ticker(tkr, session=self.session)
+        tz_exchange = ticker.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [478,    476,   476,   472],
@@ -546,7 +548,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1d", tz_exchange, prepost=False)
+        df_repaired = ticker._fix_unit_mixups(df_bad, "1d", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -565,8 +567,9 @@ class TestPriceRepair(unittest.TestCase):
 
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
-        dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
+
+        ticker = yf.Ticker(tkr, session=self.session)
+        tz_exchange = ticker.fast_info["timezone"]
 
         df_bad = _pd.DataFrame(data={"Open":      [0,      102.04, 102.04],
                                      "High":      [0,      102.1,  102.11],
@@ -581,7 +584,7 @@ class TestPriceRepair(unittest.TestCase):
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        repaired_df = dat._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
+        repaired_df = ticker._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
 
         correct_df = df_bad.copy()
         correct_df.loc["2022-11-01", "Open"] = 102.080002
@@ -592,10 +595,10 @@ class TestPriceRepair(unittest.TestCase):
 
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
-        dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
+        ticker = yf.Ticker(tkr, session=self.session)
+        tz_exchange = ticker.fast_info["timezone"]
 
-        correct_df = dat.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
+        correct_df = ticker.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
 
         df_bad = correct_df.copy()
         bad_idx = correct_df.index[10]
@@ -606,7 +609,7 @@ class TestPriceRepair(unittest.TestCase):
         df_bad.loc[bad_idx, "Adj Close"] = _np.nan
         df_bad.loc[bad_idx, "Volume"] = 0
 
-        repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange, prepost=False)
+        repaired_df = ticker._fix_zeroes(df_bad, "1h", tz_exchange, prepost=False)
 
         for c in ["Open", "Low", "High", "Close"]:
             try:
