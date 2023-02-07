@@ -362,7 +362,13 @@ class TickerData:
         elif "/calendar/earnings?" in r.url:
             try:
                 dfs = _pd.read_html(r.text)
-            except Exception:
+            except ValueError as e:
+                if "No tables found" in str(e):
+                    # Maybe this ticker doesn't have any earnings dates
+                    pass
+                else:
+                    parse_failed = True
+            except Exception as e:
                 parse_failed = True
             else:
                 r.yf_html_pd = dfs
