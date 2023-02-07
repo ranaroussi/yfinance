@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import time as _time
 import datetime as _datetime
+import dateutil as _dateutil
 from typing import Optional
 
 import pandas as _pd
@@ -54,9 +55,12 @@ class FastInfo:
         self._tkr = tickerBaseObject
 
         self._prices_1y = None
+        self._prices_1wk_1h_prepost = None
+        self._prices_1wk_1h_reg = None
         self._md = None
 
         self._currency = None
+        self._quote_type = None
         self._exchange = None
         self._timezone = None
 
@@ -82,31 +86,49 @@ class FastInfo:
         self._10d_avg_vol = None
         self._3mo_avg_vol = None
 
+        # attrs = utils.attributes(self)
+        # self.keys = attrs.keys()
+        # utils.attributes is calling each method, bad! Have to hardcode
+        _properties = ["currency", "quote_type", "exchange", "timezone"]
+        _properties += ["shares", "market_cap"]
+        _properties += ["last_price", "previous_close", "open", "day_high", "day_low"]
+        _properties += ["regular_market_previous_close"]
+        _properties += ["last_volume"]
+        _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
+        _properties += ["year_high", "year_low", "year_change"]
+
+        # Because released before fixing key case, need to officially support 
+        # camel-case but also secretly support snake-case
+        base_keys = [k for k in _properties if not '_' in k]
+
+        sc_keys = [k for k in _properties if '_' in k]
+
+        self._sc_to_cc_key = {k:utils.snake_case_2_camelCase(k) for k in sc_keys}
+        self._cc_to_sc_key = {v:k for k,v in self._sc_to_cc_key.items()}
+ 
+        self._public_keys = sorted(base_keys + list(self._sc_to_cc_key.values()))
+        self._keys = sorted(self._public_keys + sc_keys)
+
     # dict imitation:
     def keys(self):
-        # attrs = utils.attributes(self)
-        # return attrs.keys()
-        # utils.attributes is calling each method, bad!
-        # Have to hardcode
-        keys = ["currency", "exchange", "timezone"]
-        keys += ["shares", "market_cap"]
-        keys += ["last_price", "previous_close", "open", "day_high", "day_low"]
-        keys += ["regular_market_previous_close"]
-        keys += ["last_volume"]
-        keys += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
-        keys += ["year_high", "year_low", "year_change"]
-        return keys
+        return self._public_keys
     def items(self):
-        return [(k,self[k]) for k in self.keys()]
+        return [(k,self[k]) for k in self._public_keys]
+    def values(self):
+        return [self[k] for k in self._public_keys]
     def get(self, key, default=None):
         if key in self.keys():
+            if key in self._cc_to_sc_key:
+                key = self._cc_to_sc_key[key]
             return self[key]
         return default
     def __getitem__(self, k):
         if not isinstance(k, str):
             raise KeyError(f"key must be a string")
-        if not k in self.keys():
+        if not k in self._keys:
             raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
+        if k in self._cc_to_sc_key:
+            k = self._cc_to_sc_key[k]
         return getattr(self, k)
     def __contains__(self, k):
         return k in self.keys()
@@ -124,7 +146,7 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False)
+            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False, keepna=True)
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -140,12 +162,23 @@ class FastInfo:
         if self._prices_1y.empty:
             return self._prices_1y
 
-        dt1 = self._prices_1y.index[-1]
+        dnow = pd.Timestamp.utcnow().tz_convert(self.timezone).date()
+        d1 = dnow
+        d0 = (d1 + _datetime.timedelta(days=1)) - utils._interval_to_timedelta("1y")
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
-            dt1 -= utils._interval_to_timedelta("1h")
-        dt0 = dt1 - utils._interval_to_timedelta("1y") + utils._interval_to_timedelta("1d")
-        return self._prices_1y.loc[dt0:dt1]
+            d1 -= utils._interval_to_timedelta("1d")
+        return self._prices_1y.loc[str(d0):str(d1)]
+
+    def _get_1wk_1h_prepost_prices(self):
+        if self._prices_1wk_1h_prepost is None:
+            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, debug=False)
+        return self._prices_1wk_1h_prepost
+
+    def _get_1wk_1h_reg_prices(self):
+        if self._prices_1wk_1h_reg is None:
+            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, debug=False)
+        return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
         if self._md is not None:
@@ -190,6 +223,17 @@ class FastInfo:
         return self._currency
 
     @property
+    def quote_type(self):
+        if self._quote_type is not None:
+            return self._quote_type
+
+        if self._tkr._history_metadata is None:
+            self._get_1y_prices()
+        md = self._tkr.get_history_metadata()
+        self._quote_type = md["instrumentType"]
+        return self._quote_type
+
+    @property
     def exchange(self):
         if self._exchange is not None:
             return self._exchange
@@ -229,14 +273,17 @@ class FastInfo:
             self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
         else:
             self._last_price = float(prices["Close"].iloc[-1])
+            if _np.isnan(self._last_price):
+                self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
         return self._last_price
 
     @property
     def previous_close(self):
         if self._prev_close is not None:
             return self._prev_close
-        prices = self._get_1y_prices()
-        if prices.empty:
+        prices = self._get_1wk_1h_prepost_prices()
+        prices = prices[["Close"]].groupby(prices.index.date).last()
+        if prices.shape[0] < 2:
             # Very few symbols have previousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
@@ -252,7 +299,12 @@ class FastInfo:
         if self._reg_prev_close is not None:
             return self._reg_prev_close
         prices = self._get_1y_prices()
-        if prices.empty:
+        if prices.shape[0] == 1:
+            # Tiny % of tickers don't return daily history before last trading day, 
+            # so backup option is hourly history:
+            prices = self._get_1wk_1h_reg_prices()
+            prices = prices[["Close"]].groupby(prices.index.date).last()
+        if prices.shape[0] < 2:
             # Very few symbols have regularMarketPreviousClose despite no 
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
@@ -268,7 +320,12 @@ class FastInfo:
         if self._open is not None:
             return self._open
         prices = self._get_1y_prices()
-        self._open = None if prices.empty else float(prices["Open"].iloc[-1])
+        if prices.empty:
+            self._open = None
+        else:
+            self._open = float(prices["Open"].iloc[-1])
+            if _np.isnan(self._open):
+                self._open = None
         return self._open
 
     @property
@@ -276,7 +333,12 @@ class FastInfo:
         if self._day_high is not None:
             return self._day_high
         prices = self._get_1y_prices()
-        self._day_high = None if prices.empty else float(prices["High"].iloc[-1])
+        if prices.empty:
+            self._day_high = None
+        else:
+            self._day_high = float(prices["High"].iloc[-1])
+            if _np.isnan(self._day_high):
+                self._day_high = None
         return self._day_high
 
     @property
@@ -284,7 +346,12 @@ class FastInfo:
         if self._day_low is not None:
             return self._day_low
         prices = self._get_1y_prices()
-        self._day_low = None if prices.empty else float(prices["Low"].iloc[-1])
+        if prices.empty:
+            self._day_low = None
+        else:
+            self._day_low = float(prices["Low"].iloc[-1])
+            if _np.isnan(self._day_low):
+                self._day_low = None
         return self._day_low
 
     @property
@@ -371,6 +438,8 @@ class FastInfo:
             return self._year_high
 
         prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_high = float(prices["High"].max())
         return self._year_high
 
@@ -380,6 +449,8 @@ class FastInfo:
             return self._year_low
 
         prices = self._get_1y_prices(fullDaysOnly=True)
+        if prices.empty:
+            prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_low = float(prices["Low"].min())
         return self._year_low
 
@@ -389,8 +460,9 @@ class FastInfo:
             return self._year_change
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
-        self._year_change = float(self._year_change)
+        if prices.shape[0] >= 2:
+            self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+            self._year_change = float(self._year_change)
         return self._year_change
 
     @property
@@ -483,8 +555,9 @@ class TickerBase:
                 Adjust all OHLC automatically? Default is True
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
-            repair: bool
-                Detect currency unit 100x mixups and attempt repair
+            repair: bool or "silent"
+                Detect currency unit 100x mixups and attempt repair.
+                If True, fix & print summary. If "silent", just fix.
                 Default is False
             keepna: bool
                 Keep NaN rows returned by Yahoo?
@@ -587,6 +660,7 @@ class TickerBase:
             self._history_metadata = data["chart"]["result"][0]["meta"]
         except Exception:
             self._history_metadata = {}
+        self._history_metadata = utils.format_history_metadata(self._history_metadata)
 
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
@@ -663,6 +737,9 @@ class TickerBase:
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+        intraday = params["interval"][-1] in ("m", 'h')
+        if not prepost and intraday and "tradingPeriods" in self._history_metadata:
+            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], self._history_metadata)
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
@@ -727,10 +804,10 @@ class TickerBase:
             else:
                 df["Capital Gains"] = 0.0
 
-        if repair:
+        if repair==True or repair=="silent":
             # Do this before auto/back adjust
-            df = self._fix_zeroes(df, interval, tz_exchange)
-            df = self._fix_unit_mixups(df, interval, tz_exchange)
+            df = self._fix_zeroes(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
+            df = self._fix_unit_mixups(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
 
         # Auto/back adjust
         try:
@@ -774,31 +851,40 @@ class TickerBase:
 
     # ------------------------
 
-    def _reconstruct_intervals_batch(self, df, interval, tag=-1):
+    def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1, silent=False):
         if not isinstance(df, _pd.DataFrame):
             raise Exception("'df' must be a Pandas DataFrame not", type(df))
+        if interval == "1m":
+            # Can't go smaller than 1m so can't reconstruct
+            return df
 
         # Reconstruct values in df using finer-grained price data. Delimiter marks what to reconstruct
+
+        debug = False
+        # debug = True
+
+        if interval[1:] in ['d', 'wk', 'mo']:
+            # Interday data always includes pre & post
+            prepost = True
+            intraday = False
+        else:
+            intraday = True
 
         price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df]
         data_cols = price_cols + ["Volume"]
 
         # If interval is weekly then can construct with daily. But if smaller intervals then
         # restricted to recent times:
-        # - daily = hourly restricted to last 730 days
-        sub_interval = None
-        td_range = None
-        if interval == "1wk":
-            # Correct by fetching week of daily data
-            sub_interval = "1d"
-            td_range = _datetime.timedelta(days=7)
-        elif interval == "1d":
-            # Correct by fetching day of hourly data
-            sub_interval = "1h"
-            td_range = _datetime.timedelta(days=1)
-        elif interval == "1h":
-            sub_interval = "30m"
-            td_range = _datetime.timedelta(hours=1)
+        intervals = ["1wk", "1d", "1h", "30m", "15m", "5m", "2m", "1m"]
+        itds = {i:utils._interval_to_timedelta(interval) for i in intervals}
+        nexts = {intervals[i]:intervals[i+1] for i in range(len(intervals)-1)}
+        min_lookbacks = {"1wk":None, "1d":None, "1h":_datetime.timedelta(days=730)}
+        for i in ["30m", "15m", "5m", "2m"]:
+            min_lookbacks[i] = _datetime.timedelta(days=60)
+        min_lookbacks["1m"] = _datetime.timedelta(days=30)
+        if interval in nexts:
+            sub_interval = nexts[interval]
+            td_range = itds[interval]
         else:
             print("WARNING: Have not implemented repair for '{}' interval. Contact developers".format(interval))
             raise Exception("why here")
@@ -810,76 +896,107 @@ class TickerBase:
         f_repair_rows = f_repair.any(axis=1)
 
         # Ignore old intervals for which Yahoo won't return finer data:
-        if sub_interval == "1h":
-            f_recent = _datetime.date.today() - df.index.date < _datetime.timedelta(days=730)
+        m = min_lookbacks[sub_interval]
+        if m is None:
+            min_dt = None
+        else:
+            m -= _datetime.timedelta(days=1)  # allow space for 1-day padding
+            min_dt = _pd.Timestamp.utcnow() - m
+            min_dt = min_dt.tz_convert(df.index.tz).ceil("D")
+        if debug:
+            print(f"- min_dt={min_dt} interval={interval} sub_interval={sub_interval}")
+        if min_dt is not None:
+            f_recent = df.index >= min_dt
             f_repair_rows = f_repair_rows & f_recent
-        elif sub_interval in ["30m", "15m"]:
-            f_recent = _datetime.date.today() - df.index.date < _datetime.timedelta(days=60)
-            f_repair_rows = f_repair_rows & f_recent
-        if not f_repair_rows.any():
-            print("data too old to fix")
-            return df
+            if not f_repair_rows.any():
+                if debug:
+                    print("data too old to repair")
+                return df
 
         dts_to_repair = df.index[f_repair_rows]
         indices_to_repair = _np.where(f_repair_rows)[0]
 
         if len(dts_to_repair) == 0:
+            if debug:
+                print("dts_to_repair[] is empty")
             return df
 
         df_v2 = df.copy()
-        df_noNa = df[~df[price_cols].isna().any(axis=1)]
+        f_good = ~(df[price_cols].isna().any(axis=1))
+        f_good = f_good & (df[price_cols].to_numpy()!=tag).all(axis=1)
+        df_good = df[f_good]
 
         # Group nearby NaN-intervals together to reduce number of Yahoo fetches
         dts_groups = [[dts_to_repair[0]]]
         last_dt = dts_to_repair[0]
         last_ind = indices_to_repair[0]
         td = utils._interval_to_timedelta(interval)
-        if interval == "1mo":
-            grp_td_threshold = _datetime.timedelta(days=28)
-        elif interval == "1wk":
-            grp_td_threshold = _datetime.timedelta(days=28)
-        elif interval == "1d":
-            grp_td_threshold = _datetime.timedelta(days=14)
-        elif interval == "1h":
-            grp_td_threshold = _datetime.timedelta(days=7)
+        # Note on setting max size: have to allow space for adding good data
+        if sub_interval == "1mo":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=2)
+        elif sub_interval == "1wk":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=2)
+        elif sub_interval == "1d":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=2)
+        elif sub_interval == "1h":
+            grp_max_size = _dateutil.relativedelta.relativedelta(years=1)
+        elif sub_interval == "1m":
+            grp_max_size = _datetime.timedelta(days=5)  # allow 2 days for buffer below
         else:
-            grp_td_threshold = _datetime.timedelta(days=2)
-            # grp_td_threshold = _datetime.timedelta(days=7)
+            grp_max_size = _datetime.timedelta(days=30)
+        if debug:
+            print("- grp_max_size =", grp_max_size)
         for i in range(1, len(dts_to_repair)):
             ind = indices_to_repair[i]
             dt = dts_to_repair[i]
-            if (dt-dts_groups[-1][-1]) < grp_td_threshold:
-                dts_groups[-1].append(dt)
-            elif ind - last_ind <= 3:
+            if dt.date() < dts_groups[-1][0].date()+grp_max_size:
                 dts_groups[-1].append(dt)
             else:
                 dts_groups.append([dt])
             last_dt = dt
             last_ind = ind
 
+        if debug:
+            print("Repair groups:")
+            for g in dts_groups:
+                print(f"- {g[0]} -> {g[-1]}")
+
         # Add some good data to each group, so can calibrate later:
         for i in range(len(dts_groups)):
             g = dts_groups[i]
             g0 = g[0]
-            i0 = df_noNa.index.get_loc(g0)
+            i0 = df_good.index.get_indexer([g0], method="nearest")[0]
             if i0 > 0:
-                dts_groups[i].insert(0, df_noNa.index[i0-1])
+                if (min_dt is None or df_good.index[i0-1] >= min_dt) and \
+                    ((not intraday) or df_good.index[i0-1].date()==g0.date()):
+                    i0 -= 1
             gl = g[-1]
-            il = df_noNa.index.get_loc(gl)
-            if il < len(df_noNa)-1:
-                dts_groups[i].append(df_noNa.index[il+1])
+            il = df_good.index.get_indexer([gl], method="nearest")[0]
+            if il < len(df_good)-1:
+                if (not intraday) or df_good.index[il+1].date()==gl.date():
+                    il += 1
+            good_dts = df_good.index[i0:il+1]
+            dts_groups[i] += good_dts.to_list()
+            dts_groups[i].sort()
 
         n_fixed = 0
         for g in dts_groups:
             df_block = df[df.index.isin(g)]
+            if debug:
+                print("- df_block:")
+                print(df_block)
 
             start_dt = g[0]
             start_d = start_dt.date()
             if sub_interval == "1h" and (_datetime.date.today() - start_d) > _datetime.timedelta(days=729):
                 # Don't bother requesting more price data, Yahoo will reject
+                if debug:
+                    print(f"- Don't bother requesting {sub_interval} price data, Yahoo will reject")
                 continue
             elif sub_interval in ["30m", "15m"] and (_datetime.date.today() - start_d) > _datetime.timedelta(days=59):
                 # Don't bother requesting more price data, Yahoo will reject
+                if debug:
+                    print(f"- Don't bother requesting {sub_interval} price data, Yahoo will reject")
                 continue
 
             td_1d = _datetime.timedelta(days=1)
@@ -893,15 +1010,25 @@ class TickerBase:
                 fetch_start = g[0]
                 fetch_end = g[-1] + td_range
 
-            prepost = interval == "1d"
-            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, prepost=prepost, repair=False, keepna=True)
+            # The first and last day returned by Yahoo can be slightly wrong, so add buffer:
+            fetch_start -= td_1d
+            fetch_end += td_1d
+            if intraday:
+                fetch_start = fetch_start.date()
+                fetch_end = fetch_end.date()+td_1d
+            if debug:
+                print(f"- fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}")
+            r = "silent" if silent else True
+            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
             if df_fine is None or df_fine.empty:
-                print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
+                if not silent:
+                    print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
                 continue
+            # Discard the buffer
+            df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)]
 
             df_fine["ctr"] = 0
             if interval == "1wk":
-                # df_fine["Week Start"] = df_fine.index.tz_localize(None).to_period("W-SUN").start_time
                 weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
                 week_end_day = weekdays[(df_block.index[0].weekday()+7-1)%7]
                 df_fine["Week Start"] = df_fine.index.tz_localize(None).to_period("W-"+week_end_day).start_time
@@ -916,7 +1043,8 @@ class TickerBase:
                 grp_col = "intervalID"
             df_fine = df_fine[~df_fine[price_cols].isna().all(axis=1)]
 
-            df_new = df_fine.groupby(grp_col).agg(
+            df_fine_grp = df_fine.groupby(grp_col)
+            df_new = df_fine_grp.agg(
                 Open=("Open", "first"),
                 Close=("Close", "last"),
                 AdjClose=("Adj Close", "last"),
@@ -930,31 +1058,42 @@ class TickerBase:
                 new_index = _np.append([df_fine.index[0]], df_fine.index[df_fine["intervalID"].diff()>0])
                 df_new.index = new_index
 
+            if debug:
+                print("- df_new:")
+                print(df_new)
+
             # Calibrate! Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
-            df_block_calib = df_block[price_cols]
-            common_index = df_block_calib.index[df_block_calib.index.isin(df_new.index)]
+            common_index = _np.intersect1d(df_block.index, df_new.index)
             if len(common_index) == 0:
                 # Can't calibrate so don't attempt repair
+                if debug:
+                    print("Can't calibrate so don't attempt repair")
                 continue
-            df_new_calib = df_new[df_new.index.isin(common_index)][price_cols]
-            df_block_calib = df_block_calib[df_block_calib.index.isin(common_index)]
-            calib_filter = (df_block_calib != tag).to_numpy()
+            df_new_calib = df_new[df_new.index.isin(common_index)][price_cols].to_numpy()
+            df_block_calib = df_block[df_block.index.isin(common_index)][price_cols].to_numpy()
+            calib_filter = (df_block_calib != tag)
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
+                if debug:
+                    print("Can't calibrate so don't attempt repair")
                 continue
-            # Avoid divide-by-zero warnings printing:
-            df_new_calib = df_new_calib.to_numpy()
-            df_block_calib = df_block_calib.to_numpy()
+            # Avoid divide-by-zero warnings:
             for j in range(len(price_cols)):
-                c = price_cols[j]
                 f = ~calib_filter[:,j]
                 if f.any():
                     df_block_calib[f,j] = 1
                     df_new_calib[f,j] = 1
-            ratios = (df_block_calib / df_new_calib)[calib_filter]
-            ratio = _np.mean(ratios)
-            #
+            ratios = df_block_calib[calib_filter] / df_new_calib[calib_filter]
+            weights = df_fine_grp.size()
+            weights.index = df_new.index
+            weights = weights[weights.index.isin(common_index)].to_numpy().astype(float)
+            weights = weights[:,None]  # transpose
+            weights = _np.tile(weights, len(price_cols))  # 1D -> 2D
+            weights = weights[calib_filter]  # flatten
+            ratio = _np.average(ratios, weights=weights)
+            if debug:
+                print(f"- price calibration ratio (raw) = {ratio}")
             ratio_rcp = round(1.0 / ratio, 1)
             ratio = round(ratio, 1)
             if ratio == 1 and ratio_rcp == 1:
@@ -973,13 +1112,22 @@ class TickerBase:
                     df_new["Volume"] *= ratio_rcp
 
             # Repair!
-            bad_dts = df_block.index[(df_block[price_cols]==tag).any(axis=1)]
+            bad_dts = df_block.index[(df_block[price_cols+["Volume"]]==tag).any(axis=1)]
 
+            if debug:
+                no_fine_data_dts = []
+                for idx in bad_dts:
+                    if not idx in df_new.index:
+                        # Yahoo didn't return finer-grain data for this interval, 
+                        # so probably no trading happened.
+                        no_fine_data_dts.append(idx)
+                if len(no_fine_data_dts) > 0:
+                    print(f"Yahoo didn't return finer-grain data for these intervals:")
+                    print(no_fine_data_dts)
             for idx in bad_dts:
                 if not idx in df_new.index:
                     # Yahoo didn't return finer-grain data for this interval, 
                     # so probably no trading happened.
-                    # print("no fine data")
                     continue
                 df_new_row = df_new.loc[idx]
 
@@ -1008,9 +1156,12 @@ class TickerBase:
                     df_v2.loc[idx, "Volume"] = df_new_row["Volume"]
                 n_fixed += 1
 
+        if debug:
+            print("df_v2:") ; print(df_v2)
+
         return df_v2
 
-    def _fix_unit_mixups(self, df, interval, tz_exchange):
+    def _fix_unit_mixups(self, df, interval, tz_exchange, prepost, silent=False):
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
         # Easy to detect and fix, just look for outliers = ~100x local median
@@ -1032,7 +1183,7 @@ class TickerBase:
         # adding it to dependencies.
         from scipy import ndimage as _ndimage
 
-        data_cols = ["High", "Open", "Low", "Close"]  # Order important, separate High from Low
+        data_cols = ["High", "Open", "Low", "Close", "Adj Close"]  # Order important, separate High from Low
         data_cols = [c for c in data_cols if c in df2.columns]
         f_zeroes = (df2[data_cols]==0).any(axis=1)
         if f_zeroes.any():
@@ -1057,7 +1208,7 @@ class TickerBase:
             df2.loc[fi, c] = tag
 
         n_before = (df2[data_cols].to_numpy()==tag).sum()
-        df2 = self._reconstruct_intervals_batch(df2, interval, tag=tag)
+        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
         n_after = (df2[data_cols].to_numpy()==tag).sum()
 
         if n_after > 0:
@@ -1080,6 +1231,11 @@ class TickerBase:
                 if fi[j]:
                     df2.loc[idx, c] = df.loc[idx, c] * 0.01
                 #
+                c = "Adj Close"
+                j = data_cols.index(c)
+                if fi[j]:
+                    df2.loc[idx, c] = df.loc[idx, c] * 0.01
+                #
                 c = "High"
                 j = data_cols.index(c)
                 if fi[j]:
@@ -1094,7 +1250,7 @@ class TickerBase:
 
         n_fixed = n_before - n_after_crude
         n_fixed_crudely = n_after - n_after_crude
-        if n_fixed > 0:
+        if not silent and n_fixed > 0:
             report_msg = f"{self.ticker}: fixed {n_fixed}/{n_before} currency unit mixups "
             if n_fixed_crudely > 0:
                 report_msg += f"({n_fixed_crudely} crudely) "
@@ -1114,7 +1270,7 @@ class TickerBase:
 
         return df2
 
-    def _fix_zeroes(self, df, interval, tz_exchange):
+    def _fix_zeroes(self, df, interval, tz_exchange, prepost, silent=False):
         # Sometimes Yahoo returns prices=0 or NaN when trades occurred.
         # But most times when prices=0 or NaN returned is because no trades.
         # Impossible to distinguish, so only attempt repair if few or rare.
@@ -1122,6 +1278,12 @@ class TickerBase:
         if df.shape[0] == 0:
             return df
 
+        debug = False
+        # debug = True
+
+        intraday = interval[-1] in ("m", 'h')
+
+        df = df.sort_index()  # important!
         df2 = df.copy()
 
         if df2.index.tz is None:
@@ -1130,16 +1292,34 @@ class TickerBase:
             df2.index = df2.index.tz_convert(tz_exchange)
 
         price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df2.columns]
-        f_zero_or_nan = (df2[price_cols] == 0.0).values | df2[price_cols].isna().values
+        f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
+        df2_reserve = None
+        if intraday:
+            # Ignore days with >50% intervals containing NaNs
+            df_nans = pd.DataFrame(f_prices_bad.any(axis=1), columns=["nan"])
+            df_nans["_date"] = df_nans.index.date
+            grp = df_nans.groupby("_date")
+            nan_pct = grp.sum() / grp.count()
+            dts = nan_pct.index[nan_pct["nan"]>0.5]
+            f_zero_or_nan_ignore = _np.isin(f_prices_bad.index.date, dts)
+            df2_reserve = df2[f_zero_or_nan_ignore]
+            df2 = df2[~f_zero_or_nan_ignore]
+            f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
+
+        f_high_low_good = (~df2["High"].isna()) & (~df2["Low"].isna())
+        f_vol_bad = (df2["Volume"]==0).to_numpy() & f_high_low_good & (df2["High"]!=df2["Low"]).to_numpy()
+
         # Check whether worth attempting repair
-        if f_zero_or_nan.any(axis=1).sum() == 0:
+        f_prices_bad = f_prices_bad.to_numpy()
+        f_bad_rows = f_prices_bad.any(axis=1) | f_vol_bad
+        if not f_bad_rows.any():
+            if debug:
+                print("no bad data to repair")
             return df
-        if f_zero_or_nan.sum() == len(price_cols)*len(df2):
+        if f_prices_bad.sum() == len(price_cols)*len(df2):
             # Need some good data to calibrate
-            return df
-        # - avoid repair if many zeroes/NaNs
-        pct_zero_or_nan = f_zero_or_nan.sum() / (len(price_cols)*len(df2))
-        if f_zero_or_nan.any(axis=1).sum()>2 and pct_zero_or_nan > 0.05:
+            if debug:
+                print("no good data to calibrate")
             return df
 
         data_cols = price_cols + ["Volume"]
@@ -1148,17 +1328,31 @@ class TickerBase:
         tag = -1.0
         for i in range(len(price_cols)):
             c = price_cols[i]
-            df2.loc[f_zero_or_nan[:,i], c] = tag
+            df2.loc[f_prices_bad[:,i], c] = tag
+        df2.loc[f_vol_bad, "Volume"] = tag
         # If volume=0 or NaN for bad prices, then tag volume for repair
-        df2.loc[f_zero_or_nan.any(axis=1) & (df2["Volume"]==0), "Volume"] = tag
-        df2.loc[f_zero_or_nan.any(axis=1) & (df2["Volume"].isna()), "Volume"] = tag
+        f_vol_zero_or_nan = (df2["Volume"].to_numpy()==0) | (df2["Volume"].isna().to_numpy())
+        df2.loc[f_prices_bad.any(axis=1) & f_vol_zero_or_nan, "Volume"] = tag
+        # If volume=0 or NaN but price moved in interval, then tag volume for repair
+        f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
+        df2.loc[f_change & f_vol_zero_or_nan, "Volume"] = tag
 
         n_before = (df2[data_cols].to_numpy()==tag).sum()
-        df2 = self._reconstruct_intervals_batch(df2, interval, tag=tag)
+        dts_tagged = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
+        df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
         n_after = (df2[data_cols].to_numpy()==tag).sum()
+        dts_not_repaired = df2.index[(df2[data_cols].to_numpy()==tag).any(axis=1)]
         n_fixed = n_before - n_after
-        if n_fixed > 0:
-            print("{}: fixed {} price=0.0 errors in {} price data".format(self.ticker, n_fixed, interval))
+        if not silent and n_fixed > 0:
+            msg = f"{self.ticker}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data"
+            if n_fixed < 4:
+                dts_repaired = sorted(list(set(dts_tagged).difference(dts_not_repaired)))
+                msg += f": {dts_repaired}"
+            print(msg)
+
+        if df2_reserve is not None:
+            df2 = _pd.concat([df2, df2_reserve])
+        df2 = df2.sort_index()
 
         # Restore original values where repair failed (i.e. remove tag values)
         f = df2[data_cols].values==tag
@@ -1700,6 +1894,6 @@ class TickerBase:
 
     def get_history_metadata(self) -> dict:
         if self._history_metadata is None:
-            raise RuntimeError("Metadata was never retrieved so far, "
-                               "call history() to retrieve it")
+            # Request intraday data, because then Yahoo returns exchange schedule.
+            self.history(period="1wk", interval="1h", prepost=True)
         return self._history_metadata
