@@ -24,9 +24,7 @@ class TestPriceHistory(unittest.TestCase):
 
     def test_daily_index(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
-
         intervals = ["1d", "1wk", "1mo"]
-
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
 
@@ -44,8 +42,8 @@ class TestPriceHistory(unittest.TestCase):
 
             dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
             dt = dt_utc.astimezone(_tz.timezone(tz))
-
-            df = dat.history(start=dt.date() - _dt.timedelta(days=1), interval="1h")
+            start_d = dt.date() - _dt.timedelta(days=7)
+            df = dat.history(start=start_d, interval="1h")
 
             dt0 = df.index[-2]
             dt1 = df.index[-1]
@@ -54,7 +52,6 @@ class TestPriceHistory(unittest.TestCase):
             except:
                 print("Ticker = ", tkr)
                 raise
-
 
     def test_duplicatingDaily(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
@@ -110,22 +107,27 @@ class TestPriceHistory(unittest.TestCase):
     def test_intraDayWithEvents(self):
         # TASE dividend release pre-market, doesn't merge nicely with intra-day data so check still present
 
-        tkr = "ICL.TA"
-        # tkr = "ESLT.TA"
-        # tkr = "ONE.TA"
-        # tkr = "MGDL.TA"
-        start_d = _dt.date.today() - _dt.timedelta(days=60)
-        end_d = None
-        df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
-        df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
-        if df_daily_divs.shape[0] == 0:
-            self.skipTest("Skipping test_intraDayWithEvents() because 'ICL.TA' has no dividend in last 60 days")
+        tase_tkrs = ["ICL.TA", "ESLT.TA", "ONE.TA", "MGDL.TA"]
+        test_run = False
+        for tkr in tase_tkrs:
+            start_d = _dt.date.today() - _dt.timedelta(days=59)
+            end_d = None
+            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            if df_daily_divs.shape[0] == 0:
+                # self.skipTest("Skipping test_intraDayWithEvents() because 'ICL.TA' has no dividend in last 60 days")
+                continue
 
-        last_div_date = df_daily_divs.index[-1]
-        start_d = last_div_date.date()
-        end_d = last_div_date.date() + _dt.timedelta(days=1)
-        df = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
-        self.assertTrue((df["Dividends"] != 0.0).any())
+            last_div_date = df_daily_divs.index[-1]
+            start_d = last_div_date.date()
+            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            df = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            self.assertTrue((df["Dividends"] != 0.0).any())
+            test_run = True
+            break
+
+        if not test_run:
+            self.skipTest("Skipping test_intraDayWithEvents() because no tickers had a dividend in last 60 days")
 
     def test_dailyWithEvents(self):
         # Reproduce issue #521
@@ -230,7 +232,6 @@ class TestPriceHistory(unittest.TestCase):
 
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
-
         try:
             yf.Ticker("ESLT.TA", session=self.session).history(start="2002-10-06", end="2002-10-09", interval="1d")
         except _tz.exceptions.AmbiguousTimeError:
@@ -261,6 +262,116 @@ class TestPriceHistory(unittest.TestCase):
             print("Weekly data not aligned to Monday")
             raise
 
+    def test_prune_post_intraday_us(self):
+        # Half-day before USA Thanksgiving. Yahoo normally 
+        # returns an interval starting when regular trading closes, 
+        # even if prepost=False.
+
+        # Setup
+        tkr = "AMZN"
+        interval = "1h"
+        interval_td = _dt.timedelta(hours=1)
+        time_open = _dt.time(9, 30)
+        time_close = _dt.time(16)
+        special_day = _dt.date(2022, 11, 25)
+        time_early_close = _dt.time(13)
+        dat = yf.Ticker(tkr, session=self.session)
+
+        # Run
+        start_d = special_day - _dt.timedelta(days=7)
+        end_d = special_day + _dt.timedelta(days=7)
+        df = dat.history(start=start_d, end=end_d, interval=interval, prepost=False, keepna=True)
+        tg_last_dt = df.loc[str(special_day)].index[-1]
+        self.assertTrue(tg_last_dt.time() < time_early_close)
+
+        # Test no other afternoons (or mornings) were pruned
+        start_d = _dt.date(special_day.year, 1, 1)
+        end_d = _dt.date(special_day.year+1, 1, 1)
+        df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
+        last_dts = _pd.Series(df.index).groupby(df.index.date).last()
+        f_early_close = (last_dts+interval_td).dt.time < time_close
+        early_close_dates = last_dts.index[f_early_close].values
+        self.assertEqual(len(early_close_dates), 1)
+        self.assertEqual(early_close_dates[0], special_day)
+
+        first_dts = _pd.Series(df.index).groupby(df.index.date).first()
+        f_late_open = first_dts.dt.time > time_open
+        late_open_dates = first_dts.index[f_late_open]
+        self.assertEqual(len(late_open_dates), 0)
+
+    def test_prune_post_intraday_omx(self):
+        # Half-day before Sweden Christmas. Yahoo normally 
+        # returns an interval starting when regular trading closes, 
+        # even if prepost=False.
+        # If prepost=False, test that yfinance is removing prepost intervals.
+
+        # Setup
+        tkr = "AEC.ST"
+        interval = "1h"
+        interval_td = _dt.timedelta(hours=1)
+        time_open = _dt.time(9)
+        time_close = _dt.time(17,30)
+        special_day = _dt.date(2022, 12, 23)
+        time_early_close = _dt.time(13, 2)
+        dat = yf.Ticker(tkr, session=self.session)
+
+        # Half trading day Jan 5, Apr 14, May 25, Jun 23, Nov 4, Dec 23, Dec 30
+        half_days = [_dt.date(special_day.year, x[0], x[1]) for x in [(1,5), (4,14), (5,25), (6,23), (11,4), (12,23), (12,30)]]
+
+        # Yahoo has incorrectly classified afternoon of 2022-04-13 as post-market.
+        # Nothing yfinance can do because Yahoo doesn't return data with prepost=False.
+        # But need to handle in this test.
+        expected_incorrect_half_days = [_dt.date(2022,4,13)]
+        half_days = sorted(half_days+expected_incorrect_half_days)
+
+        # Run
+        start_d = special_day - _dt.timedelta(days=7)
+        end_d = special_day + _dt.timedelta(days=7)
+        df = dat.history(start=start_d, end=end_d, interval=interval, prepost=False, keepna=True)
+        tg_last_dt = df.loc[str(special_day)].index[-1]
+        self.assertTrue(tg_last_dt.time() < time_early_close)
+
+        # Test no other afternoons (or mornings) were pruned
+        start_d = _dt.date(special_day.year, 1, 1)
+        end_d = _dt.date(special_day.year+1, 1, 1)
+        df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
+        last_dts = _pd.Series(df.index).groupby(df.index.date).last()
+        f_early_close = (last_dts+interval_td).dt.time < time_close
+        early_close_dates = last_dts.index[f_early_close].values
+        unexpected_early_close_dates = [d for d in early_close_dates if not d in half_days]
+        self.assertEqual(len(unexpected_early_close_dates), 0)
+        self.assertEqual(len(early_close_dates), len(half_days))
+        self.assertTrue(_np.equal(early_close_dates, half_days).all())
+
+        first_dts = _pd.Series(df.index).groupby(df.index.date).first()
+        f_late_open = first_dts.dt.time > time_open
+        late_open_dates = first_dts.index[f_late_open]
+        self.assertEqual(len(late_open_dates), 0)
+
+    def test_prune_post_intraday_asx(self):
+        # Setup
+        tkr = "BHP.AX"
+        interval = "1h"
+        interval_td = _dt.timedelta(hours=1)
+        time_open = _dt.time(10)
+        time_close = _dt.time(16,12)
+        # No early closes in 2022
+        dat = yf.Ticker(tkr, session=self.session)
+
+        # Test no afternoons (or mornings) were pruned
+        start_d = _dt.date(2022, 1, 1)
+        end_d = _dt.date(2022+1, 1, 1)
+        df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
+        last_dts = _pd.Series(df.index).groupby(df.index.date).last()
+        f_early_close = (last_dts+interval_td).dt.time < time_close
+        early_close_dates = last_dts.index[f_early_close].values
+        self.assertEqual(len(early_close_dates), 0)
+
+        first_dts = _pd.Series(df.index).groupby(df.index.date).first()
+        f_late_open = first_dts.dt.time > time_open
+        late_open_dates = first_dts.index[f_late_open]
+        self.assertEqual(len(late_open_dates), 0)
+
     def test_weekly_2rows_fix(self):
         tkr = "AMZN"
         start = _dt.date.today() - _dt.timedelta(days=14)
@@ -270,11 +381,43 @@ class TestPriceHistory(unittest.TestCase):
         df = dat.history(start=start, interval="1wk")
         self.assertTrue((df.index.weekday == 0).all())
 
+class TestPriceRepair(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = requests_cache.CachedSession(backend='memory')
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def test_reconstruct_2m(self):
+        # 2m repair requires 1m data.
+        # Yahoo restricts 1m fetches to 7 days max within last 30 days.
+        # Need to test that '_reconstruct_intervals_batch()' can handle this.
+
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+
+        dt_now = _pd.Timestamp.utcnow()
+        td_7d = _dt.timedelta(days=7)
+        td_60d = _dt.timedelta(days=60)
+
+        # Round time for 'requests_cache' reuse
+        dt_now = dt_now.ceil("1h")
+
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            end_dt = dt_now
+            start_dt = end_dt - td_60d
+            df = dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
+
     def test_repair_100x_weekly(self):
         # Setup:
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [470.5, 473.5, 474.5, 470],
@@ -283,22 +426,22 @@ class TestPriceHistory(unittest.TestCase):
                                  "Close":     [475,   473.5, 472,   473.5],
                                  "Adj Close": [475,   473.5, 472,   473.5],
                                  "Volume": [2295613, 2245604, 3000287, 2635611]},
-                                index=_pd.to_datetime([_dt.date(2022, 10, 23),
-                                                       _dt.date(2022, 10, 16),
-                                                       _dt.date(2022, 10, 9),
-                                                       _dt.date(2022, 10, 2)]))
+                                index=_pd.to_datetime([_dt.date(2022, 10, 24),
+                                                       _dt.date(2022, 10, 17),
+                                                       _dt.date(2022, 10, 10),
+                                                       _dt.date(2022, 10, 3)]))
         df = df.sort_index()
         df.index.name = "Date"
         df_bad = df.copy()
-        df_bad.loc["2022-10-23", "Close"] *= 100
-        df_bad.loc["2022-10-16", "Low"] *= 100
-        df_bad.loc["2022-10-2", "Open"] *= 100
+        df_bad.loc["2022-10-24", "Close"] *= 100
+        df_bad.loc["2022-10-17", "Low"] *= 100
+        df_bad.loc["2022-10-03", "Open"] *= 100
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
         # Run test
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange)
+        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -326,7 +469,7 @@ class TestPriceHistory(unittest.TestCase):
 
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [400,   398,    392.5,   417],
@@ -353,7 +496,7 @@ class TestPriceHistory(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange)
+        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -381,7 +524,7 @@ class TestPriceHistory(unittest.TestCase):
     def test_repair_100x_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [478,    476,   476,   472],
@@ -403,7 +546,7 @@ class TestPriceHistory(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1d", tz_exchange)
+        df_repaired = dat._fix_unit_mixups(df_bad, "1d", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -423,7 +566,7 @@ class TestPriceHistory(unittest.TestCase):
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
         df_bad = _pd.DataFrame(data={"Open":      [0,      102.04, 102.04],
                                      "High":      [0,      102.1,  102.11],
@@ -438,7 +581,7 @@ class TestPriceHistory(unittest.TestCase):
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        repaired_df = dat._fix_zeroes(df_bad, "1d", tz_exchange)
+        repaired_df = dat._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
 
         correct_df = df_bad.copy()
         correct_df.loc["2022-11-01", "Open"] = 102.080002
@@ -450,40 +593,31 @@ class TestPriceHistory(unittest.TestCase):
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
         dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.info["exchangeTimezoneName"]
+        tz_exchange = dat.fast_info["timezone"]
 
-        df_bad = _pd.DataFrame(data={"Open":      [29.68, 29.49, 29.545, _np.nan, 29.485],
-                                     "High":      [29.68, 29.625, 29.58, _np.nan, 29.49],
-                                     "Low":       [29.46, 29.4, 29.45, _np.nan, 29.31],
-                                     "Close":     [29.485, 29.545, 29.485, _np.nan, 29.325],
-                                     "Adj Close": [29.485, 29.545, 29.485, _np.nan, 29.325],
-                                     "Volume": [3258528, 2140195, 1621010, 0, 0]},
-                                index=_pd.to_datetime([_dt.datetime(2022,11,25, 9,30),
-                                                       _dt.datetime(2022,11,25, 10,30),
-                                                       _dt.datetime(2022,11,25, 11,30),
-                                                       _dt.datetime(2022,11,25, 12,30),
-                                                       _dt.datetime(2022,11,25, 13,00)]))
-        df_bad = df_bad.sort_index()
-        df_bad.index.name = "Date"
-        df_bad.index = df_bad.index.tz_localize(tz_exchange)
+        correct_df = dat.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
 
-        repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange)
+        df_bad = correct_df.copy()
+        bad_idx = correct_df.index[10]
+        df_bad.loc[bad_idx, "Open"] = _np.nan
+        df_bad.loc[bad_idx, "High"] = _np.nan
+        df_bad.loc[bad_idx, "Low"] = _np.nan
+        df_bad.loc[bad_idx, "Close"] = _np.nan
+        df_bad.loc[bad_idx, "Adj Close"] = _np.nan
+        df_bad.loc[bad_idx, "Volume"] = 0
 
-        correct_df = df_bad.copy()
-        idx = _pd.Timestamp(2022,11,25, 12,30).tz_localize(tz_exchange)
-        correct_df.loc[idx, "Open"] = 29.485001
-        correct_df.loc[idx, "High"] = 29.49
-        correct_df.loc[idx, "Low"] = 29.43
-        correct_df.loc[idx, "Close"] = 29.455
-        correct_df.loc[idx, "Adj Close"] = 29.455
-        correct_df.loc[idx, "Volume"] = 609164
+        repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange, prepost=False)
+
         for c in ["Open", "Low", "High", "Close"]:
             try:
                 self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-7).all())
             except:
                 print("COLUMN", c)
+                print("- repaired_df")
                 print(repaired_df)
+                print("- correct_df[c]:")
                 print(correct_df[c])
+                print("- diff:")
                 print(repaired_df[c] - correct_df[c])
                 raise
 

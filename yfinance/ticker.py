@@ -134,10 +134,6 @@ class Ticker(TickerBase):
         return self.get_shares()
 
     @property
-    def market_cap(self) -> float:
-        return self.calc_market_cap()
-
-    @property
     def info(self) -> dict:
         return self.get_info()
 

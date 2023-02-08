@@ -1,6 +1,21 @@
 Change Log
 ===========
 
+0.2.10
+------
+General
+- allow using sqlite3 < 3.8.2 #1380
+- add another backup decrypt option #1379
+Prices
+- restore original download() timezone handling #1385
+- fix & improve price repair #1289 2a2928b 86d6acc
+- drop intraday intervals if in post-market but prepost=False #1311
+Info
+- fast_info improvements:
+  - add camelCase keys, add dict functions values() & items() #1368
+  - fix fast_info["previousClose"] #1383
+- catch TypeError Exception #1397
+
 0.2.9
 -----
 - Fix fast_info bugs #1362
