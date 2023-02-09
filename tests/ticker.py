@@ -52,12 +52,16 @@ class TestTicker(unittest.TestCase):
     def test_badTicker(self):
         # Check yfinance doesn't die when ticker delisted
 
-        tkr = "AM2Z.TA"
+        tkr = "DJI"  # typo of "^DJI"
         dat = yf.Ticker(tkr, session=self.session)
         dat.history(period="1wk")
         dat.history(start="2022-01-01")
         dat.history(start="2022-01-01", end="2022-03-01")
         yf.download([tkr], period="1wk")
+
+        for k in dat.fast_info:
+            dat.fast_info[k]
+
         dat.isin
         dat.major_holders
         dat.institutional_holders
@@ -91,43 +95,48 @@ class TestTicker(unittest.TestCase):
     def test_goodTicker(self):
         # that yfinance works when full api is called on same instance of ticker
 
-        tkr = "IBM"
-        dat = yf.Ticker(tkr, session=self.session)
+        tkrs = ["IBM"]
+        tkrs.append("QCSTIX")  # weird ticker, no price history but has previous close
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
 
-        dat.isin
-        dat.major_holders
-        dat.institutional_holders
-        dat.mutualfund_holders
-        dat.dividends
-        dat.splits
-        dat.actions
-        dat.shares
-        dat.get_shares_full()
-        dat.info
-        dat.calendar
-        dat.recommendations
-        dat.earnings
-        dat.quarterly_earnings
-        dat.income_stmt
-        dat.quarterly_income_stmt
-        dat.balance_sheet
-        dat.quarterly_balance_sheet
-        dat.cashflow
-        dat.quarterly_cashflow
-        dat.recommendations_summary
-        dat.analyst_price_target
-        dat.revenue_forecasts
-        dat.sustainability
-        dat.options
-        dat.news
-        dat.earnings_trend
-        dat.earnings_dates
-        dat.earnings_forecasts
+            dat.history(period="1wk")
+            dat.history(start="2022-01-01")
+            dat.history(start="2022-01-01", end="2022-03-01")
+            yf.download([tkr], period="1wk")
 
-        dat.history(period="1wk")
-        dat.history(start="2022-01-01")
-        dat.history(start="2022-01-01", end="2022-03-01")
-        yf.download([tkr], period="1wk")
+            for k in dat.fast_info:
+                dat.fast_info[k]
+
+            dat.isin
+            dat.major_holders
+            dat.institutional_holders
+            dat.mutualfund_holders
+            dat.dividends
+            dat.splits
+            dat.actions
+            dat.shares
+            dat.get_shares_full()
+            dat.info
+            dat.calendar
+            dat.recommendations
+            dat.earnings
+            dat.quarterly_earnings
+            dat.income_stmt
+            dat.quarterly_income_stmt
+            dat.balance_sheet
+            dat.quarterly_balance_sheet
+            dat.cashflow
+            dat.quarterly_cashflow
+            dat.recommendations_summary
+            dat.analyst_price_target
+            dat.revenue_forecasts
+            dat.sustainability
+            dat.options
+            dat.news
+            dat.earnings_trend
+            dat.earnings_dates
+            dat.earnings_forecasts
 
 
 class TestTickerHistory(unittest.TestCase):
