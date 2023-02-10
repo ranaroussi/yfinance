@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.11
+------
+Fix history_metadata accesses for unusual symbols #1411
+
 0.2.10
 ------
 General
