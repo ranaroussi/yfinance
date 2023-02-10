@@ -699,7 +699,7 @@ def format_history_metadata(md):
     tz = md["exchangeTimezoneName"]
 
     for k in ["firstTradeDate", "regularMarketTime"]:
-        if k in md:
+        if k in md and md[k] is not None:
             md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
 
     if "currentTradingPeriod" in md:
