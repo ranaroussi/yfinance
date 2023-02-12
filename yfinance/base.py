@@ -270,11 +270,15 @@ class FastInfo:
             return self._last_price
         prices = self._get_1y_prices()
         if prices.empty:
-            self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
+            md = self._get_exchange_metadata()
+            if "regularMarketPrice" in md:
+                self._last_price = md["regularMarketPrice"]
         else:
             self._last_price = float(prices["Close"].iloc[-1])
             if _np.isnan(self._last_price):
-                self._last_price = self._get_exchange_metadata()["regularMarketPrice"]
+                md = self._get_exchange_metadata()
+                if "regularMarketPrice" in md:
+                    self._last_price = md["regularMarketPrice"]
         return self._last_price
 
     @property
@@ -282,16 +286,23 @@ class FastInfo:
         if self._prev_close is not None:
             return self._prev_close
         prices = self._get_1wk_1h_prepost_prices()
-        prices = prices[["Close"]].groupby(prices.index.date).last()
-        if prices.shape[0] < 2:
-            # Very few symbols have previousClose despite no 
-            # no trading data. E.g. 'QCSTIX'.
-            # So fallback to original info[] if available.
-            self._tkr.info  # trigger fetch
-            if "previousClose" in self._tkr._quote._retired_info:
-                self._prev_close = self._tkr._quote._retired_info["previousClose"]
+        fail = False
+        if prices.empty:
+            fail = True
         else:
-            self._prev_close = float(prices["Close"].iloc[-2])
+            prices = prices[["Close"]].groupby(prices.index.date).last()
+            if prices.shape[0] < 2:
+                # Very few symbols have previousClose despite no 
+                # no trading data e.g. 'QCSTIX'.
+                fail = True
+            else:
+                self._prev_close = float(prices["Close"].iloc[-2])
+        if fail:
+            # Fallback to original info[] if available.
+            self._tkr.info  # trigger fetch
+            k = "previousClose"
+            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
+                self._prev_close = self._tkr._quote._retired_info[k]
         return self._prev_close
 
     @property
@@ -309,8 +320,9 @@ class FastInfo:
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
             self._tkr.info  # trigger fetch
-            if "regularMarketPreviousClose" in self._tkr._quote._retired_info:
-                self._reg_prev_close = self._tkr._quote._retired_info["regularMarketPreviousClose"]
+            k = "regularMarketPreviousClose"
+            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
+                self._reg_prev_close = self._tkr._quote._retired_info[k]
         else:
             self._reg_prev_close = float(prices["Close"].iloc[-2])
         return self._reg_prev_close
@@ -483,8 +495,9 @@ class FastInfo:
             # E.g. 'BTC-USD'
             # So fallback to original info[] if available.
             self._tkr.info
-            if "marketCap" in self._tkr._quote._retired_info:
-                self._mcap = self._tkr._quote._retired_info["marketCap"]
+            k = "marketCap"
+            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
+                self._mcap = self._tkr._quote._retired_info[k]
         else:
             self._mcap = float(shares * self.last_price)
         return self._mcap
