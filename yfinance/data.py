@@ -290,11 +290,11 @@ class TickerData:
         # Gather decryption keys:
         soup = BeautifulSoup(response.content, "html.parser")
         keys = self._get_decryption_keys_from_yahoo_js(soup)
-        if len(keys) == 0:
-            msg = "No decryption keys could be extracted from JS file."
-            if "requests_cache" in str(type(response)):
-                msg += " Try flushing your 'requests_cache', probably parsing old JS."
-            print("WARNING: " + msg + " Falling back to backup decrypt methods.")
+        # if len(keys) == 0:
+        #     msg = "No decryption keys could be extracted from JS file."
+        #     if "requests_cache" in str(type(response)):
+        #         msg += " Try flushing your 'requests_cache', probably parsing old JS."
+        #     print("WARNING: " + msg + " Falling back to backup decrypt methods.")
         if len(keys) == 0:
             keys = []
             try:
