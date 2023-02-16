@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.12
+------
+Disable annoying 'backup decrypt' msg
+
 0.2.11
 ------
 Fix history_metadata accesses for unusual symbols #1411
