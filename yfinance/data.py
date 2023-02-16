@@ -23,6 +23,32 @@ try:
 except ImportError:
     import json as json
 
+
+from collections import deque
+class KeyQueue:
+    # I looked online for a 'deque' structure that 
+    # keeps elements unique. Mission failed.
+    # So creating structure here
+
+    def __init__(self):
+        self.q = deque()
+
+    def add_working_key(self, k):
+        if not k in self.q:
+            self.q.insert(0, k)
+
+        elif self.q[0] != k:
+            # Move to top of queue
+            self.q.remove(k)
+            self.q.insert(0, k)
+
+    def len(self):
+        return len(self.q)
+
+    def __getitem__(self, i):
+        return self.q[i]
+
+
 cache_maxsize = 64
 
 
@@ -69,7 +95,10 @@ def decrypt_cryptojs_aes_stores(data, keys=None):
     password = None
     if keys is not None:
         if not isinstance(keys, list):
-            raise TypeError("'keys' must be list")
+            if isinstance(keys, str):
+                keys = [keys]
+            else:
+                raise TypeError(f"'keys' must be list not {type(keys)}")
         candidate_passwords = keys
     else:
         candidate_passwords = []
@@ -179,6 +208,8 @@ class TickerData:
         self.ticker = ticker
         self._session = session or requests
 
+        self.key_queue = KeyQueue()
+
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
         proxy = self._get_proxy(proxy)
         response = self._session.get(
@@ -287,32 +318,76 @@ class TickerData:
 
         data = json.loads(json_str)
 
-        # Gather decryption keys:
-        soup = BeautifulSoup(response.content, "html.parser")
-        keys = self._get_decryption_keys_from_yahoo_js(soup)
-        if len(keys) == 0:
-            msg = "No decryption keys could be extracted from JS file."
-            if "requests_cache" in str(type(response)):
-                msg += " Try flushing your 'requests_cache', probably parsing old JS."
-            print("WARNING: " + msg + " Falling back to backup decrypt methods.")
-        if len(keys) == 0:
-            keys = []
+
+        # Decrypt! Prioritise keys most likely to work.
+		# 1) First try keys that have definitely worked in this execution
+        stores = None
+        for k in self.key_queue:
             try:
-                extra_keys = _extract_extra_keys_from_stores(data)
-                keys = [''.join(extra_keys[-4:])]
-            except:
-                pass
-            #
+                stores = decrypt_cryptojs_aes_stores(data, k)
+            except Exception as e:
+                if "failed to decrypt" in str(e):
+                    pass
+                else:
+                    raise
+            else:
+                self.key_queue.add_working_key(k)
+                break
+        # 2) Next try backup keys hosted on GitHub
+        if stores is None:
             keys_url = "https://github.com/ranaroussi/yfinance/raw/main/yfinance/scrapers/yahoo-keys.txt"
             response_gh = self.cache_get(keys_url)
-            keys += response_gh.text.splitlines()
-
-        # Decrypt!
-        stores = decrypt_cryptojs_aes_stores(data, keys)
+            github_keys = response_gh.text.splitlines()
+            for i in range(len(github_keys)-1, -1, -1):
+                k = github_keys[i]
+                try:
+                    stores = decrypt_cryptojs_aes_stores(data, k)
+                except Exception as e:
+                    if "failed to decrypt" in str(e):
+                        pass
+                    else:
+                        raise
+                else:
+                    self.key_queue.add_working_key(k)
+                    break
+        # 3) Next try extracting keys from the JS that Yahoo uses to en/decrypt:
         if stores is None:
-            # Maybe Yahoo returned old format, not encrypted
-            if "context" in data and "dispatcher" in data["context"]:
-                stores = data['context']['dispatcher']['stores']
+            soup = BeautifulSoup(response.content, "html.parser")
+            js_keys = self._get_decryption_keys_from_yahoo_js(soup)
+            if len(js_keys) == 0:
+                msg = "No decryption keys could be extracted from JS file."
+                if "requests_cache" in str(type(response)):
+                    msg += " Try flushing your 'requests_cache', probably parsing old JS."
+                print("WARNING: " + msg)
+            for k in js_keys:
+                try:
+                    stores = decrypt_cryptojs_aes_stores(data, k)
+                except Exception as e:
+                    if "failed to decrypt" in str(e):
+                        pass
+                    else:
+                        raise
+                else:
+                    self.key_queue.add_working_key(k)
+                    break
+        # 4) Next try extracting keys from HTML payload - used to work but not now
+        if stores is None:
+            try:
+                stores_extra_keys = _extract_extra_keys_from_stores(data)
+                html_key = ''.join(stores_extra_keys[-4:])
+            except:
+                pass
+            else:
+                try:
+                    stores = decrypt_cryptojs_aes_stores(data, html_key)
+                except Exception as e:
+                    if "failed to decrypt" in str(e):
+                        pass
+                    else:
+                        raise
+                else:
+                    self.key_queue.add_working_key(html_key)
+
         if stores is None:
             raise Exception(f"{self.ticker}: Failed to extract data stores from web request")
 
