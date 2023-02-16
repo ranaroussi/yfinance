@@ -15,6 +15,9 @@ Sanity check for most common library uses all working
 
 import yfinance as yf
 import unittest
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 symbols = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
 tickers = [yf.Ticker(symbol) for symbol in symbols]

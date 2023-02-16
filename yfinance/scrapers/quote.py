@@ -1,4 +1,5 @@
 import datetime
+import logging
 import json
 
 import pandas as pd
@@ -6,6 +7,7 @@ import pandas as pd
 from yfinance import utils
 from yfinance.data import TickerData
 
+logger = logging.getLogger(__name__)
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -126,7 +128,7 @@ class Quote:
             quote_summary_store = json_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No summary info found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            logger.error('%s: %s', self._data.ticker, err_msg)
             return None
 
         # sustainability
