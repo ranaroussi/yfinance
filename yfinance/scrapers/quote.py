@@ -1,6 +1,7 @@
 import datetime
 import logging
 import json
+import warnings
 
 import pandas as pd
 
@@ -46,16 +47,16 @@ class InfoDictWrapper(MutableMapping):
 
     def __getitem__(self, k):
         if k in info_retired_keys_price:
-            print(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead")
+            warnings.warn(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_exchange:
-            print(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead")
+            warnings.warn(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_marketCap:
-            print(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead")
+            warnings.warn(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_symbol:
-            print(f"Symbol removed from info (key='{k}'). You know this already")
+            warnings.warn(f"Symbol removed from info (key='{k}'). You know this already", DeprecationWarning)
             return None
         return self.info[self._keytransform(k)]
 
