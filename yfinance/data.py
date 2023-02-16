@@ -297,7 +297,7 @@ class TickerData:
             msg = "No decryption keys could be extracted from JS file."
             if "requests_cache" in str(type(response)):
                 msg += " Try flushing your 'requests_cache', probably parsing old JS."
-            logger.warning("WARNING: %s Falling back to backup decrypt methods.", msg)
+            logger.warning("%s Falling back to backup decrypt methods.", msg)
         if len(keys) == 0:
             keys = []
             try:
