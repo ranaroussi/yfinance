@@ -157,7 +157,7 @@ class FastInfo:
                 self._today_open = None
                 self._today_close = None
                 self._today_midnight = None
-                raise
+                pass
 
         if self._prices_1y.empty:
             return self._prices_1y
@@ -216,10 +216,9 @@ class FastInfo:
         if self._currency is not None:
             return self._currency
 
-        if self._tkr._history_metadata is None:
-            self._get_1y_prices()
-        md = self._tkr.get_history_metadata()
-        self._currency = md["currency"]
+        md = self._get_exchange_metadata()
+        if "currency" in md:
+            self._currency = md["currency"]
         return self._currency
 
     @property
@@ -227,10 +226,9 @@ class FastInfo:
         if self._quote_type is not None:
             return self._quote_type
 
-        if self._tkr._history_metadata is None:
-            self._get_1y_prices()
-        md = self._tkr.get_history_metadata()
-        self._quote_type = md["instrumentType"]
+        md = self._get_exchange_metadata()
+        if "instrumentType" in md:
+            self._quote_type = md["instrumentType"]
         return self._quote_type
 
     @property
@@ -238,7 +236,9 @@ class FastInfo:
         if self._exchange is not None:
             return self._exchange
 
-        self._exchange = self._get_exchange_metadata()["exchangeName"]
+        md = self._get_exchange_metadata()
+        if "exchangeName" in md:
+            self._exchange = md["exchangeName"]
         return self._exchange
 
     @property
@@ -246,7 +246,9 @@ class FastInfo:
         if self._timezone is not None:
             return self._timezone
 
-        self._timezone = self._get_exchange_metadata()["exchangeTimezoneName"]
+        md = self._get_exchange_metadata()
+        if "exchangeTimezoneName" in md:
+            self._timezone = md["exchangeTimezoneName"]
         return self._timezone
 
     @property
@@ -1039,6 +1041,10 @@ class TickerBase:
                 continue
             # Discard the buffer
             df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)]
+            if df_fine.empty:
+                if not silent:
+                    print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
+                continue
 
             df_fine["ctr"] = 0
             if interval == "1wk":
@@ -1221,7 +1227,7 @@ class TickerBase:
             c = data_cols[i]
             df2.loc[fi, c] = tag
 
-        n_before = df2_data.sum()
+        n_before = (df2_data==tag).sum()
         df2 = self._reconstruct_intervals_batch(df2, interval, prepost, tag, silent)
         df2_tagged = df2[data_cols].to_numpy()==tag
         n_after = (df2[data_cols].to_numpy()==tag).sum()
