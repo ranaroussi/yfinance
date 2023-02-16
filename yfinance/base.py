@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import logging
+import warnings
 import time as _time
 import datetime as _datetime
 import dateutil as _dateutil
@@ -1487,7 +1488,7 @@ class TickerBase:
 
     @property
     def basic_info(self):
-        print("WARNING: 'Ticker.basic_info' is renamed to 'Ticker.fast_info', hopefully purpose is clearer")
+        warnings.warn("'Ticker.basic_info' is renamed to 'Ticker.fast_info', hopefully purpose is clearer", DeprecationWarning)
         return self.fast_info
 
     def get_sustainability(self, proxy=None, as_dict=False):
