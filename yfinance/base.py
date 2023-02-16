@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+import logging
 import time as _time
 import datetime as _datetime
 import dateutil as _dateutil
@@ -47,6 +48,7 @@ _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
+logger = logging.getLogger(__name__)
 
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
@@ -899,7 +901,7 @@ class TickerBase:
             sub_interval = nexts[interval]
             td_range = itds[interval]
         else:
-            print("WARNING: Have not implemented repair for '{}' interval. Contact developers".format(interval))
+            logger.critical("Have not implemented repair for '%s' interval. Contact developers", interval)
             raise Exception("why here")
             return df
 
@@ -1035,7 +1037,7 @@ class TickerBase:
             df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
             if df_fine is None or df_fine.empty:
                 if not silent:
-                    print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
+                    logger.warning("Cannot reconstruct because Yahoo not returning data in interval")
                 continue
             # Discard the buffer
             df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)]
@@ -1273,7 +1275,7 @@ class TickerBase:
             if n_fixed_crudely > 0:
                 report_msg += f"({n_fixed_crudely} crudely) "
             report_msg += f"in {interval} price data"
-            print(report_msg)
+            logger.info('%s', report_msg)
 
         # Restore original values where repair failed
         f = df2_tagged
@@ -1366,7 +1368,7 @@ class TickerBase:
             if n_fixed < 4:
                 dts_repaired = sorted(list(set(dts_tagged).difference(dts_not_repaired)))
                 msg += f": {dts_repaired}"
-            print(msg)
+            logger.info('%s', msg)
 
         if df2_reserve is not None:
             df3 = _pd.concat([df3, df2_reserve]).sort_index()
@@ -1729,7 +1731,7 @@ class TickerBase:
         if start is None:
             start = end - _pd.Timedelta(days=548)  # 18 months
         if start >= end:
-            print("ERROR: start date must be before end")
+            logger.error("Start date must be before end")
             return None
         start = start.floor("D")
         end = end.ceil("D")
@@ -1741,14 +1743,14 @@ class TickerBase:
             json_str = self._data.cache_get(shares_url).text
             json_data = _json.loads(json_str)
         except:
-            print(f"{self.ticker}: Yahoo web request for share count failed")
+            logger.error("%s: Yahoo web request for share count failed", self.ticker)
             return None
         try:
             fail = json_data["finance"]["error"]["code"] == "Bad Request"
         except:
             fail = False
         if fail:
-            print(f"{self.ticker}: Yahoo web request for share count failed")
+            logger.error(f"%s: Yahoo web request for share count failed", self.ticker)
             return None
 
         shares_data = json_data["timeseries"]["result"]
@@ -1757,7 +1759,7 @@ class TickerBase:
         try:
             df = _pd.Series(shares_data[0]["shares_out"], index=_pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except Exception as e:
-            print(f"{self.ticker}: Failed to parse shares count data: "+str(e))
+            logger.error(f"%s: Failed to parse shares count data: %s", self.ticker, e)
             return None
 
         df.index = df.index.tz_localize(tz)
@@ -1872,7 +1874,7 @@ class TickerBase:
 
         if dates is None or dates.shape[0] == 0:
             err_msg = "No earnings dates found, symbol may be delisted"
-            print('- %s: %s' % (self.ticker, err_msg))
+            logger.error('%s: %s', self.ticker, err_msg)
             return None
         dates = dates.reset_index(drop=True)
 

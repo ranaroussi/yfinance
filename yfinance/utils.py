@@ -936,9 +936,10 @@ def get_tz_cache():
             try:
                 _tz_cache = _TzCache()
             except _TzCacheException as err:
-                print("Failed to create TzCache, reason: {}".format(err))
-                print("TzCache will not be used.")
-                print("Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+                logger.error("Failed to create TzCache, reason: %s. "
+                             "TzCache will not be used. "
+                             "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'",
+                             err)
                 _tz_cache = _TzCacheDummy()
 
         return _tz_cache
