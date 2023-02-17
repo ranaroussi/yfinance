@@ -595,6 +595,9 @@ class TickerBase:
                 exceptions instead of printing to console.
         """
 
+        if raise_errors:
+            debug = True
+
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
             tz = self._get_ticker_tz(debug, proxy, timeout)
@@ -607,7 +610,9 @@ class TickerBase:
                     if raise_errors:
                         raise Exception('%s: %s' % (self.ticker, err_msg))
                     else:
-                        print('- %s: %s' % (self.ticker, err_msg))
+                        logger.error('- %s: %s' % (self.ticker, err_msg))
+                else:
+                    logger.debug('- %s: %s' % (self.ticker, err_msg))
                 return utils.empty_df()
 
             if end is None:
@@ -703,7 +708,9 @@ class TickerBase:
                 if raise_errors:
                     raise Exception('%s: %s' % (self.ticker, err_msg))
                 else:
-                    print('%s: %s' % (self.ticker, err_msg))
+                    logger.error('%s: %s' % (self.ticker, err_msg))
+            else:
+                logger.debug('%s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
         
         # parse quotes
@@ -721,7 +728,9 @@ class TickerBase:
                 if raise_errors:
                     raise Exception('%s: %s' % (self.ticker, err_msg))
                 else:
-                    print('%s: %s' % (self.ticker, err_msg))
+                    logger.error('%s: %s' % (self.ticker, err_msg))
+            else:
+                logger.debug('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
@@ -842,7 +851,9 @@ class TickerBase:
                 if raise_errors:
                     raise Exception('%s: %s' % (self.ticker, err_msg))
                 else:
-                    print('%s: %s' % (self.ticker, err_msg))
+                    logger.error('%s: %s' % (self.ticker, err_msg))
+            else:
+                logger.debug('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
             df = _np.round(df, data[
@@ -876,9 +887,6 @@ class TickerBase:
 
         # Reconstruct values in df using finer-grained price data. Delimiter marks what to reconstruct
 
-        debug = False
-        # debug = True
-
         if interval[1:] in ['d', 'wk', 'mo']:
             # Interday data always includes pre & post
             prepost = True
@@ -902,8 +910,7 @@ class TickerBase:
             sub_interval = nexts[interval]
             td_range = itds[interval]
         else:
-            logger.critical("Have not implemented repair for '%s' interval. Contact developers", interval)
-            raise Exception("why here")
+            logger.warning("Have not implemented price repair for '%s' interval. Contact developers", interval)
             return df
 
         df = df.sort_index()
@@ -919,22 +926,19 @@ class TickerBase:
             m -= _datetime.timedelta(days=1)  # allow space for 1-day padding
             min_dt = _pd.Timestamp.utcnow() - m
             min_dt = min_dt.tz_convert(df.index.tz).ceil("D")
-        if debug:
-            print(f"- min_dt={min_dt} interval={interval} sub_interval={sub_interval}")
+        logger.debug((f"min_dt={min_dt} interval={interval} sub_interval={sub_interval}"))
         if min_dt is not None:
             f_recent = df.index >= min_dt
             f_repair_rows = f_repair_rows & f_recent
             if not f_repair_rows.any():
-                if debug:
-                    print("data too old to repair")
+                logger.info("Data too old to repair")
                 return df
 
         dts_to_repair = df.index[f_repair_rows]
         indices_to_repair = _np.where(f_repair_rows)[0]
 
         if len(dts_to_repair) == 0:
-            if debug:
-                print("dts_to_repair[] is empty")
+            logger.info("Nothing needs repairing (dts_to_repair[] empty)")
             return df
 
         df_v2 = df.copy()
@@ -960,8 +964,7 @@ class TickerBase:
             grp_max_size = _datetime.timedelta(days=5)  # allow 2 days for buffer below
         else:
             grp_max_size = _datetime.timedelta(days=30)
-        if debug:
-            print("- grp_max_size =", grp_max_size)
+        logger.debug("grp_max_size =", grp_max_size)
         for i in range(1, len(dts_to_repair)):
             ind = indices_to_repair[i]
             dt = dts_to_repair[i]
@@ -972,10 +975,9 @@ class TickerBase:
             last_dt = dt
             last_ind = ind
 
-        if debug:
-            print("Repair groups:")
-            for g in dts_groups:
-                print(f"- {g[0]} -> {g[-1]}")
+        logger.debug("Repair groups:")
+        for g in dts_groups:
+            logger.debug(f"- {g[0]} -> {g[-1]}")
 
         # Add some good data to each group, so can calibrate prices later:
         for i in range(len(dts_groups)):
@@ -998,21 +1000,18 @@ class TickerBase:
         n_fixed = 0
         for g in dts_groups:
             df_block = df[df.index.isin(g)]
-            if debug:
-                print("- df_block:")
-                print(df_block)
+            logger.debug("df_block:")
+            logger.debug(df_block)
 
             start_dt = g[0]
             start_d = start_dt.date()
             if sub_interval == "1h" and (_datetime.date.today() - start_d) > _datetime.timedelta(days=729):
                 # Don't bother requesting more price data, Yahoo will reject
-                if debug:
-                    print(f"- Don't bother requesting {sub_interval} price data, Yahoo will reject")
+                logger.warning(f"Cannot reconstruct {interval} block starting {start_d}, too old, Yahoo will reject request for finer-grain data")
                 continue
             elif sub_interval in ["30m", "15m"] and (_datetime.date.today() - start_d) > _datetime.timedelta(days=59):
                 # Don't bother requesting more price data, Yahoo will reject
-                if debug:
-                    print(f"- Don't bother requesting {sub_interval} price data, Yahoo will reject")
+                logger.warning(f"Cannot reconstruct {interval} block starting {start_d}, too old, Yahoo will reject request for finer-grain data")
                 continue
 
             td_1d = _datetime.timedelta(days=1)
@@ -1032,13 +1031,12 @@ class TickerBase:
             if intraday:
                 fetch_start = fetch_start.date()
                 fetch_end = fetch_end.date()+td_1d
-            if debug:
-                print(f"- fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}")
+            logger.debug(f"Fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}")
             r = "silent" if silent else True
             df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
             if df_fine is None or df_fine.empty:
                 if not silent:
-                    logger.warning("Cannot reconstruct because Yahoo not returning data in interval")
+                    logger.warning(f"Cannot reconstruct {interval} block starting {start_d}, too old, Yahoo is rejecting request for finer-grain data")
                 continue
             # Discard the buffer
             df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)]
@@ -1074,25 +1072,22 @@ class TickerBase:
                 new_index = _np.append([df_fine.index[0]], df_fine.index[df_fine["intervalID"].diff()>0])
                 df_new.index = new_index
 
-            if debug:
-                print("- df_new:")
-                print(df_new)
+            logger.debug("df_new:")
+            logger.debug(df_new)
 
             # Calibrate! Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
             common_index = _np.intersect1d(df_block.index, df_new.index)
             if len(common_index) == 0:
                 # Can't calibrate so don't attempt repair
-                if debug:
-                    print("Can't calibrate so don't attempt repair")
+                logger.warning("Can't calibrate {interval} block starting {start_d} so aborting repair")
                 continue
             df_new_calib = df_new[df_new.index.isin(common_index)][price_cols].to_numpy()
             df_block_calib = df_block[df_block.index.isin(common_index)][price_cols].to_numpy()
             calib_filter = (df_block_calib != tag)
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
-                if debug:
-                    print("Can't calibrate so don't attempt repair")
+                logger.warning("Can't calibrate {interval} block starting {start_d} so aborting repair")
                 continue
             # Avoid divide-by-zero warnings:
             for j in range(len(price_cols)):
@@ -1108,8 +1103,7 @@ class TickerBase:
             weights = _np.tile(weights, len(price_cols))  # 1D -> 2D
             weights = weights[calib_filter]  # flatten
             ratio = _np.average(ratios, weights=weights)
-            if debug:
-                print(f"- price calibration ratio (raw) = {ratio}")
+            logger.debug(f"Price calibration ratio (raw) = {ratio}")
             ratio_rcp = round(1.0 / ratio, 1)
             ratio = round(ratio, 1)
             if ratio == 1 and ratio_rcp == 1:
@@ -1130,16 +1124,15 @@ class TickerBase:
             # Repair!
             bad_dts = df_block.index[(df_block[price_cols+["Volume"]]==tag).to_numpy().any(axis=1)]
 
-            if debug:
-                no_fine_data_dts = []
-                for idx in bad_dts:
-                    if not idx in df_new.index:
-                        # Yahoo didn't return finer-grain data for this interval, 
-                        # so probably no trading happened.
-                        no_fine_data_dts.append(idx)
-                if len(no_fine_data_dts) > 0:
-                    print(f"Yahoo didn't return finer-grain data for these intervals:")
-                    print(no_fine_data_dts)
+            no_fine_data_dts = []
+            for idx in bad_dts:
+                if not idx in df_new.index:
+                    # Yahoo didn't return finer-grain data for this interval, 
+                    # so probably no trading happened.
+                    no_fine_data_dts.append(idx)
+            if len(no_fine_data_dts) > 0:
+                logger.debug(f"Yahoo didn't return finer-grain data for these intervals:")
+                logger.debug(no_fine_data_dts)
             for idx in bad_dts:
                 if not idx in df_new.index:
                     # Yahoo didn't return finer-grain data for this interval, 
@@ -1172,8 +1165,8 @@ class TickerBase:
                     df_v2.loc[idx, "Volume"] = df_new_row["Volume"]
                 n_fixed += 1
 
-        if debug:
-            print("df_v2:") ; print(df_v2)
+        logger.debug("df_v2:")
+        logger.debug(df_v2)
 
         return df_v2
 
@@ -1186,6 +1179,7 @@ class TickerBase:
             return df
         if df.shape[0] == 1:
             # Need multiple rows to confidently identify outliers
+            logger.warning("Cannot check single-row table for 100x price errors")
             return df
 
         df2 = df.copy()
@@ -1208,6 +1202,7 @@ class TickerBase:
         else:
             df2_zeroes = None
         if df2.shape[0] <= 1:
+            logger.warning("Insufficient good data for detecting 100x price errors")
             return df
         df2_data = df2[data_cols].to_numpy()
         median = _ndimage.median_filter(df2_data, size=(3, 3), mode="wrap")
@@ -1215,6 +1210,7 @@ class TickerBase:
         ratio_rounded = (ratio / 20).round() * 20  # round ratio to nearest 20
         f = ratio_rounded == 100
         if not f.any():
+            logger.info("No bad data (100x wrong) to repair")
             return df
 
         # Mark values to send for repair
@@ -1299,9 +1295,6 @@ class TickerBase:
         if df.shape[0] == 0:
             return df
 
-        debug = False
-        # debug = True
-
         intraday = interval[-1] in ("m", 'h')
 
         df = df.sort_index()  # important!
@@ -1333,13 +1326,11 @@ class TickerBase:
         f_prices_bad = f_prices_bad.to_numpy()
         f_bad_rows = f_prices_bad.any(axis=1) | f_vol_bad
         if not f_bad_rows.any():
-            if debug:
-                print("no bad data to repair")
+            logger.info("No bad data (price=0) to repair")
             return df
         if f_prices_bad.sum() == len(price_cols)*len(df2):
             # Need some good data to calibrate
-            if debug:
-                print("no good data to calibrate")
+            logger.warning("No good data for calibration so cannot fix price=0 bad data")
             return df
 
         data_cols = price_cols + ["Volume"]
