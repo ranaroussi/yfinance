@@ -30,7 +30,10 @@ from . import shared
 
 
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
-             group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
+             group_by='column', 
+             auto_adjust=None, back_adjust=None, 
+             div_adjust=False,
+             repair=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
              proxy=None, rounding=False, timeout=10):
     """Download yahoo tickers
@@ -54,8 +57,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         prepost : bool
             Include Pre and Post market data in results?
             Default is False
-        auto_adjust: bool
-            Adjust all OHLC automatically? Default is False
+            div_adjust: bool
+                Dividend-adjust all OHLC data? Default is False
         repair: bool
             Detect currency unit 100x mixups and attempt repair
             Default is False
@@ -79,6 +82,15 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
     """
+
+    # Handle deprecated arguments first
+    if auto_adjust is not None:
+        print("WARNING: 'auto_adjust' is deprecated, switch to 'div_adjust' instead")
+        div_adjust = auto_adjust
+        auto_adjust = None
+    if back_adjust is not None:
+        print("WARNING: 'back_adjust' is deprecated, it was nonsense")
+        back_adjust = None
 
     if ignore_tz is None:
         # Set default value depending on interval
@@ -121,8 +133,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         for i, ticker in enumerate(tickers):
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust, repair=repair, keepna=keepna,
+                                   actions=actions, div_adjust=div_adjust,
+                                   repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
                                    rounding=rounding, timeout=timeout)
         while len(shared._DFS) < len(tickers):
@@ -133,8 +145,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         for i, ticker in enumerate(tickers):
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
-                                 actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, repair=repair, keepna=keepna,
+                                 actions=actions, div_adjust=div_adjust, 
+                                 repair=repair, keepna=keepna,
                                  proxy=proxy,
                                  rounding=rounding, timeout=timeout)
             shared._DFS[ticker.upper()] = data
@@ -203,12 +215,12 @@ def _realign_dfs():
 
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
-                           auto_adjust=False, back_adjust=False, repair=False,
+                           div_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
     try:
-        data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
+        data = _download_one(ticker, start, end, div_adjust, repair,
                              actions, period, interval, prepost, proxy, rounding,
                              keepna, timeout)
     except Exception as e:
@@ -222,15 +234,15 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 
 def _download_one(ticker, start=None, end=None,
-                  auto_adjust=False, back_adjust=False, repair=False,
+                  div_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
     return Ticker(ticker).history(
         period=period, interval=interval,
         start=start, end=end, prepost=prepost,
-        actions=actions, auto_adjust=auto_adjust,
-        back_adjust=back_adjust, repair=repair, proxy=proxy,
+        actions=actions, 
+        div_adjust=div_adjust, repair=repair, proxy=proxy,
         rounding=rounding, keepna=keepna, timeout=timeout,
         debug=False, raise_errors=False  # debug and raise_errors false to not log and raise errors in threads
     )

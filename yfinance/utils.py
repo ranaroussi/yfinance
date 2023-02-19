@@ -335,29 +335,7 @@ def _interval_to_timedelta(interval):
         return _pd.Timedelta(interval)
 
 
-def auto_adjust(data):
-    col_order = data.columns
-    df = data.copy()
-    ratio = df["Close"] / df["Adj Close"]
-    df["Adj Open"] = df["Open"] / ratio
-    df["Adj High"] = df["High"] / ratio
-    df["Adj Low"] = df["Low"] / ratio
-
-    df.drop(
-        ["Open", "High", "Low", "Close"],
-        axis=1, inplace=True)
-
-    df.rename(columns={
-        "Adj Open": "Open", "Adj High": "High",
-        "Adj Low": "Low", "Adj Close": "Close"
-    }, inplace=True)
-
-    return df[[c for c in col_order if c in df.columns]]
-
-
-def back_adjust(data):
-    """ back-adjusted data to mimic true historical prices """
-
+def adjust_with_Yahoo_adj_close(data):
     col_order = data.columns
     df = data.copy()
     ratio = df["Adj Close"] / df["Close"]
@@ -366,12 +344,12 @@ def back_adjust(data):
     df["Adj Low"] = df["Low"] * ratio
 
     df.drop(
-        ["Open", "High", "Low", "Adj Close"],
+        ["Open", "High", "Low", "Close"],
         axis=1, inplace=True)
 
     df.rename(columns={
         "Adj Open": "Open", "Adj High": "High",
-        "Adj Low": "Low"
+        "Adj Low": "Low", "Adj Close": "Close"
     }, inplace=True)
 
     return df[[c for c in col_order if c in df.columns]]
@@ -503,7 +481,7 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
             elif interval == "1mo":
                 last_rows_same_interval = dt1.month == dt2.month
             elif interval == "3mo":
-                last_rows_same_interval = dt1.year == dt2.year and dt1.quarter == dt2.quarter
+                last_rows_same_interval = (dt1 - _dateutil.relativedelta.relativedelta(months=3)) < dt2
             else:
                 last_rows_same_interval = (dt1-dt2) < _pd.Timedelta(interval)
 

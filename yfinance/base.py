@@ -146,7 +146,7 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False, keepna=True)
+            self._prices_1y = self._tkr.history(period="380d", div_adjust=False, debug=False, keepna=True)
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -172,12 +172,12 @@ class FastInfo:
 
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
-            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, debug=False)
+            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", div_adjust=False, prepost=True, debug=False)
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
-            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, debug=False)
+            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", div_adjust=False, prepost=False, debug=False)
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -546,7 +546,9 @@ class TickerBase:
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False, repair=False, keepna=False,
+                auto_adjust=None, back_adjust=None,  # deprecated
+                div_adjust=False, 
+                repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
                 debug=True, raise_errors=False) -> pd.DataFrame:
         """
@@ -566,10 +568,8 @@ class TickerBase:
             prepost : bool
                 Include Pre and Post market data in results?
                 Default is False
-            auto_adjust: bool
-                Adjust all OHLC automatically? Default is True
-            back_adjust: bool
-                Back-adjusted data to mimic true historical prices
+            div_adjust: bool
+                Dividend-adjust all OHLC data? Default is False
             repair: bool or "silent"
                 Detect currency unit 100x mixups and attempt repair.
                 If True, fix & print summary. If "silent", just fix.
@@ -593,6 +593,23 @@ class TickerBase:
                 If True, then raise errors as
                 exceptions instead of printing to console.
         """
+
+        # Handle deprecated arguments first
+        if auto_adjust is not None:
+            print("WARNING: 'auto_adjust' is deprecated, switch to 'div_adjust' instead")
+            div_adjust = auto_adjust
+            auto_adjust = None
+        if back_adjust is not None:
+            print("WARNING: 'back_adjust' is deprecated, it was nonsense")
+            back_adjust = None
+
+        if start is not None or end is not None:
+            period = None
+
+        if div_adjust and interval in ["1wk", "1mo", "3mo"]:
+            hist_args = locals()  # function arguments
+            df = self._get_div_adjusted_multiday_prices(hist_args)
+            return df
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
@@ -826,15 +843,11 @@ class TickerBase:
 
         # Auto/back adjust
         try:
-            if auto_adjust:
-                df = utils.auto_adjust(df)
-            elif back_adjust:
-                df = utils.back_adjust(df)
+            if div_adjust:
+                df = utils.adjust_with_Yahoo_adj_close(df)
         except Exception as e:
-            if auto_adjust:
-                err_msg = "auto_adjust failed with %s" % e
-            else:
-                err_msg = "back_adjust failed with %s" % e
+            if div_adjust:
+                err_msg = "div_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
             if debug:
@@ -1034,7 +1047,7 @@ class TickerBase:
             if debug:
                 print(f"- fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}")
             r = "silent" if silent else True
-            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
+            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, div_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
             if df_fine is None or df_fine.empty:
                 if not silent:
                     print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
@@ -1442,6 +1455,71 @@ class TickerBase:
                         print(" {}".format(data))
                         print("-------------")
         return None
+
+    def _get_div_adjusted_multiday_prices(self, hist_args):
+        # Not possible to correctly div-adjust multi-day intervals 
+        # using only 'Adj Close' returned by Yahoo.
+        # Need to fetch 1d -> div adjust -> aggregate into larger interval
+
+        interval = hist_args["interval"]
+        del hist_args["self"]
+
+        ohlcv = ["Open", "High", "Low", "Close", "Volume"]
+
+        df_unadj = None
+        if "period" in hist_args and hist_args["period"] is not None:
+            # Yahoo sets period start differently depending on interval, need to fetch to know.
+            hist_args["div_adjust"] = False  # avoid this code path
+            df_unadj = self.history(**hist_args)
+            hist_args["start"] = df_unadj.index[0].date()
+            del hist_args["period"]
+            hist_args["div_adjust"] = True
+
+        hist_args["interval"] = "1d"
+        df_daily = self.history(**hist_args)
+
+        if interval == "1wk":
+            pd_period = "W"
+        elif interval == "1mo":
+            pd_period = "M"
+        elif interval == "3mo":
+            # Not quarterly. How Yahoo aggregates depends on if period set:
+            # - period set => aggregate backwards => last-3mo-interval-end is last month.
+            # - else => start set => aggregate forwards => first-3mo-interval-start is start month
+            # So like quarterly but offset.
+            if not "period" in hist_args or not hist_args["period"] is None:
+                offset_months = df_daily.index[-1].month - 1
+            else:
+                offset_months = df_daily.index[0].month - 1
+            offset_td = pd.tseries.offsets.DateOffset(months=offset_months)
+            pd_period = "Q"
+            df_daily.index = df_daily.index - offset_td
+
+        df_daily.loc[df_daily["Stock Splits"]==0,"Stock Splits"] = 1
+        df = df_daily.groupby(df_daily.index.tz_localize(None).to_period(pd_period)).agg(
+            Open=("Open", "first"),
+            High=("High", "max"),
+            Low=("Low", "min"),
+            Close=("Close", "last"),
+            Volume=("Volume", "sum"),
+            Dividends=("Dividends", "sum"),
+            StockSplits=("Stock Splits", "prod"))
+        df = df.rename(columns={"StockSplits":"Stock Splits"})
+        df.loc[df["Stock Splits"]==1,"Stock Splits"] = 0
+        df.index = df.index.start_time.tz_localize(df_daily.index.tz)
+
+        if interval == "3mo":
+            # Reverse the offset
+            df.index = df.index + offset_td
+
+        if df_unadj is not None:
+            # Copy over 'Volume', because fetching daily -> aggregating can differ slightly, 
+            # because Yahoo returning slightly different volumes.
+            df = df.drop("Volume", axis=1).join(df_unadj[["Volume"]], validate="1:1")
+            df = df[["Open", "High", "Low", "Close", "Volume", "Dividends", "Stock Splits"]]
+
+        return df
+
 
     def get_recommendations(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy
