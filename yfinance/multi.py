@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+import logging
 import time as _time
 import multitasking as _multitasking
 import pandas as _pd
@@ -28,6 +29,7 @@ import pandas as _pd
 from . import Ticker, utils
 from . import shared
 
+logger = logging.getLogger(__name__)
 
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
@@ -144,12 +146,16 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
     if progress:
         shared._PROGRESS_BAR.completed()
 
-    if shared._ERRORS and show_errors:
-        print('\n%.f Failed download%s:' % (
-            len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
-        # print(shared._ERRORS)
-        print("\n".join(['- %s: %s' %
-                         v for v in list(shared._ERRORS.items())]))
+    if shared._ERRORS:
+        if show_errors:
+            print('\n%.f Failed download%s:' % (
+                len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
+            # print(shared._ERRORS)
+            print("\n".join(['- %s: %s' %
+                             v for v in list(shared._ERRORS.items())]))
+        else:
+            logger.error('%d failed downloads: %s',
+                         len(shared._ERRORS), shared._ERRORS)
 
     if ignore_tz:
         for tkr in shared._DFS.keys():

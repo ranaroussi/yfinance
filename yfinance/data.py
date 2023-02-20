@@ -1,6 +1,7 @@
 import functools
 from functools import lru_cache
 
+import logging
 import hashlib
 from base64 import b64decode
 usePycryptodome = False  # slightly faster
@@ -24,6 +25,8 @@ except ImportError:
     import json as json
 
 cache_maxsize = 64
+
+logger = logging.getLogger(__name__)
 
 
 def lru_cache_freezeargs(func):
@@ -294,7 +297,7 @@ class TickerData:
             msg = "No decryption keys could be extracted from JS file."
             if "requests_cache" in str(type(response)):
                 msg += " Try flushing your 'requests_cache', probably parsing old JS."
-            print("WARNING: " + msg + " Falling back to backup decrypt methods.")
+            logger.warning("%s Falling back to backup decrypt methods.", msg)
         if len(keys) == 0:
             keys = []
             try:
