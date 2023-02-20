@@ -596,11 +596,11 @@ class TickerBase:
 
         # Handle deprecated arguments first
         if auto_adjust is not None:
-            print("WARNING: 'auto_adjust' is deprecated, switch to 'div_adjust' instead")
+            utils.print_once("WARNING: yfinance.Ticker::history(): 'auto_adjust' is deprecated, switch to 'div_adjust' instead")
             div_adjust = auto_adjust
             auto_adjust = None
-        if back_adjust is not None:
-            print("WARNING: 'back_adjust' is deprecated, it was nonsense")
+        elif back_adjust is not None:
+            utils.print_once("WARNING: yfinance.Ticker::history(): 'back_adjust' is deprecated, switch to 'div_adjust' instead")
             back_adjust = None
 
         if start is not None or end is not None:
