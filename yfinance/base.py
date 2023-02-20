@@ -594,6 +594,8 @@ class TickerBase:
                 exceptions instead of printing to console.
         """
 
+        utils.print_once("NOTICE: yfinance.Ticker::history(): Be aware that dividend-adjustment is now default disabled, default used to be enabled")
+
         # Handle deprecated arguments first
         if auto_adjust is not None:
             utils.print_once("WARNING: yfinance.Ticker::history(): 'auto_adjust' is deprecated, switch to 'div_adjust' instead")
