@@ -1,6 +1,7 @@
 import functools
 from functools import lru_cache
 
+import logging
 import hashlib
 from base64 import b64decode
 usePycryptodome = False  # slightly faster
@@ -50,6 +51,8 @@ class KeyQueue:
 
 
 cache_maxsize = 64
+
+logger = logging.getLogger(__name__)
 
 
 def lru_cache_freezeargs(func):
@@ -318,9 +321,8 @@ class TickerData:
 
         data = json.loads(json_str)
 
-
         # Decrypt! Prioritise keys most likely to work.
-		# 1) First try keys that have definitely worked in this execution
+		    # 1) First try keys that have definitely worked in this execution
         stores = None
         for k in self.key_queue:
             try:

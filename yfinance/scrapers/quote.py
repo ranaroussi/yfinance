@@ -1,11 +1,14 @@
 import datetime
+import logging
 import json
+import warnings
 
 import pandas as pd
 
 from yfinance import utils
 from yfinance.data import TickerData
 
+logger = logging.getLogger(__name__)
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -44,16 +47,16 @@ class InfoDictWrapper(MutableMapping):
 
     def __getitem__(self, k):
         if k in info_retired_keys_price:
-            print(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead")
+            warnings.warn(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_exchange:
-            print(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead")
+            warnings.warn(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_marketCap:
-            print(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead")
+            warnings.warn(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_symbol:
-            print(f"Symbol removed from info (key='{k}'). You know this already")
+            warnings.warn(f"Symbol removed from info (key='{k}'). You know this already", DeprecationWarning)
             return None
         return self.info[self._keytransform(k)]
 
@@ -126,7 +129,7 @@ class Quote:
             quote_summary_store = json_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No summary info found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            logger.error('%s: %s', self._data.ticker, err_msg)
             return None
 
         # sustainability
