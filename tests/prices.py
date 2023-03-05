@@ -230,6 +230,81 @@ class TestPriceHistory(unittest.TestCase):
                 print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
                 raise
 
+    def test_min_start_date_if_end_none(self):
+        tkrs = ["BHP.AX", "BHP.L", "BHP"]
+        intervals = ["1m", "2m", "60m", "90m", "1h"]
+
+        end = None
+
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            for interval in intervals:
+                # First test minimum start is valid (not too old/low)
+                try:
+                    df1 = dat.history(period="max", interval=interval, raise_errors=True)
+                except Exception as e:
+                    if "days worth of" in str(e) and "granularity" in str(e):
+                        raise Exception(f"Minimum start is too old ({tkr} @ {interval})")
+                    else:
+                        raise
+                dt0 = df1.index[0]
+
+                # Next test if minimum start is too recent (high)
+                try:
+                    df2 = dat.history(start=dt0-_dt.timedelta(days=1), interval=interval, raise_errors=True)
+                except Exception as e:
+                    if "days worth of" in str(e) and "granularity" in str(e):
+                        # Fail = good!
+                        pass
+                    elif "requested range must be within the last" in str(e):
+                        # Fail = good!
+                        pass
+                    else:
+                        raise
+                else:
+                    if df2.index[0].date() < dt0.date():
+                        # 2nd request fetched more data so minimum could be older
+                        raise Exception(f"Minimum start is too conservative ({tkr} @ {interval})")
+
+    def test_min_start_date_if_end_last_week(self):
+        # tkrs = ["BHP.AX", "BHP.L", "BHP"]
+        # intervals = ["1m", "2m", "60m", "90m", "1h"]
+        tkrs = ["BHP.L"]
+        intervals = ["1m"]
+
+        end = _dt.datetime.now() - _dt.timedelta(days=7)
+
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            for interval in intervals:
+                # First test minimum start is valid (not too old/low)
+                try:
+                    df1 = dat.history(period="max", end=end, interval=interval, raise_errors=True)
+                except Exception as e:
+                    if "days worth of" in str(e) and "granularity" in str(e):
+                        raise Exception(f"Minimum start is too old ({tkr} @ {interval})")
+                    else:
+                        raise
+                dt0 = df1.index[0]
+
+                # Next test if minimum start is too recent (high)
+                try:
+                    df2 = dat.history(start=dt0-_dt.timedelta(days=1), end=end, interval=interval, raise_errors=True)
+                except Exception as e:
+                    if "days worth of" in str(e) and "granularity" in str(e):
+                        # Fail = good!
+                        pass
+                    elif "requested range must be within the last" in str(e):
+                        # Fail = good!
+                        pass
+                    else:
+                        raise
+                else:
+                    if df2.index[0].date() < dt0.date():
+                        # 2nd request fetched more data so minimum could be older
+                        raise Exception(f"Minimum start is too conservative ({tkr} @ {interval})")
+
+
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
         try:
