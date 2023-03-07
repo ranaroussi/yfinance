@@ -448,30 +448,30 @@ def set_df_tz(df, interval, tz):
     return df
 
 
-def fix_Yahoo_returning_prepost_unrequested(quotes, interval, metadata):
+def fix_Yahoo_returning_prepost_unrequested(quotes, params, metadata):
     # Sometimes Yahoo returns post-market data despite not requesting it.
     # Normally happens on half-day early closes.
     #
     # And sometimes returns pre-market data despite not requesting it.
     # E.g. some London tickers.
+    if params["includePrePost"] or params["interval"][-1] not in ('m', 'h') or "tradingPeriods" not in metadata:
+        return quotes
+
+    # Prepare to merge "quotes" with "regular trading hours" on date
     tps_df = metadata["tradingPeriods"]
     tps_df["_date"] = tps_df.index.date
     quotes["_date"] = quotes.index.date
     idx = quotes.index.copy()
+
+    # Merge
     quotes = quotes.merge(tps_df, how="left", validate="many_to_one")
     quotes.index = idx
-    # "end" = end of regular trading hours (including any auction)
-    f_drop = quotes.index >= quotes["end"]
-    f_drop = f_drop | (quotes.index < quotes["start"])
-    if f_drop.any():
-        # When printing report, ignore rows that were already NaNs:
-        f_na = quotes[["Open","Close"]].isna().all(axis=1)
-        n_nna = quotes.shape[0] - _np.sum(f_na)
-        n_drop_nna = _np.sum(f_drop & ~f_na)
-        quotes_dropped = quotes[f_drop]
-        # if debug and n_drop_nna > 0:
-        #     print(f"Dropping {n_drop_nna}/{n_nna} intervals for falling outside regular trading hours")
-        quotes = quotes[~f_drop]
+
+    # Drop quotes outside of the requested period
+    # "start" and "end" of regular trading hours (including any auction)
+    quotes = quotes[(quotes["start"] <= quotes.index) & (quotes.index < quotes["end"])]
+
+    # Restore
     metadata["tradingPeriods"] = tps_df.drop(["_date"], axis=1)
     quotes = quotes.drop(["_date", "start", "end"], axis=1)
     return quotes

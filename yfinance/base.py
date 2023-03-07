@@ -721,7 +721,7 @@ class TickerBase:
                     print('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
-        # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
+        # Fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             quotes2 = quotes.resample('30T')
             quotes = _pd.DataFrame(index=quotes2.last().index, data={
@@ -750,9 +750,7 @@ class TickerBase:
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
-        intraday = params["interval"][-1] in ("m", 'h')
-        if not prepost and intraday and "tradingPeriods" in self._history_metadata:
-            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], self._history_metadata)
+        quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params, self._history_metadata)
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
