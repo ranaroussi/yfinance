@@ -449,11 +449,12 @@ def set_df_tz(df, interval, tz):
 
 
 def fix_Yahoo_returning_prepost_unrequested(quotes, params, metadata):
-    # Sometimes Yahoo returns post-market data despite not requesting it.
-    # Normally happens on half-day early closes.
-    #
-    # And sometimes returns pre-market data despite not requesting it.
-    # E.g. some London tickers.
+    """Sometimes Yahoo returns post-market data despite not requesting it.
+    Normally happens on half-day early closes.
+    And sometimes returns pre-market data despite not requesting it, e.g. some London tickers.
+    """
+
+    # Don't need to fix for these conditions
     if params["includePrePost"] or params["interval"][-1] not in ('m', 'h') or "tradingPeriods" not in metadata:
         return quotes
 

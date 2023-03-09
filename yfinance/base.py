@@ -721,6 +721,17 @@ class TickerBase:
                     print('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
+        # Select useful info from metadata
+        quote_type = self._history_metadata["instrumentType"]
+        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
+        tz_exchange = self._history_metadata["exchangeTimezoneName"]
+
+        # Note: ordering is important. If you change order, run the tests!
+        quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
+        quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
+        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
+        quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params, self._history_metadata)
+
         # Fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             quotes2 = quotes.resample('30T')
@@ -740,17 +751,6 @@ class TickerBase:
                 quotes['Stock Splits'] = quotes2['Dividends'].max()
             except Exception:
                 pass
-
-        # Select useful info from metadata
-        quote_type = self._history_metadata["instrumentType"]
-        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
-        tz_exchange = self._history_metadata["exchangeTimezoneName"]
-
-        # Note: ordering is important. If you change order, run the tests!
-        quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
-        quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
-        quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
-        quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params, self._history_metadata)
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
