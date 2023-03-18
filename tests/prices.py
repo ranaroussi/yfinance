@@ -381,6 +381,16 @@ class TestPriceHistory(unittest.TestCase):
         df = dat.history(start=start, interval="1wk")
         self.assertTrue((df.index.weekday == 0).all())
 
+    def test_aggregate_capital_gains(self):
+        # Setup
+        tkr = "FXAIX"
+        dat = yf.Ticker(tkr, session=self.session)
+        start = "2017-12-31"
+        end = "2019-12-31"
+        interval = "3mo"
+
+        df = dat.history(start=start, end=end, interval=interval)
+
 class TestPriceRepair(unittest.TestCase):
     session = None
 
