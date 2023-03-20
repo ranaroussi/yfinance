@@ -741,9 +741,11 @@ def format_history_metadata(md):
             post_df = post_df.rename(columns={"start":"post_start", "end":"post_end"}).drop(["timezone", "gmtoffset"], axis=1)
             regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
 
+            cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
             df = regular_df.join(pre_df).join(post_df)
-            for c in ["start", "end", "pre_start", "pre_end", "post_start", "post_end"]:
+            for c in cols:
                 df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
+            df = df[cols]
         else:
             raise Exception()
 
