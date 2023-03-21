@@ -511,16 +511,24 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                 # Last two rows are within same interval
                 idx1 = quotes.index[n - 1]
                 idx2 = quotes.index[n - 2]
+                if idx1 == idx2:
+                    # Yahoo returning last interval duplicated, which means
+                    # Yahoo is not returning live data (phew!)
+                    return quotes
                 if _np.isnan(quotes.loc[idx2, "Open"]):
                     quotes.loc[idx2, "Open"] = quotes["Open"][n - 1]
-                # Note: nanmax() & nanmin() ignores NaNs
-                quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
-                quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                # Note: nanmax() & nanmin() ignores NaNs, but still need to check not all are NaN to avoid warnings
+                if not _np.isnan(quotes["High"][n - 1]):
+                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
+                    if "Adj High" in quotes.columns:
+                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
+
+                if not _np.isnan(quotes["Low"][n - 1]):
+                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                    if "Adj Low" in quotes.columns:
+                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
+
                 quotes.loc[idx2, "Close"] = quotes["Close"][n - 1]
-                if "Adj High" in quotes.columns:
-                    quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
-                if "Adj Low" in quotes.columns:
-                    quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
                 if "Adj Close" in quotes.columns:
                     quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
                 quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
@@ -727,15 +735,17 @@ def format_history_metadata(md):
             # Includes pre- and post-market
             pre_df = _pd.DataFrame.from_records(_np.hstack(tps["pre"]))
             post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
-            regular_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
+            regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
 
             pre_df = pre_df.rename(columns={"start":"pre_start", "end":"pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
             post_df = post_df.rename(columns={"start":"post_start", "end":"post_end"}).drop(["timezone", "gmtoffset"], axis=1)
             regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
 
+            cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
             df = regular_df.join(pre_df).join(post_df)
-            for c in ["start", "end", "pre_start", "pre_end", "post_start", "post_end"]:
+            for c in cols:
                 df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
+            df = df[cols]
         else:
             raise Exception()
 
