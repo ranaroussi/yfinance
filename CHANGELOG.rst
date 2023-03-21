@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.2.13
+------
+Price bug fixes:
+- fetch big-interval with Capital Gains #1455
+- merging dividends & splits with prices #1452
+
 0.2.12
 ------
 Disable annoying 'backup decrypt' msg
