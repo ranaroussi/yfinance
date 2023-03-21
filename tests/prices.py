@@ -230,6 +230,11 @@ class TestPriceHistory(unittest.TestCase):
                 print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
                 raise
 
+    def test_monthlyWithEvents2(self):
+        # Simply check no exception from internal merge
+        tkr = "ABBV"
+        yf.Ticker("ABBV").history(period="max", interval="1mo")
+
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
         try:
