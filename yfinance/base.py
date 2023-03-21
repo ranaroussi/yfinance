@@ -831,6 +831,8 @@ class TickerBase:
             else:
                 df["Capital Gains"] = 0.0
 
+        df = df[~df.index.duplicated(keep='first')]  # must do before repair
+
         if repair==True or repair=="silent":
             # Do this before auto/back adjust
             df = self._fix_zeroes(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
@@ -867,9 +869,9 @@ class TickerBase:
         else:
             df.index.name = "Date"
 
-        # duplicates and missing rows cleanup
-        df = df[~df.index.duplicated(keep='first')]
         self._history = df.copy()
+        
+        # missing rows cleanup
         if not actions:
             df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
         if not keepna:
@@ -1041,7 +1043,7 @@ class TickerBase:
                     logger.warning(f"Cannot reconstruct {interval} block starting {start_d}, too old, Yahoo is rejecting request for finer-grain data")
                 continue
             # Discard the buffer
-            df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)]
+            df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)].copy()
             if df_fine.empty:
                 if not silent:
                     print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
