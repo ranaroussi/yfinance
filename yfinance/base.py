@@ -768,7 +768,7 @@ class TickerBase:
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
         if start is not None:
-            startDt = quotes.index[0]
+            startDt = quotes.index[0].floor('D')
             if dividends is not None:
                 dividends = dividends.loc[startDt:]
             if capital_gains is not None:
