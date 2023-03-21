@@ -561,11 +561,13 @@ class TickerBase:
                 Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
                 Intraday data cannot extend last 60 days
             start: str
-                Download start date string (YYYY-MM-DD) or _datetime.
+                Download start date string (YYYY-MM-DD) or _datetime, inclusive.
                 Default is 1900-01-01
+                E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
             end: str
-                Download end date string (YYYY-MM-DD) or _datetime.
+                Download end date string (YYYY-MM-DD) or _datetime, exclusive.
                 Default is now
+                E.g. for end="2023-01-01", the last data point will be on "2022-12-31"
             prepost : bool
                 Include Pre and Post market data in results?
                 Default is False
@@ -773,30 +775,28 @@ class TickerBase:
         if not expect_capital_gains:
             capital_gains = None
 
-        if start is not None:
-            # Note: use pandas Timestamp as datetime.utcfromtimestamp has bugs on windows
-            # https://github.com/python/cpython/issues/81708
-            startDt = _pd.Timestamp(start, unit='s')
-            if dividends is not None:
-                dividends = dividends[dividends.index>=startDt]
-            if capital_gains is not None:
-                capital_gains = capital_gains[capital_gains.index>=startDt]
-            if splits is not None:
-                splits = splits[splits.index >= startDt]
-        if end is not None:
-            endDt = _pd.Timestamp(end, unit='s')
-            if dividends is not None:
-                dividends = dividends[dividends.index<endDt]
-            if capital_gains is not None:
-                capital_gains = capital_gains[capital_gains.index<endDt]
-            if splits is not None:
-                splits = splits[splits.index < endDt]
         if splits is not None:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
+        if start is not None:
+            startDt = quotes.index[0].floor('D')
+            if dividends is not None:
+                dividends = dividends.loc[startDt:]
+            if capital_gains is not None:
+                capital_gains = capital_gains.loc[startDt:]
+            if splits is not None:
+                splits = splits.loc[startDt:]
+        if end is not None:
+            endDt = _pd.Timestamp(end, unit='s').tz_localize(tz)
+            if dividends is not None:
+                dividends = dividends[dividends.index < endDt]
+            if capital_gains is not None:
+                capital_gains = capital_gains[capital_gains.index < endDt]
+            if splits is not None:
+                splits = splits[splits.index < endDt]
 
         # Prepare for combine
         intraday = params["interval"][-1] in ("m", 'h')

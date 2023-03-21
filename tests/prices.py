@@ -230,6 +230,11 @@ class TestPriceHistory(unittest.TestCase):
                 print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
                 raise
 
+    def test_monthlyWithEvents2(self):
+        # Simply check no exception from internal merge
+        tkr = "ABBV"
+        yf.Ticker("ABBV").history(period="max", interval="1mo")
+
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
         try:
@@ -380,6 +385,16 @@ class TestPriceHistory(unittest.TestCase):
         dat = yf.Ticker(tkr)
         df = dat.history(start=start, interval="1wk")
         self.assertTrue((df.index.weekday == 0).all())
+
+    def test_aggregate_capital_gains(self):
+        # Setup
+        tkr = "FXAIX"
+        dat = yf.Ticker(tkr, session=self.session)
+        start = "2017-12-31"
+        end = "2019-12-31"
+        interval = "3mo"
+
+        df = dat.history(start=start, end=end, interval=interval)
 
 class TestPriceRepair(unittest.TestCase):
     session = None
