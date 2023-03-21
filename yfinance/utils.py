@@ -560,7 +560,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
         df["_NewIndex"] = new_index
         # Duplicates present within periods but can aggregate
-        if data_col_name == "Dividends":
+        if data_col_name in ["Dividends", "Capital Gains"]:
             # Add
             df = df.groupby("_NewIndex").sum()
             df.index.name = None

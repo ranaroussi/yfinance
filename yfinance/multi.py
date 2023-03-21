@@ -46,11 +46,13 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
             Intraday data cannot extend last 60 days
         start: str
-            Download start date string (YYYY-MM-DD) or _datetime.
+            Download start date string (YYYY-MM-DD) or _datetime, inclusive.
             Default is 1900-01-01
+            E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
         end: str
-            Download end date string (YYYY-MM-DD) or _datetime.
+            Download end date string (YYYY-MM-DD) or _datetime, exclusive.
             Default is now
+            E.g. for end="2023-01-01", the last data point will be on "2022-12-31"
         group_by : str
             Group by 'ticker' or 'column' (default)
         prepost : bool
