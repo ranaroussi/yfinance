@@ -644,7 +644,8 @@ class TickerBase:
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-
+        user_agent_headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
         data = None
 
         try:
@@ -659,7 +660,10 @@ class TickerBase:
             data = get_fn(
                 url=url,
                 params=params,
-                timeout=timeout
+                timeout=timeout,
+                proxy=proxy,
+                user_agent_headers=user_agent_headers
+                
             )
             if "Will be right back" in data.text or data is None:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
