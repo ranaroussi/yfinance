@@ -22,6 +22,7 @@ info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_
 
 PRUNE_INFO = True
 # PRUNE_INFO = False
+_BASIC_URL_ = "https://query1.finance.yahoo.com/v7/finance/quote"
 
 
 from collections.abc import MutableMapping
@@ -90,13 +91,16 @@ class Quote:
         self._calendar = None
 
         self._already_scraped = False
-        self._already_scraped_complementary = False
+        self._already_fetched = False
+        self._already_fetched_complementary = False
 
     @property
     def info(self) -> dict:
         if self._info is None:
-            self._scrape(self.proxy)
-            self._scrape_complementary(self.proxy)
+            # self._scrape(self.proxy)  # decrypt broken
+            self._fetch(self.proxy)
+
+            self._fetch_complementary(self.proxy)
 
         return self._info
 
@@ -239,12 +243,34 @@ class Quote:
         except Exception:
             pass
 
-    def _scrape_complementary(self, proxy):
-        if self._already_scraped_complementary:
+    def _fetch(self, proxy):
+        if self._already_fetched:
             return
-        self._already_scraped_complementary = True
+        self._already_fetched = True
 
-        self._scrape(proxy)
+        result = self._data.get_raw_json(
+            _BASIC_URL_, params={"formatted": "true", "lang": "en-US", "symbols": self._data.ticker}, proxy=proxy
+        )
+        query1_info = next(
+            (info for info in result.get("quoteResponse", {}).get("result", []) if info["symbol"] == self._data.ticker),
+            None,
+        )
+        for k, v in query1_info.items():
+            if isinstance(v, dict) and "raw" in v and "fmt" in v:
+                query1_info[k] = v["fmt"] if k in {"regularMarketTime", "postMarketTime"} else v["raw"]
+            elif isinstance(v, str):
+                query1_info[k] = v.replace("\xa0", " ")
+            elif isinstance(v, (int, bool)):
+                query1_info[k] = v
+        self._info = query1_info
+
+    def _fetch_complementary(self, proxy):
+        if self._already_fetched_complementary:
+            return
+        self._already_fetched_complementary = True
+
+        # self._scrape(proxy)  # decrypt broken
+        self._fetch(proxy)
         if self._info is None:
             return
 

@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.14
+------
+Fix Ticker.info dict by fetching from API #1461
+
 0.2.13
 ------
 Price bug fixes:
