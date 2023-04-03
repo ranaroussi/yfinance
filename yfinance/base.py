@@ -930,7 +930,7 @@ class TickerBase:
             m -= _datetime.timedelta(days=1)  # allow space for 1-day padding
             min_dt = _pd.Timestamp.utcnow() - m
             min_dt = min_dt.tz_convert(df.index.tz).ceil("D")
-        logger.debug((f"min_dt={min_dt} interval={interval} sub_interval={sub_interval}"))
+        logger.debug(f"min_dt={min_dt} interval={interval} sub_interval={sub_interval}")
         if min_dt is not None:
             f_recent = df.index >= min_dt
             f_repair_rows = f_repair_rows & f_recent
@@ -946,6 +946,7 @@ class TickerBase:
             return df
 
         df_v2 = df.copy()
+        df_v2["Repaired?"] = False
         f_good = ~(df[price_cols].isna().any(axis=1))
         f_good = f_good & (df[price_cols].to_numpy()!=tag).all(axis=1)
         df_good = df[f_good]
@@ -968,7 +969,7 @@ class TickerBase:
             grp_max_size = _datetime.timedelta(days=5)  # allow 2 days for buffer below
         else:
             grp_max_size = _datetime.timedelta(days=30)
-        logger.debug("grp_max_size =", grp_max_size)
+        logger.debug(f"grp_max_size = {grp_max_size}")
         for i in range(1, len(dts_to_repair)):
             ind = indices_to_repair[i]
             dt = dts_to_repair[i]
@@ -1035,6 +1036,8 @@ class TickerBase:
             if intraday:
                 fetch_start = fetch_start.date()
                 fetch_end = fetch_end.date()+td_1d
+            if min_dt is not None:
+                fetch_start = max(min_dt.date(), fetch_start)
             logger.debug(f"Fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}")
             r = "silent" if silent else True
             df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
@@ -1088,14 +1091,14 @@ class TickerBase:
             common_index = _np.intersect1d(df_block.index, df_new.index)
             if len(common_index) == 0:
                 # Can't calibrate so don't attempt repair
-                logger.warning("Can't calibrate {interval} block starting {start_d} so aborting repair")
+                logger.warning(f"Can't calibrate {interval} block starting {start_d} so aborting repair")
                 continue
             df_new_calib = df_new[df_new.index.isin(common_index)][price_cols].to_numpy()
             df_block_calib = df_block[df_block.index.isin(common_index)][price_cols].to_numpy()
             calib_filter = (df_block_calib != tag)
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
-                logger.warning("Can't calibrate {interval} block starting {start_d} so aborting repair")
+                logger.warning(f"Can't calibrate {interval} block starting {start_d} so aborting repair")
                 continue
             # Avoid divide-by-zero warnings:
             for j in range(len(price_cols)):
@@ -1171,6 +1174,7 @@ class TickerBase:
                     df_v2.loc[idx, "Adj Close"] = df_new_row["Adj Close"]
                 if "Volume" in bad_fields:
                     df_v2.loc[idx, "Volume"] = df_new_row["Volume"]
+                df_v2.loc[idx, "Repaired?"] = True
                 n_fixed += 1
 
         logger.debug("df_v2:")
@@ -1290,6 +1294,7 @@ class TickerBase:
                 c = data_cols[j]
                 df2.loc[fj, c] = df.loc[fj, c]
         if df2_zeroes is not None:
+            df2_zeroes["Repaired?"] = False
             df2 = _pd.concat([df2, df2_zeroes]).sort_index()
             df2.index = _pd.to_datetime()
 
@@ -1371,6 +1376,7 @@ class TickerBase:
             logger.info('%s', msg)
 
         if df2_reserve is not None:
+            df2_reserve["Repaired?"] = False
             df3 = _pd.concat([df3, df2_reserve]).sort_index()
 
         # Restore original values where repair failed (i.e. remove tag values)

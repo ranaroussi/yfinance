@@ -479,6 +479,9 @@ class TestPriceRepair(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
     def test_repair_100x_weekly_preSplit(self):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
@@ -536,6 +539,9 @@ class TestPriceRepair(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
     def test_repair_100x_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -578,6 +584,9 @@ class TestPriceRepair(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -604,6 +613,9 @@ class TestPriceRepair(unittest.TestCase):
         correct_df.loc["2022-11-01", "High"] = 102.080002
         for c in ["Open", "Low", "High", "Close"]:
             self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-8).all())
+
+        self.assertTrue("Repaired?" in repaired_df.columns)
+        self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
@@ -635,6 +647,9 @@ class TestPriceRepair(unittest.TestCase):
                 print("- diff:")
                 print(repaired_df[c] - correct_df[c])
                 raise
+
+        self.assertTrue("Repaired?" in repaired_df.columns)
+        self.assertFalse(repaired_df["Repaired?"].isna().any())
 
 if __name__ == '__main__':
     unittest.main()
