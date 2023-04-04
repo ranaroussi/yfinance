@@ -19,7 +19,7 @@ info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_
 
 PRUNE_INFO = True
 # PRUNE_INFO = False
-_BASIC_URL_ = "https://query1.finance.yahoo.com/v7/finance/quote"
+_BASIC_URL_ = "https://query2.finance.yahoo.com/v10/finance/quoteSummary"
 
 
 from collections.abc import MutableMapping
@@ -244,21 +244,43 @@ class Quote:
         if self._already_fetched:
             return
         self._already_fetched = True
-
+        modules = ['summaryProfile', 'financialData', 'quoteType',
+                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         result = self._data.get_raw_json(
-            _BASIC_URL_, params={"formatted": "true", "lang": "en-US", "symbols": self._data.ticker}, proxy=proxy
+            _BASIC_URL_ + f"/{self._data.ticker}", params={"modules": ",".join(modules), "ssl": "true"}, proxy=proxy
         )
+        result["quoteSummary"]["result"][0]["symbol"] = self._data.ticker
         query1_info = next(
-            (info for info in result.get("quoteResponse", {}).get("result", []) if info["symbol"] == self._data.ticker),
+            (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._data.ticker),
             None,
         )
-        for k, v in query1_info.items():
+        # Most keys that appear in multiple dicts have same value. Except 'maxAge' because
+        # Yahoo not consistent with days vs seconds. Fix it here:
+        for k in query1_info:
+            if "maxAge" in query1_info[k] and query1_info[k]["maxAge"] == 1:
+                query1_info[k]["maxAge"] = 86400
+        query1_info = {
+            k1: v1 
+            for k, v in query1_info.items() 
+            if isinstance(v, dict) 
+            for k1, v1 in v.items() 
+            if v1
+        }
+        # recursively format but only because of 'companyOfficers'
+        def _format(k, v):
             if isinstance(v, dict) and "raw" in v and "fmt" in v:
-                query1_info[k] = v["fmt"] if k in {"regularMarketTime", "postMarketTime"} else v["raw"]
+                v2 = v["fmt"] if k in {"regularMarketTime", "postMarketTime"} else v["raw"]
+            elif isinstance(v, list):
+                v2 = [_format(None, x) for x in v]
+            elif isinstance(v, dict):
+                v2 = {k:_format(k, x) for k, x in v.items()}
             elif isinstance(v, str):
-                query1_info[k] = v.replace("\xa0", " ")
-            elif isinstance(v, (int, bool)):
-                query1_info[k] = v
+                v2 = v.replace("\xa0", " ")
+            else:
+                v2 = v
+            return v2
+        for k, v in query1_info.items():
+            query1_info[k] = _format(k, v)
         self._info = query1_info
 
     def _fetch_complementary(self, proxy):
