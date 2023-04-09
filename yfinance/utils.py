@@ -35,6 +35,7 @@ import os as _os
 import appdirs as _ad
 import sqlite3 as _sqlite3
 import atexit as _atexit
+from functools import lru_cache
 
 from threading import Lock
 
@@ -59,6 +60,13 @@ def attributes(obj):
     return {
       name: getattr(obj, name) for name in dir(obj) 
         if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
+
+
+@lru_cache(maxsize=20)
+def print_once(msg):
+    # 'warnings' module suppression of repeat messages does not work. 
+    # This function replicates correct behaviour
+    print(msg)
 
 
 def is_isin(string):
