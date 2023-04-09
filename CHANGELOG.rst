@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.16
+------
+Fix 'fast_info deprecated' msg appearing at Ticker() init
+
 0.2.15
 ------
 Restore missing Ticker.info keys #1480
