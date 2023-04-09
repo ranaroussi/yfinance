@@ -78,7 +78,7 @@ class TickerBase:
         self._quote = Quote(self._data)
         self._fundamentals = Fundamentals(self._data)
 
-        self._fast_info = FastInfo(self)
+        self._fast_info = None
 
     def stats(self, proxy=None):
         ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
@@ -1022,6 +1022,8 @@ class TickerBase:
 
     @property
     def fast_info(self):
+        if self._fast_info is None:
+            self._fast_info = FastInfo(self)
         return self._fast_info
 
     @property
