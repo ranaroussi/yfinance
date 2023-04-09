@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.15
+------
+Restore missing Ticker.info keys #1480
+
 0.2.14
 ------
 Fix Ticker.info dict by fetching from API #1461
