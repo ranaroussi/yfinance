@@ -45,7 +45,7 @@ Yahoo! finance API is intended for personal use only.**
 ## News [2023-01-27]
 Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-market data. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
 
-Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary). `info` will continue to exist for as long as there are elements without a fast alternative.
+Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. ~Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary). `info` will continue to exist for as long as there are elements without a fast alternative.~ `info` now fixed and much faster than before.
 
 ## Quick Start
 
@@ -58,10 +58,8 @@ import yfinance as yf
 
 msft = yf.Ticker("MSFT")
 
-# get all stock info (slow)
+# get all stock info
 msft.info
-# fast access to subset of stock info (opportunistic)
-msft.fast_info
 
 # get historical market data
 hist = msft.history(period="1mo")
