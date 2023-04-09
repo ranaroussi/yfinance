@@ -45,7 +45,7 @@ Yahoo! finance API is intended for personal use only.**
 ## News [2023-01-27]
 Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-market data. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
 
-Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary). `info` will continue to exist for as long as there are elements without a fast alternative.
+Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. ~Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary). `info` will continue to exist for as long as there are elements without a fast alternative.~ `info` now fixed and much faster than before.
 
 ## Quick Start
 
@@ -58,10 +58,8 @@ import yfinance as yf
 
 msft = yf.Ticker("MSFT")
 
-# get all stock info (slow)
+# get all stock info
 msft.info
-# fast access to subset of stock info (opportunistic)
-msft.fast_info
 
 # get historical market data
 hist = msft.history(period="1mo")
@@ -154,6 +152,8 @@ msft.option_chain(..., proxy="PROXY_SERVER")
 ...
 ```
 
+### Multiple tickers
+
 To initialize multiple `Ticker` objects, use
 
 ```python
@@ -167,7 +167,7 @@ tickers.tickers['AAPL'].history(period="1mo")
 tickers.tickers['GOOG'].actions
 ```
 
-### Fetching data for multiple tickers
+To download price history into one table:
 
 ```python
 import yfinance as yf
@@ -180,8 +180,8 @@ data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
 yf.download(tickers = "SPY AAPL",  # list of tickers
             period = "1y",         # time period
             interval = "1d",       # trading interval
-            ignore_tz = True,      # ignore timezone when aligning data from different exchanges?
-            prepost = False)       # download pre/post market hours data?
+            prepost = False,       # download pre/post market hours data?
+            repair = True)         # repair obvious price errors e.g. 100x?
 ```
 
 Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail.
@@ -232,21 +232,7 @@ yfinance?](https://stackoverflow.com/questions/63107801)
         -   How to download single or multiple tickers into a single
             dataframe with single level column names and a ticker column
 
-### Timezone cache store
-
-When fetching price data, all dates are localized to stock exchange timezone. 
-But timezone retrieval is relatively slow, so yfinance attemps to cache them 
-in your users cache folder. 
-You can direct cache to use a different location with `set_tz_cache_location()`:
-```python
-import yfinance as yf
-yf.set_tz_cache_location("custom/cache/location")
-...
-```
-
----
-
-## `pandas_datareader` override
+### `pandas_datareader` override
 
 If your code uses `pandas_datareader` and you want to download data
 faster, you can "hijack" `pandas_datareader.data.get_data_yahoo()`
@@ -261,6 +247,18 @@ yf.pdr_override() # <== that's all it takes :-)
 
 # download dataframe
 data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
+```
+
+### Timezone cache store
+
+When fetching price data, all dates are localized to stock exchange timezone. 
+But timezone retrieval is relatively slow, so yfinance attemps to cache them 
+in your users cache folder. 
+You can direct cache to use a different location with `set_tz_cache_location()`:
+```python
+import yfinance as yf
+yf.set_tz_cache_location("custom/cache/location")
+...
 ```
 
 ---
@@ -290,10 +288,14 @@ To install `yfinance` using `conda`, see
 -   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
 -   [cryptography](https://pypi.org/project/cryptography) \>= 3.3.2
 
-### Optional (if you want to use `pandas_datareader`)
+#### Optional (if you want to use `pandas_datareader`)
 
 -   [pandas\_datareader](https://github.com/pydata/pandas-datareader)
     \>= 0.4.0
+
+## Developers: want to contribute?
+
+`yfinance` relies on community to investigate bugs and contribute code. Developer guide: https://github.com/ranaroussi/yfinance/discussions/1084
 
 ---
 
