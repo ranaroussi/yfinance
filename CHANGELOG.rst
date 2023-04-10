@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.17
+------
+Fix prices error with Pandas 2.0 #1488
+
 0.2.16
 ------
 Fix 'fast_info deprecated' msg appearing at Ticker() init
