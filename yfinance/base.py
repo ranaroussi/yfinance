@@ -196,7 +196,7 @@ class TickerBase:
             get_fn = self._data.get
             if end is not None:
                 end_dt = _pd.Timestamp(end, unit='s').tz_localize("UTC")
-                dt_now = end_dt.tzinfo.localize(_datetime.datetime.utcnow())
+                dt_now = _pd.Timestamp.utcnow()
                 data_delay = _datetime.timedelta(minutes=30)
                 if end_dt+data_delay <= dt_now:
                     # Date range in past so safe to fetch through cache:
