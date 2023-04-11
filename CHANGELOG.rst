@@ -1,6 +1,28 @@
 Change Log
 ===========
 
+0.2.16
+------
+Fix 'fast_info deprecated' msg appearing at Ticker() init
+
+0.2.15
+------
+Restore missing Ticker.info keys #1480
+
+0.2.14
+------
+Fix Ticker.info dict by fetching from API #1461
+
+0.2.13
+------
+Price bug fixes:
+- fetch big-interval with Capital Gains #1455
+- merging dividends & splits with prices #1452
+
+0.2.12
+------
+Disable annoying 'backup decrypt' msg
+
 0.2.11
 ------
 Fix history_metadata accesses for unusual symbols #1411

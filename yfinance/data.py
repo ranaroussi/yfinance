@@ -16,6 +16,8 @@ else:
 import requests as requests
 import re
 from bs4 import BeautifulSoup
+import random
+import time
 
 from frozendict import frozendict
 
@@ -204,6 +206,11 @@ class TickerData:
                 proxy = proxy["https"]
             proxy = {"https": proxy}
         return proxy
+
+    def get_raw_json(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
 
     def _get_decryption_keys_from_yahoo_js(self, soup):
         result = None
