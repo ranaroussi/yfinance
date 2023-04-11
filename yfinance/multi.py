@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import logging
+import traceback
 import time as _time
 import multitasking as _multitasking
 import pandas as _pd
@@ -117,6 +118,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
     shared._DFS = {}
     shared._ERRORS = {}
 
+    # temporarily disable error reporting while downloading
+    yf_logger = logging.getLogger('yfinance')
+    yf_lvl = yf_logger.level
+    yf_logger.setLevel(logging.CRITICAL)
+
     # download using threads
     if threads:
         if threads is True:
@@ -147,6 +153,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
 
     if progress:
         shared._PROGRESS_BAR.completed()
+
+    # restore error reporting
+    yf_logger.setLevel(yf_lvl)
 
     if shared._ERRORS:
         if show_errors:
@@ -222,7 +231,7 @@ def _download_one_threaded(ticker, start=None, end=None,
     except Exception as e:
         # glob try/except needed as current thead implementation breaks if exception is raised.
         shared._DFS[ticker] = utils.empty_df()
-        shared._ERRORS[ticker] = repr(e)
+        shared._ERRORS[ticker] = traceback.format_exc()
     else:
         shared._DFS[ticker.upper()] = data
     if progress:
@@ -240,5 +249,5 @@ def _download_one(ticker, start=None, end=None,
         actions=actions, auto_adjust=auto_adjust,
         back_adjust=back_adjust, repair=repair, proxy=proxy,
         rounding=rounding, keepna=keepna, timeout=timeout,
-        debug=False, raise_errors=False  # debug and raise_errors false to not log and raise errors in threads
+        raise_errors=False  # stop individual threads raising errors
     )

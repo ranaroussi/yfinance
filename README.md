@@ -186,6 +186,17 @@ yf.download(tickers = "SPY AAPL",  # list of tickers
 
 Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail.
 
+### Logging
+
+`yfinance` now uses the `logging` module. To control the detail of printed messages you simply change the level:
+```
+import logging
+logger = logging.getLogger('yfinance')
+logger.setLevel(logging.ERROR)  # default: only print errors
+logger.setLevel(logging.CRITICAL)  # disable printing
+logger.setLevel(logging.DEBUG)  # verbose: print errors & debug info
+```
+
 ### Smarter scraping
 
 To use a custom `requests` session (for example to cache calls to the
