@@ -2,6 +2,7 @@ import datetime
 import json
 
 import pandas as pd
+import numpy as _np
 
 from yfinance import utils
 from yfinance.data import TickerData
@@ -78,7 +79,7 @@ class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
     def __init__(self, tickerBaseObject):
-        utils.print_once("Note: 'info' dict is now fixed & improved, 'fast_info' no longer faster")
+        utils.print_once("yfinance: Note: 'Ticker.info' dict is now fixed & improved, 'fast_info' is no longer faster")
 
         self._tkr = tickerBaseObject
 
