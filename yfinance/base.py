@@ -21,7 +21,6 @@
 
 from __future__ import print_function
 
-import logging
 import warnings
 import time as _time
 import datetime as _datetime
@@ -49,7 +48,7 @@ _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
-logger = logging.getLogger(__name__)
+logger = utils.get_yf_logger()
 
 class TickerBase:
     def __init__(self, ticker, session=None):
@@ -145,10 +144,10 @@ class TickerBase:
         if debug is not None:
             if debug:
                 utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead: logging.getLogger('yfinance').setLevel(logging.ERROR)")
-                logging.getLogger('yfinance').setLevel(logging.ERROR)
+                logger.setLevel(logging.ERROR)
             else:
                 utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
-                logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+                logger.setLevel(logging.CRITICAL)
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted

@@ -8,7 +8,7 @@ import pandas as pd
 from yfinance import utils
 from yfinance.data import TickerData
 
-logger = logging.getLogger(__name__)
+logger = utils.get_yf_logger()
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
