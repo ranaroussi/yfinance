@@ -36,6 +36,7 @@ import appdirs as _ad
 import sqlite3 as _sqlite3
 import atexit as _atexit
 from functools import lru_cache
+import logging
 
 from threading import Lock
 
@@ -67,6 +68,17 @@ def print_once(msg):
     # 'warnings' module suppression of repeat messages does not work. 
     # This function replicates correct behaviour
     print(msg)
+
+
+yf_logger = None
+def get_yf_logger():
+    global yf_logger
+    if yf_logger is None:
+        yf_logger = logging.getLogger("yfinance")
+        if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
+            # Only add basic stream handler is user not already added one
+            yf_logger.addHandler(logging.StreamHandler())
+    return yf_logger
 
 
 def is_isin(string):
