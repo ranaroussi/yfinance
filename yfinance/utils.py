@@ -920,6 +920,8 @@ class _TzCache:
             df = _pd.read_csv(old_cache_file_path, index_col="Ticker")
         except _pd.errors.EmptyDataError:
             _os.remove(old_cache_file_path)
+        except TypeError:
+            _os.remove(old_cache_file_path)
         else:
             self.tz_db.bulk_set(df.to_dict()['Tz'])
             _os.remove(old_cache_file_path)
