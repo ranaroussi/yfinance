@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.18
+------
+Fix 'fast_info' error '_np not found' #1496
+Fix bug in timezone cache #1498
+
 0.2.17
 ------
 Fix prices error with Pandas 2.0 #1488
