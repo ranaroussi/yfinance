@@ -704,6 +704,11 @@ class TestTickerInfo(unittest.TestCase):
         self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
 
     def test_fast_info(self):
+        f = yf.Ticker("AAPL", session=self.session).fast_info
+        for k in f:
+            self.assertIsNotNone(f[k])
+
+    def test_fast_info_matches_info(self):
         yf.scrapers.quote.PRUNE_INFO = False
 
         fast_info_keys = set()
