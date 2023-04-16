@@ -42,10 +42,19 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
-## News [2023-01-27]
-Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-market data. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
+## News
 
-Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. ~Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary). `info` will continue to exist for as long as there are elements without a fast alternative.~ `info` now fixed and much faster than before.
+### 2023-01-27
+Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-price data. Price data still works. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
+
+Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `Ticker.info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary).
+
+### 2023-02-07
+Yahoo is now regularly changing their decryption key, breaking `yfinance` decryption. Is technically possible to extract this from their webpage but not implemented because difficult, see [discussion in the issue thread](https://github.com/ranaroussi/yfinance/issues/1407).
+
+### 2023-04-09
+
+Fixed `Ticker.info`
 
 ## Quick Start
 
