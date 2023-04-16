@@ -161,9 +161,27 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         logger = utils.get_yf_logger()
         logger.error('\n%.f Failed download%s:' % (
             len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
+        # Print each distinct error once, with list of symbols affected
+        errors = {}
         for ticker in shared._ERRORS:
-            logger.error(f'- {ticker}: {shared._ERRORS[ticker]}')
-            logger.debug(f'{ticker}: ' + shared._TRACEBACKS[ticker])
+            err = shared._ERRORS[ticker]
+            if not err in errors:
+                errors[err] = [ticker]
+            else:
+                errors[err].append(ticker)
+        for err in errors.keys():
+            logger.error(f'{errors[err]}: ' + err)
+
+        # Print each distinct traceback once, with list of symbols affected
+        tbs = {}
+        for ticker in shared._ERRORS:
+            tb = shared._TRACEBACKS[ticker]
+            if not tb in tbs:
+                tbs[tb] = [ticker]
+            else:
+                tbs[tb].append(ticker)
+        for tb in tbs.keys():
+            logger.debug(f'{tbs[tb]}: ' + tb)
 
     if ignore_tz:
         for tkr in shared._DFS.keys():
