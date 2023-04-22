@@ -76,8 +76,11 @@ def get_yf_logger():
     if yf_logger is None:
         yf_logger = logging.getLogger("yfinance")
         if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
-            # Only add basic stream handler is user not already added one
-            yf_logger.addHandler(logging.StreamHandler())
+            # Add stream handler if user not already added one
+            h = logging.StreamHandler()
+            formatter = logging.Formatter(fmt='%(levelname)s %(message)s')
+            h.setFormatter(formatter)
+            yf_logger.addHandler(h)
     return yf_logger
 
 

@@ -196,11 +196,16 @@ class TickerBase:
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
         params["events"] = "div,splits,capitalGains"
 
+        params_pretty = dict(params)
+        tz = self._get_ticker_tz(proxy, timeout)
+        for k in ["period1", "period2"]:
+            if k in params_pretty:
+                params_pretty[k] = str(_pd.Timestamp(params[k], unit='s').tz_localize("UTC").tz_convert(tz))
+        logger.debug('%s: %s' % (self.ticker, "Yahoo GET parameters: " + str(params_pretty)))
+
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-
         data = None
-
         get_fn = self._data.get
         if end is not None:
             end_dt = _pd.Timestamp(end, unit='s').tz_localize("UTC")
@@ -274,9 +279,11 @@ class TickerBase:
             else:
                 logger.error('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
+        logger.debug(f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}')
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
+            logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
             quotes2 = quotes.resample('30T')
             quotes = _pd.DataFrame(index=quotes2.last().index, data={
                 'Open': quotes2['Open'].first(),
@@ -307,6 +314,7 @@ class TickerBase:
         intraday = params["interval"][-1] in ("m", 'h')
         if not prepost and intraday and "tradingPeriods" in self._history_metadata:
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], self._history_metadata)
+        logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
@@ -368,11 +376,13 @@ class TickerBase:
                 df.loc[df["Capital Gains"].isna(),"Capital Gains"] = 0
             else:
                 df["Capital Gains"] = 0.0
+        logger.debug(f'{self.ticker}: OHLC after combining events: {quotes.index[0]} -> {quotes.index[-1]}')
 
         df = df[~df.index.duplicated(keep='first')]  # must do before repair
 
         if repair==True or repair=="silent":
             # Do this before auto/back adjust
+            logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
             df = self._fix_zeroes(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
 
@@ -412,6 +422,8 @@ class TickerBase:
         if not keepna:
             mask_nan_or_zero = (df.isna() | (df == 0)).all(axis=1)
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
+
+        logger.debug(f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}')
 
         return df
 
