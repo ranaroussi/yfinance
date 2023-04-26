@@ -844,14 +844,21 @@ class _KVStore:
 
     def get(self, key: str) -> Union[str, None]:
         """Get value for key if it exists else returns None"""
-        item = self.conn.execute('select value from "kv" where key=?', (key,))
+        try:
+            item = self.conn.execute('select value from "kv" where key=?', (key,))
+        except _sqlite3.IntegrityError as e:
+            self.delete(key)
+            return None
         if item:
             return next(item, (None,))[0]
 
     def set(self, key: str, value: str) -> None:
-        with self._cache_mutex:
-            self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
-            self.conn.commit()
+        if value is None:
+            self.delete(key)
+        else:
+            with self._cache_mutex:
+                self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
+                self.conn.commit()
 
     def bulk_set(self, kvdata: Dict[str, str]):
         records = tuple(i for i in kvdata.items())
@@ -923,7 +930,15 @@ class _TzCache:
         except TypeError:
             _os.remove(old_cache_file_path)
         else:
-            self.tz_db.bulk_set(df.to_dict()['Tz'])
+            df = df[~df["Tz"].isna().to_numpy()]
+            df = df[~(df["Tz"]=='').to_numpy()]
+            if not df.empty:
+                try:
+                    self.tz_db.bulk_set(df.to_dict()['Tz'])
+                except Exception as e:
+                    # Ignore
+                    pass
+
             _os.remove(old_cache_file_path)
 
 
