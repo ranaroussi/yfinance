@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.19b1 - beta
+-------
+Optimise Ticker.history #1514
+Logging module #1493
+
 0.2.18
 ------
 Fix 'fast_info' error '_np not found' #1496
