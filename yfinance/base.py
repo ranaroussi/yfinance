@@ -21,7 +21,6 @@
 
 from __future__ import print_function
 
-import logging
 import warnings
 import time as _time
 import datetime as _datetime
@@ -49,7 +48,7 @@ _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
-logger = logging.getLogger(__name__)
+logger = utils.get_yf_logger()
 
 class TickerBase:
     def __init__(self, ticker, session=None):
@@ -95,7 +94,8 @@ class TickerBase:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
-                debug=True, raise_errors=False) -> pd.DataFrame:
+                debug=None, # deprecated
+                raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
             period : str
@@ -136,31 +136,32 @@ class TickerBase:
                 seconds. (Can also be a fraction of a second e.g. 0.01)
                 Default is 10 seconds.
             debug: bool
-                If passed as False, will suppress
-                error message printing to console.
+                If passed as False, will suppress message printing to console.
+                DEPRECATED, will be removed in future version
             raise_errors: bool
-                If True, then raise errors as
-                exceptions instead of printing to console.
+                If True, then raise errors as Exceptions instead of logging.
         """
 
-        if raise_errors:
-            debug = True
+        if debug is not None:
+            if debug:
+                utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead: logging.getLogger('yfinance').setLevel(logging.ERROR)")
+                logger.setLevel(logging.ERROR)
+            else:
+                utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
+                logger.setLevel(logging.CRITICAL)
 
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
-            tz = self._get_ticker_tz(debug, proxy, timeout)
+            tz = self._get_ticker_tz(proxy, timeout)
             if tz is None:
                 # Every valid ticker has a timezone. Missing = problem
                 err_msg = "No timezone found, symbol may be delisted"
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg
-                if debug:
-                    if raise_errors:
-                        raise Exception('%s: %s' % (self.ticker, err_msg))
-                    else:
-                        logger.error('- %s: %s' % (self.ticker, err_msg))
+                if raise_errors:
+                    raise Exception('%s: %s' % (self.ticker, err_msg))
                 else:
-                    logger.debug('- %s: %s' % (self.ticker, err_msg))
+                    logger.error('%s: %s' % (self.ticker, err_msg))
                 return utils.empty_df()
 
             if end is None:
@@ -196,20 +197,25 @@ class TickerBase:
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
         params["events"] = "div,splits,capitalGains"
 
+        params_pretty = dict(params)
+        tz = self._get_ticker_tz(proxy, timeout)
+        for k in ["period1", "period2"]:
+            if k in params_pretty:
+                params_pretty[k] = str(_pd.Timestamp(params[k], unit='s').tz_localize("UTC").tz_convert(tz))
+        logger.debug('%s: %s' % (self.ticker, "Yahoo GET parameters: " + str(params_pretty)))
+
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-
         data = None
-
+        get_fn = self._data.get
+        if end is not None:
+            end_dt = _pd.Timestamp(end, unit='s').tz_localize("UTC")
+            dt_now = _pd.Timestamp.utcnow()
+            data_delay = _datetime.timedelta(minutes=30)
+            if end_dt+data_delay <= dt_now:
+                # Date range in past so safe to fetch through cache:
+                get_fn = self._data.cache_get
         try:
-            get_fn = self._data.get
-            if end is not None:
-                end_dt = _pd.Timestamp(end, unit='s').tz_localize("UTC")
-                dt_now = _pd.Timestamp.utcnow()
-                data_delay = _datetime.timedelta(minutes=30)
-                if end_dt+data_delay <= dt_now:
-                    # Date range in past so safe to fetch through cache:
-                    get_fn = self._data.cache_get
             data = get_fn(
                 url=url,
                 params=params,
@@ -251,13 +257,10 @@ class TickerBase:
         if fail:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if debug:
-                if raise_errors:
-                    raise Exception('%s: %s' % (self.ticker, err_msg))
-                else:
-                    logger.error('%s: %s' % (self.ticker, err_msg))
+            if raise_errors:
+                raise Exception('%s: %s' % (self.ticker, err_msg))
             else:
-                logger.debug('%s: %s' % (self.ticker, err_msg))
+                logger.error('%s: %s' % (self.ticker, err_msg))
             return utils.empty_df()
         
         # parse quotes
@@ -271,17 +274,16 @@ class TickerBase:
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if debug:
-                if raise_errors:
-                    raise Exception('%s: %s' % (self.ticker, err_msg))
-                else:
-                    logger.error('%s: %s' % (self.ticker, err_msg))
+            if raise_errors:
+                raise Exception('%s: %s' % (self.ticker, err_msg))
             else:
-                logger.debug('%s: %s' % (self.ticker, err_msg))
+                logger.error('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
+        logger.debug(f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}')
 
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
+            logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
             quotes2 = quotes.resample('30T')
             quotes = _pd.DataFrame(index=quotes2.last().index, data={
                 'Open': quotes2['Open'].first(),
@@ -316,6 +318,7 @@ class TickerBase:
                 self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
                 tps = self._history_metadata["tradingPeriods"]
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
+        logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
@@ -377,11 +380,13 @@ class TickerBase:
                 df.loc[df["Capital Gains"].isna(),"Capital Gains"] = 0
             else:
                 df["Capital Gains"] = 0.0
+        logger.debug(f'{self.ticker}: OHLC after combining events: {quotes.index[0]} -> {quotes.index[-1]}')
 
         df = df[~df.index.duplicated(keep='first')]  # must do before repair
 
         if repair==True or repair=="silent":
             # Do this before auto/back adjust
+            logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
             df = self._fix_zeroes(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
 
@@ -398,13 +403,10 @@ class TickerBase:
                 err_msg = "back_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if debug:
-                if raise_errors:
-                    raise Exception('%s: %s' % (self.ticker, err_msg))
-                else:
-                    logger.error('%s: %s' % (self.ticker, err_msg))
+            if raise_errors:
+                raise Exception('%s: %s' % (self.ticker, err_msg))
             else:
-                logger.debug('%s: %s' % (self.ticker, err_msg))
+                logger.error('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
             df = _np.round(df, data[
@@ -424,6 +426,8 @@ class TickerBase:
         if not keepna:
             mask_nan_or_zero = (df.isna() | (df == 0)).all(axis=1)
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
+
+        logger.debug(f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}')
 
         return df
 
@@ -936,7 +940,7 @@ class TickerBase:
 
         return df3
 
-    def _get_ticker_tz(self, debug_mode, proxy, timeout):
+    def _get_ticker_tz(self, proxy, timeout):
         if self._tz is not None:
             return self._tz
         cache = utils.get_tz_cache()
@@ -948,7 +952,7 @@ class TickerBase:
             tz = None
 
         if tz is None:
-            tz = self._fetch_ticker_tz(debug_mode, proxy, timeout)
+            tz = self._fetch_ticker_tz(proxy, timeout)
 
             if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
@@ -959,7 +963,7 @@ class TickerBase:
         self._tz = tz
         return tz
 
-    def _fetch_ticker_tz(self, debug_mode, proxy, timeout):
+    def _fetch_ticker_tz(self, proxy, timeout):
         # Query Yahoo for fast price data just to get returned timezone
 
         params = {"range": "1d", "interval": "1d"}
@@ -971,25 +975,22 @@ class TickerBase:
             data = self._data.cache_get(url=url, params=params, proxy=proxy, timeout=timeout)
             data = data.json()
         except Exception as e:
-            if debug_mode:
-                print("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
+            logger.error("Failed to get ticker '{}' reason: {}".format(self.ticker, e))
             return None
         else:
             error = data.get('chart', {}).get('error', None)
             if error:
                 # explicit error from yahoo API
-                if debug_mode:
-                    print("Got error from yahoo api for ticker {}, Error: {}".format(self.ticker, error))
+                logger.debug("Got error from yahoo api for ticker {}, Error: {}".format(self.ticker, error))
             else:
                 try:
                     return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
                 except Exception as err:
-                    if debug_mode:
-                        print("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
-                        print("Got response: ")
-                        print("-------------")
-                        print(" {}".format(data))
-                        print("-------------")
+                    logger.error("Could not get exchangeTimezoneName for ticker '{}' reason: {}".format(self.ticker, err))
+                    logger.debug("Got response: ")
+                    logger.debug("-------------")
+                    logger.debug(" {}".format(data))
+                    logger.debug("-------------")
         return None
 
     def get_recommendations(self, proxy=None, as_dict=False):
@@ -1271,7 +1272,7 @@ class TickerBase:
 
     def get_shares_full(self, start=None, end=None, proxy=None):
         # Process dates
-        tz = self._get_ticker_tz(debug_mode=False, proxy=None, timeout=10)
+        tz = self._get_ticker_tz(proxy=None, timeout=10)
         dt_now = _pd.Timestamp.utcnow().tz_convert(tz)
         if start is not None:
             start_ts = utils._parse_user_dt(start, tz)
@@ -1457,7 +1458,7 @@ class TickerBase:
         dates[cn] = _pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
         # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
         self._quote.proxy = proxy
-        tz = self._get_ticker_tz(debug_mode=False, proxy=proxy, timeout=30)
+        tz = self._get_ticker_tz(proxy=proxy, timeout=30)
         dates[cn] = dates[cn].dt.tz_localize(tz)
 
         dates = dates.set_index("Earnings Date")

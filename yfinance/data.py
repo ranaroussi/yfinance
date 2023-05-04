@@ -26,9 +26,11 @@ try:
 except ImportError:
     import json as json
 
+from . import utils
+
 cache_maxsize = 64
 
-logger = logging.getLogger(__name__)
+logger = utils.get_yf_logger()
 
 
 def lru_cache_freezeargs(func):
