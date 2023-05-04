@@ -9,7 +9,7 @@ from yfinance import utils
 from yfinance.data import TickerData
 from yfinance.exceptions import YFinanceDataException, YFinanceException
 
-logger = logging.getLogger(__name__)
+logger = utils.get_yf_logger()
 
 class Fundamentals:
 
