@@ -56,6 +56,7 @@ class TickerBase:
         self.session = session
         self._history = None
         self._history_metadata = None
+        self._history_metadata_formatted = False
         self._base_url = _BASE_URL_
         self._scrape_url = _SCRAPE_URL_
         self._tz = None
@@ -234,7 +235,6 @@ class TickerBase:
             self._history_metadata = data["chart"]["result"][0]["meta"]
         except Exception:
             self._history_metadata = {}
-        self._history_metadata = utils.format_history_metadata(self._history_metadata)
 
         err_msg = "No data found for this date range, symbol may be delisted"
         fail = False
@@ -313,7 +313,11 @@ class TickerBase:
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
         intraday = params["interval"][-1] in ("m", 'h')
         if not prepost and intraday and "tradingPeriods" in self._history_metadata:
-            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], self._history_metadata)
+            tps = self._history_metadata["tradingPeriods"]
+            if not isinstance(tps, pd.DataFrame):
+                self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
+                tps = self._history_metadata["tradingPeriods"]
+            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
         logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
 
         # actions
@@ -1467,4 +1471,9 @@ class TickerBase:
         if self._history_metadata is None:
             # Request intraday data, because then Yahoo returns exchange schedule.
             self.history(period="1wk", interval="1h", prepost=True)
+
+        if self._history_metadata_formatted is False:
+            self._history_metadata = utils.format_history_metadata(self._history_metadata)
+            self._history_metadata_formatted = True
+
         return self._history_metadata

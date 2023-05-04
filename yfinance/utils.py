@@ -361,10 +361,10 @@ def _interval_to_timedelta(interval):
 def auto_adjust(data):
     col_order = data.columns
     df = data.copy()
-    ratio = df["Close"] / df["Adj Close"]
-    df["Adj Open"] = df["Open"] / ratio
-    df["Adj High"] = df["High"] / ratio
-    df["Adj Low"] = df["Low"] / ratio
+    ratio = (df["Adj Close"] / df["Close"]).to_numpy()
+    df["Adj Open"] = df["Open"] * ratio
+    df["Adj High"] = df["High"] * ratio
+    df["Adj Low"] = df["Low"] * ratio
 
     df.drop(
         ["Open", "High", "Low", "Close"],
@@ -427,12 +427,9 @@ def parse_quotes(data):
 
 
 def parse_actions(data):
-    dividends = _pd.DataFrame(
-        columns=["Dividends"], index=_pd.DatetimeIndex([]))
-    capital_gains = _pd.DataFrame(
-        columns=["Capital Gains"], index=_pd.DatetimeIndex([]))
-    splits = _pd.DataFrame(
-        columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
+    dividends = None
+    capital_gains = None
+    splits = None
 
     if "events" in data:
         if "dividends" in data["events"]:
@@ -461,6 +458,16 @@ def parse_actions(data):
                                      splits["denominator"]
             splits = splits[["Stock Splits"]]
 
+    if dividends is None:
+        dividends = _pd.DataFrame(
+            columns=["Dividends"], index=_pd.DatetimeIndex([]))
+    if capital_gains is None:
+        capital_gains = _pd.DataFrame(
+            columns=["Capital Gains"], index=_pd.DatetimeIndex([]))
+    if splits is None:
+        splits = _pd.DataFrame(
+            columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
+
     return dividends, splits, capital_gains
 
 
@@ -471,31 +478,30 @@ def set_df_tz(df, interval, tz):
     return df
 
 
-def fix_Yahoo_returning_prepost_unrequested(quotes, interval, metadata):
+def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     # Sometimes Yahoo returns post-market data despite not requesting it.
     # Normally happens on half-day early closes.
     #
     # And sometimes returns pre-market data despite not requesting it.
     # E.g. some London tickers.
-    tps_df = metadata["tradingPeriods"]
+    tps_df = tradingPeriods.copy()
     tps_df["_date"] = tps_df.index.date
     quotes["_date"] = quotes.index.date
     idx = quotes.index.copy()
-    quotes = quotes.merge(tps_df, how="left", validate="many_to_one")
+    quotes = quotes.merge(tps_df, how="left")
     quotes.index = idx
     # "end" = end of regular trading hours (including any auction)
     f_drop = quotes.index >= quotes["end"]
     f_drop = f_drop | (quotes.index < quotes["start"])
     if f_drop.any():
         # When printing report, ignore rows that were already NaNs:
-        f_na = quotes[["Open","Close"]].isna().all(axis=1)
-        n_nna = quotes.shape[0] - _np.sum(f_na)
-        n_drop_nna = _np.sum(f_drop & ~f_na)
-        quotes_dropped = quotes[f_drop]
+        # f_na = quotes[["Open","Close"]].isna().all(axis=1)
+        # n_nna = quotes.shape[0] - _np.sum(f_na)
+        # n_drop_nna = _np.sum(f_drop & ~f_na)
+        # quotes_dropped = quotes[f_drop]
         # if debug and n_drop_nna > 0:
         #     print(f"Dropping {n_drop_nna}/{n_nna} intervals for falling outside regular trading hours")
         quotes = quotes[~f_drop]
-    metadata["tradingPeriods"] = tps_df.drop(["_date"], axis=1)
     quotes = quotes.drop(["_date", "start", "end"], axis=1)
     return quotes
 
@@ -721,7 +727,7 @@ def is_valid_timezone(tz: str) -> bool:
     return True
 
 
-def format_history_metadata(md):
+def format_history_metadata(md, tradingPeriodsOnly=True):
     if not isinstance(md, dict):
         return md
     if len(md) == 0:
@@ -729,54 +735,54 @@ def format_history_metadata(md):
 
     tz = md["exchangeTimezoneName"]
 
-    for k in ["firstTradeDate", "regularMarketTime"]:
-        if k in md and md[k] is not None:
-            md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
+    if not tradingPeriodsOnly:
+        for k in ["firstTradeDate", "regularMarketTime"]:
+            if k in md and md[k] is not None:
+                if isinstance(md[k], int):
+                    md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
 
-    if "currentTradingPeriod" in md:
-        for m in ["regular", "pre", "post"]:
-            if m in md["currentTradingPeriod"]:
-                for t in ["start", "end"]:
-                    md["currentTradingPeriod"][m][t] = \
-                        _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
-                del md["currentTradingPeriod"][m]["gmtoffset"]
-                del md["currentTradingPeriod"][m]["timezone"]
-
-    if "tradingPeriods" in md:
-        if md["tradingPeriods"] == {"pre":[], "post":[]}:
-            del md["tradingPeriods"]
+        if "currentTradingPeriod" in md:
+            for m in ["regular", "pre", "post"]:
+                if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
+                    for t in ["start", "end"]:
+                        md["currentTradingPeriod"][m][t] = \
+                            _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
+                    del md["currentTradingPeriod"][m]["gmtoffset"]
+                    del md["currentTradingPeriod"][m]["timezone"]
 
     if "tradingPeriods" in md:
         tps = md["tradingPeriods"]
-        if isinstance(tps, list):
-            # Only regular times
-            df = _pd.DataFrame.from_records(_np.hstack(tps))
-            df = df.drop(["timezone", "gmtoffset"], axis=1)
-            df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
-            df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
-        elif isinstance(tps, dict):
-            # Includes pre- and post-market
-            pre_df = _pd.DataFrame.from_records(_np.hstack(tps["pre"]))
-            post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
-            regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
+        if tps == {"pre":[], "post":[]}:
+            # Ignore
+            pass
+        elif isinstance(tps, (list, dict)):
+            if isinstance(tps, list):
+                # Only regular times
+                df = _pd.DataFrame.from_records(_np.hstack(tps))
+                df = df.drop(["timezone", "gmtoffset"], axis=1)
+                df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
+                df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
+            elif isinstance(tps, dict):
+                # Includes pre- and post-market
+                pre_df = _pd.DataFrame.from_records(_np.hstack(tps["pre"]))
+                post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
+                regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
 
-            pre_df = pre_df.rename(columns={"start":"pre_start", "end":"pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
-            post_df = post_df.rename(columns={"start":"post_start", "end":"post_end"}).drop(["timezone", "gmtoffset"], axis=1)
-            regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
+                pre_df = pre_df.rename(columns={"start":"pre_start", "end":"pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                post_df = post_df.rename(columns={"start":"post_start", "end":"post_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
 
-            cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
-            df = regular_df.join(pre_df).join(post_df)
-            for c in cols:
-                df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
-            df = df[cols]
-        else:
-            raise Exception()
+                cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
+                df = regular_df.join(pre_df).join(post_df)
+                for c in cols:
+                    df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
+                df = df[cols]
 
-        df.index = _pd.to_datetime(df["start"].dt.date)
-        df.index = df.index.tz_localize(tz)
-        df.index.name = "Date"
+            df.index = _pd.to_datetime(df["start"].dt.date)
+            df.index = df.index.tz_localize(tz)
+            df.index.name = "Date"
 
-        md["tradingPeriods"] = df
+            md["tradingPeriods"] = df
 
     return md
 
