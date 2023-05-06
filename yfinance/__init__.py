@@ -23,6 +23,7 @@ from . import version
 from .ticker import Ticker
 from .tickers import Tickers
 from .multi import download
+from .utils import set_tz_cache_location
 
 __version__ = version.version
 __author__ = "Ran Aroussi"
@@ -42,4 +43,4 @@ def pdr_override():
         pass
 
 
-__all__ = ['download', 'Ticker', 'Tickers', 'pdr_override']
+__all__ = ['download', 'Ticker', 'Tickers', 'pdr_override', 'set_tz_cache_location']

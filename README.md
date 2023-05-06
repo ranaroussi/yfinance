@@ -42,51 +42,68 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
+## News
+
+### 2023-01-27
+Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-price data. Price data still works. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
+
+Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `Ticker.info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary).
+
+### 2023-02-07
+Yahoo is now regularly changing their decryption key, breaking `yfinance` decryption. Is technically possible to extract this from their webpage but not implemented because difficult, see [discussion in the issue thread](https://github.com/ranaroussi/yfinance/issues/1407).
+
+### 2023-04-09
+
+Fixed `Ticker.info`
+
 ## Quick Start
 
 ### The Ticker module
 
 The `Ticker` module, which allows you to access ticker data in a more Pythonic way:
 
-Note: yahoo finance datetimes are received as UTC.
-
 ```python
 import yfinance as yf
 
 msft = yf.Ticker("MSFT")
 
-# get stock info
+# get all stock info
 msft.info
 
 # get historical market data
-hist = msft.history(period="max")
+hist = msft.history(period="1mo")
 
-# show actions (dividends, splits)
+# show meta information about the history (requires history() to be called first)
+msft.history_metadata
+
+# show actions (dividends, splits, capital gains)
 msft.actions
-
-# show dividends
 msft.dividends
-
-# show splits
 msft.splits
+msft.capital_gains  # only for mutual funds & etfs
 
-# show financials
-msft.financials
-msft.quarterly_financials
+# show share count
+# - yearly summary:
+msft.shares
+# - accurate time-series count:
+msft.get_shares_full(start="2022-01-01", end=None)
 
-# show major holders
-msft.major_holders
-
-# show institutional holders
-msft.institutional_holders
-
-# show balance sheet
+# show financials:
+# - income statement
+msft.income_stmt
+msft.quarterly_income_stmt
+# - balance sheet
 msft.balance_sheet
 msft.quarterly_balance_sheet
-
-# show cashflow
+# - cash flow statement
 msft.cashflow
 msft.quarterly_cashflow
+# see `Ticker.get_income_stmt()` for more options
+
+# show holders
+msft.major_holders
+msft.institutional_holders
+msft.mutualfund_holders
 
 # show earnings
 msft.earnings
@@ -97,11 +114,18 @@ msft.sustainability
 
 # show analysts recommendations
 msft.recommendations
+msft.recommendations_summary
+# show analysts other work
+msft.analyst_price_target
+msft.revenue_forecasts
+msft.earnings_forecasts
+msft.earnings_trend
 
 # show next event (earnings, etc)
 msft.calendar
 
-# show all earnings dates
+# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
+# Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates
 
 # show ISIN code - *experimental*
@@ -130,11 +154,48 @@ msft.history(..., proxy="PROXY_SERVER")
 msft.get_actions(proxy="PROXY_SERVER")
 msft.get_dividends(proxy="PROXY_SERVER")
 msft.get_splits(proxy="PROXY_SERVER")
+msft.get_capital_gains(proxy="PROXY_SERVER")
 msft.get_balance_sheet(proxy="PROXY_SERVER")
 msft.get_cashflow(proxy="PROXY_SERVER")
 msft.option_chain(..., proxy="PROXY_SERVER")
 ...
 ```
+
+### Multiple tickers
+
+To initialize multiple `Ticker` objects, use
+
+```python
+import yfinance as yf
+
+tickers = yf.Tickers('msft aapl goog')
+
+# access each ticker using (example)
+tickers.tickers['MSFT'].info
+tickers.tickers['AAPL'].history(period="1mo")
+tickers.tickers['GOOG'].actions
+```
+
+To download price history into one table:
+
+```python
+import yfinance as yf
+data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
+```
+
+`yf.download()` and `Ticker.history()` have many options for configuring fetching and processing, e.g.:
+
+```python
+yf.download(tickers = "SPY AAPL",  # list of tickers
+            period = "1y",         # time period
+            interval = "1d",       # trading interval
+            prepost = False,       # download pre/post market hours data?
+            repair = True)         # repair obvious price errors e.g. 100x?
+```
+
+Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail.
+
+### Smarter scraping
 
 To use a custom `requests` session (for example to cache calls to the
 API or customize the `User-agent` header), pass a `session=` argument to
@@ -144,69 +205,25 @@ the Ticker constructor.
 import requests_cache
 session = requests_cache.CachedSession('yfinance.cache')
 session.headers['User-agent'] = 'my-program/1.0'
-ticker = yf.Ticker('msft aapl goog', session=session)
+ticker = yf.Ticker('msft', session=session)
 # The scraped response will be stored in the cache
 ticker.actions
 ```
 
-To initialize multiple `Ticker` objects, use
-
+Combine a `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-limiter/blocker that can corrupt data.
 ```python
-import yfinance as yf
+from requests import Session
+from requests_cache import CacheMixin, SQLiteCache
+from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
+from pyrate_limiter import Duration, RequestRate, Limiter
+class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
+    pass
 
-tickers = yf.Tickers('msft aapl goog')
-# ^ returns a named tuple of Ticker objects
-
-# access each ticker using (example)
-tickers.tickers.MSFT.info
-tickers.tickers.AAPL.history(period="1mo")
-tickers.tickers.GOOG.actions
-```
-
-### Fetching data for multiple tickers
-
-```python
-import yfinance as yf
-data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
-```
-
-I've also added some options to make life easier :)
-
-```python
-data = yf.download(  # or pdr.get_data_yahoo(...
-        # tickers list or string as well
-        tickers = "SPY AAPL MSFT",
-
-        # use "period" instead of start/end
-        # valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-        # (optional, default is '1mo')
-        period = "ytd",
-
-        # fetch data by interval (including intraday if period < 60 days)
-        # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
-        # (optional, default is '1d')
-        interval = "1m",
-
-        # group by ticker (to access via data['SPY'])
-        # (optional, default is 'column')
-        group_by = 'ticker',
-
-        # adjust all OHLC automatically
-        # (optional, default is False)
-        auto_adjust = True,
-
-        # download pre/post regular market hours data
-        # (optional, default is False)
-        prepost = True,
-
-        # use threads for mass downloading? (True/False/Integer)
-        # (optional, default is True)
-        threads = True,
-
-        # proxy URL scheme use use when downloading?
-        # (optional, default is None)
-        proxy = None
-    )
+session = CachedLimiterSession(
+    limiter=Limiter(RequestRate(2, Duration.SECOND*5),  # max 2 requests per 5 seconds
+    bucket_class=MemoryQueueBucket,
+    backend=SQLiteCache("yfinance.cache"),
+)
 ```
 
 ### Managing Multi-Level Columns
@@ -224,9 +241,7 @@ yfinance?](https://stackoverflow.com/questions/63107801)
         -   How to download single or multiple tickers into a single
             dataframe with single level column names and a ticker column
 
----
-
-## `pandas_datareader` override
+### `pandas_datareader` override
 
 If your code uses `pandas_datareader` and you want to download data
 faster, you can "hijack" `pandas_datareader.data.get_data_yahoo()`
@@ -241,6 +256,18 @@ yf.pdr_override() # <== that's all it takes :-)
 
 # download dataframe
 data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
+```
+
+### Timezone cache store
+
+When fetching price data, all dates are localized to stock exchange timezone. 
+But timezone retrieval is relatively slow, so yfinance attemps to cache them 
+in your users cache folder. 
+You can direct cache to use a different location with `set_tz_cache_location()`:
+```python
+import yfinance as yf
+yf.set_tz_cache_location("custom/cache/location")
+...
 ```
 
 ---
@@ -259,16 +286,25 @@ To install `yfinance` using `conda`, see
 ### Requirements
 
 -   [Python](https://www.python.org) \>= 2.7, 3.4+
--   [Pandas](https://github.com/pydata/pandas) (tested to work with
-    \>=0.23.1)
--   [Numpy](http://www.numpy.org) \>= 1.11.1
--   [requests](http://docs.python-requests.org/en/master/) \>= 2.14.2
--   [lxml](https://pypi.org/project/lxml/) \>= 4.5.1
+-   [Pandas](https://github.com/pydata/pandas) \>= 1.3.0
+-   [Numpy](http://www.numpy.org) \>= 1.16.5
+-   [requests](http://docs.python-requests.org/en/master) \>= 2.26
+-   [lxml](https://pypi.org/project/lxml) \>= 4.9.1
+-   [appdirs](https://pypi.org/project/appdirs) \>= 1.4.4
+-   [pytz](https://pypi.org/project/pytz) \>=2022.5
+-   [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
+-   [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
+-   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
+-   [cryptography](https://pypi.org/project/cryptography) \>= 3.3.2
 
-### Optional (if you want to use `pandas_datareader`)
+#### Optional (if you want to use `pandas_datareader`)
 
 -   [pandas\_datareader](https://github.com/pydata/pandas-datareader)
     \>= 0.4.0
+
+## Developers: want to contribute?
+
+`yfinance` relies on community to investigate bugs and contribute code. Developer guide: https://github.com/ranaroussi/yfinance/discussions/1084
 
 ---
 

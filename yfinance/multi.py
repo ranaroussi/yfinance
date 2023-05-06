@@ -29,10 +29,10 @@ from . import Ticker, utils
 from . import shared
 
 
-def download(tickers, start=None, end=None, actions=False, threads=True,
-             group_by='column', auto_adjust=False, back_adjust=False,
+def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
+             group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=None, **kwargs):
+             proxy=None, rounding=False, timeout=10):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -44,11 +44,13 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
             Intraday data cannot extend last 60 days
         start: str
-            Download start date string (YYYY-MM-DD) or _datetime.
+            Download start date string (YYYY-MM-DD) or _datetime, inclusive.
             Default is 1900-01-01
+            E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
         end: str
-            Download end date string (YYYY-MM-DD) or _datetime.
+            Download end date string (YYYY-MM-DD) or _datetime, exclusive.
             Default is now
+            E.g. for end="2023-01-01", the last data point will be on "2022-12-31"
         group_by : str
             Group by 'ticker' or 'column' (default)
         prepost : bool
@@ -56,20 +58,37 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Default is False
         auto_adjust: bool
             Adjust all OHLC automatically? Default is False
+        repair: bool
+            Detect currency unit 100x mixups and attempt repair
+            Default is False
+        keepna: bool
+            Keep NaN rows returned by Yahoo?
+            Default is False
         actions: bool
             Download dividend + stock splits data. Default is False
         threads: bool / int
             How many threads to use for mass downloading. Default is True
+        ignore_tz: bool
+            When combining from different timezones, ignore that part of datetime.
+            Default depends on interval. Intraday = False. Day+ = True.
         proxy: str
             Optional. Proxy server URL scheme. Default is None
         rounding: bool
             Optional. Round values to 2 decimal places?
         show_errors: bool
-            Optional. Doesn't print errors if True
+            Optional. Doesn't print errors if False
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
     """
+
+    if ignore_tz is None:
+        # Set default value depending on interval
+        if interval[1:] in ['m', 'h']:
+            # Intraday
+            ignore_tz = False
+        else:
+            ignore_tz = True
 
     # create ticker list
     tickers = tickers if isinstance(
@@ -105,7 +124,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust,
+                                   back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
                                    rounding=rounding, timeout=timeout)
         while len(shared._DFS) < len(tickers):
@@ -117,7 +136,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, proxy=proxy,
+                                 back_adjust=back_adjust, repair=repair, keepna=keepna,
+                                 proxy=proxy,
                                  rounding=rounding, timeout=timeout)
             shared._DFS[ticker.upper()] = data
             if progress:
@@ -133,16 +153,21 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         print("\n".join(['- %s: %s' %
                          v for v in list(shared._ERRORS.items())]))
 
+    if ignore_tz:
+        for tkr in shared._DFS.keys():
+            if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
+                shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
+
     if len(tickers) == 1:
         ticker = tickers[0]
         return shared._DFS[shared._ISINS.get(ticker, ticker)]
 
     try:
-        data = _pd.concat(shared._DFS.values(), axis=1,
+        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys())
     except Exception:
         _realign_dfs()
-        data = _pd.concat(shared._DFS.values(), axis=1,
+        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys())
 
     # switch names back to isins if applicable
@@ -180,28 +205,34 @@ def _realign_dfs():
 
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
-                           auto_adjust=False, back_adjust=False,
+                           auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           rounding=False, timeout=None):
-
-    data = _download_one(ticker, start, end, auto_adjust, back_adjust,
-                         actions, period, interval, prepost, proxy, rounding,
-                         timeout)
-    shared._DFS[ticker.upper()] = data
+                           keepna=False, rounding=False, timeout=10):
+    try:
+        data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
+                             actions, period, interval, prepost, proxy, rounding,
+                             keepna, timeout)
+    except Exception as e:
+        # glob try/except needed as current thead implementation breaks if exception is raised.
+        shared._DFS[ticker] = utils.empty_df()
+        shared._ERRORS[ticker] = repr(e)
+    else:
+        shared._DFS[ticker.upper()] = data
     if progress:
         shared._PROGRESS_BAR.animate()
 
 
 def _download_one(ticker, start=None, end=None,
-                  auto_adjust=False, back_adjust=False,
+                  auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  timeout=None):
-
-    return Ticker(ticker).history(period=period, interval=interval,
-                                  start=start, end=end, prepost=prepost,
-                                  actions=actions, auto_adjust=auto_adjust,
-                                  back_adjust=back_adjust, proxy=proxy,
-                                  rounding=rounding, many=True,
-                                  timeout=timeout)
+                  keepna=False, timeout=10):
+    return Ticker(ticker).history(
+        period=period, interval=interval,
+        start=start, end=end, prepost=prepost,
+        actions=actions, auto_adjust=auto_adjust,
+        back_adjust=back_adjust, repair=repair, proxy=proxy,
+        rounding=rounding, keepna=keepna, timeout=timeout,
+        debug=False, raise_errors=False  # debug and raise_errors false to not log and raise errors in threads
+    )

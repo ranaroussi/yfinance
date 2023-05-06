@@ -25,7 +25,7 @@ from . import Ticker, multi
 # from collections import namedtuple as _namedtuple
 
 
-class Tickers():
+class Tickers:
 
     def __repr__(self):
         return 'yfinance.Tickers object <%s>' % ",".join(self.symbols)
@@ -34,39 +34,39 @@ class Tickers():
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
-        ticker_objects = {}
+        self.tickers = {ticker:Ticker(ticker, session=session) for ticker in self.symbols}
 
-        for ticker in self.symbols:
-            ticker_objects[ticker] = Ticker(ticker, session=session)
-
-        self.tickers = ticker_objects
         # self.tickers = _namedtuple(
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
-                actions=True, auto_adjust=True, proxy=None,
+                actions=True, auto_adjust=True, repair=False,
+                proxy=None,
                 threads=True, group_by='column', progress=True,
-                timeout=None, **kwargs):
+                timeout=10, **kwargs):
 
         return self.download(
             period, interval,
             start, end, prepost,
-            actions, auto_adjust, proxy,
+            actions, auto_adjust, repair, 
+            proxy,
             threads, group_by, progress,
             timeout, **kwargs)
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
-                 actions=True, auto_adjust=True, proxy=None,
+                 actions=True, auto_adjust=True, repair=False, 
+                 proxy=None,
                  threads=True, group_by='column', progress=True,
-                 timeout=None, **kwargs):
+                 timeout=10, **kwargs):
 
         data = multi.download(self.symbols,
                               start=start, end=end,
                               actions=actions,
                               auto_adjust=auto_adjust,
+                              repair=repair,
                               period=period,
                               interval=interval,
                               prepost=prepost,
