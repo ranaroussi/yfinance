@@ -44,11 +44,12 @@ from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 import json as _json
 
+import logging
+logger = utils.get_yf_logger()
+
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
-
-logger = utils.get_yf_logger()
 
 class TickerBase:
     def __init__(self, ticker, session=None):
@@ -150,6 +151,8 @@ class TickerBase:
                 utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
                 logger.setLevel(logging.CRITICAL)
 
+        start_user = start
+        end_user = end
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
             tz = self._get_ticker_tz(proxy, timeout)
@@ -236,7 +239,26 @@ class TickerBase:
         except Exception:
             self._history_metadata = {}
 
-        err_msg = "No data found for this date range, symbol may be delisted"
+        intraday = params["interval"][-1] in ("m", 'h')
+        err_msg = "No price data found, symbol may be delisted"
+        if start or period is None or period.lower() == "max":
+            err_msg += f' ({params["interval"]} '
+            if start_user is not None:
+                err_msg += f'{start_user}'
+            elif not intraday:
+                err_msg += f'{_pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz).date()}'
+            else:
+                err_msg += f'{_pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz)}'
+            err_msg += ' -> '
+            if end_user is not None:
+                err_msg += f'{end_user})'
+            elif not intraday:
+                err_msg += f'{_pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz).date()})'
+            else:
+                err_msg += f'{_pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz)})'
+        else:
+            err_msg += f' (period={period})'
+
         fail = False
         if data is None or not type(data) is dict:
             fail = True
@@ -561,16 +583,25 @@ class TickerBase:
 
             start_dt = g[0]
             start_d = start_dt.date()
+            reject = False
             if sub_interval == "1h" and (_datetime.date.today() - start_d) > _datetime.timedelta(days=729):
-                # Don't bother requesting more price data, Yahoo will reject
-                logger.warning(f"Cannot reconstruct {interval} block starting {start_d}, too old, Yahoo will reject request for finer-grain data")
-                continue
+                reject = True
             elif sub_interval in ["30m", "15m"] and (_datetime.date.today() - start_d) > _datetime.timedelta(days=59):
+                reject = True
+            if reject:
                 # Don't bother requesting more price data, Yahoo will reject
-                logger.warning(f"Cannot reconstruct {interval} block starting {start_d}, too old, Yahoo will reject request for finer-grain data")
+                msg = f"Cannot reconstruct {interval} block starting"
+                if intraday:
+                    msg += f" {start_dt}"
+                else:
+                    msg += f" {start_d}"
+                msg += ", too old, Yahoo will reject request for finer-grain data"
+                logger.warning(msg)
                 continue
 
             td_1d = _datetime.timedelta(days=1)
+            end_dt = g[-1]
+            end_d = end_dt.date() + td_1d
             if interval in "1wk":
                 fetch_start = start_d - td_range  # need previous week too
                 fetch_end = g[-1].date() + td_range
@@ -594,13 +625,25 @@ class TickerBase:
             df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
             if df_fine is None or df_fine.empty:
                 if not silent:
-                    logger.warning(f"Cannot reconstruct {interval} block starting {start_d}, too old, Yahoo is rejecting request for finer-grain data")
+                    msg = f"Cannot reconstruct {interval} block starting"
+                    if intraday:
+                        msg += f" {start_dt}"
+                    else:
+                        msg += f" {start_d}"
+                    msg += ", too old, Yahoo is rejecting request for finer-grain data"
+                    logger.warning(msg)
                 continue
             # Discard the buffer
             df_fine = df_fine.loc[g[0] : g[-1]+itds[sub_interval]-_datetime.timedelta(milliseconds=1)].copy()
             if df_fine.empty:
                 if not silent:
-                    print("YF: WARNING: Cannot reconstruct because Yahoo not returning data in interval")
+                    msg = f"Cannot reconstruct {interval} block range"
+                    if intraday:
+                        msg += f" {start_dt}->{end_dt}"
+                    else:
+                        msg += f" {start_d}->{end_d}"
+                    msg += ", Yahoo not returning finer-grain data within range"
+                    logger.warning(msg)
                 continue
 
             df_fine["ctr"] = 0
