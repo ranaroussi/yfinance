@@ -354,13 +354,14 @@ class TickerBase:
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
         if start is not None:
-            startDt = quotes.index[0].floor('D')
-            if dividends is not None:
-                dividends = dividends.loc[startDt:]
-            if capital_gains is not None:
-                capital_gains = capital_gains.loc[startDt:]
-            if splits is not None:
-                splits = splits.loc[startDt:]
+            if not quotes.empty:
+                startDt = quotes.index[0].floor('D')
+                if dividends is not None:
+                    dividends = dividends.loc[startDt:]
+                if capital_gains is not None:
+                    capital_gains = capital_gains.loc[startDt:]
+                if splits is not None:
+                    splits = splits.loc[startDt:]
         if end is not None:
             endDt = _pd.Timestamp(end, unit='s').tz_localize(tz)
             if dividends is not None:
@@ -488,6 +489,8 @@ class TickerBase:
             td_range = itds[interval]
         else:
             logger.warning("Have not implemented price repair for '%s' interval. Contact developers", interval)
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
 
         df = df.sort_index()
@@ -509,6 +512,8 @@ class TickerBase:
             f_repair_rows = f_repair_rows & f_recent
             if not f_repair_rows.any():
                 logger.info("Data too old to repair")
+                if not "Repaired?" in df.columns:
+                    df["Repaired?"] = False
                 return df
 
         dts_to_repair = df.index[f_repair_rows]
@@ -516,10 +521,13 @@ class TickerBase:
 
         if len(dts_to_repair) == 0:
             logger.info("Nothing needs repairing (dts_to_repair[] empty)")
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
 
         df_v2 = df.copy()
-        df_v2["Repaired?"] = False
+        if not "Repaired?" in df_v2.columns:
+            df_v2["Repaired?"] = False
         f_good = ~(df[price_cols].isna().any(axis=1))
         f_good = f_good & (df[price_cols].to_numpy()!=tag).all(axis=1)
         df_good = df[f_good]
@@ -782,10 +790,14 @@ class TickerBase:
         # Easy to detect and fix, just look for outliers = ~100x local median
 
         if df.shape[0] == 0:
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
         if df.shape[0] == 1:
             # Need multiple rows to confidently identify outliers
             logger.warning("Cannot check single-row table for 100x price errors")
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
 
         df2 = df.copy()
@@ -809,6 +821,8 @@ class TickerBase:
             df2_zeroes = None
         if df2.shape[0] <= 1:
             logger.warning("Insufficient good data for detecting 100x price errors")
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
         df2_data = df2[data_cols].to_numpy()
         median = _ndimage.median_filter(df2_data, size=(3, 3), mode="wrap")
@@ -817,6 +831,8 @@ class TickerBase:
         f = ratio_rounded == 100
         if not f.any():
             logger.info("No bad data (100x wrong) to repair")
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
 
         # Mark values to send for repair
@@ -888,7 +904,8 @@ class TickerBase:
                 c = data_cols[j]
                 df2.loc[fj, c] = df.loc[fj, c]
         if df2_zeroes is not None:
-            df2_zeroes["Repaired?"] = False
+            if not "Repaired?" in df2_zeroes.columns:
+                df2_zeroes["Repaired?"] = False
             df2 = _pd.concat([df2, df2_zeroes]).sort_index()
             df2.index = _pd.to_datetime()
 
@@ -900,6 +917,8 @@ class TickerBase:
         # Impossible to distinguish, so only attempt repair if few or rare.
 
         if df.shape[0] == 0:
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
 
         intraday = interval[-1] in ("m", 'h')
@@ -934,10 +953,14 @@ class TickerBase:
         f_bad_rows = f_prices_bad.any(axis=1) | f_vol_bad
         if not f_bad_rows.any():
             logger.info("No bad data (price=0) to repair")
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
         if f_prices_bad.sum() == len(price_cols)*len(df2):
             # Need some good data to calibrate
             logger.warning("No good data for calibration so cannot fix price=0 bad data")
+            if not "Repaired?" in df.columns:
+                df["Repaired?"] = False
             return df
 
         data_cols = price_cols + ["Volume"]
@@ -970,7 +993,8 @@ class TickerBase:
             logger.info('%s', msg)
 
         if df2_reserve is not None:
-            df2_reserve["Repaired?"] = False
+            if not "Repaired?" in df2_reserve.columns:
+                df2_reserve["Repaired?"] = False
             df3 = _pd.concat([df3, df2_reserve]).sort_index()
 
         # Restore original values where repair failed (i.e. remove tag values)
