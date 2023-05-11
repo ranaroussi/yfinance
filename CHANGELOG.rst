@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-0.2.19b2 - beta
+0.2.19b3
 -------
 Improve logging messages #1522
 Price fixes #1523
