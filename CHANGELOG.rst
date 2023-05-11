@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.19b2 - beta
+-------
+Improve logging messages #1522
+Price fixes #1523
+
 0.2.19b1 - beta
 -------
 Optimise Ticker.history #1514
