@@ -940,7 +940,7 @@ class _TzCache:
         if not _os.path.isfile(old_cache_file_path):
             return None
         try:
-            df = _pd.read_csv(old_cache_file_path, index_col="Ticker")
+            df = _pd.read_csv(old_cache_file_path, index_col="Ticker", on_bad_lines="skip")
         except _pd.errors.EmptyDataError:
             _os.remove(old_cache_file_path)
         except TypeError:
