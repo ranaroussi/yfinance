@@ -268,26 +268,6 @@ class TickerBase:
                     print('%s: %s' % (self.ticker, err_msg))
             return shared._DFS[self.ticker]
 
-        # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
-        if interval.lower() == "30m":
-            quotes2 = quotes.resample('30T')
-            quotes = _pd.DataFrame(index=quotes2.last().index, data={
-                'Open': quotes2['Open'].first(),
-                'High': quotes2['High'].max(),
-                'Low': quotes2['Low'].min(),
-                'Close': quotes2['Close'].last(),
-                'Adj Close': quotes2['Adj Close'].last(),
-                'Volume': quotes2['Volume'].sum()
-            })
-            try:
-                quotes['Dividends'] = quotes2['Dividends'].max()
-            except Exception:
-                pass
-            try:
-                quotes['Stock Splits'] = quotes2['Dividends'].max()
-            except Exception:
-                pass
-
         # Select useful info from metadata
         quote_type = self._history_metadata["instrumentType"]
         expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
@@ -297,9 +277,21 @@ class TickerBase:
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
         quotes = utils.fix_Yahoo_returning_live_separate(quotes, params["interval"], tz_exchange)
-        intraday = params["interval"][-1] in ("m", 'h')
-        if not prepost and intraday and "tradingPeriods" in self._history_metadata:
-            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], self._history_metadata)
+        quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params, self._history_metadata)
+
+        # Fix weired bug with Yahoo! - returning 60m for 30m bars
+        if interval.lower() == '30m':
+            # Indian exchanges start at 9:15 AM
+            offset = '15min' if self._history_metadata['exchangeName'] in ('NSI', 'BSE') else None
+            quotes = quotes.resample('30min', offset=offset)
+            quotes = _pd.DataFrame(index=quotes.last().index, data={
+                'Open': quotes['Open'].first(),
+                'High': quotes['High'].max(),
+                'Low': quotes['Low'].min(),
+                'Close': quotes['Close'].last(),
+                'Adj Close': quotes['Adj Close'].last(),
+                'Volume': quotes['Volume'].sum()
+            })
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
