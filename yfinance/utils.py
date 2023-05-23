@@ -930,8 +930,10 @@ class _TzCache:
         except TypeError:
             _os.remove(old_cache_file_path)
         else:
+            # Discard corrupt data:
             df = df[~df["Tz"].isna().to_numpy()]
             df = df[~(df["Tz"]=='').to_numpy()]
+            df = df[~df.index.isna()]
             if not df.empty:
                 try:
                     self.tz_db.bulk_set(df.to_dict()['Tz'])
