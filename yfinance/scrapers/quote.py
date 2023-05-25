@@ -531,6 +531,8 @@ class FastInfo:
         except Exception as e:
             if "Cannot retrieve share count" in str(e):
                 shares = None
+            elif "failed to decrypt Yahoo" in str(e):
+                shares = None
             else:
                 raise
 

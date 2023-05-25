@@ -150,7 +150,6 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
                                  back_adjust=back_adjust, repair=repair, keepna=keepna,
                                  proxy=proxy,
                                  rounding=rounding, timeout=timeout)
-            shared._DFS[ticker.upper()] = data
             if progress:
                 shared._PROGRESS_BAR.animate()
 
@@ -158,10 +157,12 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         shared._PROGRESS_BAR.completed()
 
     if shared._ERRORS:
+        # Send errors to logging module
         logger = utils.get_yf_logger()
         logger.error('\n%.f Failed download%s:' % (
             len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
-        # Print each distinct error once, with list of symbols affected
+
+        # Log each distinct error once, with list of symbols affected
         errors = {}
         for ticker in shared._ERRORS:
             err = shared._ERRORS[ticker]
@@ -172,9 +173,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         for err in errors.keys():
             logger.error(f'{errors[err]}: ' + err)
 
-        # Print each distinct traceback once, with list of symbols affected
+        # Log each distinct traceback once, with list of symbols affected
         tbs = {}
-        for ticker in shared._ERRORS:
+        for ticker in shared._TRACEBACKS:
             tb = shared._TRACEBACKS[ticker]
             if not tb in tbs:
                 tbs[tb] = [ticker]
@@ -239,17 +240,9 @@ def _download_one_threaded(ticker, start=None, end=None,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
-    try:
-        data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
-                             actions, period, interval, prepost, proxy, rounding,
-                             keepna, timeout)
-    except Exception as e:
-        # glob try/except needed as current thead implementation breaks if exception is raised.
-        shared._TRACEBACKS[ticker] = traceback.format_exc()
-        shared._DFS[ticker] = utils.empty_df()
-        shared._ERRORS[ticker] = repr(e)
-    else:
-        shared._DFS[ticker.upper()] = data
+    data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
+                         actions, period, interval, prepost, proxy, rounding,
+                         keepna, timeout)
     if progress:
         shared._PROGRESS_BAR.animate()
 
@@ -259,11 +252,22 @@ def _download_one(ticker, start=None, end=None,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
-    return Ticker(ticker).history(
-        period=period, interval=interval,
-        start=start, end=end, prepost=prepost,
-        actions=actions, auto_adjust=auto_adjust,
-        back_adjust=back_adjust, repair=repair, proxy=proxy,
-        rounding=rounding, keepna=keepna, timeout=timeout,
-        raise_errors=False  # stop individual threads raising errors
-    )
+    data = None
+    try:
+        data = Ticker(ticker).history(
+                period=period, interval=interval,
+                start=start, end=end, prepost=prepost,
+                actions=actions, auto_adjust=auto_adjust,
+                back_adjust=back_adjust, repair=repair, proxy=proxy,
+                rounding=rounding, keepna=keepna, timeout=timeout,
+                raise_errors=True
+        )
+    except Exception as e:
+        # glob try/except needed as current thead implementation breaks if exception is raised.
+        shared._DFS[ticker.upper()] = utils.empty_df()
+        shared._ERRORS[ticker.upper()] = repr(e)
+        shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
+    else:
+        shared._DFS[ticker.upper()] = data
+
+    return data
