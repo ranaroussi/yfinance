@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.19b4
+--------
+Fix `download` logging #1541
+Fix corrupt tkr-tz-csv halting code #1528
+
 0.2.19b3
 -------
 Improve logging messages #1522
