@@ -950,6 +950,14 @@ class TickerBase:
         f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
         f_vol_bad = (df2["Volume"]==0).to_numpy() & f_high_low_good & f_change
 
+        # If stock split occurred, then trading must have happened.
+        # I should probably rename the function, because prices aren't zero ...
+        f_split = (df2['Stock Splits'] != 0.0).to_numpy()
+        if f_split.any():
+            f_change_expected_but_missing = f_split & ~f_change
+            if f_change_expected_but_missing.any():
+                f_prices_bad[f_change_expected_but_missing] = True
+
         # Check whether worth attempting repair
         f_prices_bad = f_prices_bad.to_numpy()
         f_bad_rows = f_prices_bad.any(axis=1) | f_vol_bad
