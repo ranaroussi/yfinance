@@ -412,6 +412,7 @@ class TickerBase:
             logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
             df = self._fix_zeroes(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
+            df = self._fix_missing_div_adjust(df, interval)
 
         # Auto/back adjust
         try:
@@ -1006,6 +1007,51 @@ class TickerBase:
                 df3.loc[fj, c] = df.loc[fj, c]
 
         return df3
+
+    def _fix_missing_div_adjust(self, df, interval):
+        # Sometimes, if a dividend occurred today, then Yahoo has not adjusted historic data.
+        # Easy to detect and correct.
+
+        interday = interval in ['1d', '1wk', '1mo', '3mo']
+        if not interday:
+            return df
+
+        df = df.sort_index()
+
+        f_div = df["Dividends"] != 0.0
+        if not f_div.any():
+            return df
+
+        div_indices = _np.where(f_div)[0]
+        last_div_idx = div_indices[-1]
+        if last_div_idx == 0:
+            # Not enough data to recalculate the div-adjustment, 
+            # because need close day before
+            return df
+
+        # To determine if Yahoo messed up, analyse price data between today's dividend and
+        # the previous dividend
+        if len(div_indices) == 1:
+            # No other divs in data
+            start_idx = 0
+        else:
+            start_idx = div_indices[-2] + 1
+        start_dt = df.index[start_idx]
+        f_no_adj = (df['Close']==df['Adj Close']).to_numpy()[start_idx:last_div_idx]
+        threshold_pct = 0.5
+        Yahoo_failed = (_np.sum(f_no_adj) / len(f_no_adj)) > threshold_pct
+
+        # Fix Yahoo
+        if Yahoo_failed:
+            last_div_dt = df.index[last_div_idx]
+            last_div_row = df.loc[last_div_dt]
+            close_day_before = df['Close'].iloc[last_div_idx-1]
+            adj = 1.0 - df['Dividends'].iloc[last_div_idx] / close_day_before
+
+            df.loc[start_dt:last_div_dt, 'Adj Close'] = adj * df.loc[start_dt:last_div_dt, 'Close']
+            df.loc[:start_dt-_datetime.timedelta(seconds=1), 'Adj Close'] *= adj
+
+        return df
 
     def _get_ticker_tz(self, proxy, timeout):
         if self._tz is not None:
