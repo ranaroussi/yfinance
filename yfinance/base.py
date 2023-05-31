@@ -413,6 +413,7 @@ class TickerBase:
             df = self._fix_zeroes(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
             df = self._fix_missing_div_adjust(df, interval)
+            df = self._fix_bad_stock_split(df, interval)
 
         # Auto/back adjust
         try:
@@ -1052,6 +1053,145 @@ class TickerBase:
             df.loc[:start_dt-_datetime.timedelta(seconds=1), 'Adj Close'] *= adj
 
         return df
+
+    def _fix_bad_stock_split(self, df, interval):
+        interday = interval in ['1d', '1wk', '1mo', '3mo']
+        if not interday:
+            return df
+
+        df = df.sort_index(ascending=False)
+
+        # Repair idea is to look for BIG daily price changes that closely match the
+        # most recent stock split ratio. This indicates Yahoo failed to apply a new
+        # stock split to old price data.
+        #
+        # There is a slight complication, because Yahoo does another stupid thing.
+        # Sometimes the old data is adjusted twice. So cannot simply assume 
+        # which direction to reverse adjustment - have to analyse prices and detect. 
+        # Not difficult.
+
+        # Find the most recent stock split
+        split_f = df['Stock Splits'].to_numpy() != 0
+        if not split_f.any():
+            return
+        most_recent_split_day = df.index[split_f].max()
+        split = df.loc[most_recent_split_day, 'Stock Splits']
+        split_rcp = 1.0/split
+
+        if most_recent_split_day == df.index[0]:
+            logger.info("split-repair: Need 1+ day of price data after split to determine true price. Won't repair")
+            return df
+
+        logger.debug(f'split-repair: Most recent split = {split}')
+
+        price_col = 'Close'
+
+        # Do not attempt repair of the split is small, 
+        # could be mistaken for normal price variance
+        if split > 0.9 and split < 1.1:
+            logger.info("split-repair: Split ratio too close to 1. Won't repair")
+            return df
+
+        df_debug = df.copy()
+
+        # Calculate daily price % change. 
+        _1d_change_x = _np.full(df.shape[0], 1.0)
+        _1d_change_x[1:] = df[price_col].to_numpy()[1:] / df[price_col].to_numpy()[:-1]
+        df_debug['1D change X'] = _1d_change_x
+
+        # Calculate the true price variance, i.e. remove effect of bad split-adjustments
+        avg = _np.mean(_1d_change_x)
+        if split < 1.0:
+            logger.debug("split-repair: Expect true prices to be the smaller cluster")
+            # Calculate the variance of changes, excluding changes ABOVE mean which may be changes from bad split adjustment
+            f_inclusion = _1d_change_x < avg
+        else:
+            logger.debug("split-repair: Expect true prices to be the larger cluster")
+            # Calculate the variance of changes, excluding changes BELOW mean which may be changes from bad split adjustment
+            f_inclusion = _1d_change_x > avg
+        _1d_change_x_inclusion = _1d_change_x[f_inclusion]
+        variance = _np.var(_1d_change_x_inclusion)
+        sd = _np.sqrt(variance)
+        logger.debug(f"split-repair: Estimation of StdDev = {sd:.2f}")
+        # Next step is a better guess at identifying all good changes.
+        # 1) calculate mean of _1d_change_x_inclusion
+        avg = _np.mean(_1d_change_x_inclusion)
+        logger.debug(f"split-repair: Naive estimation of avg change = {avg:.2f}")
+        # 2) identify changes from original data within 3 SDs of mean
+        f = _np.abs(_1d_change_x - avg) <= 3*sd
+        if not f.any():
+            logger.debug(f'split-repair: Fault in logic identifying true price variance')
+            return df
+        # 3) re-calculate the statistics
+        avg = _np.mean(_1d_change_x[f])
+        sd = _np.std(_1d_change_x[f])
+        logger.debug(f"split-repair: Improved estimation of avg change = {avg:.2f} and StdDev = {sd:.4f}")
+        # Now can calculate SD as % of mean
+        sd_pct = sd / avg
+        logger.debug(f"split-repair: SD % mean = {sd_pct:.4f}")
+
+        # Only proceed if split adjustment far exceeds normal 1D changes
+        if (split < 1.0 and 100*split_rcp < 5*sd_pct) or \
+           (split > 1.0 and 100*split < 5*sd_pct):
+            logger.info("split-repair: Split ratio too close to normal price volatility. Won't repair")
+            return df
+
+        # Now can detect bad split adjustments
+        r = _1d_change_x / split_rcp
+        # - within 50% => more likely to be bad split adjustment than within normal price variance
+        f1 = (r > 0.5) & (r < 1.5)
+        r = _1d_change_x / split
+        f2 = (r > 0.5) & (r < 1.5)
+        f = f1 | f2
+        # df_debug['f'] = f
+        # df_debug['f1'] = f1
+        # df_debug['f2'] = f2
+
+        true_indices = _np.where(f)[0]
+        ranges = []
+        # mask = _np.zeros_like(f, dtype=bool)
+        for i in range(len(true_indices) - 1):
+            if i % 2 == 0:
+                # mask[true_indices[i]:true_indices[i + 1]] = True
+                adj = 'split' if f1[true_indices[i]] else '1.0/split'
+                ranges.append((true_indices[i], true_indices[i+1], adj))
+        if len(true_indices) % 2 != 0:
+            # mask[true_indices[-1]:] = True
+            adj = 'split' if f1[true_indices[-1]] else '1.0/split'
+            ranges.append((true_indices[-1], len(f), adj))
+        # print("ranges:") ; pprint(ranges)
+        # df_debug['mask'] = mask
+
+        for r in ranges:
+            if r[2] == 'split':
+                m = split
+                m_rcp = split_rcp
+            else:
+                m = split_rcp
+                m_rcp = split
+            for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
+                df.iloc[r[0]:r[1], df.columns.get_loc(c)] *= m
+            df.iloc[r[0]:r[1], df.columns.get_loc("Volume")] *= m_rcp
+            if r[0] == r[1]-1:
+                if interday:
+                    msg = f"split-repair: Corrected bad split adjustment on interval {df.index[r[0]].date()}"
+                else:
+                    msg = f"split-repair: Corrected bad split adjustment on interval {df.index[r[0]]}"
+            else:
+                # Note: df sorted with index descending
+                start = df.index[r[1]-1]
+                end = df.index[r[0]]
+                if interday:
+                    msg = f"split-repair: Corrected bad split adjustment across intervals {start.date()} -> {end.date()} (inclusive)"
+                else:
+                    msg = f"split-repair: Corrected bad split adjustment across intervals {start} -> {end} (inclusive)"
+            logger.info(msg)
+
+        # print(df_debug.drop(['Close', 'Low', 'High', 'Volume', 'Dividends'], axis=1))
+        # print(df.drop(['Close', 'Low', 'High', 'Volume', 'Dividends'], axis=1))
+
+        return df
+
 
     def _get_ticker_tz(self, proxy, timeout):
         if self._tz is not None:

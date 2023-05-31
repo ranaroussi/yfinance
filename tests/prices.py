@@ -3,6 +3,7 @@ from .context import session_gbl
 
 import unittest
 
+import os
 import datetime as _dt
 import pytz as _tz
 import numpy as _np
@@ -659,6 +660,46 @@ class TestPriceRepair(unittest.TestCase):
 
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
+
+    def test_repair_bad_stock_split(self):
+        # Setup:
+
+        # import logging
+        # logging.getLogger('yfinance').setLevel(logging.DEBUG)
+
+        tkrs = ['4063.T', 'CNE.L', 'DEX.AX', 'MOB.ST']
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            tz_exchange = dat.fast_info["timezone"]
+
+            _dp = os.path.dirname(__file__)
+            df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split.csv"), index_col="Date")
+            df_bad.index = _pd.to_datetime(df_bad.index)
+            # print(df_bad.index)
+            # print(df_bad[['Close', 'Adj Close', 'Stock Splits']])
+            # return
+
+            repaired_df = dat._fix_bad_stock_split(df_bad, "1d")
+            # print(repaired_df[['Close', 'Adj Close', 'Stock Splits']])
+            # return
+
+            correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split-fixed.csv"), index_col="Date")
+            correct_df.index = _pd.to_datetime(correct_df.index)
+            correct_df = correct_df.sort_index(ascending=False)
+
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+                except:
+                    print("COLUMN", c)
+                    print("- repaired_df")
+                    print(repaired_df)
+                    print("- correct_df[c]:")
+                    print(correct_df[c])
+                    print("- diff:")
+                    print(repaired_df[c] - correct_df[c])
+                    raise
+
 
 if __name__ == '__main__':
     unittest.main()
