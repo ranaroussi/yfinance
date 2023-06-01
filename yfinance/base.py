@@ -1081,7 +1081,7 @@ class TickerBase:
         # Find the most recent stock split
         split_f = df['Stock Splits'].to_numpy() != 0
         if not split_f.any():
-            return
+            return df
         most_recent_split_day = df.index[split_f].max()
         split = df.loc[most_recent_split_day, 'Stock Splits']
         split_rcp = 1.0/split
