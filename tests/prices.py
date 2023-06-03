@@ -662,42 +662,63 @@ class TestPriceRepair(unittest.TestCase):
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_bad_stock_split(self):
-        # Setup:
-
-        # import logging
-        # logging.getLogger('yfinance').setLevel(logging.DEBUG)
-
-        tkrs = ['4063.T', 'CNE.L', 'DEX.AX', 'MOB.ST']
-        for tkr in tkrs:
+        bad_tkrs = ['4063.T', 'ALPHA.PA', 'CNE.L', 'DEX.AX', 'MOB.ST', 'SPM.MI']
+        for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz_exchange = dat.fast_info["timezone"]
 
             _dp = os.path.dirname(__file__)
             df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split.csv"), index_col="Date")
             df_bad.index = _pd.to_datetime(df_bad.index)
-            # print(df_bad.index)
-            # print(df_bad[['Close', 'Adj Close', 'Stock Splits']])
-            # return
 
             repaired_df = dat._fix_bad_stock_split(df_bad, "1d")
-            # print(repaired_df[['Close', 'Adj Close', 'Stock Splits']])
-            # return
 
             correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split-fixed.csv"), index_col="Date")
             correct_df.index = _pd.to_datetime(correct_df.index)
-            correct_df = correct_df.sort_index(ascending=False)
 
+            repaired_df = repaired_df.sort_index()
+            correct_df = correct_df.sort_index()
             for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
                 try:
                     self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
                 except:
-                    print("COLUMN", c)
+                    print(f"tkr={tkr} COLUMN={c}")
                     print("- repaired_df")
                     print(repaired_df)
                     print("- correct_df[c]:")
                     print(correct_df[c])
                     print("- diff:")
                     print(repaired_df[c] - correct_df[c])
+                    raise
+
+        # Stocks that split in 2022 but no problems in Yahoo data, 
+        # so repair should change nothing
+        good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
+        good_tkrs += ['AEI', 'CHRA', 'GHI', 'IRON', 'LXU', 'NUZE', 'RSLS', 'TISI']
+        good_tkrs += ['BOL.ST', 'TUI1.DE']
+        for tkr in good_tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            tz_exchange = dat.fast_info["timezone"]
+
+            _dp = os.path.dirname(__file__)
+            df_good = dat.history(period='2y', auto_adjust=False)
+
+            repaired_df = dat._fix_bad_stock_split(df_good, "1d")
+
+            # Expect no change from repair
+            df_good = df_good.sort_index()
+            repaired_df = repaired_df.sort_index()
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
+                except:
+                    print(f"tkr={tkr} COLUMN={c}")
+                    print("- repaired_df")
+                    print(repaired_df)
+                    print("- df_good[c]:")
+                    print(df_good[c])
+                    print("- diff:")
+                    print(repaired_df[c] - df_good[c])
                     raise
 
 

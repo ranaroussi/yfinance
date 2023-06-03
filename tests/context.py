@@ -26,11 +26,16 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
 from pyrate_limiter import Duration, RequestRate, Limiter
 history_rate = RequestRate(1, Duration.SECOND*2)
 limiter = Limiter(history_rate)
+cache_fp = os.path.join(_ad.user_cache_dir(), "py-yfinance", "unittests-cache")
+if os.path.isfile(cache_fp + '.sqlite'):
+    # Delete local cache if older than 1 day:
+    mod_dt = _dt.datetime.fromtimestamp(os.path.getmtime(cache_fp + '.sqlite'))
+    if mod_dt.date() < _dt.date.today():
+        os.remove(cache_fp + '.sqlite')
 session_gbl = CachedLimiterSession(
     limiter=limiter,
     bucket_class=MemoryQueueBucket,
-    backend=SQLiteCache(os.path.join(_ad.user_cache_dir(), "py-yfinance", "unittests-cache"), 
-    					expire_after=_dt.timedelta(hours=1)),
+    backend=SQLiteCache(cache_fp, expire_after=_dt.timedelta(hours=1)),
 )
 # Use this instead if only want rate-limiting:
 # from requests_ratelimiter import LimiterSession

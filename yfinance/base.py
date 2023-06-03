@@ -414,6 +414,7 @@ class TickerBase:
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost, silent=(repair=="silent"))
             df = self._fix_missing_div_adjust(df, interval)
             df = self._fix_bad_stock_split(df, interval)
+            df = df.sort_index()
 
         # Auto/back adjust
         try:
@@ -952,11 +953,12 @@ class TickerBase:
 
         # If stock split occurred, then trading must have happened.
         # I should probably rename the function, because prices aren't zero ...
-        f_split = (df2['Stock Splits'] != 0.0).to_numpy()
-        if f_split.any():
-            f_change_expected_but_missing = f_split & ~f_change
-            if f_change_expected_but_missing.any():
-                f_prices_bad[f_change_expected_but_missing] = True
+        if 'Stock Splits' in df2.columns:
+            f_split = (df2['Stock Splits'] != 0.0).to_numpy()
+            if f_split.any():
+                f_change_expected_but_missing = f_split & ~f_change
+                if f_change_expected_but_missing.any():
+                    f_prices_bad[f_change_expected_but_missing] = True
 
         # Check whether worth attempting repair
         f_prices_bad = f_prices_bad.to_numpy()
@@ -1021,6 +1023,8 @@ class TickerBase:
         # Sometimes, if a dividend occurred today, then Yahoo has not adjusted historic data.
         # Easy to detect and correct.
 
+        if df is None or df.empty:
+            return df
         interday = interval in ['1d', '1wk', '1mo', '3mo']
         if not interday:
             return df
@@ -1044,7 +1048,7 @@ class TickerBase:
             # No other divs in data
             start_idx = 0
         else:
-            start_idx = div_indices[-2] + 1
+            start_idx = div_indices[-2]
         start_dt = df.index[start_idx]
         f_no_adj = (df['Close']==df['Adj Close']).to_numpy()[start_idx:last_div_idx]
         threshold_pct = 0.5
@@ -1085,90 +1089,106 @@ class TickerBase:
         most_recent_split_day = df.index[split_f].max()
         split = df.loc[most_recent_split_day, 'Stock Splits']
         split_rcp = 1.0/split
-
         if most_recent_split_day == df.index[0]:
             logger.info("split-repair: Need 1+ day of price data after split to determine true price. Won't repair")
             return df
 
-        logger.debug(f'split-repair: Most recent split = {split}')
+        logger.debug(f'split-repair: Most recent split = {split:.4f} @ {most_recent_split_day.date()}')
 
         price_col = 'Close'
+        price_cols = ['Open', 'Low', 'High', 'Close']
 
         # Do not attempt repair of the split is small, 
         # could be mistaken for normal price variance
-        if split > 0.9 and split < 1.1:
+        if split > 0.8 and split < 1.25:
             logger.info("split-repair: Split ratio too close to 1. Won't repair")
             return df
 
-        df_debug = df.copy()
+        if logger.level == logging.DEBUG:
+            df_debug = df.copy()
+            df_debug = df_debug.drop(['Adj Close', 'Low', 'High', 'Volume', 'Dividends', 'Repaired?'], axis=1)
 
-        # Calculate daily price % change. 
-        _1d_change_x = _np.full(df.shape[0], 1.0)
-        _1d_change_x[1:] = df[price_col].to_numpy()[1:] / df[price_col].to_numpy()[:-1]
-        df_debug['1D change X'] = _1d_change_x
+        # Calculate daily price % change. To reduce effect of price volatility, 
+        # calculate change for each OHLC column and select value nearest 1.0.
+        _1d_change_x = _np.full((df.shape[0], 4), 1.0)
+        _1d_change_x[1:] = df[price_cols].to_numpy()[1:,] / df[price_cols].to_numpy()[:-1,]
+        diff = _np.abs(_1d_change_x - 1.0)
+        j_indices = _np.argmin(diff, axis=1)
+        _1d_change_x = _1d_change_x[_np.arange(_1d_change_x.shape[0]), j_indices]
+        x = pd.DataFrame(_1d_change_x, index=df.index)
+        if logger.level == logging.DEBUG:
+            df_debug['1D change X'] = _1d_change_x
 
-        # Calculate the true price variance, i.e. remove effect of bad split-adjustments
-        avg = _np.mean(_1d_change_x)
-        if split < 1.0:
-            logger.debug("split-repair: Expect true prices to be the smaller cluster")
-            # Calculate the variance of changes, excluding changes ABOVE mean which may be changes from bad split adjustment
-            f_inclusion = _1d_change_x < avg
-        else:
-            logger.debug("split-repair: Expect true prices to be the larger cluster")
-            # Calculate the variance of changes, excluding changes BELOW mean which may be changes from bad split adjustment
-            f_inclusion = _1d_change_x > avg
-        _1d_change_x_inclusion = _1d_change_x[f_inclusion]
-        variance = _np.var(_1d_change_x_inclusion)
-        sd = _np.sqrt(variance)
-        logger.debug(f"split-repair: Estimation of StdDev = {sd:.2f}")
-        # Next step is a better guess at identifying all good changes.
-        # 1) calculate mean of _1d_change_x_inclusion
-        avg = _np.mean(_1d_change_x_inclusion)
-        logger.debug(f"split-repair: Naive estimation of avg change = {avg:.2f}")
-        # 2) identify changes from original data within 3 SDs of mean
-        f = _np.abs(_1d_change_x - avg) <= 3*sd
-        if not f.any():
-            logger.debug(f'split-repair: Fault in logic identifying true price variance')
+        # If all 1D changes are closer to 1.0 than split, exit
+        split_max = max(split, split_rcp)
+        if _np.max(_1d_change_x) < (split_max-1)*0.5+1 and _np.min(_1d_change_x) > 1.0/((split_max-1)*0.5 +1):
+            logger.info(f"split-repair: No bad splits detected")
             return df
-        # 3) re-calculate the statistics
+
+        # Calculate the true price variance, i.e. remove effect of bad split-adjustments.
+        # Key = ignore 1D changes outside of interquartile range
+        q1, q3 = _np.percentile(_1d_change_x, [25, 75])
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        f = (_1d_change_x >= lower_bound) & (_1d_change_x <= upper_bound)
         avg = _np.mean(_1d_change_x[f])
         sd = _np.std(_1d_change_x[f])
-        logger.debug(f"split-repair: Improved estimation of avg change = {avg:.2f} and StdDev = {sd:.4f}")
         # Now can calculate SD as % of mean
         sd_pct = sd / avg
-        logger.debug(f"split-repair: SD % mean = {sd_pct:.4f}")
+        logger.debug(f"split-repair: Estimation of true 1D change stats: mean = {avg:.2f}, StdDev = {sd:.4f} ({sd_pct*100.0:.1f}% of mean)")
 
         # Only proceed if split adjustment far exceeds normal 1D changes
-        if (split < 1.0 and 100*split_rcp < 5*sd_pct) or \
-           (split > 1.0 and 100*split < 5*sd_pct):
+        largest_change_pct = 5*sd_pct
+        if (max(split, split_rcp) < 1.0+largest_change_pct):
             logger.info("split-repair: Split ratio too close to normal price volatility. Won't repair")
+            # if logger.level == logging.DEBUG:
+            #     logger.debug(f"split-repair: my workings:")
+            #     logger.debug('\n' + str(df_debug))
             return df
 
         # Now can detect bad split adjustments
+        # Set threshold to halfway between split ratio and largest expected normal price change
         r = _1d_change_x / split_rcp
-        # - within 50% => more likely to be bad split adjustment than within normal price variance
-        f1 = (r > 0.5) & (r < 1.5)
-        r = _1d_change_x / split
-        f2 = (r > 0.5) & (r < 1.5)
+        split_max = max(split, split_rcp)
+        threshold = (split_max + largest_change_pct) * 0.5
+        logger.debug(f"split-repair: threshold={threshold:.3f}")
+        f1 = _1d_change_x < 1.0/threshold
+        f2 = _1d_change_x > threshold
         f = f1 | f2
-        # df_debug['f'] = f
-        # df_debug['f1'] = f1
-        # df_debug['f2'] = f2
+        if logger.level == logging.DEBUG:
+            df_debug['r'] = r
+            df_debug['f1'] = f1
+            df_debug['f2'] = f2
+        if not f.any():
+            logger.info('split-repair: No bad split adjustments detected')
+            return df
 
         true_indices = _np.where(f)[0]
         ranges = []
-        # mask = _np.zeros_like(f, dtype=bool)
+        if logger.level == logging.DEBUG:
+            bad = _np.zeros_like(f, dtype=bool)
         for i in range(len(true_indices) - 1):
             if i % 2 == 0:
-                # mask[true_indices[i]:true_indices[i + 1]] = True
-                adj = 'split' if f1[true_indices[i]] else '1.0/split'
+                if logger.level == logging.DEBUG:
+                    bad[true_indices[i]:true_indices[i + 1]] = True
+                if split > 1.0:
+                    adj = 'split' if f1[true_indices[i]] else '1.0/split'
+                else:
+                    adj = '1.0/split' if f1[true_indices[i]] else 'split'
                 ranges.append((true_indices[i], true_indices[i+1], adj))
         if len(true_indices) % 2 != 0:
-            # mask[true_indices[-1]:] = True
-            adj = 'split' if f1[true_indices[-1]] else '1.0/split'
+            if logger.level == logging.DEBUG:
+                bad[true_indices[-1]:] = True
+            if split > 1.0:
+                adj = 'split' if f1[true_indices[-1]] else '1.0/split'
+            else:
+                adj = '1.0/split' if f1[true_indices[-1]] else 'split'
             ranges.append((true_indices[-1], len(f), adj))
-        # print("ranges:") ; pprint(ranges)
-        # df_debug['mask'] = mask
+        # if logger.level == logging.DEBUG:
+        #     from pprint import pprint ; print("ranges:") ; pprint(ranges)
+        if logger.level == logging.DEBUG:
+            df_debug['Bad?'] = bad
 
         for r in ranges:
             if r[2] == 'split':
@@ -1177,6 +1197,7 @@ class TickerBase:
             else:
                 m = split_rcp
                 m_rcp = split
+            # logger.debug(f"split-repair: range={r} m={m}")
             for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                 df.iloc[r[0]:r[1], df.columns.get_loc(c)] *= m
             df.iloc[r[0]:r[1], df.columns.get_loc("Volume")] *= m_rcp
@@ -1194,9 +1215,11 @@ class TickerBase:
                 else:
                     msg = f"split-repair: Corrected bad split adjustment across intervals {start} -> {end} (inclusive)"
             logger.info(msg)
+        df['Volume'] = df['Volume'].round(0).astype('int')
 
-        # print(df_debug.drop(['Close', 'Low', 'High', 'Volume', 'Dividends'], axis=1))
-        # print(df.drop(['Close', 'Low', 'High', 'Volume', 'Dividends'], axis=1))
+        # if logger.level == logging.DEBUG:
+        #     logger.debug(f"split-repair: my workings:")
+        #     logger.debug('\n' + str(df_debug))
 
         return df
 
