@@ -33,7 +33,7 @@ from . import shared
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", show_errors=None, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=10):
+             proxy=None, rounding=False, timeout=10, session=None):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -82,6 +82,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
+        session: None or Session
+            Optional. Pass your own session object to be used for all requests
     """
 
     if show_errors is not None:
@@ -110,7 +112,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
     for ticker in tickers:
         if utils.is_isin(ticker):
             isin = ticker
-            ticker = utils.get_ticker_by_isin(ticker, proxy)
+            ticker = utils.get_ticker_by_isin(ticker, proxy, session=session)
             shared._ISINS[ticker] = isin
         _tickers_.append(ticker)
 
@@ -137,10 +139,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding, timeout=timeout)
+                                   rounding=rounding, timeout=timeout, session=session)
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
-
     # download synchronously
     else:
         for i, ticker in enumerate(tickers):
@@ -149,10 +150,10 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, repair=repair, keepna=keepna,
                                  proxy=proxy,
-                                 rounding=rounding, timeout=timeout)
+                                 rounding=rounding, timeout=timeout, session=session)
             if progress:
                 shared._PROGRESS_BAR.animate()
-
+    
     if progress:
         shared._PROGRESS_BAR.completed()
 
@@ -239,10 +240,10 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=10):
+                           keepna=False, rounding=False, timeout=10, session=None):
     data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
-                         keepna, timeout)
+                         keepna, timeout, session)
     if progress:
         shared._PROGRESS_BAR.animate()
 
@@ -251,10 +252,10 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=10):
+                  keepna=False, timeout=10, session=None):
     data = None
     try:
-        data = Ticker(ticker).history(
+        data = Ticker(ticker, session=session).history(
                 period=period, interval=interval,
                 start=start, end=end, prepost=prepost,
                 actions=actions, auto_adjust=auto_adjust,
