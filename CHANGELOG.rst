@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-0.2.19
+0.2.20
 ------
 Switch to `logging` module #1493 #1522 #1541
 Price history:
