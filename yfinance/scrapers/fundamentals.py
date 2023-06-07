@@ -1,4 +1,5 @@
 import datetime
+import logging
 import json
 
 import pandas as pd
@@ -8,6 +9,7 @@ from yfinance import utils
 from yfinance.data import TickerData
 from yfinance.exceptions import YFinanceDataException, YFinanceException
 
+logger = utils.get_yf_logger()
 
 class Fundamentals:
 
@@ -50,7 +52,7 @@ class Fundamentals:
             self._fin_data_quote = self._financials_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No financials data found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            logger.error('%s: %s', self._data.ticker, err_msg)
             return None
 
     def _scrape_earnings(self, proxy):
@@ -144,7 +146,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFinanceException as e:
-            print(f"- {self._data.ticker}: Failed to create {name} financials table for reason: {repr(e)}")
+            logger.error("%s: Failed to create %s financials table for reason: %r", self._data.ticker, name, e)
         return pd.DataFrame()
 
     def _create_financials_table(self, name, timescale, proxy):
@@ -267,7 +269,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFinanceException as e:
-            print(f"- {self._data.ticker}: Failed to create financials table for {name} reason: {repr(e)}")
+            logger.error("%s: Failed to create financials table for %s reason: %r", self._data.ticker, name, e)
         return pd.DataFrame()
 
     def _create_financials_table_old(self, name, timescale, proxy):

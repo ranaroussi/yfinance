@@ -1,6 +1,7 @@
 import functools
 from functools import lru_cache
 
+import logging
 import hashlib
 from base64 import b64decode
 usePycryptodome = False  # slightly faster
@@ -25,7 +26,11 @@ try:
 except ImportError:
     import json as json
 
+from . import utils
+
 cache_maxsize = 64
+
+logger = utils.get_yf_logger()
 
 
 def lru_cache_freezeargs(func):
@@ -297,11 +302,11 @@ class TickerData:
         # Gather decryption keys:
         soup = BeautifulSoup(response.content, "html.parser")
         keys = self._get_decryption_keys_from_yahoo_js(soup)
-        # if len(keys) == 0:
-        #     msg = "No decryption keys could be extracted from JS file."
-        #     if "requests_cache" in str(type(response)):
-        #         msg += " Try flushing your 'requests_cache', probably parsing old JS."
-        #     print("WARNING: " + msg + " Falling back to backup decrypt methods.")
+        if len(keys) == 0:
+            msg = "No decryption keys could be extracted from JS file."
+            if "requests_cache" in str(type(response)):
+                msg += " Try flushing your 'requests_cache', probably parsing old JS."
+            logger.warning("%s Falling back to backup decrypt methods.", msg)
         if len(keys) == 0:
             keys = []
             try:

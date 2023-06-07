@@ -1,6 +1,21 @@
 Change Log
 ===========
 
+0.2.19b4
+--------
+Fix `download` logging #1541
+Fix corrupt tkr-tz-csv halting code #1528
+
+0.2.19b3
+-------
+Improve logging messages #1522
+Price fixes #1523
+
+0.2.19b1 - beta
+-------
+Optimise Ticker.history #1514
+Logging module #1493
+
 0.2.18
 ------
 Fix 'fast_info' error '_np not found' #1496

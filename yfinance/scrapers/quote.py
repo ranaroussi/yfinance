@@ -1,5 +1,7 @@
 import datetime
+import logging
 import json
+import warnings
 
 import pandas as pd
 import numpy as _np
@@ -7,6 +9,7 @@ import numpy as _np
 from yfinance import utils
 from yfinance.data import TickerData
 
+logger = utils.get_yf_logger()
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -46,16 +49,16 @@ class InfoDictWrapper(MutableMapping):
 
     def __getitem__(self, k):
         if k in info_retired_keys_price:
-            print(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead")
+            warnings.warn(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_exchange:
-            print(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead")
+            warnings.warn(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_marketCap:
-            print(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead")
+            warnings.warn(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead", DeprecationWarning)
             return None
         elif k in info_retired_keys_symbol:
-            print(f"Symbol removed from info (key='{k}'). You know this already")
+            warnings.warn(f"Symbol removed from info (key='{k}'). You know this already", DeprecationWarning)
             return None
         return self.info[self._keytransform(k)]
 
@@ -175,7 +178,11 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, debug=False, keepna=True)
+            # Temporarily disable error printing
+            l = logger.level
+            logger.setLevel(logging.CRITICAL)
+            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, keepna=True)
+            logger.setLevel(l)
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -201,12 +208,20 @@ class FastInfo:
 
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
-            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, debug=False)
+            # Temporarily disable error printing
+            l = logger.level
+            logger.setLevel(logging.CRITICAL)
+            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True)
+            logger.setLevel(l)
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
-            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, debug=False)
+            # Temporarily disable error printing
+            l = logger.level
+            logger.setLevel(logging.CRITICAL)
+            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False)
+            logger.setLevel(l)
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -516,6 +531,8 @@ class FastInfo:
         except Exception as e:
             if "Cannot retrieve share count" in str(e):
                 shares = None
+            elif "failed to decrypt Yahoo" in str(e):
+                shares = None
             else:
                 raise
 
@@ -587,7 +604,7 @@ class Quote:
             quote_summary_store = json_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No summary info found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            logger.error('%s: %s', self._data.ticker, err_msg)
             return None
 
         # sustainability

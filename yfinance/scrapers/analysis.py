@@ -58,7 +58,7 @@ class Analysis:
             analysis_data = analysis_data['QuoteSummaryStore']
         except KeyError as e:
             err_msg = "No analysis data found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            logger.error('%s: %s', self._data.ticker, err_msg)
             return
 
         if isinstance(analysis_data.get('earningsTrend'), dict):
