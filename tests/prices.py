@@ -1,4 +1,5 @@
 from .context import yfinance as yf
+from .context import session_gbl
 
 import unittest
 
@@ -7,15 +8,11 @@ import pytz as _tz
 import numpy as _np
 import pandas as _pd
 
-import requests_cache
-
 
 class TestPriceHistory(unittest.TestCase):
-    session = None
-
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession(backend='memory')
+        cls.session = session_gbl
 
     @classmethod
     def tearDownClass(cls):
@@ -34,11 +31,23 @@ class TestPriceHistory(unittest.TestCase):
                 f = df.index.time == _dt.time(0)
                 self.assertTrue(f.all())
 
+    def test_download(self):
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+        intervals = ["1d", "1wk", "1mo"]
+        for interval in intervals:
+            df = yf.download(tkrs, period="5y", interval=interval)
+
+            f = df.index.time == _dt.time(0)
+            self.assertTrue(f.all())
+
+            df_tkrs = df.columns.levels[1]
+            self.assertEqual(sorted(tkrs), sorted(df_tkrs))
+
     def test_duplicatingHourly(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
             dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
             dt = dt_utc.astimezone(_tz.timezone(tz))
@@ -58,7 +67,7 @@ class TestPriceHistory(unittest.TestCase):
         test_run = False
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
             dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
             dt = dt_utc.astimezone(_tz.timezone(tz))
@@ -84,7 +93,7 @@ class TestPriceHistory(unittest.TestCase):
         test_run = False
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(debug_mode=False, proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
             dt = _tz.timezone(tz).localize(_dt.datetime.now())
             if dt.date().weekday() not in [1, 2, 3, 4]:
@@ -401,7 +410,7 @@ class TestPriceRepair(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = requests_cache.CachedSession(backend='memory')
+        cls.session = session_gbl
 
     @classmethod
     def tearDownClass(cls):
@@ -479,6 +488,9 @@ class TestPriceRepair(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
     def test_repair_100x_weekly_preSplit(self):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
@@ -536,6 +548,9 @@ class TestPriceRepair(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
     def test_repair_100x_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -578,6 +593,9 @@ class TestPriceRepair(unittest.TestCase):
         f_1 = ratio == 1
         self.assertTrue((f_100 | f_1).all())
 
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -604,6 +622,9 @@ class TestPriceRepair(unittest.TestCase):
         correct_df.loc["2022-11-01", "High"] = 102.080002
         for c in ["Open", "Low", "High", "Close"]:
             self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-8).all())
+
+        self.assertTrue("Repaired?" in repaired_df.columns)
+        self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
@@ -636,13 +657,8 @@ class TestPriceRepair(unittest.TestCase):
                 print(repaired_df[c] - correct_df[c])
                 raise
 
+        self.assertTrue("Repaired?" in repaired_df.columns)
+        self.assertFalse(repaired_df["Repaired?"].isna().any())
+
 if __name__ == '__main__':
     unittest.main()
-
-# # Run tests sequentially:
-# import inspect
-# test_src = inspect.getsource(TestPriceHistory)
-# unittest.TestLoader.sortTestMethodsUsing = lambda _, x, y: (
-#     test_src.index(f"def {x}") - test_src.index(f"def {y}")
-# )
-# unittest.main(verbosity=2)

@@ -21,6 +21,8 @@
 
 from __future__ import print_function
 
+import logging
+import traceback
 import time as _time
 import multitasking as _multitasking
 import pandas as _pd
@@ -28,11 +30,10 @@ import pandas as _pd
 from . import Ticker, utils
 from . import shared
 
-
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
-             progress=True, period="max", show_errors=True, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=10):
+             progress=True, period="max", show_errors=None, interval="1d", prepost=False,
+             proxy=None, rounding=False, timeout=10, session=None):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -77,10 +78,21 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             Optional. Round values to 2 decimal places?
         show_errors: bool
             Optional. Doesn't print errors if False
+            DEPRECATED, will be removed in future version
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
+        session: None or Session
+            Optional. Pass your own session object to be used for all requests
     """
+
+    if show_errors is not None:
+        if show_errors:
+            utils.print_once(f"yfinance: download(show_errors={show_errors}) argument is deprecated and will be removed in future version. Do this instead: logging.getLogger('yfinance').setLevel(logging.ERROR)")
+            logging.getLogger('yfinance').setLevel(logging.ERROR)
+        else:
+            utils.print_once(f"yfinance: download(show_errors={show_errors}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
+            logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
     if ignore_tz is None:
         # Set default value depending on interval
@@ -100,7 +112,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
     for ticker in tickers:
         if utils.is_isin(ticker):
             isin = ticker
-            ticker = utils.get_ticker_by_isin(ticker, proxy)
+            ticker = utils.get_ticker_by_isin(ticker, proxy, session=session)
             shared._ISINS[ticker] = isin
         _tickers_.append(ticker)
 
@@ -114,6 +126,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
     # reset shared._DFS
     shared._DFS = {}
     shared._ERRORS = {}
+    shared._TRACEBACKS = {}
 
     # download using threads
     if threads:
@@ -126,10 +139,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding, timeout=timeout)
+                                   rounding=rounding, timeout=timeout, session=session)
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
-
     # download synchronously
     else:
         for i, ticker in enumerate(tickers):
@@ -138,20 +150,40 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, repair=repair, keepna=keepna,
                                  proxy=proxy,
-                                 rounding=rounding, timeout=timeout)
-            shared._DFS[ticker.upper()] = data
+                                 rounding=rounding, timeout=timeout, session=session)
             if progress:
                 shared._PROGRESS_BAR.animate()
-
+    
     if progress:
         shared._PROGRESS_BAR.completed()
 
-    if shared._ERRORS and show_errors:
-        print('\n%.f Failed download%s:' % (
+    if shared._ERRORS:
+        # Send errors to logging module
+        logger = utils.get_yf_logger()
+        logger.error('\n%.f Failed download%s:' % (
             len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
-        # print(shared._ERRORS)
-        print("\n".join(['- %s: %s' %
-                         v for v in list(shared._ERRORS.items())]))
+
+        # Log each distinct error once, with list of symbols affected
+        errors = {}
+        for ticker in shared._ERRORS:
+            err = shared._ERRORS[ticker]
+            if not err in errors:
+                errors[err] = [ticker]
+            else:
+                errors[err].append(ticker)
+        for err in errors.keys():
+            logger.error(f'{errors[err]}: ' + err)
+
+        # Log each distinct traceback once, with list of symbols affected
+        tbs = {}
+        for ticker in shared._TRACEBACKS:
+            tb = shared._TRACEBACKS[ticker]
+            if not tb in tbs:
+                tbs[tb] = [ticker]
+            else:
+                tbs[tb].append(ticker)
+        for tb in tbs.keys():
+            logger.debug(f'{tbs[tb]}: ' + tb)
 
     if ignore_tz:
         for tkr in shared._DFS.keys():
@@ -208,17 +240,10 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=10):
-    try:
-        data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
-                             actions, period, interval, prepost, proxy, rounding,
-                             keepna, timeout)
-    except Exception as e:
-        # glob try/except needed as current thead implementation breaks if exception is raised.
-        shared._DFS[ticker] = utils.empty_df()
-        shared._ERRORS[ticker] = repr(e)
-    else:
-        shared._DFS[ticker.upper()] = data
+                           keepna=False, rounding=False, timeout=10, session=None):
+    data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
+                         actions, period, interval, prepost, proxy, rounding,
+                         keepna, timeout, session)
     if progress:
         shared._PROGRESS_BAR.animate()
 
@@ -227,12 +252,23 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=10):
-    return Ticker(ticker).history(
-        period=period, interval=interval,
-        start=start, end=end, prepost=prepost,
-        actions=actions, auto_adjust=auto_adjust,
-        back_adjust=back_adjust, repair=repair, proxy=proxy,
-        rounding=rounding, keepna=keepna, timeout=timeout,
-        debug=False, raise_errors=False  # debug and raise_errors false to not log and raise errors in threads
-    )
+                  keepna=False, timeout=10, session=None):
+    data = None
+    try:
+        data = Ticker(ticker, session=session).history(
+                period=period, interval=interval,
+                start=start, end=end, prepost=prepost,
+                actions=actions, auto_adjust=auto_adjust,
+                back_adjust=back_adjust, repair=repair, proxy=proxy,
+                rounding=rounding, keepna=keepna, timeout=timeout,
+                raise_errors=True
+        )
+    except Exception as e:
+        # glob try/except needed as current thead implementation breaks if exception is raised.
+        shared._DFS[ticker.upper()] = utils.empty_df()
+        shared._ERRORS[ticker.upper()] = repr(e)
+        shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
+    else:
+        shared._DFS[ticker.upper()] = data
+
+    return data
