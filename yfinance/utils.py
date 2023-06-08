@@ -353,7 +353,7 @@ def _interval_to_timedelta(interval):
     elif interval == "1y":
         return _dateutil.relativedelta.relativedelta(years=1)
     elif interval == "1wk":
-        return _pd.Timedelta(days=7, unit='d')
+        return _pd.Timedelta(days=7)
     else: 
         return _pd.Timedelta(interval)
 
