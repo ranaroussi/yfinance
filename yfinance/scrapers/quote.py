@@ -643,6 +643,20 @@ class Quote:
         except Exception:
             pass
 
+        # For ETFs & Mutual Funds, provide fund profile
+        try:
+            if 'fundProfile' in quote_summary_store:
+                self._info.update(quote_summary_store['fundProfile'])
+        except Exception:
+            pass
+
+        # For ETFs & Mutual Funds, provide fund performance
+        try:
+            if 'fundPerformance' in quote_summary_store:
+                self._info.update(quote_summary_store['fundPerformance'])
+        except Exception:
+            pass
+
         try:
             if not isinstance(quote_summary_store.get('summaryDetail'), dict):
                 # For some reason summaryDetail did not give any results. The price dict
