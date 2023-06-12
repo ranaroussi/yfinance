@@ -438,7 +438,7 @@ class TestPriceRepair(unittest.TestCase):
             start_dt = end_dt - td_60d
             df = dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
 
-    def test_repair_100x_weekly(self):
+    def test_repair_100x_random_weekly(self):
         # Setup:
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -466,7 +466,7 @@ class TestPriceRepair(unittest.TestCase):
 
         # Run test
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
 
         # First test - no errors left
         for c in data_cols:
@@ -492,7 +492,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    def test_repair_100x_weekly_preSplit(self):
+    def test_repair_100x_random_weekly_preSplit(self):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
         tkr = "PNL.L"
@@ -524,7 +524,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
 
         # First test - no errors left
         for c in data_cols:
@@ -552,7 +552,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    def test_repair_100x_daily(self):
+    def test_repair_100x_random_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
@@ -577,11 +577,57 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1d", tz_exchange, prepost=False)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False, silent=True)
 
         # First test - no errors left
         for c in data_cols:
             self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+
+        # Second test - all differences should be either ~1x or ~100x
+        ratio = df_bad[data_cols].values / df[data_cols].values
+        ratio = ratio.round(2)
+        # - round near-100 ratio to 100:
+        f = ratio > 90
+        ratio[f] = (ratio[f] / 10).round().astype(int) * 10  # round ratio to nearest 10
+        # - now test
+        f_100 = ratio == 100
+        f_1 = ratio == 1
+        self.assertTrue((f_100 | f_1).all())
+
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
+    def test_repair_100x_block_daily(self):
+        # Some 100x errors are not sporadic.
+        # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
+
+        tkr = "SSW.JO"
+        dat = yf.Ticker(tkr, session=self.session)
+        tz_exchange = dat.fast_info["timezone"]
+
+        data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
+        _dp = os.path.dirname(__file__)
+        df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-100x-error.csv"), index_col="Date")
+        df_bad.index = _pd.to_datetime(df_bad.index)
+        df_bad = df_bad.sort_index()
+
+        df = df_bad.copy()
+        for d in data_cols:
+            df.loc[:'2023-05-31', d] *= 0.01  # fix error
+
+        # import logging ; logging.getLogger('yfinance').setLevel(logging.DEBUG)
+        df_repaired = dat._fix_unit_switch(df_bad, "1d", tz_exchange)
+        df_repaired = df_repaired.sort_index()
+
+        # First test - no errors left
+        for c in data_cols:
+            try:
+                self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+            except:
+                print(df_repaired[c])
+                print(df[c])
+                print(f"TEST FAIL on column '{c}")
+                raise
 
         # Second test - all differences should be either ~1x or ~100x
         ratio = df_bad[data_cols].values / df[data_cols].values
