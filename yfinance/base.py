@@ -1128,7 +1128,7 @@ class TickerBase:
 
         logger.debug(f'price-repair-split: Most recent split = {split:.4f} @ {most_recent_split_day.date()}')
 
-        return self._fix_bad_split(df, interval, split, correct_volume=True)
+        return self._fix_prices_sudden_change(df, interval, tz_exchange, split, correct_volume=True)
 
     def _fix_prices_sudden_change(self, df, interval, tz_exchange, change, correct_volume=False):
         df = df.sort_index(ascending=False)
