@@ -30,8 +30,6 @@ from . import utils
 
 cache_maxsize = 64
 
-logger = utils.get_yf_logger()
-
 
 def lru_cache_freezeargs(func):
     """
@@ -275,6 +273,7 @@ class TickerData:
 
         return []
 
+    @utils.log_indent_decorator
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
     def get_json_data_stores(self, sub_page: str = None, proxy=None) -> dict:
@@ -306,7 +305,7 @@ class TickerData:
             msg = "No decryption keys could be extracted from JS file."
             if "requests_cache" in str(type(response)):
                 msg += " Try flushing your 'requests_cache', probably parsing old JS."
-            logger.warning("%s Falling back to backup decrypt methods.", msg)
+            utils.get_yf_logger().warning("%s Falling back to backup decrypt methods.", msg)
         if len(keys) == 0:
             keys = []
             try:
