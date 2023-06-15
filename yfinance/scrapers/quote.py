@@ -9,8 +9,6 @@ import numpy as _np
 from yfinance import utils
 from yfinance.data import TickerData
 
-logger = utils.get_yf_logger()
-
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
 info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyTwoWeekChange", "52WeekChange", "fiftyDayAverage", "twoHundredDayAverage"})
@@ -179,10 +177,9 @@ class FastInfo:
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
             # Temporarily disable error printing
-            l = logger.level
-            logger.setLevel(logging.CRITICAL)
+            logging.disable(logging.CRITICAL)
             self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, keepna=True)
-            logger.setLevel(l)
+            logging.disable(logging.NOTSET)
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -209,19 +206,17 @@ class FastInfo:
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
             # Temporarily disable error printing
-            l = logger.level
-            logger.setLevel(logging.CRITICAL)
+            logging.disable(logging.CRITICAL)
             self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True)
-            logger.setLevel(l)
+            logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
             # Temporarily disable error printing
-            l = logger.level
-            logger.setLevel(logging.CRITICAL)
+            logging.disable(logging.CRITICAL)
             self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False)
-            logger.setLevel(l)
+            logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -593,6 +588,7 @@ class Quote:
             self._scrape(self.proxy)
         return self._calendar
 
+    @utils.log_indent_decorator
     def _scrape(self, proxy):
         if self._already_scraped:
             return
@@ -604,7 +600,7 @@ class Quote:
             quote_summary_store = json_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No summary info found, symbol may be delisted"
-            logger.error('%s: %s', self._data.ticker, err_msg)
+            utils.get_yf_logger().error('%s: %s', self._data.ticker, err_msg)
             return None
 
         # sustainability
