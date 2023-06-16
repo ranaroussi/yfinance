@@ -633,7 +633,7 @@ class TickerBase:
                 fetch_start = max(min_dt.date(), fetch_start)
             logger.debug(f"Fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}")
             r = "silent" if silent else True
-            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=False, prepost=prepost, repair=r, keepna=True)
+            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=True, prepost=prepost, repair=r, keepna=True)
             if df_fine is None or df_fine.empty:
                 if not silent:
                     msg = f"Cannot reconstruct {interval} block starting"
@@ -671,7 +671,7 @@ class TickerBase:
                 df_fine["intervalID"] = df_fine["ctr"].cumsum()
                 df_fine = df_fine.drop("ctr", axis=1)
                 grp_col = "intervalID"
-            df_fine = df_fine[~df_fine[price_cols].isna().all(axis=1)]
+            df_fine = df_fine[~df_fine[price_cols+['Dividends']].isna().all(axis=1)]
 
             df_fine_grp = df_fine.groupby(grp_col)
             df_new = df_fine_grp.agg(
@@ -680,6 +680,7 @@ class TickerBase:
                 AdjClose=("Adj Close", "last"),
                 Low=("Low", "min"),
                 High=("High", "max"),
+                Dividends=("Dividends", "sum"),
                 Volume=("Volume", "sum")).rename(columns={"AdjClose":"Adj Close"})
             if grp_col in ["Week Start", "Day Start"]:
                 df_new.index = df_new.index.tz_localize(df_fine.index.tz)
@@ -691,13 +692,47 @@ class TickerBase:
             logger.debug("df_new:")
             logger.debug(df_new)
 
-            # Calibrate! Check whether 'df_fine' has different split-adjustment.
-            # If different, then adjust to match 'df'
+            # Calibrate! 
             common_index = _np.intersect1d(df_block.index, df_new.index)
             if len(common_index) == 0:
                 # Can't calibrate so don't attempt repair
                 logger.warning(f"Can't calibrate {interval} block starting {start_d} so aborting repair")
                 continue
+            # First, attempt to calibrate the 'Adj Close' column. OK if cannot.
+            # Only necessary for 1d interval, because the 1h data is not div-adjusted.
+            if interval == '1d':
+                df_new_calib = df_new[df_new.index.isin(common_index)]
+                df_block_calib = df_block[df_block.index.isin(common_index)]
+                f_tag = df_block_calib['Adj Close'] == tag
+                if f_tag.any():
+                    div_adjusts = df_block_calib['Adj Close'] / df_block_calib['Close']
+                    div_adjusts[f_tag] = -1.0
+                    for idx in _np.where(f_tag)[0]:
+                        dt = df_new_calib.index[idx]
+                        n = len(div_adjusts)
+                        if df_new.loc[dt, "Dividends"] != 0:
+                            if idx < n-1:
+                                # Easy, take div-adjustment from next-day
+                                div_adjusts[idx] = div_adjusts[idx+1]
+                            else:
+                                # Take previous-day div-adjustment and reverse todays adjustment
+                                div_adj = 1.0 - df_new_calib["Dividends"].iloc[idx] / df_new_calib['Close'].iloc[idx-1]
+                                div_adjusts[idx] = div_adjusts[idx-1] / div_adj
+                        else:
+                            if idx > 0:
+                                # Easy, take div-adjustment from previous-day
+                                div_adjusts[idx] = div_adjusts[idx-1]
+                            else:
+                                # Must take next-day div-adjustment
+                                div_adjusts[idx] = div_adjusts[idx+1]
+                                if df_new_calib["Dividends"].iloc[idx+1] != 0:
+                                    div_adjusts[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx+1] / df_new_calib['Close'].iloc[idx]
+                    f_close_bad = df_block_calib['Close'] == tag
+                    df_new['Adj Close'] = df_block['Close'] * div_adjusts
+                    if f_close_bad.any():
+                        df_new.loc[f_close_bad, 'Adj Close'] = df_new['Close'][f_close_bad] * div_adjusts[f_close_bad]
+            # Next, check whether 'df_fine' has different split-adjustment.
+            # If different, then adjust to match 'df'
             df_new_calib = df_new[df_new.index.isin(common_index)][price_cols].to_numpy()
             df_block_calib = df_block[df_block.index.isin(common_index)][price_cols].to_numpy()
             calib_filter = (df_block_calib != tag)
@@ -776,6 +811,8 @@ class TickerBase:
                 if "Close" in bad_fields:
                     df_v2.loc[idx, "Close"] = df_new_row["Close"]
                     # Assume 'Adj Close' also corrupted, easier than detecting whether true
+                    df_v2.loc[idx, "Adj Close"] = df_new_row["Adj Close"]
+                elif "Adj Close" in bad_fields:
                     df_v2.loc[idx, "Adj Close"] = df_new_row["Adj Close"]
                 if "Volume" in bad_fields:
                     df_v2.loc[idx, "Volume"] = df_new_row["Volume"]
@@ -1050,7 +1087,8 @@ class TickerBase:
 
     def _fix_missing_div_adjust(self, df, interval, tz_exchange):
         # Sometimes, if a dividend occurred today, then Yahoo has not adjusted historic data.
-        # Easy to detect and correct.
+        # Easy to detect and correct BUT ONLY IF the data 'df' includes today's dividend.
+        # E.g. if fetching historic prices before todays dividend, then cannot fix.
 
         if df is None or df.empty:
             return df
@@ -1060,7 +1098,7 @@ class TickerBase:
 
         df = df.sort_index()
 
-        f_div = df["Dividends"] != 0.0
+        f_div = (df["Dividends"] != 0.0).to_numpy()
         if not f_div.any():
             return df
 
@@ -1158,7 +1196,8 @@ class TickerBase:
         # Calculate daily price % change. To reduce effect of price volatility, 
         # calculate change for each OHLC column and select value nearest 1.0.
         _1d_change_x = _np.full((df2.shape[0], 4), 1.0)
-        _1d_change_x[1:] = df2[price_cols].to_numpy()[1:,] / df2[price_cols].to_numpy()[:-1,]
+        price_data = df2[price_cols].replace(0.0, 1.0).to_numpy()
+        _1d_change_x[1:] = price_data[1:,] / price_data[:-1,]
         diff = _np.abs(_1d_change_x - 1.0)
         j_indices = _np.argmin(diff, axis=1)
         _1d_change_x = _1d_change_x[_np.arange(_1d_change_x.shape[0]), j_indices]
