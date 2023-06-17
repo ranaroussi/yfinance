@@ -567,11 +567,6 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    # Carefully merge 'df_sub' onto 'df_main'
-    # If naive merge fails, try again with reindexing df_sub:
-    # 1) if interval is weekly or monthly, then try with index set to start of week/month
-    # 2) if still failing then manually search through df_main.index to reindex df_sub
-
     if df_sub.shape[0] == 0:
         raise Exception("No data to merge")
 
@@ -580,6 +575,39 @@ def safe_merge_dfs(df_main, df_sub, interval):
     if len(data_cols) > 1:
         raise Exception("Expected 1 data col")
     data_col = data_cols[0]
+
+    df_main = df_main.sort_index()
+    intraday = interval.endswith('m') or interval.endswith('s')
+
+    td = _interval_to_timedelta(interval)
+    if intraday:
+        # On some exchanges the event can occur before market open.
+        # Problem when combining with intraday data.
+        # Solution = use dates, not datetimes, to map/merge.
+        df_main['_date'] = df_main.index.date
+        df_sub['_date'] = df_sub.index.date
+        indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
+        df_main = df_main.drop('_date', axis=1)
+        df_sub = df_sub.drop('_date', axis=1)
+    else:
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+                # Out-of-range
+                indices[i] = -1
+
+    f_outOfRange = indices == -1
+    if f_outOfRange.any():
+        if intraday or interval in ['1d', '1wk']:
+            # print('- df_main:') ; print(df_main)
+            # print('- df_sub:') ; print(df_sub)
+            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index}")
+        get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
+        df_sub = df_sub[~f_outOfRange].copy()
+        indices = indices[~f_outOfRange]
 
     def _reindex_events(df, new_index, data_col_name):
         if len(new_index) == len(set(new_index)):
@@ -602,106 +630,14 @@ def safe_merge_dfs(df_main, df_sub, interval):
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
-
-    df = df_main.join(df_sub)
-
-    f_na = df[data_col].isna()
-    data_lost = sum(~f_na) < df_sub.shape[0]
-    if not data_lost:
-        return df
-    # Lost data during join()
-    # Backdate all df_sub.index dates to start of week/month
-    if interval == "1wk":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
-    elif interval == "1mo":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
-    elif interval == "3mo":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
-    else:
-        new_index = None
-
-    if new_index is not None:
-        new_index = new_index.tz_localize(df.index.tz, ambiguous=True, nonexistent='shift_forward')
-        df_sub = _reindex_events(df_sub, new_index, data_col)
-        df = df_main.join(df_sub)
-
-    f_na = df[data_col].isna()
-    data_lost = sum(~f_na) < df_sub.shape[0]
-    if not data_lost:
-        return df
-    # Lost data during join(). Manually check each df_sub.index date against df_main.index to
-    # find matching interval
-    df_sub = df_sub_backup.copy()
-    new_index = [-1] * df_sub.shape[0]
-    for i in range(df_sub.shape[0]):
-        dt_sub_i = df_sub.index[i]
-        if dt_sub_i in df_main.index:
-            new_index[i] = dt_sub_i
-            continue
-        # Found a bad index date, need to search for near-match in df_main (same week/month)
-        fixed = False
-        for j in range(df_main.shape[0] - 1):
-            dt_main_j0 = df_main.index[j]
-            dt_main_j1 = df_main.index[j + 1]
-            if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
-                fixed = True
-                if interval.endswith('h') or interval.endswith('m'):
-                    # Must also be same day
-                    fixed = (dt_main_j0.date() == dt_sub_i.date()) and (dt_sub_i.date() == dt_main_j1.date())
-                if fixed:
-                    dt_sub_i = dt_main_j0
-                    break
-        if not fixed:
-            last_main_dt = df_main.index[df_main.shape[0] - 1]
-            diff = dt_sub_i - last_main_dt
-            if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "1wk":
-                if last_main_dt.week == dt_sub_i.week:
-                    dt_sub_i = last_main_dt
-                    fixed = True
-                elif (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < _datetime.timedelta(weeks=1)):
-                    # With some specific start dates (e.g. around early Jan), Yahoo
-                    # messes up start-of-week, is Saturday not Monday. So check
-                    # if same week another way
-                    dt_sub_i = last_main_dt
-                    fixed = True
-            elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval.endswith('m') or interval.endswith('h'):
-                td = _pd.to_timedelta(interval)
-                if (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < td):
-                    dt_sub_i = last_main_dt
-                    fixed = True
-        new_index[i] = dt_sub_i
+    new_index = df_main.index[indices]
     df_sub = _reindex_events(df_sub, new_index, data_col)
-    df = df_main.join(df_sub)
 
+    df = df_main.join(df_sub)
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        ## Not always possible to match events with trading, e.g. when released pre-market.
-        ## So have to append to bottom with nan prices.
-        ## But should only be impossible with intra-day price data.
-        if interval.endswith('m') or interval.endswith('h') or interval == "1d":
-            # Update: is possible with daily data when dividend very recent
-            f_missing = ~df_sub.index.isin(df.index)
-            df_sub_missing = df_sub[f_missing].copy()
-            keys = {"Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close",
-                    "Close"}.intersection(df.columns)
-            df_sub_missing[list(keys)] = _np.nan
-            col_ordering = df.columns
-            df = _pd.concat([df, df_sub_missing], sort=True)[col_ordering]
-        else:
-            raise Exception("Lost data during merge despite all attempts to align data (see above)")
+        raise Exception('Data was lost in merge, investigate')
 
     return df
 
