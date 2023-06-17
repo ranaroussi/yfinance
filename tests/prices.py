@@ -858,7 +858,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_bad_stock_split(self):
-        bad_tkrs = ['4063.T', 'ALPHA.PA', 'CNE.L', 'DEX.AX', 'MOB.ST', 'SPM.MI']
+        bad_tkrs = ['4063.T', 'ALPHA.PA', 'CNE.L', 'MOB.ST', 'SPM.MI']
         for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz_exchange = dat.fast_info["timezone"]
@@ -892,7 +892,7 @@ class TestPriceRepair(unittest.TestCase):
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
         good_tkrs += ['AEI', 'CHRA', 'GHI', 'IRON', 'LXU', 'NUZE', 'RSLS', 'TISI']
         good_tkrs += ['BOL.ST', 'TUI1.DE']
-        intervals = ['1d', '1wk']
+        intervals = ['1d', '1wk', '1mo', '3mo']
         for tkr in good_tkrs:
             for interval in intervals:
                 dat = yf.Ticker(tkr, session=self.session)
@@ -911,12 +911,9 @@ class TestPriceRepair(unittest.TestCase):
                         self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
                     except:
                         print(f"tkr={tkr} interval={interval} COLUMN={c}")
-                        print("- repaired_df")
-                        print(repaired_df)
-                        print("- df_good[c]:")
-                        print(df_good[c])
-                        print("- diff:")
-                        print(repaired_df[c] - df_good[c])
+                        df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
+                        f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
+                        print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
                         raise
 
 
