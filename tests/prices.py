@@ -223,6 +223,60 @@ class TestPriceHistory(unittest.TestCase):
                 print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
                 raise
 
+    def test_intraDayWithEvents(self):
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+        test_run = False
+        for tkr in tkrs:
+            start_d = _dt.date.today() - _dt.timedelta(days=59)
+            end_d = None
+            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            if df_daily_divs.shape[0] == 0:
+                continue
+
+            last_div_date = df_daily_divs.index[-1]
+            start_d = last_div_date.date()
+            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            self.assertTrue((df_intraday["Dividends"] != 0.0).any())
+
+            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
+            df_intraday_divs.index = df_intraday_divs.index.floor('D')
+            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
+
+            test_run = True
+
+        if not test_run:
+            self.skipTest("Skipping test_intraDayWithEvents() because no tickers had a dividend in last 60 days")
+
+    def test_intraDayWithEvents_tase(self):
+        # TASE dividend release pre-market, doesn't merge nicely with intra-day data so check still present
+
+        tase_tkrs = ["ICL.TA", "ESLT.TA", "ONE.TA", "MGDL.TA"]
+        test_run = False
+        for tkr in tase_tkrs:
+            start_d = _dt.date.today() - _dt.timedelta(days=59)
+            end_d = None
+            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            if df_daily_divs.shape[0] == 0:
+                continue
+
+            last_div_date = df_daily_divs.index[-1]
+            start_d = last_div_date.date()
+            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            self.assertTrue((df_intraday["Dividends"] != 0.0).any())
+
+            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
+            df_intraday_divs.index = df_intraday_divs.index.floor('D')
+            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
+
+            test_run = True
+
+        if not test_run:
+            self.skipTest("Skipping test_intraDayWithEvents_tase() because no tickers had a dividend in last 60 days")
+
     def test_weeklyWithEvents(self):
         # Reproduce issue #521
         tkr1 = "QQQ"
