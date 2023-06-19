@@ -353,7 +353,7 @@ def _interval_to_timedelta(interval):
     elif interval == "1y":
         return _dateutil.relativedelta.relativedelta(years=1)
     elif interval == "1wk":
-        return _pd.Timedelta(days=7, unit='d')
+        return _pd.Timedelta(days=7)
     else: 
         return _pd.Timedelta(interval)
 
@@ -600,10 +600,36 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 indices[i] = -1
 
     f_outOfRange = indices == -1
+    if f_outOfRange.any() and not intraday:
+        # If dividend is occuring in next interval after last price row, 
+        # add a new row of NaNs
+        last_dt = df_main.index[-1]
+        next_interval_start_dt = last_dt + td
+        if interval == '1d':
+            # Allow for weekends & holidays
+            next_interval_end_dt = last_dt+7*_pd.Timedelta(days=7)
+        else:
+            next_interval_end_dt = next_interval_start_dt + td
+        for i in _np.where(f_outOfRange)[0]:
+            dt = df_sub.index[i]
+            if dt >= next_interval_start_dt and dt < next_interval_end_dt:
+                new_dt = dt if interval == '1d' else next_interval_start_dt
+                get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+                df_main.loc[new_dt] = _np.nan
+
+        # Re-calculate indices
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+                # Out-of-range
+                indices[i] = -1
+
+    f_outOfRange = indices == -1
     if f_outOfRange.any():
         if intraday or interval in ['1d', '1wk']:
-            # print('- df_main:') ; print(df_main)
-            # print('- df_sub:') ; print(df_sub)
             raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index}")
         get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
