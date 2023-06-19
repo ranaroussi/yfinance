@@ -70,18 +70,106 @@ def print_once(msg):
     print(msg)
 
 
+## Logging
+# Note: most of this logic is adding indentation with function depth,
+#       so that DEBUG log is readable.
+class IndentLoggerAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        if get_yf_logger().isEnabledFor(logging.DEBUG):
+            i = ' ' * self.extra['indent']
+            if not isinstance(msg, str):
+                msg = str(msg)
+            msg = '\n'.join([i + m for m in msg.split('\n')])
+        return msg, kwargs
+
+import threading
+_indentation_level = threading.local()
+class IndentationContext:
+    def __init__(self, increment=1):
+        self.increment = increment
+    def __enter__(self):
+        _indentation_level.indent = getattr(_indentation_level, 'indent', 0) + self.increment
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        _indentation_level.indent -= self.increment
+
+def get_indented_logger(name=None):
+    # Never cache the returned value! Will break indentation.
+    return IndentLoggerAdapter(logging.getLogger(name), {'indent': getattr(_indentation_level, 'indent', 0)})
+
+def log_indent_decorator(func):
+    def wrapper(*args, **kwargs):
+        logger = get_indented_logger('yfinance')
+        logger.debug(f'Entering {func.__name__}()')
+
+        with IndentationContext():
+            result = func(*args, **kwargs)
+
+        logger.debug(f'Exiting {func.__name__}()')
+        return result
+
+    return wrapper
+
+class MultiLineFormatter(logging.Formatter):
+    # The 'fmt' formatting further down is only applied to first line
+    # of log message, specifically the padding after %level%.
+    # For multi-line messages, need to manually copy over padding.
+    def __init__(self, fmt):
+        super().__init__(fmt)
+        # Extract amount of padding
+        match = _re.search(r'%\(levelname\)-(\d+)s', fmt)
+        self.level_length = int(match.group(1)) if match else 0
+
+    def format(self, record):
+        original = super().format(record)
+        lines = original.split('\n')
+        levelname = lines[0].split(' ')[0]
+        if len(lines) <= 1:
+            return original
+        else:
+            # Apply padding to all lines below first
+            formatted = [lines[0]]
+            if self.level_length == 0:
+                padding = ' ' * len(levelname)
+            else:
+                padding = ' ' * self.level_length
+            padding += ' '  # +1 for space between level and message
+            formatted.extend(padding + line for line in lines[1:])
+            return '\n'.join(formatted)
+
 yf_logger = None
+yf_log_indented = False
 def get_yf_logger():
     global yf_logger
     if yf_logger is None:
-        yf_logger = logging.getLogger("yfinance")
-        if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
-            # Add stream handler if user not already added one
-            h = logging.StreamHandler()
-            formatter = logging.Formatter(fmt='%(levelname)s %(message)s')
-            h.setFormatter(formatter)
-            yf_logger.addHandler(h)
+        yf_logger = logging.getLogger('yfinance')
+    global yf_log_indented
+    if yf_log_indented:
+        yf_logger = get_indented_logger('yfinance')
     return yf_logger
+
+def setup_debug_formatting():
+    global yf_logger
+    yf_logger = get_yf_logger()
+
+    if not yf_logger.isEnabledFor(logging.DEBUG):
+        yf_logger.warning("logging mode not set to 'DEBUG', so not setting up debug formatting")
+        return
+
+    if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
+        h = logging.StreamHandler()
+        # Ensure different level strings don't interfere with indentation
+        formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
+        h.setFormatter(formatter)
+        yf_logger.addHandler(h)
+
+    global yf_log_indented
+    yf_log_indented = True
+
+def enable_debug_mode():
+    get_yf_logger().setLevel(logging.DEBUG)
+    setup_debug_formatting()
+    
+##
 
 
 def is_isin(string):
