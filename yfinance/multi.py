@@ -30,6 +30,7 @@ import pandas as _pd
 from . import Ticker, utils
 from . import shared
 
+@utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
              group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", show_errors=None, interval="1d", prepost=False,
@@ -85,14 +86,26 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         session: None or Session
             Optional. Pass your own session object to be used for all requests
     """
+    logger = utils.get_yf_logger()
 
     if show_errors is not None:
         if show_errors:
             utils.print_once(f"yfinance: download(show_errors={show_errors}) argument is deprecated and will be removed in future version. Do this instead: logging.getLogger('yfinance').setLevel(logging.ERROR)")
-            logging.getLogger('yfinance').setLevel(logging.ERROR)
+            logger.setLevel(logging.ERROR)
         else:
             utils.print_once(f"yfinance: download(show_errors={show_errors}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
-            logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+            logger.setLevel(logging.CRITICAL)
+
+    if logger.isEnabledFor(logging.DEBUG):
+        if threads:
+            # With DEBUG, each thread generates a lot of log messages.
+            # And with multi-threading, these messages will be interleaved, bad!
+            # So disable multi-threading to make log readable.
+            logger.debug('Disabling multithreading because DEBUG logging enabled')
+            threads = False
+        if progress:
+            # Disable progress bar, interferes with display of log messages
+            progress = False
 
     if ignore_tz is None:
         # Set default value depending on interval
@@ -167,6 +180,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         errors = {}
         for ticker in shared._ERRORS:
             err = shared._ERRORS[ticker]
+            err = err.replace(f'{ticker}', '%ticker%')
             if not err in errors:
                 errors[err] = [ticker]
             else:
@@ -178,6 +192,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         tbs = {}
         for ticker in shared._TRACEBACKS:
             tb = shared._TRACEBACKS[ticker]
+            tb = tb.replace(f'{ticker}', '%ticker%')
             if not tb in tbs:
                 tbs[tb] = [ticker]
             else:

@@ -45,7 +45,6 @@ from .scrapers.quote import Quote, FastInfo
 import json as _json
 
 import logging
-logger = utils.get_yf_logger()
 
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
@@ -91,6 +90,7 @@ class TickerBase:
         data = self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
         return data
 
+    @utils.log_indent_decorator
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
@@ -142,6 +142,7 @@ class TickerBase:
             raise_errors: bool
                 If True, then raise errors as Exceptions instead of logging.
         """
+        logger = utils.get_yf_logger()
 
         if debug is not None:
             if debug:
@@ -456,14 +457,16 @@ class TickerBase:
 
     # ------------------------
 
+    @utils.log_indent_decorator
     def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1, silent=False):
+        # Reconstruct values in df using finer-grained price data. Delimiter marks what to reconstruct
+        logger = utils.get_yf_logger()
+
         if not isinstance(df, _pd.DataFrame):
             raise Exception("'df' must be a Pandas DataFrame not", type(df))
         if interval == "1m":
             # Can't go smaller than 1m so can't reconstruct
             return df
-
-        # Reconstruct values in df using finer-grained price data. Delimiter marks what to reconstruct
 
         if interval[1:] in ['d', 'wk', 'mo']:
             # Interday data always includes pre & post
@@ -784,10 +787,12 @@ class TickerBase:
 
         return df_v2
 
+    @utils.log_indent_decorator
     def _fix_unit_mixups(self, df, interval, tz_exchange, prepost, silent=False):
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
         # Easy to detect and fix, just look for outliers = ~100x local median
+        logger = utils.get_yf_logger()
 
         if df.shape[0] == 0:
             if not "Repaired?" in df.columns:
@@ -911,10 +916,13 @@ class TickerBase:
 
         return df2
 
+    @utils.log_indent_decorator
     def _fix_zeroes(self, df, interval, tz_exchange, prepost, silent=False):
         # Sometimes Yahoo returns prices=0 or NaN when trades occurred.
         # But most times when prices=0 or NaN returned is because no trades.
         # Impossible to distinguish, so only attempt repair if few or rare.
+
+        logger = utils.get_yf_logger()
 
         if df.shape[0] == 0:
             if not "Repaired?" in df.columns:
@@ -1030,8 +1038,11 @@ class TickerBase:
         self._tz = tz
         return tz
 
+    @utils.log_indent_decorator
     def _fetch_ticker_tz(self, proxy, timeout):
         # Query Yahoo for fast price data just to get returned timezone
+
+        logger = utils.get_yf_logger()
 
         params = {"range": "1d", "interval": "1d"}
 
@@ -1337,7 +1348,10 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    @utils.log_indent_decorator
     def get_shares_full(self, start=None, end=None, proxy=None):
+        logger = utils.get_yf_logger()
+
         # Process dates
         tz = self._get_ticker_tz(proxy=None, timeout=10)
         dt_now = _pd.Timestamp.utcnow().tz_convert(tz)
@@ -1445,6 +1459,7 @@ class TickerBase:
         self._news = data.get("news", [])
         return self._news
 
+    @utils.log_indent_decorator
     def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
@@ -1457,6 +1472,8 @@ class TickerBase:
         """
         if self._earnings_dates and limit in self._earnings_dates:
             return self._earnings_dates[limit]
+
+        logger = utils.get_yf_logger()
 
         page_size = min(limit, 100)  # YF caps at 100, don't go higher
         page_offset = 0
