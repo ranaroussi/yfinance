@@ -80,8 +80,6 @@ class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
     def __init__(self, tickerBaseObject):
-        utils.print_once("yfinance: Note: 'Ticker.info' dict is now fixed & improved, 'fast_info' is no longer faster")
-
         self._tkr = tickerBaseObject
 
         self._prices_1y = None
