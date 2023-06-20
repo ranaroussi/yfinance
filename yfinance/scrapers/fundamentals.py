@@ -9,8 +9,6 @@ from yfinance import utils
 from yfinance.data import TickerData
 from yfinance.exceptions import YFinanceDataException, YFinanceException
 
-logger = utils.get_yf_logger()
-
 class Fundamentals:
 
     def __init__(self, data: TickerData, proxy=None):
@@ -42,6 +40,7 @@ class Fundamentals:
             self._scrape_shares(self.proxy)
         return self._shares
 
+    @utils.log_indent_decorator
     def _scrape_basics(self, proxy):
         if self._basics_already_scraped:
             return
@@ -52,7 +51,7 @@ class Fundamentals:
             self._fin_data_quote = self._financials_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No financials data found, symbol may be delisted"
-            logger.error('%s: %s', self._data.ticker, err_msg)
+            utils.get_yf_logger().error('%s: %s', self._data.ticker, err_msg)
             return None
 
     def _scrape_earnings(self, proxy):
@@ -127,6 +126,7 @@ class Financials:
             res[freq] = self._fetch_time_series("cash-flow", freq, proxy=None)
         return res[freq]
 
+    @utils.log_indent_decorator
     def _fetch_time_series(self, name, timescale, proxy=None):
         # Fetching time series preferred over scraping 'QuoteSummaryStore',
         # because it matches what Yahoo shows. But for some tickers returns nothing, 
@@ -146,7 +146,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFinanceException as e:
-            logger.error("%s: Failed to create %s financials table for reason: %r", self._data.ticker, name, e)
+            utils.get_yf_logger().error("%s: Failed to create %s financials table for reason: %r", self._data.ticker, name, e)
         return pd.DataFrame()
 
     def _create_financials_table(self, name, timescale, proxy):
@@ -252,6 +252,7 @@ class Financials:
             res[freq] = self._scrape("cash-flow", freq, proxy=None)
         return res[freq]
 
+    @utils.log_indent_decorator
     def _scrape(self, name, timescale, proxy=None):
         # Backup in case _fetch_time_series() fails to return data
 
@@ -269,7 +270,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFinanceException as e:
-            logger.error("%s: Failed to create financials table for %s reason: %r", self._data.ticker, name, e)
+            utils.get_yf_logger().error("%s: Failed to create financials table for %s reason: %r", self._data.ticker, name, e)
         return pd.DataFrame()
 
     def _create_financials_table_old(self, name, timescale, proxy):

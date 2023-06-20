@@ -38,7 +38,7 @@ Yahoo Finance free service has rate-limiting depending on request type - roughly
 **Delete these instructions** and replace with your bug report, providing the following as best you can:
 
 - Simple code that reproduces your problem, that we can copy-paste-run.
-- Run code with [debug logging enabled](https://github.com/ranaroussi/yfinance/tree/dev#logging) and post the full output.
+- Run code with [debug logging enabled](https://github.com/ranaroussi/yfinance#logging) and post the full output.
 - If you think `yfinance` returning bad data, give us proof.
 - `yfinance` version and Python version.
 - Operating system type.
