@@ -47,6 +47,7 @@ class Analysis:
             self._scrape(self.proxy)
         return self._eps_est
 
+    @utils.log_indent_decorator
     def _scrape(self, proxy):
         if self._already_scraped:
             return
@@ -58,7 +59,7 @@ class Analysis:
             analysis_data = analysis_data['QuoteSummaryStore']
         except KeyError as e:
             err_msg = "No analysis data found, symbol may be delisted"
-            logger.error('%s: %s', self._data.ticker, err_msg)
+            utils.get_yf_logger().error('%s: %s', self._data.ticker, err_msg)
             return
 
         if isinstance(analysis_data.get('earningsTrend'), dict):

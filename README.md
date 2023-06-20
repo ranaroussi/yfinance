@@ -188,14 +188,7 @@ Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options 
 
 ### Logging
 
-`yfinance` now uses the `logging` module. To control the detail of printed messages you simply change the level:
-```
-import logging
-logger = logging.getLogger('yfinance')
-logger.setLevel(logging.ERROR)  # default: only print errors
-logger.setLevel(logging.CRITICAL)  # disable printing
-logger.setLevel(logging.DEBUG)  # verbose: print errors & debug info
-```
+`yfinance` now uses the `logging` module to handle messages, default behaviour is only print errors. If debugging, use `yf.enable_debug_mode()` to switch logging to debug with custom formatting.
 
 ### Smarter scraping
 
