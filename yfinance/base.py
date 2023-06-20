@@ -602,8 +602,7 @@ class TickerBase:
         n_fixed = 0
         for g in dts_groups:
             df_block = df[df.index.isin(g)]
-            logger.debug("df_block:")
-            logger.debug(df_block)
+            logger.debug("df_block:\n" + str(df_block))
 
             start_dt = g[0]
             start_d = start_dt.date()
@@ -702,9 +701,6 @@ class TickerBase:
                 new_index = _np.append([df_fine.index[0]], df_fine.index[df_fine["intervalID"].diff()>0])
                 df_new.index = new_index
 
-            logger.debug("df_new:")
-            logger.debug(df_new)
-
             # Calibrate! 
             common_index = _np.intersect1d(df_block.index, df_new.index)
             if len(common_index) == 0:
@@ -749,7 +745,8 @@ class TickerBase:
                     df_new['Adj Close'] = df_block['Close'] * div_adjusts
                     if f_close_bad.any():
                         df_new.loc[f_close_bad, 'Adj Close'] = df_new['Close'][f_close_bad] * div_adjusts[f_close_bad]
-            # Next, check whether 'df_fine' has different split-adjustment.
+
+            # Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
             df_new_calib = df_new[df_new.index.isin(common_index)][price_cols].to_numpy()
             df_block_calib = df_block[df_block.index.isin(common_index)][price_cols].to_numpy()
@@ -772,7 +769,7 @@ class TickerBase:
             weights = _np.tile(weights, len(price_cols))  # 1D -> 2D
             weights = weights[calib_filter]  # flatten
             ratio = _np.average(ratios, weights=weights)
-            logger.debug(f"Price calibration ratio (raw) = {ratio}")
+            logger.debug(f"Price calibration ratio (raw) = {ratio:6f}")
             ratio_rcp = round(1.0 / ratio, 1)
             ratio = round(ratio, 1)
             if ratio == 1 and ratio_rcp == 1:
@@ -800,8 +797,7 @@ class TickerBase:
                     # so probably no trading happened.
                     no_fine_data_dts.append(idx)
             if len(no_fine_data_dts) > 0:
-                logger.debug(f"Yahoo didn't return finer-grain data for these intervals:")
-                logger.debug(no_fine_data_dts)
+                logger.debug(f"Yahoo didn't return finer-grain data for these intervals: " + str(no_fine_data_dts))
             for idx in bad_dts:
                 if not idx in df_new.index:
                     # Yahoo didn't return finer-grain data for this interval, 
@@ -837,9 +833,6 @@ class TickerBase:
                 df_v2.loc[idx, "Repaired?"] = True
                 n_fixed += 1
 
-        logger.debug("df_v2:")
-        logger.debug(df_v2)
-
         return df_v2
 
     @utils.log_indent_decorator
@@ -848,6 +841,7 @@ class TickerBase:
         df3 = self._fix_unit_random_mixups(df2, interval, tz_exchange, prepost, silent)
         return df3
 
+    @utils.log_indent_decorator
     def _fix_unit_random_mixups(self, df, interval, tz_exchange, prepost, silent=False):
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
@@ -996,7 +990,7 @@ class TickerBase:
 
         f_splits = df['Stock Splits'].to_numpy() != 0.0
         if f_splits.any():
-            logger.debug('price-repair-100x: Cannot check for chunked 100x errors because splits present')
+            utils.get_yf_logger().debug('price-repair-100x: Cannot check for chunked 100x errors because splits present')
             return df
 
         return self._fix_prices_sudden_change(df, interval, tz_exchange, 100.0)
@@ -1109,10 +1103,13 @@ class TickerBase:
 
         return df2
 
+    @utils.log_indent_decorator
     def _fix_missing_div_adjust(self, df, interval, tz_exchange):
         # Sometimes, if a dividend occurred today, then Yahoo has not adjusted historic data.
         # Easy to detect and correct BUT ONLY IF the data 'df' includes today's dividend.
         # E.g. if fetching historic prices before todays dividend, then cannot fix.
+
+        logger = utils.get_yf_logger()
 
         if df is None or df.empty:
             return df
@@ -1163,6 +1160,7 @@ class TickerBase:
 
         return df2
 
+    @utils.log_indent_decorator
     def _fix_bad_stock_split(self, df, interval, tz_exchange):
         # Repair idea is to look for BIG daily price changes that closely match the
         # most recent stock split ratio. This indicates Yahoo failed to apply a new
@@ -1172,6 +1170,8 @@ class TickerBase:
         # Sometimes the old data is adjusted twice. So cannot simply assume 
         # which direction to reverse adjustment - have to analyse prices and detect. 
         # Not difficult.
+
+        logger = utils.get_yf_logger()
 
         interday = interval in ['1d', '1wk', '1mo', '3mo']
         if not interday:
@@ -1192,7 +1192,10 @@ class TickerBase:
 
         return self._fix_prices_sudden_change(df, interval, tz_exchange, split, correct_volume=True)
 
+    @utils.log_indent_decorator
     def _fix_prices_sudden_change(self, df, interval, tz_exchange, change, correct_volume=False):
+        logger = utils.get_yf_logger()
+
         df = df.sort_index(ascending=False)
         split = change
         split_rcp = 1.0/split
@@ -1214,7 +1217,7 @@ class TickerBase:
             df2.index = df2.index.tz_convert(tz_exchange)
         n = df2.shape[0]
 
-        if logger.level == logging.DEBUG:
+        if logger.isEnabledFor(logging.DEBUG):
             df_debug = df2.copy()
             df_debug = df_debug.drop(['Adj Close', 'Low', 'High', 'Volume', 'Dividends', 'Repaired?'], axis=1, errors='ignore')
 
@@ -1230,7 +1233,7 @@ class TickerBase:
         if f_na.any():
             # Possible if data was too old for reconstruction.
             _1d_change_minx[f_na] = 1.0
-        if logger.level == logging.DEBUG:
+        if logger.isEnabledFor(logging.DEBUG):
             df_debug['1D change X'] = _1d_change_minx
 
         # If all 1D changes are closer to 1.0 than split, exit
@@ -1258,7 +1261,7 @@ class TickerBase:
             largest_change_pct *= 5
         if (max(split, split_rcp) < 1.0+largest_change_pct):
             logger.info("price-repair-split: Split ratio too close to normal price volatility. Won't repair")
-            # if logger.level == logging.DEBUG:
+            # if logger.isEnabledFor(logging.DEBUG):
             #     logger.debug(f"price-repair-split: my workings:")
             #     logger.debug('\n' + str(df_debug))
             return df
@@ -1293,7 +1296,7 @@ class TickerBase:
         f1 = _1d_change_x < 1.0/threshold
         f2 = _1d_change_x > threshold
         f = f1 | f2
-        if logger.level == logging.DEBUG:
+        if logger.isEnabledFor(logging.DEBUG):
             if not correct_columns_individually:
                 df_debug['r'] = r
                 df_debug['f1'] = f1
@@ -1402,9 +1405,9 @@ class TickerBase:
         if correct_volume:
             df2['Volume'] = df2['Volume'].round(0).astype('int')
 
-        if logger.level == logging.DEBUG:
-            logger.debug(f"price-repair-split: my workings:")
-            logger.debug('\n' + str(df_debug))
+        # if logger.isEnabledFor(logging.DEBUG):
+        #     logger.debug(f"price-repair-split: my workings:")
+        #     logger.debug('\n' + str(df_debug))
 
         return df2
 
