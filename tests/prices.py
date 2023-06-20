@@ -3,6 +3,7 @@ from .context import session_gbl
 
 import unittest
 
+import os
 import datetime as _dt
 import pytz as _tz
 import numpy as _np
@@ -113,6 +114,60 @@ class TestPriceHistory(unittest.TestCase):
         if not test_run:
             self.skipTest("Skipping test_duplicatingWeekly() because not possible to fail Monday/weekend")
 
+    def test_intraDayWithEvents(self):
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+        test_run = False
+        for tkr in tkrs:
+            start_d = _dt.date.today() - _dt.timedelta(days=59)
+            end_d = None
+            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            if df_daily_divs.shape[0] == 0:
+                continue
+
+            last_div_date = df_daily_divs.index[-1]
+            start_d = last_div_date.date()
+            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            self.assertTrue((df_intraday["Dividends"] != 0.0).any())
+
+            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
+            df_intraday_divs.index = df_intraday_divs.index.floor('D')
+            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
+
+            test_run = True
+
+        if not test_run:
+            self.skipTest("Skipping test_intraDayWithEvents() because no tickers had a dividend in last 60 days")
+
+    def test_intraDayWithEvents_tase(self):
+        # TASE dividend release pre-market, doesn't merge nicely with intra-day data so check still present
+
+        tase_tkrs = ["ICL.TA", "ESLT.TA", "ONE.TA", "MGDL.TA"]
+        test_run = False
+        for tkr in tase_tkrs:
+            start_d = _dt.date.today() - _dt.timedelta(days=59)
+            end_d = None
+            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            if df_daily_divs.shape[0] == 0:
+                continue
+
+            last_div_date = df_daily_divs.index[-1]
+            start_d = last_div_date.date()
+            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            self.assertTrue((df_intraday["Dividends"] != 0.0).any())
+
+            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
+            df_intraday_divs.index = df_intraday_divs.index.floor('D')
+            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
+
+            test_run = True
+
+        if not test_run:
+            self.skipTest("Skipping test_intraDayWithEvents_tase() because no tickers had a dividend in last 60 days")
+
     def test_dailyWithEvents(self):
         start_d = _dt.date(2022, 1, 1)
         end_d = _dt.date(2023, 1, 1)
@@ -133,7 +188,6 @@ class TestPriceHistory(unittest.TestCase):
                 print('- response:') ; print(df_divs.index.date)
                 print('- answer:') ; print(dates)
                 raise
-
 
     def test_dailyWithEvents_bugs(self):
         # Reproduce issue #521
@@ -499,7 +553,7 @@ class TestPriceRepair(unittest.TestCase):
             start_dt = end_dt - td_60d
             df = dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
 
-    def test_repair_100x_weekly(self):
+    def test_repair_100x_random_weekly(self):
         # Setup:
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -527,7 +581,7 @@ class TestPriceRepair(unittest.TestCase):
 
         # Run test
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
 
         # First test - no errors left
         for c in data_cols:
@@ -553,7 +607,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    def test_repair_100x_weekly_preSplit(self):
+    def test_repair_100x_random_weekly_preSplit(self):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
         tkr = "PNL.L"
@@ -585,7 +639,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
 
         # First test - no errors left
         for c in data_cols:
@@ -613,7 +667,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    def test_repair_100x_daily(self):
+    def test_repair_100x_random_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
@@ -638,11 +692,56 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_mixups(df_bad, "1d", tz_exchange, prepost=False)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False, silent=True)
 
         # First test - no errors left
         for c in data_cols:
             self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+
+        # Second test - all differences should be either ~1x or ~100x
+        ratio = df_bad[data_cols].values / df[data_cols].values
+        ratio = ratio.round(2)
+        # - round near-100 ratio to 100:
+        f = ratio > 90
+        ratio[f] = (ratio[f] / 10).round().astype(int) * 10  # round ratio to nearest 10
+        # - now test
+        f_100 = ratio == 100
+        f_1 = ratio == 1
+        self.assertTrue((f_100 | f_1).all())
+
+        self.assertTrue("Repaired?" in df_repaired.columns)
+        self.assertFalse(df_repaired["Repaired?"].isna().any())
+
+    def test_repair_100x_block_daily(self):
+        # Some 100x errors are not sporadic.
+        # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
+
+        tkr = "SSW.JO"
+        dat = yf.Ticker(tkr, session=self.session)
+        tz_exchange = dat.fast_info["timezone"]
+
+        data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
+        _dp = os.path.dirname(__file__)
+        df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-100x-error.csv"), index_col="Date")
+        df_bad.index = _pd.to_datetime(df_bad.index)
+        df_bad = df_bad.sort_index()
+
+        df = df_bad.copy()
+        for d in data_cols:
+            df.loc[:'2023-05-31', d] *= 0.01  # fix error
+
+        df_repaired = dat._fix_unit_switch(df_bad, "1d", tz_exchange)
+        df_repaired = df_repaired.sort_index()
+
+        # First test - no errors left
+        for c in data_cols:
+            try:
+                self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+            except:
+                print(df_repaired[c])
+                print(df[c])
+                print(f"TEST FAIL on column '{c}")
+                raise
 
         # Second test - all differences should be either ~1x or ~100x
         ratio = df_bad[data_cols].values / df[data_cols].values
@@ -688,6 +787,42 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
+    def test_repair_zeroes_daily_adjClose(self):
+        # Test that 'Adj Close' is reconstructed correctly, 
+        # particularly when a dividend occurred within 1 day.
+
+        tkr = "INTC"
+        df = _pd.DataFrame(data={"Open":      [28.95, 28.65, 29.55, 29.62, 29.25],
+                                 "High":      [29.12, 29.27, 29.65, 31.17, 30.30],
+                                 "Low":       [28.21, 28.43, 28.61, 29.53, 28.80],
+                                 "Close":     [28.24, 29.05, 28.69, 30.32, 30.19],
+                                 "Adj Close": [28.12, 28.93, 28.57, 29.83, 29.70],
+                                 "Volume":    [36e6, 51e6, 49e6, 58e6, 62e6],
+                                 "Dividends": [0, 0, 0.365, 0, 0]},
+                                index=_pd.to_datetime([_dt.datetime(2023, 2, 8),
+                                                       _dt.datetime(2023, 2, 7),
+                                                       _dt.datetime(2023, 2, 6),
+                                                       _dt.datetime(2023, 2, 3),
+                                                       _dt.datetime(2023, 2, 2)]))
+        df = df.sort_index()
+        df.index.name = "Date"
+        dat = yf.Ticker(tkr, session=self.session)
+        tz_exchange = dat.fast_info["timezone"]
+        df.index = df.index.tz_localize(tz_exchange)
+
+        rtol = 5e-3
+        for i in [0, 1, 2]:
+            df_slice = df.iloc[i:i+3]
+            for j in range(3):
+                df_slice_bad = df_slice.copy()
+                df_slice_bad.loc[df_slice_bad.index[j], "Adj Close"] = 0.0
+
+                df_slice_bad_repaired = dat._fix_zeroes(df_slice_bad, "1d", tz_exchange, prepost=False)
+                for c in ["Close", "Adj Close"]:
+                    self.assertTrue(_np.isclose(df_slice_bad_repaired[c], df_slice[c], rtol=rtol).all())
+                self.assertTrue("Repaired?" in df_slice_bad_repaired.columns)
+                self.assertFalse(df_slice_bad_repaired["Repaired?"].isna().any())
+
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
         dat = yf.Ticker(tkr, session=self.session)
@@ -721,6 +856,66 @@ class TestPriceRepair(unittest.TestCase):
 
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
+
+    def test_repair_bad_stock_split(self):
+        bad_tkrs = ['4063.T', 'ALPHA.PA', 'CNE.L', 'MOB.ST', 'SPM.MI']
+        for tkr in bad_tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            tz_exchange = dat.fast_info["timezone"]
+
+            _dp = os.path.dirname(__file__)
+            df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split.csv"), index_col="Date")
+            df_bad.index = _pd.to_datetime(df_bad.index)
+
+            repaired_df = dat._fix_bad_stock_split(df_bad, "1d", tz_exchange)
+
+            correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split-fixed.csv"), index_col="Date")
+            correct_df.index = _pd.to_datetime(correct_df.index)
+
+            repaired_df = repaired_df.sort_index()
+            correct_df = correct_df.sort_index()
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+                except:
+                    print(f"tkr={tkr} COLUMN={c}")
+                    print("- repaired_df")
+                    print(repaired_df)
+                    print("- correct_df[c]:")
+                    print(correct_df[c])
+                    print("- diff:")
+                    print(repaired_df[c] - correct_df[c])
+                    raise
+
+        # Stocks that split in 2022 but no problems in Yahoo data, 
+        # so repair should change nothing
+        good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
+        good_tkrs += ['AEI', 'CHRA', 'GHI', 'IRON', 'LXU', 'NUZE', 'RSLS', 'TISI']
+        good_tkrs += ['BOL.ST', 'TUI1.DE']
+        intervals = ['1d', '1wk', '1mo', '3mo']
+        for tkr in good_tkrs:
+            for interval in intervals:
+                dat = yf.Ticker(tkr, session=self.session)
+                tz_exchange = dat.fast_info["timezone"]
+
+                _dp = os.path.dirname(__file__)
+                df_good = dat.history(period='2y', interval=interval, auto_adjust=False)
+
+                repaired_df = dat._fix_bad_stock_split(df_good, interval, tz_exchange)
+
+                # Expect no change from repair
+                df_good = df_good.sort_index()
+                repaired_df = repaired_df.sort_index()
+                for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                    try:
+                        self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
+                    except:
+                        print(f"tkr={tkr} interval={interval} COLUMN={c}")
+                        df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
+                        f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
+                        print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
+                        raise
+
 
 if __name__ == '__main__':
     unittest.main()
