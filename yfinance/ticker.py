@@ -236,6 +236,10 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
+    def trend_details(self) -> _pd.DataFrame:
+        return self.get_trend_details()
+
+    @property
     def earnings_trend(self) -> _pd.DataFrame:
         return self.get_earnings_trend()
 

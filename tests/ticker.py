@@ -71,19 +71,20 @@ class TestTicker(unittest.TestCase):
         dat.news
         dat.earnings_dates
 
-        # These require decryption which is broken:
+        dat.income_stmt
+        dat.quarterly_income_stmt
+        dat.balance_sheet
+        dat.quarterly_balance_sheet
+        dat.cashflow
+        dat.quarterly_cashflow
+
+        # These haven't been ported Yahoo API
         # dat.shares
         # dat.info
         # dat.calendar
         # dat.recommendations
         # dat.earnings
         # dat.quarterly_earnings
-        # dat.income_stmt
-        # dat.quarterly_income_stmt
-        # dat.balance_sheet
-        # dat.quarterly_balance_sheet
-        # dat.cashflow
-        # dat.quarterly_cashflow
         # dat.recommendations_summary
         # dat.analyst_price_target
         # dat.revenue_forecasts
@@ -122,6 +123,13 @@ class TestTicker(unittest.TestCase):
             dat.news
             dat.earnings_dates
 
+            dat.income_stmt
+            dat.quarterly_income_stmt
+            dat.balance_sheet
+            dat.quarterly_balance_sheet
+            dat.cashflow
+            dat.quarterly_cashflow
+
             # These require decryption which is broken:
             # dat.shares
             # dat.info
@@ -129,12 +137,6 @@ class TestTicker(unittest.TestCase):
             # dat.recommendations
             # dat.earnings
             # dat.quarterly_earnings
-            # dat.income_stmt
-            # dat.quarterly_income_stmt
-            # dat.balance_sheet
-            # dat.quarterly_balance_sheet
-            # dat.cashflow
-            # dat.quarterly_cashflow
             # dat.recommendations_summary
             # dat.analyst_price_target
             # dat.revenue_forecasts
@@ -211,7 +213,7 @@ class TestTickerHistory(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
 
-# Below will fail because decryption broken
+# Below will fail because not ported to Yahoo API
 # class TestTickerEarnings(unittest.TestCase):
 #     session = None
 
@@ -367,270 +369,243 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertIsInstance(data, pd.Series, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
-    # Below will fail because decryption broken
+    def test_income_statement(self):
+        expected_keys = ["Total Revenue", "Basic EPS"]
+        expected_periods_days = 365
 
-    # def test_income_statement(self):
-    #     expected_keys = ["Total Revenue", "Basic EPS"]
-    #     expected_periods_days = 365
+        # Test contents of table
+        data = self.ticker.get_income_stmt(pretty=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
 
-    #     # Test contents of table
-    #     data = self.ticker.get_income_stmt(pretty=True)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
-    #     period = abs((data.columns[0]-data.columns[1]).days)
-    #     self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
+        # Test property defaults
+        data2 = self.ticker.income_stmt
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
 
-    #     # Test property defaults
-    #     data2 = self.ticker.income_stmt
-    #     self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_income_stmt(pretty=False)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
 
-    #     # Test pretty=False
-    #     expected_keys = [k.replace(' ', '') for k in expected_keys]
-    #     data = self.ticker.get_income_stmt(pretty=False)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
+        # Test to_dict
+        data = self.ticker.get_income_stmt(as_dict=True)
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    #     # Test to_dict
-    #     data = self.ticker.get_income_stmt(as_dict=True)
-    #     self.assertIsInstance(data, dict, "data has wrong type")
+    def test_quarterly_income_statement(self):
+        expected_keys = ["Total Revenue", "Basic EPS"]
+        expected_periods_days = 365//4
 
-    # def test_quarterly_income_statement(self):
-    #     expected_keys = ["Total Revenue", "Basic EPS"]
-    #     expected_periods_days = 365//4
+        # Test contents of table
+        data = self.ticker.get_income_stmt(pretty=True, freq="quarterly")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
 
-    #     # Test contents of table
-    #     data = self.ticker.get_income_stmt(pretty=True, freq="quarterly")
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
-    #     period = abs((data.columns[0]-data.columns[1]).days)
-    #     self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
+        # Test property defaults
+        data2 = self.ticker.quarterly_income_stmt
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
 
-    #     # Test property defaults
-    #     data2 = self.ticker.quarterly_income_stmt
-    #     self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_income_stmt(pretty=False, freq="quarterly")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
 
-    #     # Test pretty=False
-    #     expected_keys = [k.replace(' ', '') for k in expected_keys]
-    #     data = self.ticker.get_income_stmt(pretty=False, freq="quarterly")
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
+        # Test to_dict
+        data = self.ticker.get_income_stmt(as_dict=True)
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    #     # Test to_dict
-    #     data = self.ticker.get_income_stmt(as_dict=True)
-    #     self.assertIsInstance(data, dict, "data has wrong type")
+    def test_balance_sheet(self):
+        expected_keys = ["Total Assets", "Net PPE"]
+        expected_periods_days = 365
 
-    # def test_quarterly_income_statement_old_fmt(self):
-    #     expected_row = "TotalRevenue"
-    #     data = self.ticker_old_fmt.get_income_stmt(freq="quarterly", legacy=True)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     self.assertIn(expected_row, data.index, "Did not find expected row in index")
+        # Test contents of table
+        data = self.ticker.get_balance_sheet(pretty=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
 
-    #     data_cached = self.ticker_old_fmt.get_income_stmt(freq="quarterly", legacy=True)
-    #     self.assertIs(data, data_cached, "data not cached")
+        # Test property defaults
+        data2 = self.ticker.balance_sheet
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
 
-    # def test_balance_sheet(self):
-    #     expected_keys = ["Total Assets", "Net PPE"]
-    #     expected_periods_days = 365
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_balance_sheet(pretty=False)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
 
-    #     # Test contents of table
-    #     data = self.ticker.get_balance_sheet(pretty=True)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
-    #     period = abs((data.columns[0]-data.columns[1]).days)
-    #     self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
+        # Test to_dict
+        data = self.ticker.get_balance_sheet(as_dict=True)
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    #     # Test property defaults
-    #     data2 = self.ticker.balance_sheet
-    #     self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+    def test_quarterly_balance_sheet(self):
+        expected_keys = ["Total Assets", "Net PPE"]
+        expected_periods_days = 365//4
 
-    #     # Test pretty=False
-    #     expected_keys = [k.replace(' ', '') for k in expected_keys]
-    #     data = self.ticker.get_balance_sheet(pretty=False)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
+        # Test contents of table
+        data = self.ticker.get_balance_sheet(pretty=True, freq="quarterly")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
 
-    #     # Test to_dict
-    #     data = self.ticker.get_balance_sheet(as_dict=True)
-    #     self.assertIsInstance(data, dict, "data has wrong type")
+        # Test property defaults
+        data2 = self.ticker.quarterly_balance_sheet
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
 
-    # def test_quarterly_balance_sheet(self):
-    #     expected_keys = ["Total Assets", "Net PPE"]
-    #     expected_periods_days = 365//4
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_balance_sheet(pretty=False, freq="quarterly")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
 
-    #     # Test contents of table
-    #     data = self.ticker.get_balance_sheet(pretty=True, freq="quarterly")
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
-    #     period = abs((data.columns[0]-data.columns[1]).days)
-    #     self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
+        # Test to_dict
+        data = self.ticker.get_balance_sheet(as_dict=True, freq="quarterly")
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    #     # Test property defaults
-    #     data2 = self.ticker.quarterly_balance_sheet
-    #     self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+    def test_cash_flow(self):
+        expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
+        expected_periods_days = 365
 
-    #     # Test pretty=False
-    #     expected_keys = [k.replace(' ', '') for k in expected_keys]
-    #     data = self.ticker.get_balance_sheet(pretty=False, freq="quarterly")
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
+        # Test contents of table
+        data = self.ticker.get_cashflow(pretty=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
 
-    #     # Test to_dict
-    #     data = self.ticker.get_balance_sheet(as_dict=True, freq="quarterly")
-    #     self.assertIsInstance(data, dict, "data has wrong type")
+        # Test property defaults
+        data2 = self.ticker.cashflow
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
 
-    # def test_quarterly_balance_sheet_old_fmt(self):
-    #     expected_row = "TotalAssets"
-    #     data = self.ticker_old_fmt.get_balance_sheet(freq="quarterly", legacy=True)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     self.assertIn(expected_row, data.index, "Did not find expected row in index")
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_cashflow(pretty=False)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
 
-    #     data_cached = self.ticker_old_fmt.get_balance_sheet(freq="quarterly", legacy=True)
-    #     self.assertIs(data, data_cached, "data not cached")
+        # Test to_dict
+        data = self.ticker.get_cashflow(as_dict=True)
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    # def test_cash_flow(self):
-    #     expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
-    #     expected_periods_days = 365
+    def test_quarterly_cash_flow(self):
+        expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
+        expected_periods_days = 365//4
 
-    #     # Test contents of table
-    #     data = self.ticker.get_cashflow(pretty=True)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
-    #     period = abs((data.columns[0]-data.columns[1]).days)
-    #     self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
+        # Test contents of table
+        data = self.ticker.get_cashflow(pretty=True, freq="quarterly")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
 
-    #     # Test property defaults
-    #     data2 = self.ticker.cashflow
-    #     self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+        # Test property defaults
+        data2 = self.ticker.quarterly_cashflow
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
 
-    #     # Test pretty=False
-    #     expected_keys = [k.replace(' ', '') for k in expected_keys]
-    #     data = self.ticker.get_cashflow(pretty=False)
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_cashflow(pretty=False, freq="quarterly")
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
 
-    #     # Test to_dict
-    #     data = self.ticker.get_cashflow(as_dict=True)
-    #     self.assertIsInstance(data, dict, "data has wrong type")
+        # Test to_dict
+        data = self.ticker.get_cashflow(as_dict=True)
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    # def test_quarterly_cash_flow(self):
-    #     expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
-    #     expected_periods_days = 365//4
+    def test_income_alt_names(self):
+        i1 = self.ticker.income_stmt
+        i2 = self.ticker.incomestmt
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.financials
+        self.assertTrue(i1.equals(i3))
 
-    #     # Test contents of table
-    #     data = self.ticker.get_cashflow(pretty=True, freq="quarterly")
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
-    #     period = abs((data.columns[0]-data.columns[1]).days)
-    #     self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
+        i1 = self.ticker.get_income_stmt()
+        i2 = self.ticker.get_incomestmt()
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.get_financials()
+        self.assertTrue(i1.equals(i3))
 
-    #     # Test property defaults
-    #     data2 = self.ticker.quarterly_cashflow
-    #     self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+        i1 = self.ticker.quarterly_income_stmt
+        i2 = self.ticker.quarterly_incomestmt
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.quarterly_financials
+        self.assertTrue(i1.equals(i3))
 
-    #     # Test pretty=False
-    #     expected_keys = [k.replace(' ', '') for k in expected_keys]
-    #     data = self.ticker.get_cashflow(pretty=False, freq="quarterly")
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     for k in expected_keys:
-    #         self.assertIn(k, data.index, "Did not find expected row in index")
+        i1 = self.ticker.get_income_stmt(freq="quarterly")
+        i2 = self.ticker.get_incomestmt(freq="quarterly")
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.get_financials(freq="quarterly")
+        self.assertTrue(i1.equals(i3))
 
-    #     # Test to_dict
-    #     data = self.ticker.get_cashflow(as_dict=True)
-    #     self.assertIsInstance(data, dict, "data has wrong type")
+    def test_balance_sheet_alt_names(self):
+        i1 = self.ticker.balance_sheet
+        i2 = self.ticker.balancesheet
+        self.assertTrue(i1.equals(i2))
 
-    # def test_quarterly_cashflow_old_fmt(self):
-    #     expected_row = "NetIncome"
-    #     data = self.ticker_old_fmt.get_cashflow(legacy=True, freq="quarterly")
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-    #     self.assertIn(expected_row, data.index, "Did not find expected row in index")
+        i1 = self.ticker.get_balance_sheet()
+        i2 = self.ticker.get_balancesheet()
+        self.assertTrue(i1.equals(i2))
 
-    #     data_cached = self.ticker_old_fmt.get_cashflow(legacy=True, freq="quarterly")
-    #     self.assertIs(data, data_cached, "data not cached")
+        i1 = self.ticker.quarterly_balance_sheet
+        i2 = self.ticker.quarterly_balancesheet
+        self.assertTrue(i1.equals(i2))
 
-    # def test_income_alt_names(self):
-    #     i1 = self.ticker.income_stmt
-    #     i2 = self.ticker.incomestmt
-    #     self.assertTrue(i1.equals(i2))
-    #     i3 = self.ticker.financials
-    #     self.assertTrue(i1.equals(i3))
+        i1 = self.ticker.get_balance_sheet(freq="quarterly")
+        i2 = self.ticker.get_balancesheet(freq="quarterly")
+        self.assertTrue(i1.equals(i2))
 
-    #     i1 = self.ticker.get_income_stmt()
-    #     i2 = self.ticker.get_incomestmt()
-    #     self.assertTrue(i1.equals(i2))
-    #     i3 = self.ticker.get_financials()
-    #     self.assertTrue(i1.equals(i3))
+    def test_cash_flow_alt_names(self):
+        i1 = self.ticker.cash_flow
+        i2 = self.ticker.cashflow
+        self.assertTrue(i1.equals(i2))
 
-    #     i1 = self.ticker.quarterly_income_stmt
-    #     i2 = self.ticker.quarterly_incomestmt
-    #     self.assertTrue(i1.equals(i2))
-    #     i3 = self.ticker.quarterly_financials
-    #     self.assertTrue(i1.equals(i3))
+        i1 = self.ticker.get_cash_flow()
+        i2 = self.ticker.get_cashflow()
+        self.assertTrue(i1.equals(i2))
 
-    #     i1 = self.ticker.get_income_stmt(freq="quarterly")
-    #     i2 = self.ticker.get_incomestmt(freq="quarterly")
-    #     self.assertTrue(i1.equals(i2))
-    #     i3 = self.ticker.get_financials(freq="quarterly")
-    #     self.assertTrue(i1.equals(i3))
+        i1 = self.ticker.quarterly_cash_flow
+        i2 = self.ticker.quarterly_cashflow
+        self.assertTrue(i1.equals(i2))
 
-    # def test_balance_sheet_alt_names(self):
-    #     i1 = self.ticker.balance_sheet
-    #     i2 = self.ticker.balancesheet
-    #     self.assertTrue(i1.equals(i2))
+        i1 = self.ticker.get_cash_flow(freq="quarterly")
+        i2 = self.ticker.get_cashflow(freq="quarterly")
+        self.assertTrue(i1.equals(i2))
 
-    #     i1 = self.ticker.get_balance_sheet()
-    #     i2 = self.ticker.get_balancesheet()
-    #     self.assertTrue(i1.equals(i2))
+    def test_bad_freq_value_raises_exception(self):
+        self.assertRaises(ValueError, lambda: self.ticker.get_cashflow(freq="badarg"))
 
-    #     i1 = self.ticker.quarterly_balance_sheet
-    #     i2 = self.ticker.quarterly_balancesheet
-    #     self.assertTrue(i1.equals(i2))
-
-    #     i1 = self.ticker.get_balance_sheet(freq="quarterly")
-    #     i2 = self.ticker.get_balancesheet(freq="quarterly")
-    #     self.assertTrue(i1.equals(i2))
-
-    # def test_cash_flow_alt_names(self):
-    #     i1 = self.ticker.cash_flow
-    #     i2 = self.ticker.cashflow
-    #     self.assertTrue(i1.equals(i2))
-
-    #     i1 = self.ticker.get_cash_flow()
-    #     i2 = self.ticker.get_cashflow()
-    #     self.assertTrue(i1.equals(i2))
-
-    #     i1 = self.ticker.quarterly_cash_flow
-    #     i2 = self.ticker.quarterly_cashflow
-    #     self.assertTrue(i1.equals(i2))
-
-    #     i1 = self.ticker.get_cash_flow(freq="quarterly")
-    #     i2 = self.ticker.get_cashflow(freq="quarterly")
-    #     self.assertTrue(i1.equals(i2))
+    # Below will fail because not ported to Yahoo API
 
     # def test_sustainability(self):
     #     data = self.ticker.sustainability
@@ -685,9 +660,6 @@ class TestTickerMiscFinancials(unittest.TestCase):
     #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
     #     self.assertFalse(data.empty, "data is empty")
 
-    # def test_bad_freq_value_raises_exception(self):
-    #     self.assertRaises(ValueError, lambda: self.ticker.get_cashflow(freq="badarg"))
-
 
 class TestTickerInfo(unittest.TestCase):
     session = None
@@ -717,17 +689,13 @@ class TestTickerInfo(unittest.TestCase):
         for k in f:
             self.assertIsNotNone(f[k])
 
-    # Below will fail because decryption broken
-
-    # def test_info(self):
-    #     data = self.tickers[0].info
-    #     self.assertIsInstance(data, dict, "data has wrong type")
-    #     self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
-    #     self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
+    def test_info(self):
+        data = self.tickers[0].info
+        self.assertIsInstance(data, dict, "data has wrong type")
+        self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
+        self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
 
     # def test_fast_info_matches_info(self):
-    #     yf.scrapers.quote.PRUNE_INFO = False
-
     #     fast_info_keys = set()
     #     for ticker in self.tickers:
     #         fast_info_keys.update(set(ticker.fast_info.keys()))
