@@ -63,9 +63,8 @@ setup(
                       'requests>=2.26', 'multitasking>=0.0.7',
                       'lxml>=4.9.1', 'appdirs>=1.4.4', 'pytz>=2022.5',
                       'frozendict>=2.3.4', 
-                      # 'pycryptodome>=3.6.6',
-                      'cryptography>=3.3.2',
                       'beautifulsoup4>=4.11.1', 'html5lib>=1.1'],
+    # Note: Pandas.read_html() needs html5lib & beautifulsoup4
     entry_points={
         'console_scripts': [
             'sample=sample:main',

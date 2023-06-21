@@ -47,7 +47,6 @@ import json as _json
 import logging
 
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
-_SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 _ROOT_URL_ = 'https://finance.yahoo.com'
 
 class TickerBase:
@@ -58,7 +57,6 @@ class TickerBase:
         self._history_metadata = None
         self._history_metadata_formatted = False
         self._base_url = _BASE_URL_
-        self._scrape_url = _SCRAPE_URL_
         self._tz = None
 
         self._isin = None
@@ -85,13 +83,6 @@ class TickerBase:
 
         # Limit recursion depth when repairing prices
         self._reconstruct_start_interval = None
-
-    def stats(self, proxy=None):
-        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
-
-        # get info and sustainability
-        data = self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
-        return data
 
     @utils.log_indent_decorator
     def history(self, period="1mo", interval="1d",
@@ -1592,7 +1583,7 @@ class TickerBase:
             return dict_data
         return data
 
-    def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+    def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
             as_dict: bool
@@ -1604,19 +1595,13 @@ class TickerBase:
             freq: str
                 "yearly" or "quarterly"
                 Default is "yearly"
-            legacy: bool
-                Return old financials tables. Useful for when new tables not available
-                Default is False
             proxy: str
                 Optional. Proxy server URL scheme
                 Default is None
         """
         self._fundamentals.proxy = proxy
 
-        if legacy:
-            data = self._fundamentals.financials.get_income_scrape(freq=freq, proxy=proxy)
-        else:
-            data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
             
         if pretty:
             data = data.copy()
@@ -1625,13 +1610,13 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_incomestmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
-        return self.get_income_stmt(proxy, as_dict, pretty, freq, legacy)
+    def get_incomestmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_income_stmt(proxy, as_dict, pretty, freq)
 
-    def get_financials(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
-        return self.get_income_stmt(proxy, as_dict, pretty, freq, legacy)
+    def get_financials(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_income_stmt(proxy, as_dict, pretty, freq)
 
-    def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+    def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
             as_dict: bool
@@ -1643,19 +1628,13 @@ class TickerBase:
             freq: str
                 "yearly" or "quarterly"
                 Default is "yearly"
-            legacy: bool
-                Return old financials tables. Useful for when new tables not available
-                Default is False
             proxy: str
                 Optional. Proxy server URL scheme
                 Default is None
         """
         self._fundamentals.proxy = proxy
 
-        if legacy:
-            data = self._fundamentals.financials.get_balance_sheet_scrape(freq=freq, proxy=proxy)
-        else:
-            data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
 
         if pretty:
             data = data.copy()
@@ -1664,10 +1643,10 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
-        return self.get_balance_sheet(proxy, as_dict, pretty, freq, legacy)
+    def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_balance_sheet(proxy, as_dict, pretty, freq)
 
-    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
+    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
             as_dict: bool
@@ -1679,19 +1658,13 @@ class TickerBase:
             freq: str
                 "yearly" or "quarterly"
                 Default is "yearly"
-            legacy: bool
-                Return old financials tables. Useful for when new tables not available
-                Default is False
             proxy: str
                 Optional. Proxy server URL scheme
                 Default is None
         """
         self._fundamentals.proxy = proxy
 
-        if legacy:
-            data = self._fundamentals.financials.get_cash_flow_scrape(freq=freq, proxy=proxy)
-        else:
-            data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
+        data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
 
         if pretty:
             data = data.copy()
@@ -1700,8 +1673,8 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly", legacy=False):
-        return self.get_cash_flow(proxy, as_dict, pretty, freq, legacy)
+    def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_cash_flow(proxy, as_dict, pretty, freq)
 
     def get_dividends(self, proxy=None):
         if self._history is None:
