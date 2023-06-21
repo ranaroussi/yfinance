@@ -5,11 +5,9 @@ import json
 import pandas as pd
 import numpy as np
 
-from yfinance import utils
+from yfinance import utils, const
 from yfinance.data import TickerData
-from yfinance.exceptions import YFinanceDataException, YFinanceException
-
-logger = utils.get_yf_logger()
+from yfinance.exceptions import YFinanceException, YFNotImplementedError
 
 class Fundamentals:
 
@@ -33,70 +31,14 @@ class Fundamentals:
     @property
     def earnings(self) -> dict:
         if self._earnings is None:
-            self._scrape_earnings(self.proxy)
+            raise YFNotImplementedError('earnings')
         return self._earnings
 
     @property
     def shares(self) -> pd.DataFrame:
         if self._shares is None:
-            self._scrape_shares(self.proxy)
+            raise YFNotImplementedError('shares')
         return self._shares
-
-    def _scrape_basics(self, proxy):
-        if self._basics_already_scraped:
-            return
-        self._basics_already_scraped = True
-
-        self._financials_data = self._data.get_json_data_stores('financials', proxy)
-        try:
-            self._fin_data_quote = self._financials_data['QuoteSummaryStore']
-        except KeyError:
-            err_msg = "No financials data found, symbol may be delisted"
-            logger.error('%s: %s', self._data.ticker, err_msg)
-            return None
-
-    def _scrape_earnings(self, proxy):
-        self._scrape_basics(proxy)
-        # earnings
-        self._earnings = {"yearly": pd.DataFrame(), "quarterly": pd.DataFrame()}
-        if self._fin_data_quote is None:
-            return
-        if isinstance(self._fin_data_quote.get('earnings'), dict):
-            try:
-                earnings = self._fin_data_quote['earnings']['financialsChart']
-                earnings['financialCurrency'] = self._fin_data_quote['earnings'].get('financialCurrency', 'USD')
-                self._earnings['financialCurrency'] = earnings['financialCurrency']
-                df = pd.DataFrame(earnings['yearly']).set_index('date')
-                df.columns = utils.camel2title(df.columns)
-                df.index.name = 'Year'
-                self._earnings['yearly'] = df
-
-                df = pd.DataFrame(earnings['quarterly']).set_index('date')
-                df.columns = utils.camel2title(df.columns)
-                df.index.name = 'Quarter'
-                self._earnings['quarterly'] = df
-            except Exception:
-                pass
-
-    def _scrape_shares(self, proxy):
-        self._scrape_basics(proxy)
-        # shares outstanding
-        try:
-            # keep only years with non None data
-            available_shares = [shares_data for shares_data in
-                                self._financials_data['QuoteTimeSeriesStore']['timeSeries']['annualBasicAverageShares']
-                                if
-                                shares_data]
-            shares = pd.DataFrame(available_shares)
-            shares['Year'] = shares['asOfDate'].agg(lambda x: int(x[:4]))
-            shares.set_index('Year', inplace=True)
-            shares.drop(columns=['dataId', 'asOfDate',
-                                 'periodType', 'currencyCode'], inplace=True)
-            shares.rename(
-                columns={'reportedValue': "BasicShares"}, inplace=True)
-            self._shares = shares
-        except Exception:
-            pass
 
 
 class Financials:
@@ -105,9 +47,6 @@ class Financials:
         self._income_time_series = {}
         self._balance_sheet_time_series = {}
         self._cash_flow_time_series = {}
-        self._income_scraped = {}
-        self._balance_sheet_scraped = {}
-        self._cash_flow_scraped = {}
 
     def get_income_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
         res = self._income_time_series
@@ -127,6 +66,7 @@ class Financials:
             res[freq] = self._fetch_time_series("cash-flow", freq, proxy=None)
         return res[freq]
 
+    @utils.log_indent_decorator
     def _fetch_time_series(self, name, timescale, proxy=None):
         # Fetching time series preferred over scraping 'QuoteSummaryStore',
         # because it matches what Yahoo shows. But for some tickers returns nothing, 
@@ -146,7 +86,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFinanceException as e:
-            logger.error("%s: Failed to create %s financials table for reason: %r", self._data.ticker, name, e)
+            utils.get_yf_logger().error("%s: Failed to create %s financials table for reason: %r", self._data.ticker, name, e)
         return pd.DataFrame()
 
     def _create_financials_table(self, name, timescale, proxy):
@@ -154,36 +94,12 @@ class Financials:
             # Yahoo stores the 'income' table internally under 'financials' key
             name = "financials"
 
-        keys = self._get_datastore_keys(name, proxy)
+        keys = const.fundamentals_keys[name]
+
         try:
             return self.get_financials_time_series(timescale, keys, proxy)
         except Exception as e:
             pass
-
-    def _get_datastore_keys(self, sub_page, proxy) -> list:
-        data_stores = self._data.get_json_data_stores(sub_page, proxy)
-
-        # Step 1: get the keys:
-        def _finditem1(key, obj):
-            values = []
-            if isinstance(obj, dict):
-                if key in obj.keys():
-                    values.append(obj[key])
-                for k, v in obj.items():
-                    values += _finditem1(key, v)
-            elif isinstance(obj, list):
-                for v in obj:
-                    values += _finditem1(key, v)
-            return values
-
-        try:
-            keys = _finditem1("key", data_stores['FinancialTemplateStore'])
-        except KeyError as e:
-            raise YFinanceDataException("Parsing FinancialTemplateStore failed, reason: {}".format(repr(e)))
-
-        if not keys:
-            raise YFinanceDataException("No keys in FinancialTemplateStore")
-        return keys
 
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly"}
@@ -231,91 +147,5 @@ class Financials:
         # Reorder table to match order on Yahoo website
         df = df.reindex([k for k in keys if k in df.index])
         df = df[sorted(df.columns, reverse=True)]
-
-        return df
-
-    def get_income_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
-        res = self._income_scraped
-        if freq not in res:
-            res[freq] = self._scrape("income", freq, proxy=None)
-        return res[freq]
-
-    def get_balance_sheet_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
-        res = self._balance_sheet_scraped
-        if freq not in res:
-            res[freq] = self._scrape("balance-sheet", freq, proxy=None)
-        return res[freq]
-
-    def get_cash_flow_scrape(self, freq="yearly", proxy=None) -> pd.DataFrame:
-        res = self._cash_flow_scraped
-        if freq not in res:
-            res[freq] = self._scrape("cash-flow", freq, proxy=None)
-        return res[freq]
-
-    def _scrape(self, name, timescale, proxy=None):
-        # Backup in case _fetch_time_series() fails to return data
-
-        allowed_names = ["income", "balance-sheet", "cash-flow"]
-        allowed_timescales = ["yearly", "quarterly"]
-
-        if name not in allowed_names:
-            raise ValueError("Illegal argument: name must be one of: {}".format(allowed_names))
-        if timescale not in allowed_timescales:
-            raise ValueError("Illegal argument: timescale must be one of: {}".format(allowed_names))
-
-        try:
-            statement = self._create_financials_table_old(name, timescale, proxy)
-
-            if statement is not None:
-                return statement
-        except YFinanceException as e:
-            logger.error("%s: Failed to create financials table for %s reason: %r", self._data.ticker, name, e)
-        return pd.DataFrame()
-
-    def _create_financials_table_old(self, name, timescale, proxy):
-        data_stores = self._data.get_json_data_stores("financials", proxy)
-
-        # Fetch raw data
-        if not "QuoteSummaryStore" in data_stores:
-            raise YFinanceDataException(f"Yahoo not returning legacy financials data")
-        data = data_stores["QuoteSummaryStore"]
-
-        if name == "cash-flow":
-            key1 = "cashflowStatement"
-            key2 = "cashflowStatements"
-        elif name == "balance-sheet":
-            key1 = "balanceSheet"
-            key2 = "balanceSheetStatements"
-        else:
-            key1 = "incomeStatement"
-            key2 = "incomeStatementHistory"
-        key1 += "History"
-        if timescale == "quarterly":
-            key1 += "Quarterly"
-        if key1 not in data or data[key1] is None or key2 not in data[key1]:
-            raise YFinanceDataException(f"Yahoo not returning legacy {name} financials data")
-        data = data[key1][key2]
-
-        # Tabulate
-        df = pd.DataFrame(data)
-        if len(df) == 0:
-            raise YFinanceDataException(f"Yahoo not returning legacy {name} financials data")
-        df = df.drop(columns=['maxAge'])
-        for col in df.columns:
-            df[col] = df[col].replace('-', np.nan)
-        df.set_index('endDate', inplace=True)
-        try:
-            df.index = pd.to_datetime(df.index, unit='s')
-        except ValueError:
-            df.index = pd.to_datetime(df.index)
-        df = df.T
-        df.columns.name = ''
-        df.index.name = 'Breakdown'
-        # rename incorrect yahoo key
-        df.rename(index={'treasuryStock': 'gainsLossesNotAffectingRetainedEarnings'}, inplace=True)
-
-        # Upper-case first letter, leave rest unchanged:
-        s0 = df.index[0]
-        df.index = [s[0].upper()+s[1:] for s in df.index]
 
         return df

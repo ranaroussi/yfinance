@@ -8,8 +8,7 @@ import numpy as _np
 
 from yfinance import utils
 from yfinance.data import TickerData
-
-logger = utils.get_yf_logger()
+from yfinance.exceptions import YFNotImplementedError
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -21,8 +20,6 @@ info_retired_keys_symbol = {"symbol"}
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
 
 
-PRUNE_INFO = True
-# PRUNE_INFO = False
 _BASIC_URL_ = "https://query2.finance.yahoo.com/v10/finance/quoteSummary"
 
 
@@ -82,8 +79,6 @@ class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
     def __init__(self, tickerBaseObject):
-        utils.print_once("yfinance: Note: 'Ticker.info' dict is now fixed & improved, 'fast_info' is no longer faster")
-
         self._tkr = tickerBaseObject
 
         self._prices_1y = None
@@ -179,10 +174,9 @@ class FastInfo:
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
             # Temporarily disable error printing
-            l = logger.level
-            logger.setLevel(logging.CRITICAL)
+            logging.disable(logging.CRITICAL)
             self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, keepna=True)
-            logger.setLevel(l)
+            logging.disable(logging.NOTSET)
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -209,19 +203,17 @@ class FastInfo:
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
             # Temporarily disable error printing
-            l = logger.level
-            logger.setLevel(logging.CRITICAL)
+            logging.disable(logging.CRITICAL)
             self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True)
-            logger.setLevel(l)
+            logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
             # Temporarily disable error printing
-            l = logger.level
-            logger.setLevel(logging.CRITICAL)
+            logging.disable(logging.CRITICAL)
             self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False)
-            logger.setLevel(l)
+            logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -299,9 +291,9 @@ class FastInfo:
             return self._shares
 
         shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
-        if shares is None:
-            # Requesting 18 months failed, so fallback to shares which should include last year
-            shares = self._tkr.get_shares()
+        # if shares is None:
+        #     # Requesting 18 months failed, so fallback to shares which should include last year
+        #     shares = self._tkr.get_shares()
         if shares is not None:
             if isinstance(shares, pd.DataFrame):
                 shares = shares[shares.columns[0]]
@@ -568,9 +560,7 @@ class Quote:
     @property
     def info(self) -> dict:
         if self._info is None:
-            # self._scrape(self.proxy)  # decrypt broken
             self._fetch(self.proxy)
-
             self._fetch_complementary(self.proxy)
 
         return self._info
@@ -578,141 +568,20 @@ class Quote:
     @property
     def sustainability(self) -> pd.DataFrame:
         if self._sustainability is None:
-            self._scrape(self.proxy)
+            raise YFNotImplementedError('sustainability')
         return self._sustainability
 
     @property
     def recommendations(self) -> pd.DataFrame:
         if self._recommendations is None:
-            self._scrape(self.proxy)
+            raise YFNotImplementedError('recommendations')
         return self._recommendations
 
     @property
     def calendar(self) -> pd.DataFrame:
         if self._calendar is None:
-            self._scrape(self.proxy)
+            raise YFNotImplementedError('calendar')
         return self._calendar
-
-    def _scrape(self, proxy):
-        if self._already_scraped:
-            return
-        self._already_scraped = True
-
-        # get info and sustainability
-        json_data = self._data.get_json_data_stores(proxy=proxy)
-        try:
-            quote_summary_store = json_data['QuoteSummaryStore']
-        except KeyError:
-            err_msg = "No summary info found, symbol may be delisted"
-            logger.error('%s: %s', self._data.ticker, err_msg)
-            return None
-
-        # sustainability
-        d = {}
-        try:
-            if isinstance(quote_summary_store.get('esgScores'), dict):
-                for item in quote_summary_store['esgScores']:
-                    if not isinstance(quote_summary_store['esgScores'][item], (dict, list)):
-                        d[item] = quote_summary_store['esgScores'][item]
-
-                s = pd.DataFrame(index=[0], data=d)[-1:].T
-                s.columns = ['Value']
-                s.index.name = '%.f-%.f' % (
-                    s[s.index == 'ratingYear']['Value'].values[0],
-                    s[s.index == 'ratingMonth']['Value'].values[0])
-
-                self._sustainability = s[~s.index.isin(
-                    ['maxAge', 'ratingYear', 'ratingMonth'])]
-        except Exception:
-            pass
-
-        self._info = {}
-        try:
-            items = ['summaryProfile', 'financialData', 'quoteType',
-                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
-            for item in items:
-                if isinstance(quote_summary_store.get(item), dict):
-                    self._info.update(quote_summary_store[item])
-        except Exception:
-            pass
-
-        # For ETFs, provide this valuable data: the top holdings of the ETF
-        try:
-            if 'topHoldings' in quote_summary_store:
-                self._info.update(quote_summary_store['topHoldings'])
-        except Exception:
-            pass
-
-        try:
-            if not isinstance(quote_summary_store.get('summaryDetail'), dict):
-                # For some reason summaryDetail did not give any results. The price dict
-                # usually has most of the same info
-                self._info.update(quote_summary_store.get('price', {}))
-        except Exception:
-            pass
-
-        try:
-            # self._info['regularMarketPrice'] = self._info['regularMarketOpen']
-            self._info['regularMarketPrice'] = quote_summary_store.get('price', {}).get(
-                'regularMarketPrice', self._info.get('regularMarketOpen', None))
-        except Exception:
-            pass
-
-        try:
-            self._info['preMarketPrice'] = quote_summary_store.get('price', {}).get(
-                'preMarketPrice', self._info.get('preMarketPrice', None))
-        except Exception:
-            pass
-
-        self._info['logo_url'] = ""
-        try:
-            if not 'website' in self._info:
-                self._info['logo_url'] = 'https://logo.clearbit.com/%s.com' % \
-                                         self._info['shortName'].split(' ')[0].split(',')[0]
-            else:
-                domain = self._info['website'].split(
-                    '://')[1].split('/')[0].replace('www.', '')
-                self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
-        except Exception:
-            pass
-
-        # Delete redundant info[] keys, because values can be accessed faster
-        # elsewhere - e.g. price keys. Hope is reduces Yahoo spam effect.
-        # But record the dropped keys, because in rare cases they are needed.
-        self._retired_info = {}
-        for k in info_retired_keys:
-            if k in self._info:
-                self._retired_info[k] = self._info[k]
-                if PRUNE_INFO:
-                    del self._info[k]
-        if PRUNE_INFO:
-            # InfoDictWrapper will explain how to access above data elsewhere
-            self._info = InfoDictWrapper(self._info)
-
-        # events
-        try:
-            cal = pd.DataFrame(quote_summary_store['calendarEvents']['earnings'])
-            cal['earningsDate'] = pd.to_datetime(
-                cal['earningsDate'], unit='s')
-            self._calendar = cal.T
-            self._calendar.index = utils.camel2title(self._calendar.index)
-            self._calendar.columns = ['Value']
-        except Exception as e:
-            pass
-
-        # analyst recommendations
-        try:
-            rec = pd.DataFrame(
-                quote_summary_store['upgradeDowngradeHistory']['history'])
-            rec['earningsDate'] = pd.to_datetime(
-                rec['epochGradeDate'], unit='s')
-            rec.set_index('earningsDate', inplace=True)
-            rec.index.name = 'Date'
-            rec.columns = utils.camel2title(rec.columns)
-            self._recommendations = rec[[
-                'Firm', 'To Grade', 'From Grade', 'Action']].sort_index()
-        except Exception:
-            pass
 
     def _fetch(self, proxy):
         if self._already_fetched:
