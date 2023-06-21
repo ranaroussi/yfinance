@@ -42,11 +42,6 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
-## News [2023-01-27]
-Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-market data. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
-
-Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. ~Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary). `info` will continue to exist for as long as there are elements without a fast alternative.~ `info` now fixed and much faster than before.
-
 ## Quick Start
 
 ### The Ticker module
@@ -74,9 +69,6 @@ msft.splits
 msft.capital_gains  # only for mutual funds & etfs
 
 # show share count
-# - yearly summary:
-msft.shares
-# - accurate time-series count:
 msft.get_shares_full(start="2022-01-01", end=None)
 
 # show financials:
@@ -95,25 +87,6 @@ msft.quarterly_cashflow
 msft.major_holders
 msft.institutional_holders
 msft.mutualfund_holders
-
-# show earnings
-msft.earnings
-msft.quarterly_earnings
-
-# show sustainability
-msft.sustainability
-
-# show analysts recommendations
-msft.recommendations
-msft.recommendations_summary
-# show analysts other work
-msft.analyst_price_target
-msft.revenue_forecasts
-msft.earnings_forecasts
-msft.earnings_trend
-
-# show next event (earnings, etc)
-msft.calendar
 
 # Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
