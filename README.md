@@ -42,20 +42,6 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
-## News
-
-### 2023-01-27
-Since December 2022 Yahoo has been encrypting the web data that `yfinance` scrapes for non-price data. Price data still works. Fortunately the decryption keys are available, although Yahoo moved/changed them several times hence `yfinance` breaking several times. `yfinance` is now better prepared for any future changes by Yahoo.
-
-Why is Yahoo doing this? We don't know. Is it to stop scrapers? Maybe, so we've implemented changes to reduce load on Yahoo. In December we rolled out version 0.2 with optimised scraping. Then in 0.2.6 introduced `Ticker.fast_info`, providing much faster access to some `Ticker.info` elements wherever possible e.g. price stats and forcing users to switch (sorry but we think necessary).
-
-### 2023-02-07
-Yahoo is now regularly changing their decryption key, breaking `yfinance` decryption. Is technically possible to extract this from their webpage but not implemented because difficult, see [discussion in the issue thread](https://github.com/ranaroussi/yfinance/issues/1407).
-
-### 2023-04-09
-
-Fixed `Ticker.info`
-
 ## Quick Start
 
 ### The Ticker module
@@ -83,9 +69,6 @@ msft.splits
 msft.capital_gains  # only for mutual funds & etfs
 
 # show share count
-# - yearly summary:
-msft.shares
-# - accurate time-series count:
 msft.get_shares_full(start="2022-01-01", end=None)
 
 # show financials:
@@ -104,25 +87,6 @@ msft.quarterly_cashflow
 msft.major_holders
 msft.institutional_holders
 msft.mutualfund_holders
-
-# show earnings
-msft.earnings
-msft.quarterly_earnings
-
-# show sustainability
-msft.sustainability
-
-# show analysts recommendations
-msft.recommendations
-msft.recommendations_summary
-# show analysts other work
-msft.analyst_price_target
-msft.revenue_forecasts
-msft.earnings_forecasts
-msft.earnings_trend
-
-# show next event (earnings, etc)
-msft.calendar
 
 # Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
@@ -197,14 +161,7 @@ Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options 
 
 ### Logging
 
-`yfinance` now uses the `logging` module. To control the detail of printed messages you simply change the level:
-```
-import logging
-logger = logging.getLogger('yfinance')
-logger.setLevel(logging.ERROR)  # default: only print errors
-logger.setLevel(logging.CRITICAL)  # disable printing
-logger.setLevel(logging.DEBUG)  # verbose: print errors & debug info
-```
+`yfinance` now uses the `logging` module to handle messages, default behaviour is only print errors. If debugging, use `yf.enable_debug_mode()` to switch logging to debug with custom formatting.
 
 ### Smarter scraping
 

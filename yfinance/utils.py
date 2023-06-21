@@ -70,18 +70,106 @@ def print_once(msg):
     print(msg)
 
 
+## Logging
+# Note: most of this logic is adding indentation with function depth,
+#       so that DEBUG log is readable.
+class IndentLoggerAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        if get_yf_logger().isEnabledFor(logging.DEBUG):
+            i = ' ' * self.extra['indent']
+            if not isinstance(msg, str):
+                msg = str(msg)
+            msg = '\n'.join([i + m for m in msg.split('\n')])
+        return msg, kwargs
+
+import threading
+_indentation_level = threading.local()
+class IndentationContext:
+    def __init__(self, increment=1):
+        self.increment = increment
+    def __enter__(self):
+        _indentation_level.indent = getattr(_indentation_level, 'indent', 0) + self.increment
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        _indentation_level.indent -= self.increment
+
+def get_indented_logger(name=None):
+    # Never cache the returned value! Will break indentation.
+    return IndentLoggerAdapter(logging.getLogger(name), {'indent': getattr(_indentation_level, 'indent', 0)})
+
+def log_indent_decorator(func):
+    def wrapper(*args, **kwargs):
+        logger = get_indented_logger('yfinance')
+        logger.debug(f'Entering {func.__name__}()')
+
+        with IndentationContext():
+            result = func(*args, **kwargs)
+
+        logger.debug(f'Exiting {func.__name__}()')
+        return result
+
+    return wrapper
+
+class MultiLineFormatter(logging.Formatter):
+    # The 'fmt' formatting further down is only applied to first line
+    # of log message, specifically the padding after %level%.
+    # For multi-line messages, need to manually copy over padding.
+    def __init__(self, fmt):
+        super().__init__(fmt)
+        # Extract amount of padding
+        match = _re.search(r'%\(levelname\)-(\d+)s', fmt)
+        self.level_length = int(match.group(1)) if match else 0
+
+    def format(self, record):
+        original = super().format(record)
+        lines = original.split('\n')
+        levelname = lines[0].split(' ')[0]
+        if len(lines) <= 1:
+            return original
+        else:
+            # Apply padding to all lines below first
+            formatted = [lines[0]]
+            if self.level_length == 0:
+                padding = ' ' * len(levelname)
+            else:
+                padding = ' ' * self.level_length
+            padding += ' '  # +1 for space between level and message
+            formatted.extend(padding + line for line in lines[1:])
+            return '\n'.join(formatted)
+
 yf_logger = None
+yf_log_indented = False
 def get_yf_logger():
     global yf_logger
     if yf_logger is None:
-        yf_logger = logging.getLogger("yfinance")
-        if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
-            # Add stream handler if user not already added one
-            h = logging.StreamHandler()
-            formatter = logging.Formatter(fmt='%(levelname)s %(message)s')
-            h.setFormatter(formatter)
-            yf_logger.addHandler(h)
+        yf_logger = logging.getLogger('yfinance')
+    global yf_log_indented
+    if yf_log_indented:
+        yf_logger = get_indented_logger('yfinance')
     return yf_logger
+
+def setup_debug_formatting():
+    global yf_logger
+    yf_logger = get_yf_logger()
+
+    if not yf_logger.isEnabledFor(logging.DEBUG):
+        yf_logger.warning("logging mode not set to 'DEBUG', so not setting up debug formatting")
+        return
+
+    if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
+        h = logging.StreamHandler()
+        # Ensure different level strings don't interfere with indentation
+        formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
+        h.setFormatter(formatter)
+        yf_logger.addHandler(h)
+
+    global yf_log_indented
+    yf_log_indented = True
+
+def enable_debug_mode():
+    get_yf_logger().setLevel(logging.DEBUG)
+    setup_debug_formatting()
+    
+##
 
 
 def is_isin(string):
@@ -567,11 +655,6 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    # Carefully merge 'df_sub' onto 'df_main'
-    # If naive merge fails, try again with reindexing df_sub:
-    # 1) if interval is weekly or monthly, then try with index set to start of week/month
-    # 2) if still failing then manually search through df_main.index to reindex df_sub
-
     if df_sub.shape[0] == 0:
         raise Exception("No data to merge")
 
@@ -580,6 +663,65 @@ def safe_merge_dfs(df_main, df_sub, interval):
     if len(data_cols) > 1:
         raise Exception("Expected 1 data col")
     data_col = data_cols[0]
+
+    df_main = df_main.sort_index()
+    intraday = interval.endswith('m') or interval.endswith('s')
+
+    td = _interval_to_timedelta(interval)
+    if intraday:
+        # On some exchanges the event can occur before market open.
+        # Problem when combining with intraday data.
+        # Solution = use dates, not datetimes, to map/merge.
+        df_main['_date'] = df_main.index.date
+        df_sub['_date'] = df_sub.index.date
+        indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
+        df_main = df_main.drop('_date', axis=1)
+        df_sub = df_sub.drop('_date', axis=1)
+    else:
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+                # Out-of-range
+                indices[i] = -1
+
+    f_outOfRange = indices == -1
+    if f_outOfRange.any() and not intraday:
+        # If dividend is occuring in next interval after last price row, 
+        # add a new row of NaNs
+        last_dt = df_main.index[-1]
+        next_interval_start_dt = last_dt + td
+        if interval == '1d':
+            # Allow for weekends & holidays
+            next_interval_end_dt = last_dt+7*_pd.Timedelta(days=7)
+        else:
+            next_interval_end_dt = next_interval_start_dt + td
+        for i in _np.where(f_outOfRange)[0]:
+            dt = df_sub.index[i]
+            if dt >= next_interval_start_dt and dt < next_interval_end_dt:
+                new_dt = dt if interval == '1d' else next_interval_start_dt
+                get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+                df_main.loc[new_dt] = _np.nan
+
+        # Re-calculate indices
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+                # Out-of-range
+                indices[i] = -1
+
+    f_outOfRange = indices == -1
+    if f_outOfRange.any():
+        if intraday or interval in ['1d', '1wk']:
+            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index}")
+        get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
+        df_sub = df_sub[~f_outOfRange].copy()
+        indices = indices[~f_outOfRange]
 
     def _reindex_events(df, new_index, data_col_name):
         if len(new_index) == len(set(new_index)):
@@ -602,106 +744,14 @@ def safe_merge_dfs(df_main, df_sub, interval):
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
-
-    df = df_main.join(df_sub)
-
-    f_na = df[data_col].isna()
-    data_lost = sum(~f_na) < df_sub.shape[0]
-    if not data_lost:
-        return df
-    # Lost data during join()
-    # Backdate all df_sub.index dates to start of week/month
-    if interval == "1wk":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
-    elif interval == "1mo":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
-    elif interval == "3mo":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
-    else:
-        new_index = None
-
-    if new_index is not None:
-        new_index = new_index.tz_localize(df.index.tz, ambiguous=True, nonexistent='shift_forward')
-        df_sub = _reindex_events(df_sub, new_index, data_col)
-        df = df_main.join(df_sub)
-
-    f_na = df[data_col].isna()
-    data_lost = sum(~f_na) < df_sub.shape[0]
-    if not data_lost:
-        return df
-    # Lost data during join(). Manually check each df_sub.index date against df_main.index to
-    # find matching interval
-    df_sub = df_sub_backup.copy()
-    new_index = [-1] * df_sub.shape[0]
-    for i in range(df_sub.shape[0]):
-        dt_sub_i = df_sub.index[i]
-        if dt_sub_i in df_main.index:
-            new_index[i] = dt_sub_i
-            continue
-        # Found a bad index date, need to search for near-match in df_main (same week/month)
-        fixed = False
-        for j in range(df_main.shape[0] - 1):
-            dt_main_j0 = df_main.index[j]
-            dt_main_j1 = df_main.index[j + 1]
-            if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
-                fixed = True
-                if interval.endswith('h') or interval.endswith('m'):
-                    # Must also be same day
-                    fixed = (dt_main_j0.date() == dt_sub_i.date()) and (dt_sub_i.date() == dt_main_j1.date())
-                if fixed:
-                    dt_sub_i = dt_main_j0
-                    break
-        if not fixed:
-            last_main_dt = df_main.index[df_main.shape[0] - 1]
-            diff = dt_sub_i - last_main_dt
-            if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "1wk":
-                if last_main_dt.week == dt_sub_i.week:
-                    dt_sub_i = last_main_dt
-                    fixed = True
-                elif (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < _datetime.timedelta(weeks=1)):
-                    # With some specific start dates (e.g. around early Jan), Yahoo
-                    # messes up start-of-week, is Saturday not Monday. So check
-                    # if same week another way
-                    dt_sub_i = last_main_dt
-                    fixed = True
-            elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval.endswith('m') or interval.endswith('h'):
-                td = _pd.to_timedelta(interval)
-                if (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < td):
-                    dt_sub_i = last_main_dt
-                    fixed = True
-        new_index[i] = dt_sub_i
+    new_index = df_main.index[indices]
     df_sub = _reindex_events(df_sub, new_index, data_col)
-    df = df_main.join(df_sub)
 
+    df = df_main.join(df_sub)
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        ## Not always possible to match events with trading, e.g. when released pre-market.
-        ## So have to append to bottom with nan prices.
-        ## But should only be impossible with intra-day price data.
-        if interval.endswith('m') or interval.endswith('h') or interval == "1d":
-            # Update: is possible with daily data when dividend very recent
-            f_missing = ~df_sub.index.isin(df.index)
-            df_sub_missing = df_sub[f_missing].copy()
-            keys = {"Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close",
-                    "Close"}.intersection(df.columns)
-            df_sub_missing[list(keys)] = _np.nan
-            col_ordering = df.columns
-            df = _pd.concat([df, df_sub_missing], sort=True)[col_ordering]
-        else:
-            raise Exception("Lost data during merge despite all attempts to align data (see above)")
+        raise Exception('Data was lost in merge, investigate')
 
     return df
 
