@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+0.2.21
+------
+Fix financials tables #1568
+Price repair update: fix Yahoo messing up dividend and split adjustments #1543
+Fix logging behaviour #1562
+Fix merge future div/split into prices #1567
+
 0.2.20
 ------
 Switch to `logging` module #1493 #1522 #1541
