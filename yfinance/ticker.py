@@ -102,6 +102,10 @@ class Ticker(TickerBase):
         return self.get_isin()
 
     @property
+    def major_holdings(self):
+        return self.get_major_holdings()
+
+    @property
     def major_holders(self) -> _pd.DataFrame:
         return self.get_major_holders()
 
