@@ -41,6 +41,7 @@ from . import shared
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
+from .scrapers.holdings import Holdings
 from .scrapers.quote import Quote, FastInfo
 import json as _json
 
@@ -76,6 +77,7 @@ class TickerBase:
 
         self._analysis = Analysis(self._data)
         self._holders = Holders(self._data)
+        self._holdings = Holdings(self._data)
         self._quote = Quote(self._data)
         self._fundamentals = Fundamentals(self._data)
 
@@ -1469,6 +1471,13 @@ class TickerBase:
     def get_calendar(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy
         data = self._quote.calendar
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_major_holdings(self, proxy=None, as_dict=False):
+        self._holdings.proxy = proxy
+        data = self._holdings.major
         if as_dict:
             return data.to_dict()
         return data
