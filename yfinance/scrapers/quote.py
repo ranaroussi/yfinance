@@ -588,7 +588,7 @@ class Quote:
             return
         self._already_fetched = True
         modules = ['summaryProfile', 'financialData', 'quoteType',
-                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail','topHoldings','price']
         result = self._data.get_raw_json(
             _BASIC_URL_ + f"/{self._data.ticker}", params={"modules": ",".join(modules), "ssl": "true"}, proxy=proxy
         )
