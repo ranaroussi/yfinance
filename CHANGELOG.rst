@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.22
+------
+Fix unhandled 'sqlite3.DatabaseError' #1574
+
 0.2.21
 ------
 Fix financials tables #1568
