@@ -333,8 +333,10 @@ class TickerBase:
             tps = self._history_metadata["tradingPeriods"]
             if not isinstance(tps, pd.DataFrame):
                 self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
+                self._history_metadata_formatted = True
                 tps = self._history_metadata["tradingPeriods"]
-            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
+            exchangeName = self._history_metadata['exchangeName']
+            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps, exchangeName)
         logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
 
         # actions

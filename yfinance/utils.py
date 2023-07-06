@@ -566,12 +566,18 @@ def set_df_tz(df, interval, tz):
     return df
 
 
-def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
+def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods, exchangeName):
     # Sometimes Yahoo returns post-market data despite not requesting it.
     # Normally happens on half-day early closes.
     #
     # And sometimes returns pre-market data despite not requesting it.
     # E.g. some London tickers.
+
+    # But for some exchanges, Yahoo returning incorrect schedule
+    if exchangeName == 'SAU':
+        # Saudi exchange. Yahoo returning wrong close 3pm instead of 3:20pm
+        return quotes
+
     tps_df = tradingPeriods.copy()
     tps_df["_date"] = tps_df.index.date
     quotes["_date"] = quotes.index.date
@@ -583,12 +589,12 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     f_drop = f_drop | (quotes.index < quotes["start"])
     if f_drop.any():
         # When printing report, ignore rows that were already NaNs:
-        # f_na = quotes[["Open","Close"]].isna().all(axis=1)
-        # n_nna = quotes.shape[0] - _np.sum(f_na)
-        # n_drop_nna = _np.sum(f_drop & ~f_na)
-        # quotes_dropped = quotes[f_drop]
-        # if debug and n_drop_nna > 0:
-        #     print(f"Dropping {n_drop_nna}/{n_nna} intervals for falling outside regular trading hours")
+        f_na = quotes[["Open","Close"]].isna().all(axis=1)
+        n_nna = quotes.shape[0] - _np.sum(f_na)
+        n_drop_nna = _np.sum(f_drop & ~f_na)
+        quotes_dropped = quotes[f_drop]
+        if n_drop_nna > 0:
+            get_yf_logger().debug(f"Dropping {n_drop_nna}/{n_nna} intervals for falling outside regular trading hours")
         quotes = quotes[~f_drop]
     quotes = quotes.drop(["_date", "start", "end"], axis=1)
     return quotes
