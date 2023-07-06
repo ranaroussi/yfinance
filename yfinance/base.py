@@ -101,7 +101,7 @@ class TickerBase:
                 Intraday data cannot extend last 60 days
             start: str
                 Download start date string (YYYY-MM-DD) or _datetime, inclusive.
-                Default is 1900-01-01
+                Default is 99 years ago
                 E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
             end: str
                 Download end date string (YYYY-MM-DD) or _datetime, exclusive.
