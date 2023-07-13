@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.23
+------
+Fix 'Unauthorized' error #1595
+
 0.2.22
 ------
 Fix unhandled 'sqlite3.DatabaseError' #1574
