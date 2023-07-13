@@ -195,6 +195,9 @@ class TickerBase:
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
         params["events"] = "div,splits,capitalGains"
 
+        # Fetch all data
+        params["useYfid"] = True
+        
         params_pretty = dict(params)
         tz = self._get_ticker_tz(proxy, timeout)
         for k in ["period1", "period2"]:
