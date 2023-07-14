@@ -33,6 +33,7 @@ class Ticker(TickerBase):
     def __init__(self, ticker, session=None):
         super(Ticker, self).__init__(ticker, session=session)
         self._expirations = {}
+        self._underlying  = {}
 
     def __repr__(self):
         return 'yfinance.Ticker object <%s>' % self.ticker
@@ -50,8 +51,13 @@ class Ticker(TickerBase):
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.utcfromtimestamp(
                     exp).strftime('%Y-%m-%d')] = exp
+
+            self._underlying = r['optionChain']['result'][0].get('quote', {})
+
             opt = r['optionChain']['result'][0].get('options', [])
-            return opt[0] if len(opt) > 0 else []
+
+            return dict(**opt[0],underlying=self._underlying) if len(opt) > 0 else {}
+        return {}
 
     def _options2df(self, opt, tz=None):
         data = _pd.DataFrame(opt).reindex(columns=[
@@ -90,9 +96,10 @@ class Ticker(TickerBase):
             date = self._expirations[date]
             options = self._download_options(date, proxy=proxy)
 
-        return _namedtuple('Options', ['calls', 'puts'])(**{
+        return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
             "calls": self._options2df(options['calls'], tz=tz),
-            "puts": self._options2df(options['puts'], tz=tz)
+            "puts": self._options2df(options['puts'], tz=tz),
+            "underlying": options['underlying']
         })
 
     # ------------------------
