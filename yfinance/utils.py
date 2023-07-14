@@ -955,7 +955,11 @@ class _TzCache:
     def __init__(self):
         self._setup_cache_folder()
         # Must init db here, where is thread-safe
-        self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+        try:
+            self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+        except _sqlite3.DatabaseError as err:
+            raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
+                                    .format(self._db_dir, err))
         self._migrate_cache_tkr_tz()
 
     def _setup_cache_folder(self):
@@ -1044,10 +1048,10 @@ def get_tz_cache():
             try:
                 _tz_cache = _TzCache()
             except _TzCacheException as err:
-                logger.error("Failed to create TzCache, reason: %s. "
-                             "TzCache will not be used. "
-                             "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'",
-                             err)
+                get_yf_logger().info("Failed to create TzCache, reason: %s. "
+                                 "TzCache will not be used. "
+                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'",
+                                 err)
                 _tz_cache = _TzCacheDummy()
 
         return _tz_cache
