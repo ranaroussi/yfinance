@@ -586,11 +586,9 @@ class Quote:
         if self._already_fetched:
             return
         self._already_fetched = True
-        modules = ['summaryProfile', 'financialData', 'quoteType',
-                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+        modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         params_dict = {}
-        for m in modules:
-            params_dict["modules"] = m
+        params_dict["modules"] = modules
         params_dict["ssl"] = "true"
         result = self._data.get_raw_json(
             _BASIC_URL_ + f"/{self._data.ticker}", params=params_dict, proxy=proxy
