@@ -586,8 +586,7 @@ class Quote:
         if self._already_fetched:
             return
         self._already_fetched = True
-        modules = ['summaryProfile', 'financialData', 'quoteType',
-                     'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+        modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         params_dict = {}
         params_dict["modules"] = modules
         params_dict["ssl"] = "true"
