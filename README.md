@@ -144,20 +144,10 @@ To download price history into one table:
 
 ```python
 import yfinance as yf
-data = yf.download("SPY AAPL", start="2017-01-01", end="2017-04-30")
+data = yf.download("SPY AAPL", period="1mo")
 ```
 
-`yf.download()` and `Ticker.history()` have many options for configuring fetching and processing, e.g.:
-
-```python
-yf.download(tickers = "SPY AAPL",  # list of tickers
-            period = "1y",         # time period
-            interval = "1d",       # trading interval
-            prepost = False,       # download pre/post market hours data?
-            repair = True)         # repair obvious price errors e.g. 100x?
-```
-
-Review the [Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail.
+#### `yf.download()` and `Ticker.history()` have many options for configuring fetching and processing. [Review the Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail.
 
 ### Logging
 
@@ -188,7 +178,7 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
     pass
 
 session = CachedLimiterSession(
-    limiter=Limiter(RequestRate(2, Duration.SECOND*5),  # max 2 requests per 5 seconds
+    limiter=Limiter(RequestRate(2, Duration.SECOND*5)),  # max 2 requests per 5 seconds
     bucket_class=MemoryQueueBucket,
     backend=SQLiteCache("yfinance.cache"),
 )
