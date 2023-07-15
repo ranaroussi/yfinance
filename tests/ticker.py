@@ -692,7 +692,10 @@ class TestTickerInfo(unittest.TestCase):
     def test_info(self):
         data = self.tickers[0].info
         self.assertIsInstance(data, dict, "data has wrong type")
-        self.assertIn("symbol", data.keys(), "Did not find expected key in info dict")
+        expected_keys = ['industry', 'currentPrice', 'exchange', 'floatShares', 'companyOfficers', 'bid']
+        for k in expected_keys:
+            print(k)
+            self.assertIn("symbol", data.keys(), f"Did not find expected key '{k}' in info dict")
         self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
 
     # def test_fast_info_matches_info(self):

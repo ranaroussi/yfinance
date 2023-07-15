@@ -1,6 +1,25 @@
 Change Log
 ===========
 
+0.2.24
+------
+Fix info[] missing values #1603
+
+0.2.23
+------
+Fix 'Unauthorized' error #1595
+
+0.2.22
+------
+Fix unhandled 'sqlite3.DatabaseError' #1574
+
+0.2.21
+------
+Fix financials tables #1568
+Price repair update: fix Yahoo messing up dividend and split adjustments #1543
+Fix logging behaviour #1562
+Fix merge future div/split into prices #1567
+
 0.2.20
 ------
 Switch to `logging` module #1493 #1522 #1541
