@@ -1,6 +1,185 @@
 Change Log
 ===========
 
+0.2.24
+------
+Fix info[] missing values #1603
+
+0.2.23
+------
+Fix 'Unauthorized' error #1595
+
+0.2.22
+------
+Fix unhandled 'sqlite3.DatabaseError' #1574
+
+0.2.21
+------
+Fix financials tables #1568
+Price repair update: fix Yahoo messing up dividend and split adjustments #1543
+Fix logging behaviour #1562
+Fix merge future div/split into prices #1567
+
+0.2.20
+------
+Switch to `logging` module #1493 #1522 #1541
+Price history:
+- optimise #1514
+- fixes #1523
+- fix TZ-cache corruption #1528
+
+0.2.18
+------
+Fix 'fast_info' error '_np not found' #1496
+Fix bug in timezone cache #1498
+
+0.2.17
+------
+Fix prices error with Pandas 2.0 #1488
+
+0.2.16
+------
+Fix 'fast_info deprecated' msg appearing at Ticker() init
+
+0.2.15
+------
+Restore missing Ticker.info keys #1480
+
+0.2.14
+------
+Fix Ticker.info dict by fetching from API #1461
+
+0.2.13
+------
+Price bug fixes:
+- fetch big-interval with Capital Gains #1455
+- merging dividends & splits with prices #1452
+
+0.2.12
+------
+Disable annoying 'backup decrypt' msg
+
+0.2.11
+------
+Fix history_metadata accesses for unusual symbols #1411
+
+0.2.10
+------
+General
+- allow using sqlite3 < 3.8.2 #1380
+- add another backup decrypt option #1379
+Prices
+- restore original download() timezone handling #1385
+- fix & improve price repair #1289 2a2928b 86d6acc
+- drop intraday intervals if in post-market but prepost=False #1311
+Info
+- fast_info improvements:
+  - add camelCase keys, add dict functions values() & items() #1368
+  - fix fast_info["previousClose"] #1383
+- catch TypeError Exception #1397
+
+0.2.9
+-----
+- Fix fast_info bugs #1362
+
+0.2.7
+-----
+- Fix Yahoo decryption, smarter this time #1353
+- Rename basic_info -> fast_info #1354
+
+0.2.6
+-----
+- Fix Ticker.basic_info lazy-loading #1342
+
+0.2.5
+-----
+- Fix Yahoo data decryption again #1336
+- New: Ticker.basic_info - faster Ticker.info #1317
+
+0.2.4
+-----
+- Fix Yahoo data decryption #1297
+- New feature: 'Ticker.get_shares_full()' #1301
+- Improve caching of financials data #1284
+- Restore download() original alignment behaviour #1283
+- Fix the database lock error in multithread download #1276
+
+0.2.3
+-----
+- Make financials API '_' use consistent
+
+0.2.2
+-----
+- Restore 'financials' attribute (map to 'income_stmt')
+
+0.2.1
+-----
+Release!
+
+0.2.0rc5
+--------
+- Improve financials error handling #1243
+- Fix '100x price' repair #1244
+
+0.2.0rc4
+--------
+- Access to old financials tables via `get_income_stmt(legacy=True)`
+- Optimise scraping financials & fundamentals, 2x faster
+- Add 'capital gains' alongside dividends & splits for ETFs, and metadata available via `history_metadata`, plus a bunch of price fixes
+For full list of changes see #1238
+
+0.2.0rc2
+--------
+Financials
+- fix financials tables to match website  #1128 #1157
+- lru_cache to optimise web requests  #1147
+Prices
+- improve price repair  #1148
+- fix merging dividends/splits with day/week/monthly prices  #1161
+- fix the Yahoo DST fixes  #1143
+- improve bad/delisted ticker handling  #1140
+Misc
+- fix 'trailingPegRatio'  #1138
+- improve error handling  #1118
+
+0.2.0rc1
+--------
+Jumping to 0.2 for this big update. 0.1.* will continue to receive bug-fixes
+- timezone cache performance massively improved. Thanks @fredrik-corneliusson #1113 #1112 #1109 #1105 #1099
+- price repair feature #1110
+- fix merging of dividends/splits with prices #1069 #1086 #1102
+- fix Yahoo returning latest price interval across 2 rows #1070
+- optional: raise errors as exceptions: raise_errors=True #1104
+- add proper unit tests #1069
+
+0.1.81
+------
+- Fix unhandled tz-cache exception #1107
+
+0.1.80
+------
+- Fix `download(ignore_tz=True)` for single ticker #1097
+- Fix rare case of error "Cannot infer DST time" #1100
+
+0.1.79
+------
+- Fix when Yahoo returns price=NaNs on dividend day
+
+0.1.78
+------
+- Fix download() when different timezones #1085
+
+0.1.77
+------
+- Fix user experience bug #1078
+
+0.1.75
+------
+- Fixed datetime-related issues: #1048
+- Add 'keepna' argument #1032
+- Speedup Ticker() creation #1042
+- Improve a bugfix #1033
+
 0.1.74
 ------
 - Fixed bug introduced in 0.1.73 (sorry :/)
