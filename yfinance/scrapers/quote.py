@@ -585,7 +585,6 @@ class Quote:
     def _fetch(self, proxy):
         if self._already_fetched:
             return
-        self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         params_dict = {}
         params_dict["modules"] = modules
@@ -593,6 +592,7 @@ class Quote:
         result = self._data.get_raw_json(
             _BASIC_URL_ + f"/{self._data.ticker}", params=params_dict, proxy=proxy
         )
+        self._already_fetched = True
         result["quoteSummary"]["result"][0]["symbol"] = self._data.ticker
         query1_info = next(
             (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._data.ticker),
