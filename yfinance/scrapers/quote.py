@@ -77,8 +77,9 @@ class InfoDictWrapper(MutableMapping):
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
-    def __init__(self, tickerBaseObject):
+    def __init__(self, tickerBaseObject, proxy=None):
         self._tkr = tickerBaseObject
+        self.proxy = proxy
 
         self._prices_1y = None
         self._prices_1wk_1h_prepost = None
@@ -174,9 +175,9 @@ class FastInfo:
         if self._prices_1y is None:
             # Temporarily disable error printing
             logging.disable(logging.CRITICAL)
-            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, keepna=True)
+            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, keepna=True, proxy=self.proxy)
             logging.disable(logging.NOTSET)
-            self._md = self._tkr.get_history_metadata()
+            self._md = self._tkr.get_history_metadata(proxy=self.proxy)
             try:
                 ctp = self._md["currentTradingPeriod"]
                 self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
@@ -203,7 +204,7 @@ class FastInfo:
         if self._prices_1wk_1h_prepost is None:
             # Temporarily disable error printing
             logging.disable(logging.CRITICAL)
-            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True)
+            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, proxy=self.proxy)
             logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_prepost
 
@@ -211,7 +212,7 @@ class FastInfo:
         if self._prices_1wk_1h_reg is None:
             # Temporarily disable error printing
             logging.disable(logging.CRITICAL)
-            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False)
+            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, proxy=self.proxy)
             logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_reg
 
@@ -220,7 +221,7 @@ class FastInfo:
             return self._md
 
         self._get_1y_prices()
-        self._md = self._tkr.get_history_metadata()
+        self._md = self._tkr.get_history_metadata(proxy=self.proxy)
         return self._md
 
     def _exchange_open_now(self):
@@ -253,7 +254,7 @@ class FastInfo:
 
         if self._tkr._history_metadata is None:
             self._get_1y_prices()
-        md = self._tkr.get_history_metadata()
+        md = self._tkr.get_history_metadata(proxy=self.proxy)
         self._currency = md["currency"]
         return self._currency
 
@@ -264,7 +265,7 @@ class FastInfo:
 
         if self._tkr._history_metadata is None:
             self._get_1y_prices()
-        md = self._tkr.get_history_metadata()
+        md = self._tkr.get_history_metadata(proxy=self.proxy)
         self._quote_type = md["instrumentType"]
         return self._quote_type
 
@@ -289,7 +290,7 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548), proxy=self.proxy)
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
