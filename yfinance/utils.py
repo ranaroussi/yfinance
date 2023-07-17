@@ -35,6 +35,8 @@ import os as _os
 import appdirs as _ad
 import sqlite3 as _sqlite3
 import atexit as _atexit
+from functools import lru_cache
+import logging
 
 from threading import Lock
 
@@ -59,6 +61,115 @@ def attributes(obj):
     return {
       name: getattr(obj, name) for name in dir(obj) 
         if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
+
+
+@lru_cache(maxsize=20)
+def print_once(msg):
+    # 'warnings' module suppression of repeat messages does not work. 
+    # This function replicates correct behaviour
+    print(msg)
+
+
+## Logging
+# Note: most of this logic is adding indentation with function depth,
+#       so that DEBUG log is readable.
+class IndentLoggerAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        if get_yf_logger().isEnabledFor(logging.DEBUG):
+            i = ' ' * self.extra['indent']
+            if not isinstance(msg, str):
+                msg = str(msg)
+            msg = '\n'.join([i + m for m in msg.split('\n')])
+        return msg, kwargs
+
+import threading
+_indentation_level = threading.local()
+class IndentationContext:
+    def __init__(self, increment=1):
+        self.increment = increment
+    def __enter__(self):
+        _indentation_level.indent = getattr(_indentation_level, 'indent', 0) + self.increment
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        _indentation_level.indent -= self.increment
+
+def get_indented_logger(name=None):
+    # Never cache the returned value! Will break indentation.
+    return IndentLoggerAdapter(logging.getLogger(name), {'indent': getattr(_indentation_level, 'indent', 0)})
+
+def log_indent_decorator(func):
+    def wrapper(*args, **kwargs):
+        logger = get_indented_logger('yfinance')
+        logger.debug(f'Entering {func.__name__}()')
+
+        with IndentationContext():
+            result = func(*args, **kwargs)
+
+        logger.debug(f'Exiting {func.__name__}()')
+        return result
+
+    return wrapper
+
+class MultiLineFormatter(logging.Formatter):
+    # The 'fmt' formatting further down is only applied to first line
+    # of log message, specifically the padding after %level%.
+    # For multi-line messages, need to manually copy over padding.
+    def __init__(self, fmt):
+        super().__init__(fmt)
+        # Extract amount of padding
+        match = _re.search(r'%\(levelname\)-(\d+)s', fmt)
+        self.level_length = int(match.group(1)) if match else 0
+
+    def format(self, record):
+        original = super().format(record)
+        lines = original.split('\n')
+        levelname = lines[0].split(' ')[0]
+        if len(lines) <= 1:
+            return original
+        else:
+            # Apply padding to all lines below first
+            formatted = [lines[0]]
+            if self.level_length == 0:
+                padding = ' ' * len(levelname)
+            else:
+                padding = ' ' * self.level_length
+            padding += ' '  # +1 for space between level and message
+            formatted.extend(padding + line for line in lines[1:])
+            return '\n'.join(formatted)
+
+yf_logger = None
+yf_log_indented = False
+def get_yf_logger():
+    global yf_logger
+    if yf_logger is None:
+        yf_logger = logging.getLogger('yfinance')
+    global yf_log_indented
+    if yf_log_indented:
+        yf_logger = get_indented_logger('yfinance')
+    return yf_logger
+
+def setup_debug_formatting():
+    global yf_logger
+    yf_logger = get_yf_logger()
+
+    if not yf_logger.isEnabledFor(logging.DEBUG):
+        yf_logger.warning("logging mode not set to 'DEBUG', so not setting up debug formatting")
+        return
+
+    if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
+        h = logging.StreamHandler()
+        # Ensure different level strings don't interfere with indentation
+        formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
+        h.setFormatter(formatter)
+        yf_logger.addHandler(h)
+
+    global yf_log_indented
+    yf_log_indented = True
+
+def enable_debug_mode():
+    get_yf_logger().setLevel(logging.DEBUG)
+    setup_debug_formatting()
+    
+##
 
 
 def is_isin(string):
@@ -330,7 +441,7 @@ def _interval_to_timedelta(interval):
     elif interval == "1y":
         return _dateutil.relativedelta.relativedelta(years=1)
     elif interval == "1wk":
-        return _pd.Timedelta(days=7, unit='d')
+        return _pd.Timedelta(days=7)
     else: 
         return _pd.Timedelta(interval)
 
@@ -338,10 +449,10 @@ def _interval_to_timedelta(interval):
 def auto_adjust(data):
     col_order = data.columns
     df = data.copy()
-    ratio = df["Close"] / df["Adj Close"]
-    df["Adj Open"] = df["Open"] / ratio
-    df["Adj High"] = df["High"] / ratio
-    df["Adj Low"] = df["Low"] / ratio
+    ratio = (df["Adj Close"] / df["Close"]).to_numpy()
+    df["Adj Open"] = df["Open"] * ratio
+    df["Adj High"] = df["High"] * ratio
+    df["Adj Low"] = df["Low"] * ratio
 
     df.drop(
         ["Open", "High", "Low", "Close"],
@@ -404,12 +515,9 @@ def parse_quotes(data):
 
 
 def parse_actions(data):
-    dividends = _pd.DataFrame(
-        columns=["Dividends"], index=_pd.DatetimeIndex([]))
-    capital_gains = _pd.DataFrame(
-        columns=["Capital Gains"], index=_pd.DatetimeIndex([]))
-    splits = _pd.DataFrame(
-        columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
+    dividends = None
+    capital_gains = None
+    splits = None
 
     if "events" in data:
         if "dividends" in data["events"]:
@@ -438,6 +546,16 @@ def parse_actions(data):
                                      splits["denominator"]
             splits = splits[["Stock Splits"]]
 
+    if dividends is None:
+        dividends = _pd.DataFrame(
+            columns=["Dividends"], index=_pd.DatetimeIndex([]))
+    if capital_gains is None:
+        capital_gains = _pd.DataFrame(
+            columns=["Capital Gains"], index=_pd.DatetimeIndex([]))
+    if splits is None:
+        splits = _pd.DataFrame(
+            columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
+
     return dividends, splits, capital_gains
 
 
@@ -448,31 +566,30 @@ def set_df_tz(df, interval, tz):
     return df
 
 
-def fix_Yahoo_returning_prepost_unrequested(quotes, interval, metadata):
+def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     # Sometimes Yahoo returns post-market data despite not requesting it.
     # Normally happens on half-day early closes.
     #
     # And sometimes returns pre-market data despite not requesting it.
     # E.g. some London tickers.
-    tps_df = metadata["tradingPeriods"]
+    tps_df = tradingPeriods.copy()
     tps_df["_date"] = tps_df.index.date
     quotes["_date"] = quotes.index.date
     idx = quotes.index.copy()
-    quotes = quotes.merge(tps_df, how="left", validate="many_to_one")
+    quotes = quotes.merge(tps_df, how="left")
     quotes.index = idx
     # "end" = end of regular trading hours (including any auction)
     f_drop = quotes.index >= quotes["end"]
     f_drop = f_drop | (quotes.index < quotes["start"])
     if f_drop.any():
         # When printing report, ignore rows that were already NaNs:
-        f_na = quotes[["Open","Close"]].isna().all(axis=1)
-        n_nna = quotes.shape[0] - _np.sum(f_na)
-        n_drop_nna = _np.sum(f_drop & ~f_na)
-        quotes_dropped = quotes[f_drop]
+        # f_na = quotes[["Open","Close"]].isna().all(axis=1)
+        # n_nna = quotes.shape[0] - _np.sum(f_na)
+        # n_drop_nna = _np.sum(f_drop & ~f_na)
+        # quotes_dropped = quotes[f_drop]
         # if debug and n_drop_nna > 0:
         #     print(f"Dropping {n_drop_nna}/{n_nna} intervals for falling outside regular trading hours")
         quotes = quotes[~f_drop]
-    metadata["tradingPeriods"] = tps_df.drop(["_date"], axis=1)
     quotes = quotes.drop(["_date", "start", "end"], axis=1)
     return quotes
 
@@ -511,16 +628,24 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                 # Last two rows are within same interval
                 idx1 = quotes.index[n - 1]
                 idx2 = quotes.index[n - 2]
+                if idx1 == idx2:
+                    # Yahoo returning last interval duplicated, which means
+                    # Yahoo is not returning live data (phew!)
+                    return quotes
                 if _np.isnan(quotes.loc[idx2, "Open"]):
                     quotes.loc[idx2, "Open"] = quotes["Open"][n - 1]
-                # Note: nanmax() & nanmin() ignores NaNs
-                quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
-                quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                # Note: nanmax() & nanmin() ignores NaNs, but still need to check not all are NaN to avoid warnings
+                if not _np.isnan(quotes["High"][n - 1]):
+                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
+                    if "Adj High" in quotes.columns:
+                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
+
+                if not _np.isnan(quotes["Low"][n - 1]):
+                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                    if "Adj Low" in quotes.columns:
+                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
+
                 quotes.loc[idx2, "Close"] = quotes["Close"][n - 1]
-                if "Adj High" in quotes.columns:
-                    quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
-                if "Adj Low" in quotes.columns:
-                    quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
                 if "Adj Close" in quotes.columns:
                     quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
                 quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
@@ -530,11 +655,6 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    # Carefully merge 'df_sub' onto 'df_main'
-    # If naive merge fails, try again with reindexing df_sub:
-    # 1) if interval is weekly or monthly, then try with index set to start of week/month
-    # 2) if still failing then manually search through df_main.index to reindex df_sub
-
     if df_sub.shape[0] == 0:
         raise Exception("No data to merge")
 
@@ -544,6 +664,65 @@ def safe_merge_dfs(df_main, df_sub, interval):
         raise Exception("Expected 1 data col")
     data_col = data_cols[0]
 
+    df_main = df_main.sort_index()
+    intraday = interval.endswith('m') or interval.endswith('s')
+
+    td = _interval_to_timedelta(interval)
+    if intraday:
+        # On some exchanges the event can occur before market open.
+        # Problem when combining with intraday data.
+        # Solution = use dates, not datetimes, to map/merge.
+        df_main['_date'] = df_main.index.date
+        df_sub['_date'] = df_sub.index.date
+        indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
+        df_main = df_main.drop('_date', axis=1)
+        df_sub = df_sub.drop('_date', axis=1)
+    else:
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+                # Out-of-range
+                indices[i] = -1
+
+    f_outOfRange = indices == -1
+    if f_outOfRange.any() and not intraday:
+        # If dividend is occuring in next interval after last price row, 
+        # add a new row of NaNs
+        last_dt = df_main.index[-1]
+        next_interval_start_dt = last_dt + td
+        if interval == '1d':
+            # Allow for weekends & holidays
+            next_interval_end_dt = last_dt+7*_pd.Timedelta(days=7)
+        else:
+            next_interval_end_dt = next_interval_start_dt + td
+        for i in _np.where(f_outOfRange)[0]:
+            dt = df_sub.index[i]
+            if dt >= next_interval_start_dt and dt < next_interval_end_dt:
+                new_dt = dt if interval == '1d' else next_interval_start_dt
+                get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+                df_main.loc[new_dt] = _np.nan
+
+        # Re-calculate indices
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+                # Out-of-range
+                indices[i] = -1
+
+    f_outOfRange = indices == -1
+    if f_outOfRange.any():
+        if intraday or interval in ['1d', '1wk']:
+            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index}")
+        get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
+        df_sub = df_sub[~f_outOfRange].copy()
+        indices = indices[~f_outOfRange]
+
     def _reindex_events(df, new_index, data_col_name):
         if len(new_index) == len(set(new_index)):
             # No duplicates, easy
@@ -552,7 +731,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
         df["_NewIndex"] = new_index
         # Duplicates present within periods but can aggregate
-        if data_col_name == "Dividends":
+        if data_col_name in ["Dividends", "Capital Gains"]:
             # Add
             df = df.groupby("_NewIndex").sum()
             df.index.name = None
@@ -565,106 +744,14 @@ def safe_merge_dfs(df_main, df_sub, interval):
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
-
-    df = df_main.join(df_sub)
-
-    f_na = df[data_col].isna()
-    data_lost = sum(~f_na) < df_sub.shape[0]
-    if not data_lost:
-        return df
-    # Lost data during join()
-    # Backdate all df_sub.index dates to start of week/month
-    if interval == "1wk":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='W').to_timestamp()
-    elif interval == "1mo":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='M').to_timestamp()
-    elif interval == "3mo":
-        new_index = _pd.PeriodIndex(df_sub.index, freq='Q').to_timestamp()
-    else:
-        new_index = None
-
-    if new_index is not None:
-        new_index = new_index.tz_localize(df.index.tz, ambiguous=True, nonexistent='shift_forward')
-        df_sub = _reindex_events(df_sub, new_index, data_col)
-        df = df_main.join(df_sub)
-
-    f_na = df[data_col].isna()
-    data_lost = sum(~f_na) < df_sub.shape[0]
-    if not data_lost:
-        return df
-    # Lost data during join(). Manually check each df_sub.index date against df_main.index to
-    # find matching interval
-    df_sub = df_sub_backup.copy()
-    new_index = [-1] * df_sub.shape[0]
-    for i in range(df_sub.shape[0]):
-        dt_sub_i = df_sub.index[i]
-        if dt_sub_i in df_main.index:
-            new_index[i] = dt_sub_i
-            continue
-        # Found a bad index date, need to search for near-match in df_main (same week/month)
-        fixed = False
-        for j in range(df_main.shape[0] - 1):
-            dt_main_j0 = df_main.index[j]
-            dt_main_j1 = df_main.index[j + 1]
-            if (dt_main_j0 <= dt_sub_i) and (dt_sub_i < dt_main_j1):
-                fixed = True
-                if interval.endswith('h') or interval.endswith('m'):
-                    # Must also be same day
-                    fixed = (dt_main_j0.date() == dt_sub_i.date()) and (dt_sub_i.date() == dt_main_j1.date())
-                if fixed:
-                    dt_sub_i = dt_main_j0
-                    break
-        if not fixed:
-            last_main_dt = df_main.index[df_main.shape[0] - 1]
-            diff = dt_sub_i - last_main_dt
-            if interval == "1mo" and last_main_dt.month == dt_sub_i.month:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "3mo" and last_main_dt.year == dt_sub_i.year and last_main_dt.quarter == dt_sub_i.quarter:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "1wk":
-                if last_main_dt.week == dt_sub_i.week:
-                    dt_sub_i = last_main_dt
-                    fixed = True
-                elif (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < _datetime.timedelta(weeks=1)):
-                    # With some specific start dates (e.g. around early Jan), Yahoo
-                    # messes up start-of-week, is Saturday not Monday. So check
-                    # if same week another way
-                    dt_sub_i = last_main_dt
-                    fixed = True
-            elif interval == "1d" and last_main_dt.day == dt_sub_i.day:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval == "1h" and last_main_dt.hour == dt_sub_i.hour:
-                dt_sub_i = last_main_dt
-                fixed = True
-            elif interval.endswith('m') or interval.endswith('h'):
-                td = _pd.to_timedelta(interval)
-                if (dt_sub_i >= last_main_dt) and (dt_sub_i - last_main_dt < td):
-                    dt_sub_i = last_main_dt
-                    fixed = True
-        new_index[i] = dt_sub_i
+    new_index = df_main.index[indices]
     df_sub = _reindex_events(df_sub, new_index, data_col)
-    df = df_main.join(df_sub)
 
+    df = df_main.join(df_sub)
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        ## Not always possible to match events with trading, e.g. when released pre-market.
-        ## So have to append to bottom with nan prices.
-        ## But should only be impossible with intra-day price data.
-        if interval.endswith('m') or interval.endswith('h') or interval == "1d":
-            # Update: is possible with daily data when dividend very recent
-            f_missing = ~df_sub.index.isin(df.index)
-            df_sub_missing = df_sub[f_missing].copy()
-            keys = {"Adj Open", "Open", "Adj High", "High", "Adj Low", "Low", "Adj Close",
-                    "Close"}.intersection(df.columns)
-            df_sub_missing[list(keys)] = _np.nan
-            col_ordering = df.columns
-            df = _pd.concat([df, df_sub_missing], sort=True)[col_ordering]
-        else:
-            raise Exception("Lost data during merge despite all attempts to align data (see above)")
+        raise Exception('Data was lost in merge, investigate')
 
     return df
 
@@ -690,7 +777,7 @@ def is_valid_timezone(tz: str) -> bool:
     return True
 
 
-def format_history_metadata(md):
+def format_history_metadata(md, tradingPeriodsOnly=True):
     if not isinstance(md, dict):
         return md
     if len(md) == 0:
@@ -698,60 +785,54 @@ def format_history_metadata(md):
 
     tz = md["exchangeTimezoneName"]
 
-    for k in ["firstTradeDate", "regularMarketTime"]:
-        if k in md:
-            md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
+    if not tradingPeriodsOnly:
+        for k in ["firstTradeDate", "regularMarketTime"]:
+            if k in md and md[k] is not None:
+                if isinstance(md[k], int):
+                    md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
 
-    if "currentTradingPeriod" in md:
-        for m in ["regular", "pre", "post"]:
-            if m in md["currentTradingPeriod"]:
-                for t in ["start", "end"]:
-                    md["currentTradingPeriod"][m][t] = \
-                        _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
-                del md["currentTradingPeriod"][m]["gmtoffset"]
-                del md["currentTradingPeriod"][m]["timezone"]
-
-    if "tradingPeriods" in md:
-        if md["tradingPeriods"] == {"pre":[], "post":[]}:
-            del md["tradingPeriods"]
+        if "currentTradingPeriod" in md:
+            for m in ["regular", "pre", "post"]:
+                if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
+                    for t in ["start", "end"]:
+                        md["currentTradingPeriod"][m][t] = \
+                            _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
+                    del md["currentTradingPeriod"][m]["gmtoffset"]
+                    del md["currentTradingPeriod"][m]["timezone"]
 
     if "tradingPeriods" in md:
         tps = md["tradingPeriods"]
-        if isinstance(tps, list):
-            # Only regular times
-            regs_dict = [tps[i][0] for i in range(len(tps))]
-            pres_dict = None
-            posts_dict = None
-        elif isinstance(tps, dict):
-            # Includes pre- and post-market
-            pres_dict = [tps["pre"][i][0] for i in range(len(tps["pre"]))]
-            posts_dict = [tps["post"][i][0] for i in range(len(tps["post"]))]
-            regs_dict = [tps["regular"][i][0] for i in range(len(tps["regular"]))]
-        else:
-            raise Exception()
+        if tps == {"pre":[], "post":[]}:
+            # Ignore
+            pass
+        elif isinstance(tps, (list, dict)):
+            if isinstance(tps, list):
+                # Only regular times
+                df = _pd.DataFrame.from_records(_np.hstack(tps))
+                df = df.drop(["timezone", "gmtoffset"], axis=1)
+                df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
+                df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
+            elif isinstance(tps, dict):
+                # Includes pre- and post-market
+                pre_df = _pd.DataFrame.from_records(_np.hstack(tps["pre"]))
+                post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
+                regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
 
-        def _dict_to_table(d):
-            df = _pd.DataFrame.from_dict(d).drop(["timezone", "gmtoffset"], axis=1)
-            df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
-            df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
+                pre_df = pre_df.rename(columns={"start":"pre_start", "end":"pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                post_df = post_df.rename(columns={"start":"post_start", "end":"post_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
+
+                cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
+                df = regular_df.join(pre_df).join(post_df)
+                for c in cols:
+                    df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
+                df = df[cols]
+
             df.index = _pd.to_datetime(df["start"].dt.date)
             df.index = df.index.tz_localize(tz)
-            return df
+            df.index.name = "Date"
 
-        df = _dict_to_table(regs_dict)
-        df_cols = ["start", "end"]
-        if pres_dict is not None:
-            pre_df = _dict_to_table(pres_dict)
-            df = df.merge(pre_df.rename(columns={"start":"pre_start", "end":"pre_end"}), left_index=True, right_index=True)
-            df_cols = ["pre_start", "pre_end"]+df_cols
-        if posts_dict is not None:
-            post_df = _dict_to_table(posts_dict)
-            df = df.merge(post_df.rename(columns={"start":"post_start", "end":"post_end"}), left_index=True, right_index=True)
-            df_cols = df_cols+["post_start", "post_end"]
-        df = df[df_cols]
-        df.index.name = "Date"
-
-        md["tradingPeriods"] = df
+            md["tradingPeriods"] = df
 
     return md
 
@@ -836,14 +917,21 @@ class _KVStore:
 
     def get(self, key: str) -> Union[str, None]:
         """Get value for key if it exists else returns None"""
-        item = self.conn.execute('select value from "kv" where key=?', (key,))
+        try:
+            item = self.conn.execute('select value from "kv" where key=?', (key,))
+        except _sqlite3.IntegrityError as e:
+            self.delete(key)
+            return None
         if item:
             return next(item, (None,))[0]
 
     def set(self, key: str, value: str) -> None:
-        with self._cache_mutex:
-            self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
-            self.conn.commit()
+        if value is None:
+            self.delete(key)
+        else:
+            with self._cache_mutex:
+                self.conn.execute('replace into "kv" (key, value) values (?,?)', (key, value))
+                self.conn.commit()
 
     def bulk_set(self, kvdata: Dict[str, str]):
         records = tuple(i for i in kvdata.items())
@@ -867,7 +955,11 @@ class _TzCache:
     def __init__(self):
         self._setup_cache_folder()
         # Must init db here, where is thread-safe
-        self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+        try:
+            self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
+        except _sqlite3.DatabaseError as err:
+            raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
+                                    .format(self._db_dir, err))
         self._migrate_cache_tkr_tz()
 
     def _setup_cache_folder(self):
@@ -909,11 +1001,23 @@ class _TzCache:
         if not _os.path.isfile(old_cache_file_path):
             return None
         try:
-            df = _pd.read_csv(old_cache_file_path, index_col="Ticker")
+            df = _pd.read_csv(old_cache_file_path, index_col="Ticker", on_bad_lines="skip")
         except _pd.errors.EmptyDataError:
             _os.remove(old_cache_file_path)
+        except TypeError:
+            _os.remove(old_cache_file_path)
         else:
-            self.tz_db.bulk_set(df.to_dict()['Tz'])
+            # Discard corrupt data:
+            df = df[~df["Tz"].isna().to_numpy()]
+            df = df[~(df["Tz"]=='').to_numpy()]
+            df = df[~df.index.isna()]
+            if not df.empty:
+                try:
+                    self.tz_db.bulk_set(df.to_dict()['Tz'])
+                except Exception as e:
+                    # Ignore
+                    pass
+
             _os.remove(old_cache_file_path)
 
 
@@ -944,9 +1048,10 @@ def get_tz_cache():
             try:
                 _tz_cache = _TzCache()
             except _TzCacheException as err:
-                print("Failed to create TzCache, reason: {}".format(err))
-                print("TzCache will not be used.")
-                print("Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+                get_yf_logger().info("Failed to create TzCache, reason: %s. "
+                                 "TzCache will not be used. "
+                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'",
+                                 err)
                 _tz_cache = _TzCacheDummy()
 
         return _tz_cache
