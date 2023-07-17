@@ -1,6 +1,68 @@
 Change Log
 ===========
 
+0.2.24
+------
+Fix info[] missing values #1603
+
+0.2.23
+------
+Fix 'Unauthorized' error #1595
+
+0.2.22
+------
+Fix unhandled 'sqlite3.DatabaseError' #1574
+
+0.2.21
+------
+Fix financials tables #1568
+Price repair update: fix Yahoo messing up dividend and split adjustments #1543
+Fix logging behaviour #1562
+Fix merge future div/split into prices #1567
+
+0.2.20
+------
+Switch to `logging` module #1493 #1522 #1541
+Price history:
+- optimise #1514
+- fixes #1523
+- fix TZ-cache corruption #1528
+
+0.2.18
+------
+Fix 'fast_info' error '_np not found' #1496
+Fix bug in timezone cache #1498
+
+0.2.17
+------
+Fix prices error with Pandas 2.0 #1488
+
+0.2.16
+------
+Fix 'fast_info deprecated' msg appearing at Ticker() init
+
+0.2.15
+------
+Restore missing Ticker.info keys #1480
+
+0.2.14
+------
+Fix Ticker.info dict by fetching from API #1461
+
+0.2.13
+------
+Price bug fixes:
+- fetch big-interval with Capital Gains #1455
+- merging dividends & splits with prices #1452
+
+0.2.12
+------
+Disable annoying 'backup decrypt' msg
+
+0.2.11
+------
+Fix history_metadata accesses for unusual symbols #1411
+
 0.2.10
 ------
 General
