@@ -4,6 +4,7 @@ dist
 yfinance.egg-info
 *.pyc
 .coverage
+.idea/
 .vscode/
 build/
 *.html

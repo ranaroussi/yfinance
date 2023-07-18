@@ -101,7 +101,7 @@ class TickerBase:
                 Intraday data cannot extend last 60 days
             start: str
                 Download start date string (YYYY-MM-DD) or _datetime, inclusive.
-                Default is 1900-01-01
+                Default is 99 years ago
                 E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
             end: str
                 Download end date string (YYYY-MM-DD) or _datetime, exclusive.
@@ -170,8 +170,8 @@ class TickerBase:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
                 else:
-                    _UNIX_TIMESTAMP_1900 = -2208994789
-                    start = _UNIX_TIMESTAMP_1900
+                    max_start_datetime = pd.Timestamp.utcnow().floor("D") - _datetime.timedelta(days=99 * 365)
+                    start = int(max_start_datetime.timestamp())
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
