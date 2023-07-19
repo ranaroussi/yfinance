@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.25
+------
+Fix single ISIN as ticker #1611
+Fix 'Only 100 years allowed' error #1576
+
 0.2.24
 ------
 Fix info[] missing values #1603
