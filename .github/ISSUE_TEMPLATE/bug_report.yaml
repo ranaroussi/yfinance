@@ -46,7 +46,7 @@ body:
     id: code
     attributes:
       label: "Simple code that reproduces your problem"
-      description: "Provide a snippet of code that we can copy-paste-run. Wrap code in Python Markdown code blocks for proper formatting (```python ... ```)."
+      description: "Provide a snippet of code that we can copy-paste-run. Wrap code in Python Markdown code blocks for proper formatting (```` ```python ... ``` ````)."
     validations:
       required: true
 
