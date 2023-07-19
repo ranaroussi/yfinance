@@ -33,7 +33,6 @@ Yahoo! finance API is intended for personal use only.**
 <a target="new" href="https://github.com/ranaroussi/yfinance"><img border=0 src="https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60" alt="Star this repo"></a>
 <a target="new" href="https://twitter.com/aroussi"><img border=0 src="https://img.shields.io/twitter/follow/aroussi.svg?style=social&label=Follow&maxAge=60" alt="Follow me on twitter"></a>
 
-
 **yfinance** offers a threaded and Pythonic way to download market data from [Yahoo!Ⓡ finance](https://finance.yahoo.com).
 
 → Check out this [Blog post](https://aroussi.com/#post/python-yahoo-finance) for a detailed tutorial with code examples.
@@ -88,7 +87,7 @@ msft.major_holders
 msft.institutional_holders
 msft.mutualfund_holders
 
-# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
+# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default.
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates
 
@@ -169,6 +168,7 @@ ticker.actions
 ```
 
 Combine a `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-limiter/blocker that can corrupt data.
+
 ```python
 from requests import Session
 from requests_cache import CacheMixin, SQLiteCache
@@ -190,21 +190,21 @@ The following answer on Stack Overflow is for [How to deal with
 multi-level column names downloaded with
 yfinance?](https://stackoverflow.com/questions/63107801)
 
--   `yfinance` returns a `pandas.DataFrame` with multi-level column
-    names, with a level for the ticker and a level for the stock price
-    data
-    -   The answer discusses:
-        -   How to correctly read the the multi-level columns after
-            saving the dataframe to a csv with `pandas.DataFrame.to_csv`
-        -   How to download single or multiple tickers into a single
-            dataframe with single level column names and a ticker column
+- `yfinance` returns a `pandas.DataFrame` with multi-level column
+  names, with a level for the ticker and a level for the stock price
+  data
+  - The answer discusses:
+    - How to correctly read the the multi-level columns after
+      saving the dataframe to a csv with `pandas.DataFrame.to_csv`
+    - How to download single or multiple tickers into a single
+      dataframe with single level column names and a ticker column
 
 ### `pandas_datareader` override
 
 If your code uses `pandas_datareader` and you want to download data
 faster, you can "hijack" `pandas_datareader.data.get_data_yahoo()`
 method to use **yfinance** while making sure the returned data is in the
-same format as **pandas\_datareader**'s `get_data_yahoo()`.
+same format as **pandas_datareader**'s `get_data_yahoo()`.
 
 ```python
 from pandas_datareader import data as pdr
@@ -218,10 +218,11 @@ data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
 
 ### Timezone cache store
 
-When fetching price data, all dates are localized to stock exchange timezone. 
-But timezone retrieval is relatively slow, so yfinance attemps to cache them 
-in your users cache folder. 
+When fetching price data, all dates are localized to stock exchange timezone.
+But timezone retrieval is relatively slow, so yfinance attemps to cache them
+in your users cache folder.
 You can direct cache to use a different location with `set_tz_cache_location()`:
+
 ```python
 import yfinance as yf
 yf.set_tz_cache_location("custom/cache/location")
@@ -234,12 +235,13 @@ yf.set_tz_cache_location("custom/cache/location")
 
 Install `yfinance` using `pip`:
 
-``` {.sourceCode .bash}
+```{.sourceCode .bash}
 $ pip install yfinance --upgrade --no-cache-dir
 ```
 
 Test new features by installing betas, provide feedback in [corresponding Discussion](https://github.com/ranaroussi/yfinance/discussions):
-``` {.sourceCode .bash}
+
+```{.sourceCode .bash}
 $ pip install yfinance --upgrade --no-cache-dir --pre
 ```
 
@@ -248,22 +250,22 @@ To install `yfinance` using `conda`, see
 
 ### Requirements
 
--   [Python](https://www.python.org) \>= 2.7, 3.4+
--   [Pandas](https://github.com/pydata/pandas) \>= 1.3.0
--   [Numpy](http://www.numpy.org) \>= 1.16.5
--   [requests](http://docs.python-requests.org/en/master) \>= 2.26
--   [lxml](https://pypi.org/project/lxml) \>= 4.9.1
--   [appdirs](https://pypi.org/project/appdirs) \>= 1.4.4
--   [pytz](https://pypi.org/project/pytz) \>=2022.5
--   [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
--   [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
--   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
--   [cryptography](https://pypi.org/project/cryptography) \>= 3.3.2
+- [Python](https://www.python.org) \>= 2.7, 3.4+
+- [Pandas](https://github.com/pydata/pandas) \>= 1.3.0
+- [Numpy](http://www.numpy.org) \>= 1.16.5
+- [requests](http://docs.python-requests.org/en/master) \>= 2.31
+- [lxml](https://pypi.org/project/lxml) \>= 4.9.1
+- [appdirs](https://pypi.org/project/appdirs) \>= 1.4.4
+- [pytz](https://pypi.org/project/pytz) \>=2022.5
+- [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
+- [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
+- [html5lib](https://pypi.org/project/html5lib) \>= 1.1
+- [cryptography](https://pypi.org/project/cryptography) \>= 3.3.2
 
 #### Optional (if you want to use `pandas_datareader`)
 
--   [pandas\_datareader](https://github.com/pydata/pandas-datareader)
-    \>= 0.4.0
+- [pandas_datareader](https://github.com/pydata/pandas-datareader)
+  \>= 0.4.0
 
 ## Developers: want to contribute?
 
@@ -275,7 +277,6 @@ To install `yfinance` using `conda`, see
 
 **yfinance** is distributed under the **Apache Software License**. See
 the [LICENSE.txt](./LICENSE.txt) file in the release for details.
-
 
 AGAIN - yfinance is **not** affiliated, endorsed, or vetted by Yahoo, Inc. It's
 an open-source tool that uses Yahoo's publicly available APIs, and is
