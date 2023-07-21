@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.2.26
+------
+Proxy improvements
+- bug fixes #1371
+- security fix #1625
+
 0.2.25
 ------
 Fix single ISIN as ticker #1611
