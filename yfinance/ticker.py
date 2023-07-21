@@ -138,6 +138,10 @@ class Ticker(TickerBase):
         return self.get_info()
 
     @property
+    def fast_info(self):
+        return self.get_fast_info()
+
+    @property
     def calendar(self) -> _pd.DataFrame:
         return self.get_calendar()
 

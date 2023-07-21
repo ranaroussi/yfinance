@@ -186,12 +186,6 @@ class TickerBase:
         if params["interval"] == "30m":
             params["interval"] = "15m"
 
-        # setup proxy in requests format
-        if proxy is not None:
-            if isinstance(proxy, dict) and "https" in proxy:
-                proxy = proxy["https"]
-            proxy = {"https": proxy}
-
         #if the ticker is MUTUALFUND or ETF, then get capitalGains events
         params["events"] = "div,splits,capitalGains"
 
@@ -217,6 +211,7 @@ class TickerBase:
             data = get_fn(
                 url=url,
                 params=params,
+                proxy=proxy,
                 timeout=timeout
             )
             if "Will be right back" in data.text or data is None:
@@ -1502,9 +1497,9 @@ class TickerBase:
         return data
 
     @property
-    def fast_info(self):
+    def get_fast_info(self, proxy=None):
         if self._fast_info is None:
-            self._fast_info = FastInfo(self)
+            self._fast_info = FastInfo(self, proxy=proxy)
         return self._fast_info
 
     @property
@@ -1723,7 +1718,7 @@ class TickerBase:
         logger = utils.get_yf_logger()
 
         # Process dates
-        tz = self._get_ticker_tz(proxy=None, timeout=10)
+        tz = self._get_ticker_tz(proxy=proxy, timeout=10)
         dt_now = _pd.Timestamp.utcnow().tz_convert(tz)
         if start is not None:
             start_ts = utils._parse_user_dt(start, tz)
@@ -1747,8 +1742,8 @@ class TickerBase:
         ts_url_base = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}".format(self.ticker)
         shares_url = ts_url_base + "&period1={}&period2={}".format(int(start.timestamp()), int(end.timestamp()))
         try:
-            json_str = self._data.cache_get(shares_url).text
-            json_data = _json.loads(json_str)
+            json_data = self._data.cache_get(url=shares_url, proxy=proxy)
+            json_data = json_data.json()
         except:
             logger.error("%s: Yahoo web request for share count failed", self.ticker)
             return None
@@ -1921,10 +1916,10 @@ class TickerBase:
 
         return dates
 
-    def get_history_metadata(self) -> dict:
+    def get_history_metadata(self, proxy=None) -> dict:
         if self._history_metadata is None:
             # Request intraday data, because then Yahoo returns exchange schedule.
-            self.history(period="1wk", interval="1h", prepost=True)
+            self.history(period="1wk", interval="1h", prepost=True, proxy=proxy)
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
