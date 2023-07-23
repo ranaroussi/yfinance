@@ -312,10 +312,7 @@ class TickerBase:
             })
             try:
                 quotes['Dividends'] = quotes2['Dividends'].max()
-            except Exception:
-                pass
-            try:
-                quotes['Stock Splits'] = quotes2['Dividends'].max()
+                quotes['Stock Splits'] = quotes2['Stock Splits'].max()
             except Exception:
                 pass
 
