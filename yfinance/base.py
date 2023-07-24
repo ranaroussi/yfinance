@@ -196,7 +196,7 @@ class TickerBase:
         tz = self._get_ticker_tz(proxy, timeout)
         for k in ["period1", "period2"]:
             if k in params_pretty:
-                params_pretty[k] = str(_pd.Timestamp(params[k], unit='s').tz_localize("UTC").tz_convert(tz))
+                params_pretty[k] = str(pd.Timestamp(params[k], unit='s').tz_localize("UTC").tz_convert(tz))
         logger.debug(f'{self.ticker}: Yahoo GET parameters: {str(params_pretty)}')
 
         # Getting data from json
