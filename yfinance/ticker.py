@@ -22,9 +22,9 @@
 from __future__ import print_function
 
 import datetime as _datetime
-import pandas as _pd
-
 from collections import namedtuple as _namedtuple
+
+import pandas as _pd
 
 from .base import TickerBase
 
@@ -35,15 +35,13 @@ class Ticker(TickerBase):
         self._expirations = {}
 
     def __repr__(self):
-        return 'yfinance.Ticker object <%s>' % self.ticker
+        return f'yfinance.Ticker object <{self.ticker}>'
 
     def _download_options(self, date=None, proxy=None):
         if date is None:
-            url = "{}/v7/finance/options/{}".format(
-                self._base_url, self.ticker)
+            url = f"{self._base_url}/v7/finance/options/{self.ticker}"
         else:
-            url = "{}/v7/finance/options/{}?date={}".format(
-                self._base_url, self.ticker, date)
+            url = f"{self._base_url}/v7/finance/options/{self.ticker}?date={date}"
 
         r = self._data.get(url=url, proxy=proxy).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
@@ -84,9 +82,8 @@ class Ticker(TickerBase):
                 self._download_options()
             if date not in self._expirations:
                 raise ValueError(
-                    "Expiration `%s` cannot be found. "
-                    "Available expiration are: [%s]" % (
-                        date, ', '.join(self._expirations)))
+                    f"Expiration `{date}` cannot be found. "
+                    f"Available expirations are: [{', '.join(self._expirations)}]")
             date = self._expirations[date]
             options = self._download_options(date, proxy=proxy)
 
