@@ -22,19 +22,21 @@
 from __future__ import print_function
 
 from . import Ticker, multi
+
+
 # from collections import namedtuple as _namedtuple
 
 
 class Tickers:
 
     def __repr__(self):
-        return 'yfinance.Tickers object <%s>' % ",".join(self.symbols)
+        return f"yfinance.Tickers object <{','.join(self.symbols)}>"
 
     def __init__(self, tickers, session=None):
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
-        self.tickers = {ticker:Ticker(ticker, session=session) for ticker in self.symbols}
+        self.tickers = {ticker: Ticker(ticker, session=session) for ticker in self.symbols}
 
         # self.tickers = _namedtuple(
         #     "Tickers", ticker_objects.keys(), rename=True
