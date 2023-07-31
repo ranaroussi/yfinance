@@ -22,9 +22,9 @@
 from __future__ import print_function
 
 import datetime as _datetime
-import pandas as _pd
-
 from collections import namedtuple as _namedtuple
+
+import pandas as _pd
 
 from .base import TickerBase
 
@@ -33,25 +33,29 @@ class Ticker(TickerBase):
     def __init__(self, ticker, session=None):
         super(Ticker, self).__init__(ticker, session=session)
         self._expirations = {}
+        self._underlying  = {}
 
     def __repr__(self):
-        return 'yfinance.Ticker object <%s>' % self.ticker
+        return f'yfinance.Ticker object <{self.ticker}>'
 
     def _download_options(self, date=None, proxy=None):
         if date is None:
-            url = "{}/v7/finance/options/{}".format(
-                self._base_url, self.ticker)
+            url = f"{self._base_url}/v7/finance/options/{self.ticker}"
         else:
-            url = "{}/v7/finance/options/{}?date={}".format(
-                self._base_url, self.ticker, date)
+            url = f"{self._base_url}/v7/finance/options/{self.ticker}?date={date}"
 
         r = self._data.get(url=url, proxy=proxy).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.utcfromtimestamp(
                     exp).strftime('%Y-%m-%d')] = exp
+
+            self._underlying = r['optionChain']['result'][0].get('quote', {})
+
             opt = r['optionChain']['result'][0].get('options', [])
-            return opt[0] if len(opt) > 0 else []
+
+            return dict(**opt[0],underlying=self._underlying) if len(opt) > 0 else {}
+        return {}
 
     def _options2df(self, opt, tz=None):
         data = _pd.DataFrame(opt).reindex(columns=[
@@ -84,15 +88,15 @@ class Ticker(TickerBase):
                 self._download_options()
             if date not in self._expirations:
                 raise ValueError(
-                    "Expiration `%s` cannot be found. "
-                    "Available expiration are: [%s]" % (
-                        date, ', '.join(self._expirations)))
+                    f"Expiration `{date}` cannot be found. "
+                    f"Available expirations are: [{', '.join(self._expirations)}]")
             date = self._expirations[date]
             options = self._download_options(date, proxy=proxy)
 
-        return _namedtuple('Options', ['calls', 'puts'])(**{
+        return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
             "calls": self._options2df(options['calls'], tz=tz),
-            "puts": self._options2df(options['puts'], tz=tz)
+            "puts": self._options2df(options['puts'], tz=tz),
+            "underlying": options['underlying']
         })
 
     # ------------------------
