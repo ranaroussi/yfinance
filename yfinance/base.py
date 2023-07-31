@@ -619,7 +619,7 @@ class TickerBase:
                 else:
                     msg += f" {start_d}"
                 msg += ", too old, Yahoo will reject request for finer-grain data"
-                logger.warning(msg)
+                logger.info(msg)
                 continue
 
             td_1d = _datetime.timedelta(days=1)
@@ -703,7 +703,7 @@ class TickerBase:
             common_index = _np.intersect1d(df_block.index, df_new.index)
             if len(common_index) == 0:
                 # Can't calibrate so don't attempt repair
-                logger.warning(f"Can't calibrate {interval} block starting {start_d} so aborting repair")
+                logger.info(f"Can't calibrate {interval} block starting {start_d} so aborting repair")
                 continue
             # First, attempt to calibrate the 'Adj Close' column. OK if cannot.
             # Only necessary for 1d interval, because the 1h data is not div-adjusted.
@@ -752,7 +752,7 @@ class TickerBase:
             calib_filter = (df_block_calib != tag)
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
-                logger.warning(f"Can't calibrate {interval} block starting {start_d} so aborting repair")
+                logger.info(f"Can't calibrate {interval} block starting {start_d} so aborting repair")
                 continue
             # Avoid divide-by-zero warnings:
             for j in range(len(calib_cols)):
@@ -858,7 +858,7 @@ class TickerBase:
             return df
         if df.shape[0] == 1:
             # Need multiple rows to confidently identify outliers
-            logger.warning("price-repair-100x: Cannot check single-row table for 100x price errors")
+            logger.info("price-repair-100x: Cannot check single-row table for 100x price errors")
             if not "Repaired?" in df.columns:
                 df["Repaired?"] = False
             return df
@@ -883,7 +883,7 @@ class TickerBase:
         else:
             df2_zeroes = None
         if df2.shape[0] <= 1:
-            logger.warning("price-repair-100x: Insufficient good data for detecting 100x price errors")
+            logger.info("price-repair-100x: Insufficient good data for detecting 100x price errors")
             if not "Repaired?" in df.columns:
                 df["Repaired?"] = False
             return df
@@ -1053,7 +1053,7 @@ class TickerBase:
             return df
         if f_prices_bad.sum() == len(price_cols)*len(df2):
             # Need some good data to calibrate
-            logger.warning("price-repair-missing: No good data for calibration so cannot fix price=0 bad data")
+            logger.info("price-repair-missing: No good data for calibration so cannot fix price=0 bad data")
             if not "Repaired?" in df.columns:
                 df["Repaired?"] = False
             return df
@@ -1240,8 +1240,6 @@ class TickerBase:
         # If stock is currently suspended and not in USA, then usually Yahoo introduces
         # 100x errors into suspended intervals. Clue is no price change and 0 volume.
         # Better to use last active trading interval as baseline.
-        # But can't be smart
-        # But can only do with 1d:
         f_no_activity = (df2['Low'] == df2['High']) & (df2['Volume']==0)
         appears_suspended = f_no_activity.any() and _np.where(f_no_activity)[0][0]==0
         f_active = ~f_no_activity
@@ -1258,7 +1256,7 @@ class TickerBase:
             debug_cols = ['Low', 'High']
 
         # Calculate daily price % change. To reduce effect of price volatility, 
-        # calculate change for each OHLC column and use average.
+        # calculate change for each OHLC column.
         if interday and interval != '1d' and split not in [100.0, 100, 0.001]:
             # Avoid using 'Low' and 'High'. For multiday intervals, these can be 
             # very volatile so reduce ability to detect genuine stock split errors
@@ -1365,11 +1363,14 @@ class TickerBase:
             logger.info(f'price-repair-split: No {fix_type}s detected')
             return df
 
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(f"price-repair-split: my workings:")
-            logger.debug('\n' + str(df_debug))
+        # if logger.isEnabledFor(logging.DEBUG):
+        #     logger.debug(f"price-repair-split: my workings:")
+        #     logger.debug('\n' + str(df_debug))
 
         def map_signals_to_ranges(f, f_up, f_down):
+            if not f.any():
+                return []
+
             true_indices = _np.where(f)[0]
             ranges = []
 
@@ -1382,7 +1383,7 @@ class TickerBase:
                 if idx_latest_active is None:
                     true_indices_old = []
                 else:
-                    true_indices_old = [i for i in true_indices if i >= idx_latest_active]
+                    true_indices_old = [i for i in true_indices if i > idx_latest_active]
                     if len(true_indices_old) > 0:
                         for i in range(len(true_indices_old) - 1):
                             if i % 2 == 0:
@@ -1401,26 +1402,27 @@ class TickerBase:
 
                 # Next, process prices more recent than idx_latest_active:
                 true_indices_recent = [i for i in true_indices if i not in true_indices_old]
-                if split > 1.0:
-                    adj = 'split' if f_up[true_indices_recent[0]] else '1.0/split'
-                else:
-                    adj = '1.0/split' if f_up[true_indices_recent[0]] else 'split'
-                ranges.append((0, true_indices_recent[0], adj))
-
-                for i in range(1, len(true_indices_recent) - 1):
-                    if i % 2 == 1:
-                        if split > 1.0:
-                            adj = '1.0/split' if f_up[true_indices_recent[i]] else 'split'
-                        else:
-                            adj = 'split' if f_up[true_indices_recent[i]] else '1.0/split'
-                        ranges.append((true_indices_recent[i], true_indices_recent[i+1], adj))
-
-                if len(true_indices_recent) % 2 == 0:
+                if len(true_indices_recent) > 0:
                     if split > 1.0:
-                        adj = 'split' if f_down[true_indices_recent[-1]] else '1.0/split'
+                        adj = 'split' if f_up[true_indices_recent[0]] else '1.0/split'
                     else:
-                        adj = '1.0/split' if f_down[true_indices_recent[-1]] else 'split'
-                    ranges.append((true_indices_recent[-1], len(f), adj))
+                        adj = '1.0/split' if f_up[true_indices_recent[0]] else 'split'
+                    ranges.append((0, true_indices_recent[0], adj))
+
+                    for i in range(1, len(true_indices_recent) - 1):
+                        if i % 2 == 1:
+                            if split > 1.0:
+                                adj = '1.0/split' if f_up[true_indices_recent[i]] else 'split'
+                            else:
+                                adj = 'split' if f_up[true_indices_recent[i]] else '1.0/split'
+                            ranges.append((true_indices_recent[i], true_indices_recent[i+1], adj))
+
+                    if len(true_indices_recent) % 2 == 0:
+                        if split > 1.0:
+                            adj = 'split' if f_down[true_indices_recent[-1]] else '1.0/split'
+                        else:
+                            adj = '1.0/split' if f_down[true_indices_recent[-1]] else 'split'
+                        ranges.append((true_indices_recent[-1], len(f), adj))
 
                 ranges = sorted(ranges, key=lambda x: x[0])
 
