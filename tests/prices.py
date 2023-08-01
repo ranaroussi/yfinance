@@ -566,7 +566,7 @@ class TestPriceRepair(unittest.TestCase):
                                  "High":      [476,   476.5, 477,   480],
                                  "Low":       [470.5, 470,   465.5, 468.26],
                                  "Close":     [475,   473.5, 472,   473.5],
-                                 "Adj Close": [475,   473.5, 472,   473.5],
+                                 "Adj Close": [470.1, 468.6, 467.1, 468.6],
                                  "Volume": [2295613, 2245604, 3000287, 2635611]},
                            index=_pd.to_datetime([_dt.date(2022, 10, 24),
                                                   _dt.date(2022, 10, 17),
@@ -583,7 +583,7 @@ class TestPriceRepair(unittest.TestCase):
 
         # Run test
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -616,11 +616,11 @@ class TestPriceRepair(unittest.TestCase):
         tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
-        df = _pd.DataFrame(data={"Open":      [400,   398,    392.5,   417],
-                                 "High":      [421,   425,    419,     420.5],
-                                 "Low":       [400,   380.5,  376.5,   396],
-                                 "Close":     [410,   409.5,  402,     399],
-                                 "Adj Close": [398.02, 397.53, 390.25, 387.34],
+        df = _pd.DataFrame(data={"Open":      [400,    398,    392.5,  417],
+                                 "High":      [421,    425,    419,    420.5],
+                                 "Low":       [400,    380.5,  376.5,  396],
+                                 "Close":     [410,    409.5,  402,    399],
+                                 "Adj Close": [393.91, 393.43, 386.22, 383.34],
                                  "Volume": [3232600, 3773900, 10835000, 4257900]},
                            index=_pd.to_datetime([_dt.date(2020, 3, 30),
                                                   _dt.date(2020, 3, 23),
@@ -640,7 +640,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -693,7 +693,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False, silent=True)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -717,46 +717,55 @@ class TestPriceRepair(unittest.TestCase):
         # Some 100x errors are not sporadic.
         # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
 
-        tkr = "SSW.JO"
-        dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
+        tkrs = ['AET.L', 'SSW.JO']
+        for tkr in tkrs:
+            for interval in ['1d', '1wk']:
+                dat = yf.Ticker(tkr, session=self.session)
+                tz_exchange = dat.fast_info["timezone"]
 
-        data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
-        _dp = os.path.dirname(__file__)
-        df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.', '-')+"-100x-error.csv"), index_col="Date")
-        df_bad.index = _pd.to_datetime(df_bad.index)
-        df_bad = df_bad.sort_index()
+                data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
+                _dp = os.path.dirname(__file__)
+                fp = os.path.join(_dp, "data", tkr.replace('.','-') + '-' + interval + "-100x-error.csv")
+                if not os.path.isfile(fp):
+                    continue
+                df_bad = _pd.read_csv(fp, index_col="Date")
+                df_bad.index = _pd.to_datetime(df_bad.index, utc=True).tz_convert(tz_exchange)
+                df_bad = df_bad.sort_index()
 
-        df = df_bad.copy()
-        for d in data_cols:
-            df.loc[:'2023-05-31', d] *= 0.01  # fix error
+                df = df_bad.copy()
+                fp = os.path.join(_dp, "data", tkr.replace('.','-') + '-' + interval + "-100x-error-fixed.csv")
+                df = _pd.read_csv(fp, index_col="Date")
+                df.index = _pd.to_datetime(df.index, utc=True).tz_convert(tz_exchange)
+                df = df.sort_index()
 
-        df_repaired = dat._fix_unit_switch(df_bad, "1d", tz_exchange)
-        df_repaired = df_repaired.sort_index()
+                df_repaired = dat._fix_unit_switch(df_bad, interval, tz_exchange)
+                df_repaired = df_repaired.sort_index()
 
-        # First test - no errors left
-        for c in data_cols:
-            try:
-                self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
-            except AssertionError:
-                print(df_repaired[c])
-                print(df[c])
-                print(f"TEST FAIL on column '{c}")
-                raise
+                # First test - no errors left
+                for c in data_cols:
+                    try:
+                        self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+                    except:
+                        print("- repaired:")
+                        print(df_repaired[c])
+                        print("- correct:")
+                        print(df[c])
+                        print(f"TEST FAIL on column '{c}' (tkr={tkr} interval={interval})")
+                        raise
 
-        # Second test - all differences should be either ~1x or ~100x
-        ratio = df_bad[data_cols].values / df[data_cols].values
-        ratio = ratio.round(2)
-        # - round near-100 ratio to 100:
-        f = ratio > 90
-        ratio[f] = (ratio[f] / 10).round().astype(int) * 10  # round ratio to nearest 10
-        # - now test
-        f_100 = ratio == 100
-        f_1 = ratio == 1
-        self.assertTrue((f_100 | f_1).all())
+                # Second test - all differences should be either ~1x or ~100x
+                ratio = df_bad[data_cols].values / df[data_cols].values
+                ratio = ratio.round(2)
+                # - round near-100 ratio to 100:
+                f = ratio > 90
+                ratio[f] = (ratio[f] / 10).round().astype(int) * 10  # round ratio to nearest 10
+                # - now test
+                f_100 = (ratio == 100) | (ratio == 0.01)
+                f_1 = ratio == 1
+                self.assertTrue((f_100 | f_1).all())
 
-        self.assertTrue("Repaired?" in df_repaired.columns)
-        self.assertFalse(df_repaired["Repaired?"].isna().any())
+                self.assertTrue("Repaired?" in df_repaired.columns)
+                self.assertFalse(df_repaired["Repaired?"].isna().any())
 
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
@@ -859,35 +868,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_bad_stock_split(self):
-        bad_tkrs = ['4063.T', 'ALPHA.PA', 'CNE.L', 'MOB.ST', 'SPM.MI']
-        for tkr in bad_tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
-            tz_exchange = dat.fast_info["timezone"]
-
-            _dp = os.path.dirname(__file__)
-            df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.', '-')+"-bad-stock-split.csv"), index_col="Date")
-            df_bad.index = _pd.to_datetime(df_bad.index)
-
-            repaired_df = dat._fix_bad_stock_split(df_bad, "1d", tz_exchange)
-
-            correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.', '-')+"-bad-stock-split-fixed.csv"), index_col="Date")
-            correct_df.index = _pd.to_datetime(correct_df.index)
-
-            repaired_df = repaired_df.sort_index()
-            correct_df = correct_df.sort_index()
-            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
-                try:
-                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
-                except AssertionError:
-                    print(f"tkr={tkr} COLUMN={c}")
-                    print("- repaired_df")
-                    print(repaired_df)
-                    print("- correct_df[c]:")
-                    print(correct_df[c])
-                    print("- diff:")
-                    print(repaired_df[c] - correct_df[c])
-                    raise
-
         # Stocks that split in 2022 but no problems in Yahoo data, 
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
@@ -900,7 +880,71 @@ class TestPriceRepair(unittest.TestCase):
                 tz_exchange = dat.fast_info["timezone"]
 
                 _dp = os.path.dirname(__file__)
-                df_good = dat.history(period='2y', interval=interval, auto_adjust=False)
+                df_good = dat.history(start='2020-01-01', end=_dt.date.today(), interval=interval, auto_adjust=False)
+
+                repaired_df = dat._fix_bad_stock_split(df_good, interval, tz_exchange)
+
+                # Expect no change from repair
+                df_good = df_good.sort_index()
+                repaired_df = repaired_df.sort_index()
+                for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                    try:
+                        self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
+                    except:
+                        print(f"tkr={tkr} interval={interval} COLUMN={c}")
+                        df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
+                        f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
+                        print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
+                        raise
+
+        bad_tkrs = ['4063.T', 'ALPHA.PA', 'AV.L', 'CNE.L', 'MOB.ST', 'SPM.MI']
+        bad_tkrs.append('LA.V')  # special case - stock split error is 3 years ago! why not fixed?
+        for tkr in bad_tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            tz_exchange = dat.fast_info["timezone"]
+
+            _dp = os.path.dirname(__file__)
+            interval = '1d'
+            fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split.csv")
+            if not os.path.isfile(fp):
+                interval = '1wk'
+                fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split.csv")
+            df_bad = _pd.read_csv(fp, index_col="Date")
+            df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
+
+            repaired_df = dat._fix_bad_stock_split(df_bad, "1d", tz_exchange)
+
+            fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split-fixed.csv")
+            correct_df = _pd.read_csv(fp, index_col="Date")
+            correct_df.index = _pd.to_datetime(correct_df.index)
+
+            repaired_df = repaired_df.sort_index()
+            correct_df = correct_df.sort_index()
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+                except AssertionError:
+                    print(f"tkr={tkr} COLUMN={c}")
+                    # print("- repaired_df")
+                    # print(repaired_df)
+                    # print("- correct_df[c]:")
+                    # print(correct_df[c])
+                    # print("- diff:")
+                    # print(repaired_df[c] - correct_df[c])
+                    raise
+
+        # Had very high price volatility in Jan-2021 around split date that could 
+        # be mistaken for missing stock split adjustment. And old logic did think 
+        # column 'High' required fixing - wrong!
+        sketchy_tkrs = ['FIZZ']
+        intervals = ['1wk']
+        for tkr in sketchy_tkrs:
+            for interval in intervals:
+                dat = yf.Ticker(tkr, session=self.session)
+                tz_exchange = dat.fast_info["timezone"]
+
+                _dp = os.path.dirname(__file__)
+                df_good = dat.history(start='2020-11-30', end='2021-04-01', interval=interval, auto_adjust=False)
 
                 repaired_df = dat._fix_bad_stock_split(df_good, interval, tz_exchange)
 
@@ -916,6 +960,36 @@ class TestPriceRepair(unittest.TestCase):
                         f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
                         print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
                         raise
+
+    def test_repair_missing_div_adjust(self):
+        tkr = '8TRA.DE'
+
+        dat = yf.Ticker(tkr, session=self.session)
+        tz_exchange = dat.fast_info["timezone"]
+
+        _dp = os.path.dirname(__file__)
+        df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust.csv"), index_col="Date")
+        df_bad.index = _pd.to_datetime(df_bad.index)
+
+        repaired_df = dat._fix_missing_div_adjust(df_bad, "1d", tz_exchange)
+
+        correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust-fixed.csv"), index_col="Date")
+        correct_df.index = _pd.to_datetime(correct_df.index)
+
+        repaired_df = repaired_df.sort_index()
+        correct_df = correct_df.sort_index()
+        for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+            try:
+                self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+            except:
+                print(f"tkr={tkr} COLUMN={c}")
+                print("- repaired_df")
+                print(repaired_df)
+                print("- correct_df[c]:")
+                print(correct_df[c])
+                print("- diff:")
+                print(repaired_df[c] - correct_df[c])
+                raise
 
 
 if __name__ == '__main__':
