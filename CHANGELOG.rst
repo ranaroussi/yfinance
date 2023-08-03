@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.2.27
+------
+Bug fixes:
+- fix merging 1d-prices with out-of-range divs/splits #1635
+- fix multithread error 'tz already in cache' #1648
+
 0.2.26
 ------
 Proxy improvements
