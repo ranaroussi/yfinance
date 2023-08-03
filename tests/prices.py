@@ -223,6 +223,15 @@ class TestPriceHistory(unittest.TestCase):
                 print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
                 raise
 
+        # Reproduce issue #1634 - 1d dividend out-of-range, should be prepended to prices
+        div_dt = _pd.Timestamp(2022, 7, 21).tz_localize("America/New_York")
+        df_dividends = _pd.DataFrame(data={"Dividends":[1.0]}, index=[div_dt])
+        df_prices = _pd.DataFrame(data={c:[1.0] for c in yf.const.price_colnames}|{'Volume':0}, index=[div_dt+_dt.timedelta(days=1)])
+        df_merged = yf.utils.safe_merge_dfs(df_prices, df_dividends, '1d')
+        self.assertEqual(df_merged.shape[0], 2)
+        self.assertTrue(df_merged[df_prices.columns].iloc[1:].equals(df_prices))
+        self.assertEqual(df_merged.index[0], div_dt)
+
     def test_intraDayWithEvents(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         test_run = False

@@ -21,6 +21,8 @@
 
 from __future__ import print_function
 
+from yfinance import const
+
 import datetime as _datetime
 import dateutil as _dateutil
 from typing import Dict, Union, List, Optional
@@ -689,21 +691,28 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
     f_outOfRange = indices == -1
     if f_outOfRange.any() and not intraday:
-        # If dividend is occuring in next interval after last price row, 
-        # add a new row of NaNs
-        last_dt = df_main.index[-1]
-        next_interval_start_dt = last_dt + td
+        empty_row_data = {c:[_np.nan] for c in const.price_colnames}|{'Volume':[0]}
         if interval == '1d':
-            # Allow for weekends & holidays
-            next_interval_end_dt = last_dt+7*_pd.Timedelta(days=7)
-        else:
-            next_interval_end_dt = next_interval_start_dt + td
-        for i in _np.where(f_outOfRange)[0]:
-            dt = df_sub.index[i]
-            if dt >= next_interval_start_dt and dt < next_interval_end_dt:
-                new_dt = dt if interval == '1d' else next_interval_start_dt
+            # For 1d, add all out-of-range event dates
+            for i in _np.where(f_outOfRange)[0]:
+                dt = df_sub.index[i]
                 get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
-                df_main.loc[new_dt] = _np.nan
+                empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
+                df_main = _pd.concat([df_main, empty_row], sort=True)
+        else:
+            # Else, only add out-of-range event dates if occurring in interval 
+            # immediately after last pricfe row
+            last_dt = df_main.index[-1]
+            next_interval_start_dt = last_dt + td
+            next_interval_end_dt = next_interval_start_dt + td
+            for i in _np.where(f_outOfRange)[0]:
+                dt = df_sub.index[i]
+                if dt >= next_interval_start_dt and dt < next_interval_end_dt:
+                    new_dt = next_interval_start_dt
+                    get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+                    empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
+                    df_main = _pd.concat([df_main, empty_row], sort=True)
+        df_main = df_main.sort_index()
 
         # Re-calculate indices
         indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
@@ -718,7 +727,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_outOfRange = indices == -1
     if f_outOfRange.any():
         if intraday or interval in ['1d', '1wk']:
-            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index}")
+            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
         get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
         indices = indices[~f_outOfRange]
