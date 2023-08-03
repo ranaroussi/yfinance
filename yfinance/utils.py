@@ -980,10 +980,14 @@ class _TzCache:
     def store(self, tkr, tz):
         if tz is None:
             self.tz_db.delete(tkr)
-        elif self.tz_db.get(tkr) is not None:
-            raise Exception("Tkr {} tz already in cache".format(tkr))
         else:
-            self.tz_db.set(tkr, tz)
+            tz_db = self.tz_db.get(tkr)
+            if tz_db is not None:
+                if tz != tz_db:
+                    get_yf_logger().debug(f'{tkr}: Overwriting cached TZ "{tz_db}" with different TZ "{tz}"')
+                    self.tz_db.set(tkr, tz)
+            else:
+                self.tz_db.set(tkr, tz)
 
     @property
     def _db_dir(self):
