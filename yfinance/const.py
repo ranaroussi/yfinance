@@ -1,3 +1,5 @@
+_BASE_URL_ = 'https://query2.finance.yahoo.com'
+_ROOT_URL_ = 'https://finance.yahoo.com'
 
 fundamentals_keys = {
     'financials': ["TaxEffectOfUnusualItems", "TaxRateForCalcs", "NormalizedEBITDA", "NormalizedDilutedEPS",
@@ -112,4 +114,6 @@ fundamentals_keys = {
                   "OtherCashPaymentsfromOperatingActivities", "PaymentsonBehalfofEmployees",
                   "PaymentstoSuppliersforGoodsandServices", "ClassesofCashReceiptsfromOperatingActivities",
                   "OtherCashReceiptsfromOperatingActivities", "ReceiptsfromGovernmentGrants", "ReceiptsfromCustomers"]}
+
+
 
