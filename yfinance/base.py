@@ -42,8 +42,7 @@ from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 
-_BASE_URL_ = 'https://query2.finance.yahoo.com'
-_ROOT_URL_ = 'https://finance.yahoo.com'
+from .const import _BASE_URL_, _ROOT_URL_
 
 
 class TickerBase:
