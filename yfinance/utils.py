@@ -43,7 +43,7 @@ import requests as _requests
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
-from .base import _BASE_URL_
+from .const import _BASE_URL_
 
 try:
     import ujson as _json
