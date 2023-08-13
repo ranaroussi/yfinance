@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.2.28
+------
+- Fix TypeError: 'FastInfo' object is not callable #1636
+- Improve & fix price repair #1633 #1660
+- option_chain() also return underlying data #1606
+
 0.2.27
 ------
 Bug fixes:
