@@ -496,8 +496,8 @@ class TickerBase:
         # Limit max reconstruction depth to 2:
         if self._reconstruct_start_interval is None:
             self._reconstruct_start_interval = interval
-        if interval != self._reconstruct_start_interval:
-            logger.debug(f"{self.ticker}: Price repair has hit max depth of 1 ('%s'->'%s')", self._reconstruct_start_interval, interval)
+        if interval != self._reconstruct_start_interval and interval != nexts[self._reconstruct_start_interval]:
+            logger.debug(f"{self.ticker}: Price repair has hit max depth of 2 ('%s'->'%s'->'%s')", self._reconstruct_start_interval, nexts[self._reconstruct_start_interval], interval)
             return df
 
         df = df.sort_index()
@@ -760,7 +760,12 @@ class TickerBase:
             weights = weights[:, None]  # transpose
             weights = np.tile(weights, len(calib_cols))  # 1D -> 2D
             weights = weights[calib_filter]  # flatten
-            ratio = np.average(ratios, weights=weights)
+            not1 = ~np.isclose(ratios, 1.0, rtol=0.00001)
+            if np.sum(not1) == len(calib_cols):
+                # Only 1 calibration row in df_new is different to df_block so ignore
+                ratio = 1.0
+            else:
+                ratio = np.average(ratios, weights=weights)
             logger.debug(f"Price calibration ratio (raw) = {ratio:6f}")
             ratio_rcp = round(1.0 / ratio, 1)
             ratio = round(ratio, 1)
@@ -1235,19 +1240,26 @@ class TickerBase:
         # 100x errors into suspended intervals. Clue is no price change and 0 volume.
         # Better to use last active trading interval as baseline.
         f_no_activity = (df2['Low'] == df2['High']) & (df2['Volume']==0)
+        f_no_activity = f_no_activity | df2[OHLC].isna().all(axis=1)
         appears_suspended = f_no_activity.any() and np.where(f_no_activity)[0][0]==0
         f_active = ~f_no_activity
         idx_latest_active = np.where(f_active & np.roll(f_active, 1))[0]
         if len(idx_latest_active) == 0:
             idx_latest_active = None
         else:
-            idx_latest_active = idx_latest_active[0]
-        logger.debug(f'price-repair-split: appears_suspended={appears_suspended}, idx_latest_active={idx_latest_active}')
+            idx_latest_active = int(idx_latest_active[0])
+        log_msg = f'price-repair-split: appears_suspended={appears_suspended}, idx_latest_active={idx_latest_active}'
+        if idx_latest_active is not None:
+            log_msg += f' ({df.index[idx_latest_active].date()})'
+        logger.debug(log_msg)
 
         if logger.isEnabledFor(logging.DEBUG):
             df_debug = df2.copy()
-            df_debug = df_debug.drop(['Adj Close', 'Low', 'High', 'Volume', 'Dividends', 'Repaired?'], axis=1, errors='ignore')
+            df_debug = df_debug.drop(['Adj Close', 'Volume', 'Dividends', 'Repaired?'], axis=1, errors='ignore')
             debug_cols = ['Low', 'High']
+            df_debug = df_debug.drop([c for c in OHLC if c not in debug_cols], axis=1, errors='ignore')
+        else:
+            debug_cols = []
 
         # Calculate daily price % change. To reduce effect of price volatility, 
         # calculate change for each OHLC column.
@@ -1359,87 +1371,44 @@ class TickerBase:
             return df
 
         # if logger.isEnabledFor(logging.DEBUG):
-        #     logger.debug(f"price-repair-split: my workings:")
-        #     logger.debug('\n' + str(df_debug))
+        #     df_debug['i'] = list(range(0, df_debug.shape[0]))
+        #     df_debug['i_rev'] = df_debug.shape[0]-1 - df_debug['i']
+        #     with pd.option_context('display.max_rows', None, 'display.max_columns', 10, 'display.width', 1000):  # more options can be specified also
+        #         logger.debug(f"price-repair-split: my workings:" + '\n' + str(df_debug))
 
         def map_signals_to_ranges(f, f_up, f_down):
+            # Ensure 0th element is False, because True is nonsense
+            if f[0]:
+                f = np.copy(f) ; f[0] = False
+                f_up = np.copy(f_up) ; f_up[0] = False
+                f_down = np.copy(f_down) ; f_down[0] = False
+
             if not f.any():
                 return []
 
             true_indices = np.where(f)[0]
             ranges = []
 
-            idx_first_f = np.where(f)[0][0]
-            logger.debug(f'idx_latest_active={idx_latest_active} idx_first_f={idx_first_f}')
-            if appears_suspended and (idx_latest_active is None or idx_latest_active >= idx_first_f):
-                # baseline = 2nd index, because no active trading since latest split error
+            for i in range(len(true_indices) - 1):
+                if i % 2 == 0:
+                    if split > 1.0:
+                        adj = 'split' if f_down[true_indices[i]] else '1.0/split'
+                    else:
+                        adj = '1.0/split' if f_down[true_indices[i]] else 'split'
+                    ranges.append((true_indices[i], true_indices[i + 1], adj))
 
-                # First, process prices older than idx_latest_active:
-                if idx_latest_active is None:
-                    true_indices_old = []
+            if len(true_indices) % 2 != 0:
+                if split > 1.0:
+                    adj = 'split' if f_down[true_indices[-1]] else '1.0/split'
                 else:
-                    true_indices_old = [i for i in true_indices if i > idx_latest_active]
-                    if len(true_indices_old) > 0:
-                        for i in range(len(true_indices_old) - 1):
-                            if i % 2 == 0:
-                                if split > 1.0:
-                                    adj = 'split' if f_down[true_indices_old[i]] else '1.0/split'
-                                else:
-                                    adj = '1.0/split' if f_down[true_indices_old[i]] else 'split'
-                                ranges.append((true_indices_old[i], true_indices_old[i+1], adj))
-
-                        if len(true_indices_old) % 2 != 0:
-                            if split > 1.0:
-                                adj = 'split' if f_down[true_indices_old[-1]] else '1.0/split'
-                            else:
-                                adj = '1.0/split' if f_down[true_indices_old[-1]] else 'split'
-                            ranges.append((true_indices_old[-1], len(f), adj))
-
-                # Next, process prices more recent than idx_latest_active:
-                true_indices_recent = [i for i in true_indices if i not in true_indices_old]
-                if len(true_indices_recent) > 0:
-                    if split > 1.0:
-                        adj = 'split' if f_up[true_indices_recent[0]] else '1.0/split'
-                    else:
-                        adj = '1.0/split' if f_up[true_indices_recent[0]] else 'split'
-                    ranges.append((0, true_indices_recent[0], adj))
-
-                    for i in range(1, len(true_indices_recent) - 1):
-                        if i % 2 == 1:
-                            if split > 1.0:
-                                adj = '1.0/split' if f_up[true_indices_recent[i]] else 'split'
-                            else:
-                                adj = 'split' if f_up[true_indices_recent[i]] else '1.0/split'
-                            ranges.append((true_indices_recent[i], true_indices_recent[i + 1], adj))
-
-                    if len(true_indices_recent) % 2 == 0:
-                        if split > 1.0:
-                            adj = 'split' if f_down[true_indices_recent[-1]] else '1.0/split'
-                        else:
-                            adj = '1.0/split' if f_down[true_indices_recent[-1]] else 'split'
-                        ranges.append((true_indices_recent[-1], len(f), adj))
-
-                ranges = sorted(ranges, key=lambda x: x[0])
-
-            else:
-                # baseline = 2nd index
-                for i in range(len(true_indices) - 1):
-                    if i % 2 == 0:
-                        if split > 1.0:
-                            adj = 'split' if f_down[true_indices[i]] else '1.0/split'
-                        else:
-                            adj = '1.0/split' if f_down[true_indices[i]] else 'split'
-                        ranges.append((true_indices[i], true_indices[i + 1], adj))
-
-                if len(true_indices) % 2 != 0:
-                    if split > 1.0:
-                        adj = 'split' if f_down[true_indices[-1]] else '1.0/split'
-                    else:
-                        adj = '1.0/split' if f_down[true_indices[-1]] else 'split'
-                    ranges.append((true_indices[-1], len(f), adj))
+                    adj = '1.0/split' if f_down[true_indices[-1]] else 'split'
+                ranges.append((true_indices[-1], len(f), adj))
 
             return ranges
 
+        if idx_latest_active is not None:
+            idx_rev_latest_active = df.shape[0] - 1 - idx_latest_active
+            logger.debug(f'price-repair-split: idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}')
         if correct_columns_individually:
             f_corrected = np.full(n, False)
             if correct_volume:
@@ -1455,7 +1424,38 @@ class TickerBase:
             OHLC_correct_ranges = [None, None, None, None]
             for j in range(len(OHLC)):
                 c = OHLC[j]
-                ranges = map_signals_to_ranges(f[:, j], f_up[:, j], f_down[:, j])
+                idx_first_f = np.where(f)[0][0]
+                if appears_suspended and (idx_latest_active is not None and idx_latest_active >= idx_first_f):
+                    # Suspended midway during data date range.
+                    # 1: process data before suspension in index-ascending (date-descending) order.
+                    # 2: process data after suspension in index-descending order. Requires signals to be reversed, 
+                    #    then returned ranges to also be reversed, because this logic was originally written for
+                    #    index-ascending (date-descending) order.
+                    fj = f[:, j]
+                    f_upj = f_up[:, j]
+                    f_downj = f_down[:, j]
+                    ranges_before = map_signals_to_ranges(fj[idx_latest_active:], f_upj[idx_latest_active:], f_downj[idx_latest_active:])
+                    if len(ranges_before) > 0:
+                        # Shift each range back to global indexing
+                        for i in range(len(ranges_before)):
+                            r = ranges_before[i]
+                            ranges_before[i] = (r[0] + idx_latest_active, r[1] + idx_latest_active, r[2])
+                    f_rev_downj = np.flip(np.roll(f_upj, -1))  # correct
+                    f_rev_upj = np.flip(np.roll(f_downj, -1))  # correct
+                    f_revj = f_rev_upj | f_rev_downj
+                    ranges_after = map_signals_to_ranges(f_revj[idx_rev_latest_active:], f_rev_upj[idx_rev_latest_active:], f_rev_downj[idx_rev_latest_active:])
+                    if len(ranges_after) > 0:
+                        # Shift each range back to global indexing:
+                        for i in range(len(ranges_after)):
+                            r = ranges_after[i]
+                            ranges_after[i] = (r[0] + idx_rev_latest_active, r[1] + idx_rev_latest_active, r[2])
+                        # Flip range to normal ordering
+                        for i in range(len(ranges_after)):
+                            r = ranges_after[i]
+                            ranges_after[i] = (n-r[1], n-r[0], r[2])
+                    ranges = ranges_before ; ranges.extend(ranges_after)
+                else:
+                    ranges = map_signals_to_ranges(f[:, j], f_up[:, j], f_down[:, j])
                 logger.debug(f"column '{c}' ranges: {ranges}")
                 if start_min is not None:
                     # Prune ranges that are older than start_min
@@ -1514,7 +1514,35 @@ class TickerBase:
             df2.loc[f_corrected, 'Repaired?'] = True
 
         else:
-            ranges = map_signals_to_ranges(f, f_up, f_down)
+            idx_first_f = np.where(f)[0][0]
+            if appears_suspended and (idx_latest_active is not None and idx_latest_active >= idx_first_f):
+                # Suspended midway during data date range.
+                # 1: process data before suspension in index-ascending (date-descending) order.
+                # 2: process data after suspension in index-descending order. Requires signals to be reversed, 
+                #    then returned ranges to also be reversed, because this logic was originally written for
+                #    index-ascending (date-descending) order.
+                ranges_before = map_signals_to_ranges(f[idx_latest_active:], f_up[idx_latest_active:], f_down[idx_latest_active:])
+                if len(ranges_before) > 0:
+                    # Shift each range back to global indexing
+                    for i in range(len(ranges_before)):
+                        r = ranges_before[i]
+                        ranges_before[i] = (r[0] + idx_latest_active, r[1] + idx_latest_active, r[2])
+                f_rev_down = np.flip(np.roll(f_up, -1))
+                f_rev_up = np.flip(np.roll(f_down, -1))
+                f_rev = f_rev_up | f_rev_down
+                ranges_after = map_signals_to_ranges(f_rev[idx_rev_latest_active:], f_rev_up[idx_rev_latest_active:], f_rev_down[idx_rev_latest_active:])
+                if len(ranges_after) > 0:
+                    # Shift each range back to global indexing:
+                    for i in range(len(ranges_after)):
+                        r = ranges_after[i]
+                        ranges_after[i] = (r[0] + idx_rev_latest_active, r[1] + idx_rev_latest_active, r[2])
+                    # Flip range to normal ordering
+                    for i in range(len(ranges_after)):
+                        r = ranges_after[i]
+                        ranges_after[i] = (n-r[1], n-r[0], r[2])
+                ranges = ranges_before ; ranges.extend(ranges_after)
+            else:
+                ranges = map_signals_to_ranges(f, f_up, f_down)
             if start_min is not None:
                 # Prune ranges that are older than start_min
                 for i in range(len(ranges)-1, -1, -1):
