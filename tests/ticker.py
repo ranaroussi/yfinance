@@ -25,6 +25,8 @@ class TestTicker(unittest.TestCase):
     def setUpClass(cls):
         cls.session = session_gbl
 
+        cls.proxy = None
+
     @classmethod
     def tearDownClass(cls):
         if cls.session is not None:
@@ -143,6 +145,129 @@ class TestTicker(unittest.TestCase):
             # dat.sustainability
             # dat.earnings_trend
             # dat.earnings_forecasts
+
+    def test_goodTicker_withProxy(self):
+        # that yfinance works when full api is called on same instance of ticker
+
+        tkr = "IBM"
+        dat = yf.Ticker(tkr, session=self.session)
+
+        dat._fetch_ticker_tz(proxy=self.proxy, timeout=5, debug_mode=False, raise_errors=False)
+        dat._get_ticker_tz(proxy=self.proxy, timeout=5, debug_mode=False, raise_errors=False)
+        dat.history(period="1wk", proxy=self.proxy)
+
+        v = dat.stats(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertTrue(len(v) > 0)
+
+        v = dat.get_recommendations(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_calendar(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_major_holders(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_institutional_holders(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_mutualfund_holders(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_info(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertTrue(len(v) > 0)
+
+        v = dat.get_sustainability(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_recommendations_summary(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_analyst_price_target(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_rev_forecast(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_earnings_forecast(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_trend_details(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_earnings_trend(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_earnings(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_income_stmt(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_incomestmt(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_financials(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_balance_sheet(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_balancesheet(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_cash_flow(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_cashflow(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_shares(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_shares_full(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        v = dat.get_isin(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertTrue(v != "")
+
+        v = dat.get_news(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertTrue(len(v) > 0)
+
+        v = dat.get_earnings_dates(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertFalse(v.empty)
+
+        # TODO: enable after merge
+        # dat.get_history_metadata(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertTrue(len(v) > 0)
 
 
 class TestTickerHistory(unittest.TestCase):

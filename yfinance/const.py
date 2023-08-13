@@ -115,5 +115,4 @@ fundamentals_keys = {
                   "PaymentstoSuppliersforGoodsandServices", "ClassesofCashReceiptsfromOperatingActivities",
                   "OtherCashReceiptsfromOperatingActivities", "ReceiptsfromGovernmentGrants", "ReceiptsfromCustomers"]}
 
-
-
+price_colnames = ['Open', 'High', 'Low', 'Close', 'Adj Close']

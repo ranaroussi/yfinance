@@ -209,7 +209,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
 
     if len(tickers) == 1:
         ticker = tickers[0]
-        return shared._DFS[shared._ISINS.get(ticker, ticker)]
+        return shared._DFS[ticker]
 
     try:
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,

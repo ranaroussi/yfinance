@@ -1,6 +1,23 @@
 Change Log
 ===========
 
+0.2.27
+------
+Bug fixes:
+- fix merging 1d-prices with out-of-range divs/splits #1635
+- fix multithread error 'tz already in cache' #1648
+
+0.2.26
+------
+Proxy improvements
+- bug fixes #1371
+- security fix #1625
+
+0.2.25
+------
+Fix single ISIN as ticker #1611
+Fix 'Only 100 years allowed' error #1576
+
 0.2.24
 ------
 Fix info[] missing values #1603
