@@ -1678,7 +1678,6 @@ class TickerBase:
         data = self._quote.info
         return data
 
-    @property
     def get_fast_info(self, proxy=None):
         if self._fast_info is None:
             self._fast_info = FastInfo(self, proxy=proxy)
