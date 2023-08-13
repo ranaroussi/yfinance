@@ -1,13 +1,12 @@
 import datetime
-import logging
 import json
 
 import pandas as pd
-import numpy as np
 
 from yfinance import utils, const
 from yfinance.data import TickerData
 from yfinance.exceptions import YFinanceException, YFNotImplementedError
+
 
 class Fundamentals:
 
@@ -76,9 +75,9 @@ class Financials:
         allowed_timescales = ["yearly", "quarterly"]
 
         if name not in allowed_names:
-            raise ValueError("Illegal argument: name must be one of: {}".format(allowed_names))
+            raise ValueError(f"Illegal argument: name must be one of: {allowed_names}")
         if timescale not in allowed_timescales:
-            raise ValueError("Illegal argument: timescale must be one of: {}".format(allowed_names))
+            raise ValueError(f"Illegal argument: timescale must be one of: {allowed_names}")
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
@@ -86,7 +85,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFinanceException as e:
-            utils.get_yf_logger().error("%s: Failed to create %s financials table for reason: %r", self._data.ticker, name, e)
+            utils.get_yf_logger().error(f"{self._data.ticker}: Failed to create {name} financials table for reason: {e}")
         return pd.DataFrame()
 
     def _create_financials_table(self, name, timescale, proxy):
@@ -106,15 +105,12 @@ class Financials:
         timescale = timescale_translation[timescale]
 
         # Step 2: construct url:
-        ts_url_base = \
-            "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}" \
-                .format(self._data.ticker)
-
+        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._data.ticker}?symbol={self._data.ticker}"
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
         end = pd.Timestamp.utcnow().ceil("D")
-        url += "&period1={}&period2={}".format(int(start_dt.timestamp()), int(end.timestamp()))
+        url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
         # Step 3: fetch and reshape data
         json_str = self._data.cache_get(url=url, proxy=proxy).text

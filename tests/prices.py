@@ -59,7 +59,7 @@ class TestPriceHistory(unittest.TestCase):
             dt1 = df.index[-1]
             try:
                 self.assertNotEqual(dt0.hour, dt1.hour)
-            except:
+            except AssertionError:
                 print("Ticker = ", tkr)
                 raise
 
@@ -82,7 +82,7 @@ class TestPriceHistory(unittest.TestCase):
             dt1 = df.index[-1]
             try:
                 self.assertNotEqual(dt0, dt1)
-            except:
+            except AssertionError:
                 print("Ticker = ", tkr)
                 raise
 
@@ -106,7 +106,7 @@ class TestPriceHistory(unittest.TestCase):
             dt1 = df.index[-1]
             try:
                 self.assertNotEqual(dt0.week, dt1.week)
-            except:
+            except AssertionError:
                 print("Ticker={}: Last two rows within same week:".format(tkr))
                 print(df.iloc[df.shape[0] - 2:])
                 raise
@@ -172,18 +172,19 @@ class TestPriceHistory(unittest.TestCase):
         start_d = _dt.date(2022, 1, 1)
         end_d = _dt.date(2023, 1, 1)
 
-        tkr_div_dates = {}
-        tkr_div_dates['BHP.AX'] = [_dt.date(2022, 9, 1), _dt.date(2022, 2, 24)]  # Yahoo claims 23-Feb but wrong because DST
-        tkr_div_dates['IMP.JO'] = [_dt.date(2022, 9, 21), _dt.date(2022, 3, 16)]
-        tkr_div_dates['BP.L'] = [_dt.date(2022, 11, 10), _dt.date(2022, 8, 11), _dt.date(2022, 5, 12), _dt.date(2022, 2, 17)]
-        tkr_div_dates['INTC'] = [_dt.date(2022, 11, 4), _dt.date(2022, 8, 4), _dt.date(2022, 5, 5), _dt.date(2022, 2, 4)]
+        tkr_div_dates = {'BHP.AX': [_dt.date(2022, 9, 1), _dt.date(2022, 2, 24)],  # Yahoo claims 23-Feb but wrong because DST
+                         'IMP.JO': [_dt.date(2022, 9, 21), _dt.date(2022, 3, 16)],
+                         'BP.L': [_dt.date(2022, 11, 10), _dt.date(2022, 8, 11), _dt.date(2022, 5, 12),
+                                  _dt.date(2022, 2, 17)],
+                         'INTC': [_dt.date(2022, 11, 4), _dt.date(2022, 8, 4), _dt.date(2022, 5, 5),
+                                  _dt.date(2022, 2, 4)]}
 
-        for tkr,dates in tkr_div_dates.items():
+        for tkr, dates in tkr_div_dates.items():
             df = yf.Ticker(tkr, session=self.session).history(interval='1d', start=start_d, end=end_d)
-            df_divs = df[df['Dividends']!=0].sort_index(ascending=False)
+            df_divs = df[df['Dividends'] != 0].sort_index(ascending=False)
             try:
                 self.assertTrue((df_divs.index.date == dates).all())
-            except:
+            except AssertionError:
                 print(f'- ticker = {tkr}')
                 print('- response:') ; print(df_divs.index.date)
                 print('- answer:') ; print(dates)
@@ -201,7 +202,7 @@ class TestPriceHistory(unittest.TestCase):
         self.assertTrue(((df2["Dividends"] > 0) | (df2["Stock Splits"] > 0)).any())
         try:
             self.assertTrue(df1.index.equals(df2.index))
-        except:
+        except AssertionError:
             missing_from_df1 = df2.index.difference(df1.index)
             missing_from_df2 = df1.index.difference(df2.index)
             print("{} missing these dates: {}".format(tkr1, missing_from_df1))
@@ -216,7 +217,7 @@ class TestPriceHistory(unittest.TestCase):
             self.assertTrue(((df1["Dividends"] > 0) | (df1["Stock Splits"] > 0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
-            except:
+            except AssertionError:
                 missing_from_df1 = df2.index.difference(df1.index)
                 missing_from_df2 = df1.index.difference(df2.index)
                 print("{}-with-events missing these dates: {}".format(tkr, missing_from_df1))
@@ -298,7 +299,7 @@ class TestPriceHistory(unittest.TestCase):
         self.assertTrue(((df2["Dividends"] > 0) | (df2["Stock Splits"] > 0)).any())
         try:
             self.assertTrue(df1.index.equals(df2.index))
-        except:
+        except AssertionError:
             missing_from_df1 = df2.index.difference(df1.index)
             missing_from_df2 = df1.index.difference(df2.index)
             print("{} missing these dates: {}".format(tkr1, missing_from_df1))
@@ -313,7 +314,7 @@ class TestPriceHistory(unittest.TestCase):
             self.assertTrue(((df1["Dividends"] > 0) | (df1["Stock Splits"] > 0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
-            except:
+            except AssertionError:
                 missing_from_df1 = df2.index.difference(df1.index)
                 missing_from_df2 = df1.index.difference(df2.index)
                 print("{}-with-events missing these dates: {}".format(tkr, missing_from_df1))
@@ -331,7 +332,7 @@ class TestPriceHistory(unittest.TestCase):
         self.assertTrue(((df2["Dividends"] > 0) | (df2["Stock Splits"] > 0)).any())
         try:
             self.assertTrue(df1.index.equals(df2.index))
-        except:
+        except AssertionError:
             missing_from_df1 = df2.index.difference(df1.index)
             missing_from_df2 = df1.index.difference(df2.index)
             print("{} missing these dates: {}".format(tkr1, missing_from_df1))
@@ -346,7 +347,7 @@ class TestPriceHistory(unittest.TestCase):
             self.assertTrue(((df1["Dividends"] > 0) | (df1["Stock Splits"] > 0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
-            except:
+            except AssertionError:
                 missing_from_df1 = df2.index.difference(df1.index)
                 missing_from_df2 = df1.index.difference(df2.index)
                 print("{}-with-events missing these dates: {}".format(tkr, missing_from_df1))
@@ -358,15 +359,15 @@ class TestPriceHistory(unittest.TestCase):
         dfm = yf.Ticker("ABBV").history(period="max", interval="1mo")
         dfd = yf.Ticker("ABBV").history(period="max", interval="1d")
         dfd = dfd[dfd.index > dfm.index[0]]
-        dfm_divs = dfm[dfm['Dividends']!=0]
-        dfd_divs = dfd[dfd['Dividends']!=0]
+        dfm_divs = dfm[dfm['Dividends'] != 0]
+        dfd_divs = dfd[dfd['Dividends'] != 0]
         self.assertEqual(dfm_divs.shape[0], dfd_divs.shape[0])
 
-        dfm = yf.Ticker("F").history(period="50mo",interval="1mo")
+        dfm = yf.Ticker("F").history(period="50mo", interval="1mo")
         dfd = yf.Ticker("F").history(period="50mo", interval="1d")
         dfd = dfd[dfd.index > dfm.index[0]]
-        dfm_divs = dfm[dfm['Dividends']!=0]
-        dfd_divs = dfd[dfd['Dividends']!=0]
+        dfm_divs = dfm[dfm['Dividends'] != 0]
+        dfd_divs = dfd[dfd['Dividends'] != 0]
         self.assertEqual(dfm_divs.shape[0], dfd_divs.shape[0])
 
     def test_tz_dst_ambiguous(self):
@@ -397,7 +398,7 @@ class TestPriceHistory(unittest.TestCase):
         df = dat.history(start=start, end=end, interval=interval)
         try:
             self.assertTrue((df.index.weekday == 0).all())
-        except:
+        except AssertionError:
             print("Weekly data not aligned to Monday")
             raise
 
@@ -449,18 +450,18 @@ class TestPriceHistory(unittest.TestCase):
         interval = "1h"
         interval_td = _dt.timedelta(hours=1)
         time_open = _dt.time(9)
-        time_close = _dt.time(17,30)
+        time_close = _dt.time(17, 30)
         special_day = _dt.date(2022, 12, 23)
         time_early_close = _dt.time(13, 2)
         dat = yf.Ticker(tkr, session=self.session)
 
         # Half trading day Jan 5, Apr 14, May 25, Jun 23, Nov 4, Dec 23, Dec 30
-        half_days = [_dt.date(special_day.year, x[0], x[1]) for x in [(1,5), (4,14), (5,25), (6,23), (11,4), (12,23), (12,30)]]
+        half_days = [_dt.date(special_day.year, x[0], x[1]) for x in [(1, 5), (4, 14), (5, 25), (6, 23), (11, 4), (12, 23), (12, 30)]]
 
         # Yahoo has incorrectly classified afternoon of 2022-04-13 as post-market.
         # Nothing yfinance can do because Yahoo doesn't return data with prepost=False.
         # But need to handle in this test.
-        expected_incorrect_half_days = [_dt.date(2022,4,13)]
+        expected_incorrect_half_days = [_dt.date(2022, 4, 13)]
         half_days = sorted(half_days+expected_incorrect_half_days)
 
         # Run
@@ -477,7 +478,7 @@ class TestPriceHistory(unittest.TestCase):
         last_dts = _pd.Series(df.index).groupby(df.index.date).last()
         f_early_close = (last_dts+interval_td).dt.time < time_close
         early_close_dates = last_dts.index[f_early_close].values
-        unexpected_early_close_dates = [d for d in early_close_dates if not d in half_days]
+        unexpected_early_close_dates = [d for d in early_close_dates if d not in half_days]
         self.assertEqual(len(unexpected_early_close_dates), 0)
         self.assertEqual(len(early_close_dates), len(half_days))
         self.assertTrue(_np.equal(early_close_dates, half_days).all())
@@ -493,7 +494,7 @@ class TestPriceHistory(unittest.TestCase):
         interval = "1h"
         interval_td = _dt.timedelta(hours=1)
         time_open = _dt.time(10)
-        time_close = _dt.time(16,12)
+        time_close = _dt.time(16, 12)
         # No early closes in 2022
         dat = yf.Ticker(tkr, session=self.session)
 
@@ -529,6 +530,7 @@ class TestPriceHistory(unittest.TestCase):
         interval = "3mo"
 
         df = dat.history(start=start, end=end, interval=interval)
+
 
 class TestPriceRepair(unittest.TestCase):
     session = None
@@ -573,12 +575,12 @@ class TestPriceRepair(unittest.TestCase):
                                  "High":      [476,   476.5, 477,   480],
                                  "Low":       [470.5, 470,   465.5, 468.26],
                                  "Close":     [475,   473.5, 472,   473.5],
-                                 "Adj Close": [475,   473.5, 472,   473.5],
+                                 "Adj Close": [470.1, 468.6, 467.1, 468.6],
                                  "Volume": [2295613, 2245604, 3000287, 2635611]},
-                                index=_pd.to_datetime([_dt.date(2022, 10, 24),
-                                                       _dt.date(2022, 10, 17),
-                                                       _dt.date(2022, 10, 10),
-                                                       _dt.date(2022, 10, 3)]))
+                           index=_pd.to_datetime([_dt.date(2022, 10, 24),
+                                                  _dt.date(2022, 10, 17),
+                                                  _dt.date(2022, 10, 10),
+                                                  _dt.date(2022, 10, 3)]))
         df = df.sort_index()
         df.index.name = "Date"
         df_bad = df.copy()
@@ -590,17 +592,16 @@ class TestPriceRepair(unittest.TestCase):
 
         # Run test
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
             try:
                 self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
-            except:
+            except AssertionError:
                 print(df[c])
                 print(df_repaired[c])
                 raise
-
 
         # Second test - all differences should be either ~1x or ~100x
         ratio = df_bad[data_cols].values / df[data_cols].values
@@ -624,16 +625,16 @@ class TestPriceRepair(unittest.TestCase):
         tz_exchange = dat.fast_info["timezone"]
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
-        df = _pd.DataFrame(data={"Open":      [400,   398,    392.5,   417],
-                                 "High":      [421,   425,    419,     420.5],
-                                 "Low":       [400,   380.5,  376.5,   396],
-                                 "Close":     [410,   409.5,  402,     399],
-                                 "Adj Close": [398.02, 397.53, 390.25, 387.34],
+        df = _pd.DataFrame(data={"Open":      [400,    398,    392.5,  417],
+                                 "High":      [421,    425,    419,    420.5],
+                                 "Low":       [400,    380.5,  376.5,  396],
+                                 "Close":     [410,    409.5,  402,    399],
+                                 "Adj Close": [393.91, 393.43, 386.22, 383.34],
                                  "Volume": [3232600, 3773900, 10835000, 4257900]},
-                                index=_pd.to_datetime([_dt.date(2020, 3, 30),
-                                                       _dt.date(2020, 3, 23),
-                                                       _dt.date(2020, 3, 16),
-                                                       _dt.date(2020, 3, 9)]))
+                           index=_pd.to_datetime([_dt.date(2020, 3, 30),
+                                                  _dt.date(2020, 3, 23),
+                                                  _dt.date(2020, 3, 16),
+                                                  _dt.date(2020, 3, 9)]))
         df = df.sort_index()
         # Simulate data missing split-adjustment:
         df[data_cols] *= 100.0
@@ -648,13 +649,13 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False, silent=True)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
             try:
                 self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
-            except:
+            except AssertionError:
                 print("Mismatch in column", c)
                 print("- df_repaired:")
                 print(df_repaired[c])
@@ -688,10 +689,10 @@ class TestPriceRepair(unittest.TestCase):
                                  "Close":     [475.5,  475.5, 474.5, 475],
                                  "Adj Close": [475.5,  475.5, 474.5, 475],
                                  "Volume": [436414, 485947, 358067, 287620]},
-                            index=_pd.to_datetime([_dt.date(2022, 11, 1),
-                                                   _dt.date(2022, 10, 31),
-                                                   _dt.date(2022, 10, 28),
-                                                   _dt.date(2022, 10, 27)]))
+                           index=_pd.to_datetime([_dt.date(2022, 11, 1),
+                                                  _dt.date(2022, 10, 31),
+                                                  _dt.date(2022, 10, 28),
+                                                  _dt.date(2022, 10, 27)]))
         df = df.sort_index()
         df.index.name = "Date"
         df_bad = df.copy()
@@ -701,7 +702,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False, silent=True)
+        df_repaired = dat._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -725,46 +726,55 @@ class TestPriceRepair(unittest.TestCase):
         # Some 100x errors are not sporadic.
         # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
 
-        tkr = "SSW.JO"
-        dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
+        tkrs = ['AET.L', 'SSW.JO']
+        for tkr in tkrs:
+            for interval in ['1d', '1wk']:
+                dat = yf.Ticker(tkr, session=self.session)
+                tz_exchange = dat.fast_info["timezone"]
 
-        data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
-        _dp = os.path.dirname(__file__)
-        df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-100x-error.csv"), index_col="Date")
-        df_bad.index = _pd.to_datetime(df_bad.index)
-        df_bad = df_bad.sort_index()
+                data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
+                _dp = os.path.dirname(__file__)
+                fp = os.path.join(_dp, "data", tkr.replace('.','-') + '-' + interval + "-100x-error.csv")
+                if not os.path.isfile(fp):
+                    continue
+                df_bad = _pd.read_csv(fp, index_col="Date")
+                df_bad.index = _pd.to_datetime(df_bad.index, utc=True).tz_convert(tz_exchange)
+                df_bad = df_bad.sort_index()
 
-        df = df_bad.copy()
-        for d in data_cols:
-            df.loc[:'2023-05-31', d] *= 0.01  # fix error
+                df = df_bad.copy()
+                fp = os.path.join(_dp, "data", tkr.replace('.','-') + '-' + interval + "-100x-error-fixed.csv")
+                df = _pd.read_csv(fp, index_col="Date")
+                df.index = _pd.to_datetime(df.index, utc=True).tz_convert(tz_exchange)
+                df = df.sort_index()
 
-        df_repaired = dat._fix_unit_switch(df_bad, "1d", tz_exchange)
-        df_repaired = df_repaired.sort_index()
+                df_repaired = dat._fix_unit_switch(df_bad, interval, tz_exchange)
+                df_repaired = df_repaired.sort_index()
 
-        # First test - no errors left
-        for c in data_cols:
-            try:
-                self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
-            except:
-                print(df_repaired[c])
-                print(df[c])
-                print(f"TEST FAIL on column '{c}")
-                raise
+                # First test - no errors left
+                for c in data_cols:
+                    try:
+                        self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
+                    except:
+                        print("- repaired:")
+                        print(df_repaired[c])
+                        print("- correct:")
+                        print(df[c])
+                        print(f"TEST FAIL on column '{c}' (tkr={tkr} interval={interval})")
+                        raise
 
-        # Second test - all differences should be either ~1x or ~100x
-        ratio = df_bad[data_cols].values / df[data_cols].values
-        ratio = ratio.round(2)
-        # - round near-100 ratio to 100:
-        f = ratio > 90
-        ratio[f] = (ratio[f] / 10).round().astype(int) * 10  # round ratio to nearest 10
-        # - now test
-        f_100 = ratio == 100
-        f_1 = ratio == 1
-        self.assertTrue((f_100 | f_1).all())
+                # Second test - all differences should be either ~1x or ~100x
+                ratio = df_bad[data_cols].values / df[data_cols].values
+                ratio = ratio.round(2)
+                # - round near-100 ratio to 100:
+                f = ratio > 90
+                ratio[f] = (ratio[f] / 10).round().astype(int) * 10  # round ratio to nearest 10
+                # - now test
+                f_100 = (ratio == 100) | (ratio == 0.01)
+                f_1 = ratio == 1
+                self.assertTrue((f_100 | f_1).all())
 
-        self.assertTrue("Repaired?" in df_repaired.columns)
-        self.assertFalse(df_repaired["Repaired?"].isna().any())
+                self.assertTrue("Repaired?" in df_repaired.columns)
+                self.assertFalse(df_repaired["Repaired?"].isna().any())
 
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
@@ -777,9 +787,9 @@ class TestPriceRepair(unittest.TestCase):
                                      "Close":     [103.03, 102.05, 102.08],
                                      "Adj Close": [102.03, 102.05, 102.08],
                                      "Volume": [560, 137, 117]},
-                                index=_pd.to_datetime([_dt.datetime(2022, 11, 1),
-                                                       _dt.datetime(2022, 10, 31),
-                                                       _dt.datetime(2022, 10, 30)]))
+                               index=_pd.to_datetime([_dt.datetime(2022, 11, 1),
+                                                      _dt.datetime(2022, 10, 31),
+                                                      _dt.datetime(2022, 10, 30)]))
         df_bad = df_bad.sort_index()
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
@@ -808,11 +818,11 @@ class TestPriceRepair(unittest.TestCase):
                                  "Adj Close": [28.12, 28.93, 28.57, 29.83, 29.70],
                                  "Volume":    [36e6, 51e6, 49e6, 58e6, 62e6],
                                  "Dividends": [0, 0, 0.365, 0, 0]},
-                                index=_pd.to_datetime([_dt.datetime(2023, 2, 8),
-                                                       _dt.datetime(2023, 2, 7),
-                                                       _dt.datetime(2023, 2, 6),
-                                                       _dt.datetime(2023, 2, 3),
-                                                       _dt.datetime(2023, 2, 2)]))
+                           index=_pd.to_datetime([_dt.datetime(2023, 2, 8),
+                                                  _dt.datetime(2023, 2, 7),
+                                                  _dt.datetime(2023, 2, 6),
+                                                  _dt.datetime(2023, 2, 3),
+                                                  _dt.datetime(2023, 2, 2)]))
         df = df.sort_index()
         df.index.name = "Date"
         dat = yf.Ticker(tkr, session=self.session)
@@ -853,7 +863,7 @@ class TestPriceRepair(unittest.TestCase):
         for c in ["Open", "Low", "High", "Close"]:
             try:
                 self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-7).all())
-            except:
+            except AssertionError:
                 print("COLUMN", c)
                 print("- repaired_df")
                 print(repaired_df)
@@ -867,35 +877,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_bad_stock_split(self):
-        bad_tkrs = ['4063.T', 'ALPHA.PA', 'CNE.L', 'MOB.ST', 'SPM.MI']
-        for tkr in bad_tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
-            tz_exchange = dat.fast_info["timezone"]
-
-            _dp = os.path.dirname(__file__)
-            df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split.csv"), index_col="Date")
-            df_bad.index = _pd.to_datetime(df_bad.index)
-
-            repaired_df = dat._fix_bad_stock_split(df_bad, "1d", tz_exchange)
-
-            correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-bad-stock-split-fixed.csv"), index_col="Date")
-            correct_df.index = _pd.to_datetime(correct_df.index)
-
-            repaired_df = repaired_df.sort_index()
-            correct_df = correct_df.sort_index()
-            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
-                try:
-                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
-                except:
-                    print(f"tkr={tkr} COLUMN={c}")
-                    print("- repaired_df")
-                    print(repaired_df)
-                    print("- correct_df[c]:")
-                    print(correct_df[c])
-                    print("- diff:")
-                    print(repaired_df[c] - correct_df[c])
-                    raise
-
         # Stocks that split in 2022 but no problems in Yahoo data, 
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
@@ -908,7 +889,7 @@ class TestPriceRepair(unittest.TestCase):
                 tz_exchange = dat.fast_info["timezone"]
 
                 _dp = os.path.dirname(__file__)
-                df_good = dat.history(period='2y', interval=interval, auto_adjust=False)
+                df_good = dat.history(start='2020-01-01', end=_dt.date.today(), interval=interval, auto_adjust=False)
 
                 repaired_df = dat._fix_bad_stock_split(df_good, interval, tz_exchange)
 
@@ -924,6 +905,100 @@ class TestPriceRepair(unittest.TestCase):
                         f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
                         print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
                         raise
+
+        bad_tkrs = ['4063.T', 'ALPHA.PA', 'AV.L', 'CNE.L', 'MOB.ST', 'SPM.MI']
+        bad_tkrs.append('LA.V')  # special case - stock split error is 3 years ago! why not fixed?
+        for tkr in bad_tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            tz_exchange = dat.fast_info["timezone"]
+
+            _dp = os.path.dirname(__file__)
+            interval = '1d'
+            fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split.csv")
+            if not os.path.isfile(fp):
+                interval = '1wk'
+                fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split.csv")
+            df_bad = _pd.read_csv(fp, index_col="Date")
+            df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
+
+            repaired_df = dat._fix_bad_stock_split(df_bad, "1d", tz_exchange)
+
+            fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split-fixed.csv")
+            correct_df = _pd.read_csv(fp, index_col="Date")
+            correct_df.index = _pd.to_datetime(correct_df.index)
+
+            repaired_df = repaired_df.sort_index()
+            correct_df = correct_df.sort_index()
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+                except AssertionError:
+                    print(f"tkr={tkr} COLUMN={c}")
+                    # print("- repaired_df")
+                    # print(repaired_df)
+                    # print("- correct_df[c]:")
+                    # print(correct_df[c])
+                    # print("- diff:")
+                    # print(repaired_df[c] - correct_df[c])
+                    raise
+
+        # Had very high price volatility in Jan-2021 around split date that could 
+        # be mistaken for missing stock split adjustment. And old logic did think 
+        # column 'High' required fixing - wrong!
+        sketchy_tkrs = ['FIZZ']
+        intervals = ['1wk']
+        for tkr in sketchy_tkrs:
+            for interval in intervals:
+                dat = yf.Ticker(tkr, session=self.session)
+                tz_exchange = dat.fast_info["timezone"]
+
+                _dp = os.path.dirname(__file__)
+                df_good = dat.history(start='2020-11-30', end='2021-04-01', interval=interval, auto_adjust=False)
+
+                repaired_df = dat._fix_bad_stock_split(df_good, interval, tz_exchange)
+
+                # Expect no change from repair
+                df_good = df_good.sort_index()
+                repaired_df = repaired_df.sort_index()
+                for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                    try:
+                        self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
+                    except AssertionError:
+                        print(f"tkr={tkr} interval={interval} COLUMN={c}")
+                        df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
+                        f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
+                        print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
+                        raise
+
+    def test_repair_missing_div_adjust(self):
+        tkr = '8TRA.DE'
+
+        dat = yf.Ticker(tkr, session=self.session)
+        tz_exchange = dat.fast_info["timezone"]
+
+        _dp = os.path.dirname(__file__)
+        df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust.csv"), index_col="Date")
+        df_bad.index = _pd.to_datetime(df_bad.index)
+
+        repaired_df = dat._fix_missing_div_adjust(df_bad, "1d", tz_exchange)
+
+        correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust-fixed.csv"), index_col="Date")
+        correct_df.index = _pd.to_datetime(correct_df.index)
+
+        repaired_df = repaired_df.sort_index()
+        correct_df = correct_df.sort_index()
+        for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+            try:
+                self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+            except:
+                print(f"tkr={tkr} COLUMN={c}")
+                print("- repaired_df")
+                print(repaired_df)
+                print("- correct_df[c]:")
+                print(correct_df[c])
+                print("- diff:")
+                print(repaired_df[c] - correct_df[c])
+                raise
 
 
 if __name__ == '__main__':

@@ -21,28 +21,31 @@
 
 from __future__ import print_function
 
-from yfinance import const
+import atexit as _atexit
 
 import datetime as _datetime
-import dateutil as _dateutil
+import logging
+import os as _os
+import re as _re
+import sqlite3 as _sqlite3
+import sys as _sys
+import threading
+from functools import lru_cache
+from inspect import getmembers
+from threading import Lock
+from types import FunctionType
 from typing import Dict, Union, List, Optional
 
+import appdirs as _ad
+import numpy as _np
+import pandas as _pd
 import pytz as _tz
 import requests as _requests
-import re as _re
-import pandas as _pd
-import numpy as _np
-import sys as _sys
-import os as _os
-import appdirs as _ad
-import sqlite3 as _sqlite3
-import atexit as _atexit
-from functools import lru_cache
-import logging
-
-from threading import Lock
-
+from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
+
+from yfinance import const
+from .const import _BASE_URL_
 
 try:
     import ujson as _json
@@ -54,14 +57,12 @@ user_agent_headers = {
 
 
 # From https://stackoverflow.com/a/59128615
-from types import FunctionType
-from inspect import getmembers
 def attributes(obj):
     disallowed_names = {
-      name for name, value in getmembers(type(obj)) 
+        name for name, value in getmembers(type(obj))
         if isinstance(value, FunctionType)}
     return {
-      name: getattr(obj, name) for name in dir(obj) 
+        name: getattr(obj, name) for name in dir(obj)
         if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
 
 
@@ -72,7 +73,7 @@ def print_once(msg):
     print(msg)
 
 
-## Logging
+# Logging
 # Note: most of this logic is adding indentation with function depth,
 #       so that DEBUG log is readable.
 class IndentLoggerAdapter(logging.LoggerAdapter):
@@ -84,19 +85,25 @@ class IndentLoggerAdapter(logging.LoggerAdapter):
             msg = '\n'.join([i + m for m in msg.split('\n')])
         return msg, kwargs
 
-import threading
+
 _indentation_level = threading.local()
+
+
 class IndentationContext:
     def __init__(self, increment=1):
         self.increment = increment
+
     def __enter__(self):
         _indentation_level.indent = getattr(_indentation_level, 'indent', 0) + self.increment
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         _indentation_level.indent -= self.increment
+
 
 def get_indented_logger(name=None):
     # Never cache the returned value! Will break indentation.
     return IndentLoggerAdapter(logging.getLogger(name), {'indent': getattr(_indentation_level, 'indent', 0)})
+
 
 def log_indent_decorator(func):
     def wrapper(*args, **kwargs):
@@ -110,6 +117,7 @@ def log_indent_decorator(func):
         return result
 
     return wrapper
+
 
 class MultiLineFormatter(logging.Formatter):
     # The 'fmt' formatting further down is only applied to first line
@@ -138,8 +146,11 @@ class MultiLineFormatter(logging.Formatter):
             formatted.extend(padding + line for line in lines[1:])
             return '\n'.join(formatted)
 
+
 yf_logger = None
 yf_log_indented = False
+
+
 def get_yf_logger():
     global yf_logger
     if yf_logger is None:
@@ -148,6 +159,7 @@ def get_yf_logger():
     if yf_log_indented:
         yf_logger = get_indented_logger('yfinance')
     return yf_logger
+
 
 def setup_debug_formatting():
     global yf_logger
@@ -167,24 +179,21 @@ def setup_debug_formatting():
     global yf_log_indented
     yf_log_indented = True
 
+
 def enable_debug_mode():
     get_yf_logger().setLevel(logging.DEBUG)
     setup_debug_formatting()
-    
-##
 
 
 def is_isin(string):
-    return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9]{1})$", string))
+    return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9])$", string))
 
 
 def get_all_by_isin(isin, proxy=None, session=None):
     if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
-
-    from .base import _BASE_URL_
     session = session or _requests
-    url = "{}/v1/finance/search?q={}".format(_BASE_URL_, isin)
+    url = f"{_BASE_URL_}/v1/finance/search?q={isin}"
     data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
     try:
         data = data.json()
@@ -236,7 +245,7 @@ def empty_earnings_dates_df():
 
 
 def build_template(data):
-    '''
+    """
     build_template returns the details required to rebuild any of the yahoo finance financial statements in the same order as the yahoo finance webpage. The function is built to be used on the "FinancialTemplateStore" json which appears in any one of the three yahoo finance webpages: "/financials", "/cash-flow" and "/balance-sheet".
 
     Returns:
@@ -245,95 +254,80 @@ def build_template(data):
         - template_order: The order that quarterlies should be in (note that quarterlies have no pre-fix - hence why this is required).
         - level_detail: The level of each individual line item. E.g. for the "/financials" webpage, "Total Revenue" is a level 0 item and is the summation of "Operating Revenue" and "Excise Taxes" which are level 1 items.
 
-    '''
+    """
     template_ttm_order = []  # Save the TTM (Trailing Twelve Months) ordering to an object.
     template_annual_order = []  # Save the annual ordering to an object.
     template_order = []  # Save the ordering to an object (this can be utilized for quarterlies)
     level_detail = []  # Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
-    for key in data['template']:
-        # Loop through the json to retreive the exact financial order whilst appending to the objects
-        template_ttm_order.append('trailing{}'.format(key['key']))
-        template_annual_order.append('annual{}'.format(key['key']))
-        template_order.append('{}'.format(key['key']))
-        level_detail.append(0)
-        if 'children' in key:
-            for child1 in key['children']:  # Level 1
-                template_ttm_order.append('trailing{}'.format(child1['key']))
-                template_annual_order.append('annual{}'.format(child1['key']))
-                template_order.append('{}'.format(child1['key']))
-                level_detail.append(1)
-                if 'children' in child1:
-                    for child2 in child1['children']:  # Level 2
-                        template_ttm_order.append('trailing{}'.format(child2['key']))
-                        template_annual_order.append('annual{}'.format(child2['key']))
-                        template_order.append('{}'.format(child2['key']))
-                        level_detail.append(2)
-                        if 'children' in child2:
-                            for child3 in child2['children']:  # Level 3
-                                template_ttm_order.append('trailing{}'.format(child3['key']))
-                                template_annual_order.append('annual{}'.format(child3['key']))
-                                template_order.append('{}'.format(child3['key']))
-                                level_detail.append(3)
-                                if 'children' in child3:
-                                    for child4 in child3['children']:  # Level 4
-                                        template_ttm_order.append('trailing{}'.format(child4['key']))
-                                        template_annual_order.append('annual{}'.format(child4['key']))
-                                        template_order.append('{}'.format(child4['key']))
-                                        level_detail.append(4)
-                                        if 'children' in child4:
-                                            for child5 in child4['children']:  # Level 5
-                                                template_ttm_order.append('trailing{}'.format(child5['key']))
-                                                template_annual_order.append('annual{}'.format(child5['key']))
-                                                template_order.append('{}'.format(child5['key']))
-                                                level_detail.append(5)
+
+    def traverse(node, level):
+        """
+        A recursive function that visits a node and its children.
+
+        Args:
+            node: The current node in the data structure.
+            level: The depth of the current node in the data structure.
+        """
+        if level > 5:  # Stop when level is above 5
+            return
+        template_ttm_order.append(f"trailing{node['key']}")
+        template_annual_order.append(f"annual{node['key']}")
+        template_order.append(f"{node['key']}")
+        level_detail.append(level)
+        if 'children' in node:  # Check if the node has children
+            for child in node['children']:  # If yes, traverse each child
+                traverse(child, level + 1)  # Increment the level by 1 for each child
+
+    for key in data['template']:  # Loop through the data
+        traverse(key, 0)  # Call the traverse function with initial level being 0
+
     return template_ttm_order, template_annual_order, template_order, level_detail
 
 
-def retreive_financial_details(data):
-    '''
-    retreive_financial_details returns all of the available financial details under the "QuoteTimeSeriesStore" for any of the following three yahoo finance webpages: "/financials", "/cash-flow" and "/balance-sheet".
+def retrieve_financial_details(data):
+    """
+    retrieve_financial_details returns all of the available financial details under the
+    "QuoteTimeSeriesStore" for any of the following three yahoo finance webpages:
+    "/financials", "/cash-flow" and "/balance-sheet".
 
     Returns:
         - TTM_dicts: A dictionary full of all of the available Trailing Twelve Month figures, this can easily be converted to a pandas dataframe.
         - Annual_dicts: A dictionary full of all of the available Annual figures, this can easily be converted to a pandas dataframe.
-    '''
+    """
     TTM_dicts = []  # Save a dictionary object to store the TTM financials.
     Annual_dicts = []  # Save a dictionary object to store the Annual financials.
-    for key in data['timeSeries']:  # Loop through the time series data to grab the key financial figures.
+
+    for key, timeseries in data.get('timeSeries', {}).items():  # Loop through the time series data to grab the key financial figures.
         try:
-            if len(data['timeSeries'][key]) > 0:
-                time_series_dict = {}
-                time_series_dict['index'] = key
-                for each in data['timeSeries'][key]:  # Loop through the years
-                    if each == None:
+            if timeseries:
+                time_series_dict = {'index': key}
+                for each in timeseries:  # Loop through the years
+                    if not each:
                         continue
-                    else:
-                        time_series_dict[each['asOfDate']] = each['reportedValue']
-                    # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
+                    time_series_dict[each.get('asOfDate')] = each.get('reportedValue')
                 if 'trailing' in key:
                     TTM_dicts.append(time_series_dict)
                 elif 'annual' in key:
                     Annual_dicts.append(time_series_dict)
-        except Exception as e:
-            pass
+        except KeyError as e:
+            print(f"An error occurred while processing the key: {e}")
     return TTM_dicts, Annual_dicts
 
 
 def format_annual_financial_statement(level_detail, annual_dicts, annual_order, ttm_dicts=None, ttm_order=None):
-    '''
+    """
     format_annual_financial_statement formats any annual financial statement
 
     Returns:
         - _statement: A fully formatted annual financial statement in pandas dataframe.
-    '''
+    """
     Annual = _pd.DataFrame.from_dict(annual_dicts).set_index("index")
     Annual = Annual.reindex(annual_order)
     Annual.index = Annual.index.str.replace(r'annual', '')
 
     # Note: balance sheet is the only financial statement with no ttm detail
-    if (ttm_dicts not in [[], None]) and (ttm_order not in [[], None]):
-        TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index")
-        TTM = TTM.reindex(ttm_order)
+    if ttm_dicts and ttm_order:
+        TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index").reindex(ttm_order)
         # Add 'TTM' prefix to all column names, so if combined we can tell
         # the difference between actuals and TTM (similar to yahoo finance).
         TTM.columns = ['TTM ' + str(col) for col in TTM.columns]
@@ -351,12 +345,12 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
 
 
 def format_quarterly_financial_statement(_statement, level_detail, order):
-    '''
+    """
     format_quarterly_financial_statements formats any quarterly financial statement
 
     Returns:
         - _statement: A fully formatted quarterly financial statement in pandas dataframe.
-    '''
+    """
     _statement = _statement.reindex(order)
     _statement.index = camel2title(_statement.T)
     _statement['level_detail'] = level_detail
@@ -407,7 +401,7 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
 
     # Apply str.title() to non-acronym words
     strings = [s.split(sep) for s in strings]
-    strings = [[j.title() if not j in acronyms else j for j in s] for s in strings]
+    strings = [[j.title() if j not in acronyms else j for j in s] for s in strings]
     strings = [sep.join(s) for s in strings]
 
     return strings
@@ -437,14 +431,14 @@ def _parse_user_dt(dt, exchange_tz):
 
 def _interval_to_timedelta(interval):
     if interval == "1mo":
-        return _dateutil.relativedelta.relativedelta(months=1)
+        return relativedelta(months=1)
     elif interval == "3mo":
-        return _dateutil.relativedelta.relativedelta(months=3)
+        return relativedelta(months=3)
     elif interval == "1y":
-        return _dateutil.relativedelta.relativedelta(years=1)
+        return relativedelta(years=1)
     elif interval == "1wk":
         return _pd.Timedelta(days=7)
-    else: 
+    else:
         return _pd.Timedelta(interval)
 
 
@@ -544,8 +538,7 @@ def parse_actions(data):
             splits.set_index("date", inplace=True)
             splits.index = _pd.to_datetime(splits.index, unit="s")
             splits.sort_index(inplace=True)
-            splits["Stock Splits"] = splits["numerator"] / \
-                                     splits["denominator"]
+            splits["Stock Splits"] = splits["numerator"] / splits["denominator"]
             splits = splits[["Stock Splits"]]
 
     if dividends is None:
@@ -624,7 +617,7 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
             elif interval == "3mo":
                 last_rows_same_interval = dt1.year == dt2.year and dt1.quarter == dt2.quarter
             else:
-                last_rows_same_interval = (dt1-dt2) < _pd.Timedelta(interval)
+                last_rows_same_interval = (dt1 - dt2) < _pd.Timedelta(interval)
 
             if last_rows_same_interval:
                 # Last two rows are within same interval
@@ -680,12 +673,12 @@ def safe_merge_dfs(df_main, df_sub, interval):
         df_main = df_main.drop('_date', axis=1)
         df_sub = df_sub.drop('_date', axis=1)
     else:
-        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
         # Numpy.searchsorted does not handle out-of-range well, so handle manually:
         for i in range(len(df_sub.index)):
             dt = df_sub.index[i]
-            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
                 # Out-of-range
                 indices[i] = -1
 
@@ -707,7 +700,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             next_interval_end_dt = next_interval_start_dt + td
             for i in _np.where(f_outOfRange)[0]:
                 dt = df_sub.index[i]
-                if dt >= next_interval_start_dt and dt < next_interval_end_dt:
+                if next_interval_start_dt <= dt < next_interval_end_dt:
                     new_dt = next_interval_start_dt
                     get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
                     empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
@@ -715,12 +708,12 @@ def safe_merge_dfs(df_main, df_sub, interval):
         df_main = df_main.sort_index()
 
         # Re-calculate indices
-        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1]+td), df_sub.index, side='right')
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
         # Numpy.searchsorted does not handle out-of-range well, so handle manually:
         for i in range(len(df_sub.index)):
             dt = df_sub.index[i]
-            if dt < df_main.index[0] or dt >= df_main.index[-1]+td:
+            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
                 # Out-of-range
                 indices[i] = -1
 
@@ -749,10 +742,11 @@ def safe_merge_dfs(df_main, df_sub, interval):
             df = df.groupby("_NewIndex").prod()
             df.index.name = None
         else:
-            raise Exception("New index contains duplicates but unsure how to aggregate for '{}'".format(data_col_name))
+            raise Exception(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
+
     new_index = df_main.index[indices]
     df_sub = _reindex_events(df_sub, new_index, data_col)
 
@@ -811,7 +805,7 @@ def format_history_metadata(md, tradingPeriodsOnly=True):
 
     if "tradingPeriods" in md:
         tps = md["tradingPeriods"]
-        if tps == {"pre":[], "post":[]}:
+        if tps == {"pre": [], "post": []}:
             # Ignore
             pass
         elif isinstance(tps, (list, dict)):
@@ -827,8 +821,8 @@ def format_history_metadata(md, tradingPeriodsOnly=True):
                 post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
                 regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
 
-                pre_df = pre_df.rename(columns={"start":"pre_start", "end":"pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
-                post_df = post_df.rename(columns={"start":"post_start", "end":"post_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                pre_df = pre_df.rename(columns={"start": "pre_start", "end": "pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                post_df = post_df.rename(columns={"start": "post_start", "end": "post_end"}).drop(["timezone", "gmtoffset"], axis=1)
                 regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
 
                 cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
@@ -844,6 +838,7 @@ def format_history_metadata(md, tradingPeriodsOnly=True):
             md["tradingPeriods"] = df
 
     return md
+
 
 class ProgressBar:
     def __init__(self, iterations, text='completed'):
@@ -877,19 +872,16 @@ class ProgressBar:
     def update_iteration(self, val=None):
         val = val if val is not None else self.elapsed / float(self.iterations)
         self.__update_amount(val * 100.0)
-        self.prog_bar += '  %s of %s %s' % (
-            self.elapsed, self.iterations, self.text)
+        self.prog_bar += f"  {self.elapsed} of {self.iterations} {self.text}"
 
     def __update_amount(self, new_amount):
         percent_done = int(round((new_amount / 100.0) * 100.0))
         all_full = self.width - 2
         num_hashes = int(round((percent_done / 100.0) * all_full))
-        self.prog_bar = '[' + self.fill_char * \
-                        num_hashes + ' ' * (all_full - num_hashes) + ']'
+        self.prog_bar = '[' + self.fill_char * num_hashes + ' ' * (all_full - num_hashes) + ']'
         pct_place = (len(self.prog_bar) // 2) - len(str(percent_done))
-        pct_string = '%d%%' % percent_done
-        self.prog_bar = self.prog_bar[0:pct_place] + \
-                        (pct_string + self.prog_bar[pct_place + len(pct_string):])
+        pct_string = f'{percent_done}%%'
+        self.prog_bar = self.prog_bar[0:pct_place] + (pct_string + self.prog_bar[pct_place + len(pct_string):])
 
     def __str__(self):
         return str(self.prog_bar)
@@ -900,7 +892,7 @@ class ProgressBar:
 # ---------------------------------
 
 class _KVStore:
-    """Simpel Sqlite backed key/value store, key and value are strings. Should be thread safe."""
+    """Simple Sqlite backed key/value store, key and value are strings. Should be thread safe."""
 
     def __init__(self, filename):
         self._cache_mutex = Lock()
@@ -967,8 +959,7 @@ class _TzCache:
         try:
             self._tz_db = _KVStore(_os.path.join(self._db_dir, "tkr-tz.db"))
         except _sqlite3.DatabaseError as err:
-            raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
-                                    .format(self._db_dir, err))
+            raise _TzCacheException(f"Error creating TzCache folder: '{self._db_dir}' reason: {err}")
         self._migrate_cache_tkr_tz()
 
     def _setup_cache_folder(self):
@@ -976,12 +967,10 @@ class _TzCache:
             try:
                 _os.makedirs(self._db_dir)
             except OSError as err:
-                raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
-                                        .format(self._db_dir, err))
+                raise _TzCacheException(f"Error creating TzCache folder: '{self._db_dir}' reason: {err}")
 
         elif not (_os.access(self._db_dir, _os.R_OK) and _os.access(self._db_dir, _os.W_OK)):
-            raise _TzCacheException("Cannot read and write in TzCache folder: '{}'"
-                                    .format(self._db_dir, ))
+            raise _TzCacheException(f"Cannot read and write in TzCache folder: '{self._db_dir}'")
 
     def lookup(self, tkr):
         return self.tz_db.get(tkr)
@@ -1022,7 +1011,7 @@ class _TzCache:
         else:
             # Discard corrupt data:
             df = df[~df["Tz"].isna().to_numpy()]
-            df = df[~(df["Tz"]=='').to_numpy()]
+            df = df[~(df["Tz"] == '').to_numpy()]
             df = df[~df.index.isna()]
             if not df.empty:
                 try:
@@ -1061,10 +1050,9 @@ def get_tz_cache():
             try:
                 _tz_cache = _TzCache()
             except _TzCacheException as err:
-                get_yf_logger().info("Failed to create TzCache, reason: %s. "
-                                 "TzCache will not be used. "
-                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'",
-                                 err)
+                get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
+                                     "TzCache will not be used. "
+                                     "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
                 _tz_cache = _TzCacheDummy()
 
         return _tz_cache

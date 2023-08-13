@@ -1,10 +1,11 @@
 import datetime
-import logging
 import json
+import logging
 import warnings
+from collections.abc import MutableMapping
 
-import pandas as pd
 import numpy as _np
+import pandas as pd
 
 from yfinance import utils
 from yfinance.data import TickerData
@@ -22,7 +23,7 @@ info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_
 
 _BASIC_URL_ = "https://query2.finance.yahoo.com/v6/finance/quoteSummary"
 
-from collections.abc import MutableMapping
+
 class InfoDictWrapper(MutableMapping):
     """ Simple wrapper around info dict, intercepting 'gets' to 
     print how-to-migrate messages for specific keys. Requires
@@ -126,12 +127,12 @@ class FastInfo:
 
         # Because released before fixing key case, need to officially support 
         # camel-case but also secretly support snake-case
-        base_keys = [k for k in _properties if not '_' in k]
+        base_keys = [k for k in _properties if '_' not in k]
 
         sc_keys = [k for k in _properties if '_' in k]
 
-        self._sc_to_cc_key = {k:utils.snake_case_2_camelCase(k) for k in sc_keys}
-        self._cc_to_sc_key = {v:k for k,v in self._sc_to_cc_key.items()}
+        self._sc_to_cc_key = {k: utils.snake_case_2_camelCase(k) for k in sc_keys}
+        self._cc_to_sc_key = {v: k for k, v in self._sc_to_cc_key.items()}
  
         self._public_keys = sorted(base_keys + list(self._sc_to_cc_key.values()))
         self._keys = sorted(self._public_keys + sc_keys)
@@ -139,37 +140,44 @@ class FastInfo:
     # dict imitation:
     def keys(self):
         return self._public_keys
+
     def items(self):
-        return [(k,self[k]) for k in self._public_keys]
+        return [(k, self[k]) for k in self._public_keys]
+
     def values(self):
         return [self[k] for k in self._public_keys]
+
     def get(self, key, default=None):
         if key in self.keys():
             if key in self._cc_to_sc_key:
                 key = self._cc_to_sc_key[key]
             return self[key]
         return default
+
     def __getitem__(self, k):
         if not isinstance(k, str):
             raise KeyError(f"key must be a string")
-        if not k in self._keys:
+        if k not in self._keys:
             raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
         if k in self._cc_to_sc_key:
             k = self._cc_to_sc_key[k]
         return getattr(self, k)
+
     def __contains__(self, k):
         return k in self.keys()
+
     def __iter__(self):
         return iter(self.keys())
 
     def __str__(self):
         return "lazy-loading dict with keys = " + str(self.keys())
+
     def __repr__(self):
         return self.__str__()
 
     def toJSON(self, indent=4):
-        d = {k:self[k] for k in self.keys()}
-        return _json.dumps({k:self[k] for k in self.keys()}, indent=indent)
+        d = {k: self[k] for k in self.keys()}
+        return json.dumps({k: self[k] for k in self.keys()}, indent=indent)
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
@@ -183,7 +191,7 @@ class FastInfo:
                 self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
                 self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
                 self._today_midnight = self._today_close.ceil("D")
-            except:
+            except Exception:
                 self._today_open = None
                 self._today_close = None
                 self._today_midnight = None
@@ -588,9 +596,7 @@ class Quote:
             return
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
-        params_dict = {}
-        params_dict["modules"] = modules
-        params_dict["ssl"] = "true"
+        params_dict = {"modules": modules, "ssl": "true"}
         result = self._data.get_raw_json(
             _BASIC_URL_ + f"/{self._data.ticker}", params=params_dict, proxy=proxy
         )
@@ -612,13 +618,14 @@ class Quote:
             if v1
         }
         # recursively format but only because of 'companyOfficers'
+
         def _format(k, v):
             if isinstance(v, dict) and "raw" in v and "fmt" in v:
                 v2 = v["fmt"] if k in {"regularMarketTime", "postMarketTime"} else v["raw"]
             elif isinstance(v, list):
                 v2 = [_format(None, x) for x in v]
             elif isinstance(v, dict):
-                v2 = {k:_format(k, x) for k, x in v.items()}
+                v2 = {k: _format(k, x) for k, x in v.items()}
             elif isinstance(v, str):
                 v2 = v.replace("\xa0", " ")
             else:
@@ -663,8 +670,7 @@ class Quote:
             #     pass
             #
             # For just one/few variable is faster to query directly:
-            url = "https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{}?symbol={}".format(
-                self._data.ticker, self._data.ticker)
+            url = f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._data.ticker}?symbol={self._data.ticker}"
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data
