@@ -1703,9 +1703,9 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_analyst_price_target(self, proxy=None, as_dict=False):
+    def get_analyst_growth_estimates(self, proxy=None, as_dict=False):
         self._analysis.proxy = proxy
-        data = self._analysis.analyst_price_target
+        data = self._analysis.analyst_growth_estimates
         if as_dict:
             return data.to_dict()
         return data

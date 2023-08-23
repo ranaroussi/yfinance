@@ -192,7 +192,7 @@ class TestTicker(unittest.TestCase):
         self.assertIsNotNone(v)
         self.assertFalse(v.empty)
 
-        v = dat.get_analyst_price_target(proxy=self.proxy)
+        v = dat.get_analyst_growth_estimates(proxy=self.proxy)
         self.assertIsNotNone(v)
         self.assertFalse(v.empty)
 
@@ -450,6 +450,70 @@ class TestTickerHolders(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.mutualfund_holders
+        self.assertIs(data, data_cached, "data not cached")
+
+
+class TestTickerAnalysis(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = session_gbl
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def setUp(self):
+        self.ticker = yf.Ticker("GOOGL", session=self.session)
+
+    def tearDown(self):
+        self.ticker = None
+
+    def test_earnings_trend(self):
+        data = self.ticker.earnings_trend
+        print(data)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.earnings_trend
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_analyst_trend_details(self):
+        data = self.ticker.analyst_trend_details
+        print(data)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.analyst_trend_details
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_analyst_growth_estimates(self):
+        data = self.ticker.analyst_growth_estimates
+        print(data)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.analyst_growth_estimates
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_rev_est(self):
+        data = self.ticker.rev_est
+        print(data)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.rev_est
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_eps_est(self):
+        data = self.ticker.eps_est
+        print(data)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.eps_est
         self.assertIs(data, data_cached, "data not cached")
 
 
@@ -927,6 +991,7 @@ def suite():
     suite.addTest(TestTicker('Test ticker'))
     suite.addTest(TestTickerEarnings('Test earnings'))
     suite.addTest(TestTickerHolders('Test holders'))
+    suite.addTest(TestTickerAnalysis('Test analysis'))
     suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
     suite.addTest(TestTickerInfo('Test info & fast_info'))
