@@ -628,22 +628,22 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                     # Yahoo is not returning live data (phew!)
                     return quotes
                 if _np.isnan(quotes.loc[idx2, "Open"]):
-                    quotes.loc[idx2, "Open"] = quotes["Open"][n - 1]
+                    quotes.loc[idx2, "Open"] = quotes["Open"].iloc[n - 1]
                 # Note: nanmax() & nanmin() ignores NaNs, but still need to check not all are NaN to avoid warnings
-                if not _np.isnan(quotes["High"][n - 1]):
-                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
+                if not _np.isnan(quotes["High"].iloc[n - 1]):
+                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[n - 1], quotes["High"].iloc[n - 2]])
                     if "Adj High" in quotes.columns:
-                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
+                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[n - 1], quotes["Adj High"].iloc[n - 2]])
 
-                if not _np.isnan(quotes["Low"][n - 1]):
-                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                if not _np.isnan(quotes["Low"].iloc[n - 1]):
+                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[n - 1], quotes["Low"].iloc[n - 2]])
                     if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
+                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[n - 1], quotes["Adj Low"].iloc[n - 2]])
 
-                quotes.loc[idx2, "Close"] = quotes["Close"][n - 1]
+                quotes.loc[idx2, "Close"] = quotes["Close"].iloc[n - 1]
                 if "Adj Close" in quotes.columns:
-                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
-                quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
+                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[n - 1]
+                quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[n - 1]
                 quotes = quotes.drop(quotes.index[n - 1])
 
     return quotes
