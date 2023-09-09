@@ -43,6 +43,13 @@ body:
         Provide the following as best you can:
 
   - type: textarea
+    id: summary
+    attributes:
+      label: "Describe bug"
+    validations:
+      required: true
+
+  - type: textarea
     id: code
     attributes:
       label: "Simple code that reproduces your problem"
