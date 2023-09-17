@@ -114,6 +114,43 @@ class TestPriceHistory(unittest.TestCase):
         if not test_run:
             self.skipTest("Skipping test_duplicatingWeekly() because not possible to fail Monday/weekend")
 
+    def test_pricesEventsMerge(self):
+        # Test case: dividend occurs after last row in price data
+        tkr = 'INTC'
+        start_d = _dt.date(2022, 1, 1)
+        end_d = _dt.date(2023, 1, 1)
+        df = yf.Ticker(tkr, session=self.session).history(interval='1d', start=start_d, end=end_d)
+        div = 1.0
+        future_div_dt = df.index[-1] + _dt.timedelta(days=1)
+        if future_div_dt.weekday() in [5, 6]:
+            future_div_dt += _dt.timedelta(days=1) * (7 - future_div_dt.weekday())
+        divs = _pd.DataFrame(data={"Dividends":[div]}, index=[future_div_dt])
+        df2 = yf.utils.safe_merge_dfs(df.drop(['Dividends', 'Stock Splits'], axis=1), divs, '1d')
+        self.assertIn(future_div_dt, df2.index)
+        self.assertIn("Dividends", df2.columns)
+        self.assertEqual(df2['Dividends'].iloc[-1], div)
+
+    def test_pricesEventsMerge_bug(self):
+        # Reproduce exception when merging intraday prices with future dividend
+        tkr = 'S32.AX'
+        interval = '30m'
+        df_index = []
+        d = 13
+        for h in range(0, 16):
+            for m in [0, 30]:
+                df_index.append(_dt.datetime(2023, 9, d, h, m))
+        df_index.append(_dt.datetime(2023, 9, d, 16))
+        df = _pd.DataFrame(index=df_index)
+        df.index = _pd.to_datetime(df.index)
+        df['Close'] = 1.0
+
+        div = 1.0
+        future_div_dt = _dt.datetime(2023, 9, 14, 10)
+        divs = _pd.DataFrame(data={"Dividends":[div]}, index=[future_div_dt])
+
+        df2 = yf.utils.safe_merge_dfs(df, divs, interval)
+        # No exception = test pass
+
     def test_intraDayWithEvents(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         test_run = False
