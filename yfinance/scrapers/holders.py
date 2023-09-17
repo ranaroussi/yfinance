@@ -65,3 +65,9 @@ class Holders:
             if '% Out' in self._mutualfund:
                 self._mutualfund['% Out'] = self._mutualfund[
                                                 '% Out'].str.replace('%', '').astype(float) / 100
+                
+    def get_insider_transaction_reported(ticker: yf.Ticker, proxy = None) -> pd.DataFrame:
+        url = f'https://finance.yahoo.com/quote/{ticker._data.ticker}/insider-transactions'
+        resp = ticker._data.cache_get(url, proxy)
+        insiders = pd.read_html(resp.text)
+        return insiders[2]
