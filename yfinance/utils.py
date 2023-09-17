@@ -650,8 +650,10 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    if df_sub.shape[0] == 0:
+    if df_sub.empty:
         raise Exception("No data to merge")
+    if df_main.empty:
+        return df_main
 
     df_sub_backup = df_sub.copy()
     data_cols = [c for c in df_sub.columns if c not in df_main]
@@ -675,47 +677,54 @@ def safe_merge_dfs(df_main, df_sub, interval):
     else:
         indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
-        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-        for i in range(len(df_sub.index)):
-            dt = df_sub.index[i]
-            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-                # Out-of-range
-                indices[i] = -1
+    # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+    for i in range(len(df_sub.index)):
+        dt = df_sub.index[i]
+        if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
+            # Out-of-range
+            indices[i] = -1
 
     f_outOfRange = indices == -1
-    if f_outOfRange.any() and not intraday:
-        empty_row_data = {c:[_np.nan] for c in const.price_colnames}|{'Volume':[0]}
-        if interval == '1d':
-            # For 1d, add all out-of-range event dates
-            for i in _np.where(f_outOfRange)[0]:
-                dt = df_sub.index[i]
-                get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
-                empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
-                df_main = _pd.concat([df_main, empty_row], sort=True)
+    if f_outOfRange.any():
+        if intraday:
+            # Discard out-of-range dividends in intraday data, assume user not interested
+            df_sub = df_sub[~f_outOfRange]
+            if df_sub.empty:
+                df_main['Dividends'] = 0.0
+                return df_main
         else:
-            # Else, only add out-of-range event dates if occurring in interval 
-            # immediately after last pricfe row
-            last_dt = df_main.index[-1]
-            next_interval_start_dt = last_dt + td
-            next_interval_end_dt = next_interval_start_dt + td
-            for i in _np.where(f_outOfRange)[0]:
-                dt = df_sub.index[i]
-                if next_interval_start_dt <= dt < next_interval_end_dt:
-                    new_dt = next_interval_start_dt
+            empty_row_data = {c:[_np.nan] for c in const.price_colnames}|{'Volume':[0]}
+            if interval == '1d':
+                # For 1d, add all out-of-range event dates
+                for i in _np.where(f_outOfRange)[0]:
+                    dt = df_sub.index[i]
                     get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
                     empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
                     df_main = _pd.concat([df_main, empty_row], sort=True)
-        df_main = df_main.sort_index()
+            else:
+                # Else, only add out-of-range event dates if occurring in interval 
+                # immediately after last price row
+                last_dt = df_main.index[-1]
+                next_interval_start_dt = last_dt + td
+                next_interval_end_dt = next_interval_start_dt + td
+                for i in _np.where(f_outOfRange)[0]:
+                    dt = df_sub.index[i]
+                    if next_interval_start_dt <= dt < next_interval_end_dt:
+                        new_dt = next_interval_start_dt
+                        get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+                        empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
+                        df_main = _pd.concat([df_main, empty_row], sort=True)
+            df_main = df_main.sort_index()
 
-        # Re-calculate indices
-        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
-        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
-        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-        for i in range(len(df_sub.index)):
-            dt = df_sub.index[i]
-            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-                # Out-of-range
-                indices[i] = -1
+            # Re-calculate indices
+            indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
+            indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+            # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+            for i in range(len(df_sub.index)):
+                dt = df_sub.index[i]
+                if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
+                    # Out-of-range
+                    indices[i] = -1
 
     f_outOfRange = indices == -1
     if f_outOfRange.any():
