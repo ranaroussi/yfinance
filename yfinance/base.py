@@ -2103,3 +2103,9 @@ class TickerBase:
             self._history_metadata_formatted = True
 
         return self._history_metadata
+
+    def get_insider_transactions(self, proxy=None):
+        if self._holders._insider_transactions is None:
+            self._holders._insider_transactions = self._holders.insider_transactions(self.ticker, proxy=proxy)
+            
+        return self._holders._insider_transactions

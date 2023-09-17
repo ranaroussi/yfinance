@@ -262,3 +262,7 @@ class Ticker(TickerBase):
     @property
     def history_metadata(self) -> dict:
         return self.get_history_metadata()
+    
+    @property
+    def insider_transactions(self) -> _pd.DataFrame:
+        return self.get_insider_transactions()
