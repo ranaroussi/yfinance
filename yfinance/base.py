@@ -1770,7 +1770,7 @@ class TickerBase:
                 Format row names nicely for readability
                 Default is False
             freq: str
-                "yearly" or "quarterly"
+                "yearly" or "quarterly" or "trailing"
                 Default is "yearly"
             proxy: str
                 Optional. Proxy server URL scheme
@@ -1833,7 +1833,7 @@ class TickerBase:
                 Format row names nicely for readability
                 Default is False
             freq: str
-                "yearly" or "quarterly"
+                "yearly" or "quarterly" or "trailing"
                 Default is "yearly"
             proxy: str
                 Optional. Proxy server URL scheme
