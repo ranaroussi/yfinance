@@ -62,7 +62,7 @@ setup(
     install_requires=['pandas>=1.3.0', 'numpy>=1.16.5',
                       'requests>=2.31', 'multitasking>=0.0.7',
                       'lxml>=4.9.1', 'appdirs>=1.4.4', 'pytz>=2022.5',
-                      'frozendict>=2.3.4', 
+                      'frozendict>=2.3.4', 'peewee>=3.16.2',
                       'beautifulsoup4>=4.11.1', 'html5lib>=1.1'],
     # Note: Pandas.read_html() needs html5lib & beautifulsoup4
     entry_points={

@@ -8,3 +8,4 @@ pytz>=2022.5
 frozendict>=2.3.4
 beautifulsoup4>=4.11.1
 html5lib>=1.1
+peewee>=3.16.2
