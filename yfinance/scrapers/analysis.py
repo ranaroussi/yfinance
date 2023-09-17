@@ -59,6 +59,39 @@ class Analysis:
         analysis_dict = {df.columns[0]: df for df in analysis}
 
         for key, item in analysis_dict.items():
+            # Set index
+            item = item.set_index(key)
+            if key in ['Earnings History', 'Revenue Estimate']:
+                # Flip rows/columns
+                item = item.T
+            if key == 'Earnings History':
+                item.index = pd.to_datetime(item.index)
+
+            for c in item.columns:
+                # Format % columns
+                if item[c].dtype in ['str', 'object']:
+                    if item[c].str.endswith('%').sum() == item.shape[0]:
+                        # All % so convert to numeric
+                        item[c] = item[c].str.rstrip('%').astype("float")
+                        if not '%' in c:
+                            item = item.rename(columns={c:c+' %'})
+                            c += ' %'
+
+                    else:
+                        # convert number-like values to integer type
+                        f = item[c].str.endswith(('K', 'M', 'B', 'T'))
+                        if f.any():
+                            fB = item[c].str.endswith('B')
+                            fM = item[c].str.endswith('M')
+                            fK = item[c].str.endswith('K')
+                            fT = item[c].str.endswith('T')
+                            item[c] = item[c].str.rstrip('KMBT').astype("float")
+                            item.loc[fB, c] *= 1e9
+                            item.loc[fM, c] *= 1e6
+                            item.loc[fK, c] *= 1e3
+                            item.loc[fT, c] *= 1e12
+                            item[c] = item[c].astype("int")
+
             if key == 'Earnings History':
                 self._earnings_trend = item
             elif key == 'EPS Trend':
