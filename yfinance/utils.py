@@ -169,14 +169,15 @@ def setup_debug_formatting():
         yf_logger.warning("logging mode not set to 'DEBUG', so not setting up debug formatting")
         return
 
-    if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
-        h = logging.StreamHandler()
-        # Ensure different level strings don't interfere with indentation
-        formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
-        h.setFormatter(formatter)
-        yf_logger.addHandler(h)
-
     global yf_log_indented
+    if not yf_log_indented:
+        if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
+            h = logging.StreamHandler()
+            # Ensure different level strings don't interfere with indentation
+            formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
+            h.setFormatter(formatter)
+            yf_logger.addHandler(h)
+
     yf_log_indented = True
 
 
