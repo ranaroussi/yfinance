@@ -169,14 +169,15 @@ def setup_debug_formatting():
         yf_logger.warning("logging mode not set to 'DEBUG', so not setting up debug formatting")
         return
 
-    if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
-        h = logging.StreamHandler()
-        # Ensure different level strings don't interfere with indentation
-        formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
-        h.setFormatter(formatter)
-        yf_logger.addHandler(h)
-
     global yf_log_indented
+    if not yf_log_indented:
+        if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
+            h = logging.StreamHandler()
+            # Ensure different level strings don't interfere with indentation
+            formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
+            h.setFormatter(formatter)
+            yf_logger.addHandler(h)
+
     yf_log_indented = True
 
 
@@ -628,30 +629,32 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                     # Yahoo is not returning live data (phew!)
                     return quotes
                 if _np.isnan(quotes.loc[idx2, "Open"]):
-                    quotes.loc[idx2, "Open"] = quotes["Open"][n - 1]
+                    quotes.loc[idx2, "Open"] = quotes["Open"].iloc[n - 1]
                 # Note: nanmax() & nanmin() ignores NaNs, but still need to check not all are NaN to avoid warnings
-                if not _np.isnan(quotes["High"][n - 1]):
-                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"][n - 1], quotes["High"][n - 2]])
+                if not _np.isnan(quotes["High"].iloc[n - 1]):
+                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[n - 1], quotes["High"].iloc[n - 2]])
                     if "Adj High" in quotes.columns:
-                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"][n - 1], quotes["Adj High"][n - 2]])
+                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[n - 1], quotes["Adj High"].iloc[n - 2]])
 
-                if not _np.isnan(quotes["Low"][n - 1]):
-                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"][n - 1], quotes["Low"][n - 2]])
+                if not _np.isnan(quotes["Low"].iloc[n - 1]):
+                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[n - 1], quotes["Low"].iloc[n - 2]])
                     if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"][n - 1], quotes["Adj Low"][n - 2]])
+                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[n - 1], quotes["Adj Low"].iloc[n - 2]])
 
-                quotes.loc[idx2, "Close"] = quotes["Close"][n - 1]
+                quotes.loc[idx2, "Close"] = quotes["Close"].iloc[n - 1]
                 if "Adj Close" in quotes.columns:
-                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"][n - 1]
-                quotes.loc[idx2, "Volume"] += quotes["Volume"][n - 1]
+                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[n - 1]
+                quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[n - 1]
                 quotes = quotes.drop(quotes.index[n - 1])
 
     return quotes
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    if df_sub.shape[0] == 0:
+    if df_sub.empty:
         raise Exception("No data to merge")
+    if df_main.empty:
+        return df_main
 
     df_sub_backup = df_sub.copy()
     data_cols = [c for c in df_sub.columns if c not in df_main]
@@ -675,47 +678,54 @@ def safe_merge_dfs(df_main, df_sub, interval):
     else:
         indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
-        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-        for i in range(len(df_sub.index)):
-            dt = df_sub.index[i]
-            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-                # Out-of-range
-                indices[i] = -1
+    # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+    for i in range(len(df_sub.index)):
+        dt = df_sub.index[i]
+        if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
+            # Out-of-range
+            indices[i] = -1
 
     f_outOfRange = indices == -1
-    if f_outOfRange.any() and not intraday:
-        empty_row_data = {c:[_np.nan] for c in const.price_colnames}|{'Volume':[0]}
-        if interval == '1d':
-            # For 1d, add all out-of-range event dates
-            for i in _np.where(f_outOfRange)[0]:
-                dt = df_sub.index[i]
-                get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
-                empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
-                df_main = _pd.concat([df_main, empty_row], sort=True)
+    if f_outOfRange.any():
+        if intraday:
+            # Discard out-of-range dividends in intraday data, assume user not interested
+            df_sub = df_sub[~f_outOfRange]
+            if df_sub.empty:
+                df_main['Dividends'] = 0.0
+                return df_main
         else:
-            # Else, only add out-of-range event dates if occurring in interval 
-            # immediately after last pricfe row
-            last_dt = df_main.index[-1]
-            next_interval_start_dt = last_dt + td
-            next_interval_end_dt = next_interval_start_dt + td
-            for i in _np.where(f_outOfRange)[0]:
-                dt = df_sub.index[i]
-                if next_interval_start_dt <= dt < next_interval_end_dt:
-                    new_dt = next_interval_start_dt
+            empty_row_data = {c:[_np.nan] for c in const.price_colnames}|{'Volume':[0]}
+            if interval == '1d':
+                # For 1d, add all out-of-range event dates
+                for i in _np.where(f_outOfRange)[0]:
+                    dt = df_sub.index[i]
                     get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
                     empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
                     df_main = _pd.concat([df_main, empty_row], sort=True)
-        df_main = df_main.sort_index()
+            else:
+                # Else, only add out-of-range event dates if occurring in interval 
+                # immediately after last price row
+                last_dt = df_main.index[-1]
+                next_interval_start_dt = last_dt + td
+                next_interval_end_dt = next_interval_start_dt + td
+                for i in _np.where(f_outOfRange)[0]:
+                    dt = df_sub.index[i]
+                    if next_interval_start_dt <= dt < next_interval_end_dt:
+                        new_dt = next_interval_start_dt
+                        get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+                        empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
+                        df_main = _pd.concat([df_main, empty_row], sort=True)
+            df_main = df_main.sort_index()
 
-        # Re-calculate indices
-        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
-        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
-        # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-        for i in range(len(df_sub.index)):
-            dt = df_sub.index[i]
-            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-                # Out-of-range
-                indices[i] = -1
+            # Re-calculate indices
+            indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
+            indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
+            # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+            for i in range(len(df_sub.index)):
+                dt = df_sub.index[i]
+                if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
+                    # Out-of-range
+                    indices[i] = -1
 
     f_outOfRange = indices == -1
     if f_outOfRange.any():
