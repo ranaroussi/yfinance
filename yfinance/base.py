@@ -1893,6 +1893,12 @@ class TickerBase:
         if as_dict:
             return data.to_dict()
         return data
+    
+    def get_insider_transaction(self, proxy=None):    
+        url = f"{_ROOT_URL_}quote/{self._data.ticker}/insider-transactions"
+        resp = self._data.cache_get(url, proxy)
+        insiders = pd.read_html(resp.text)[2]
+        return insiders
 
     @utils.log_indent_decorator
     def get_shares_full(self, start=None, end=None, proxy=None):
