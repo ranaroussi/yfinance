@@ -923,6 +923,8 @@ class KV(_peewee.Model):
 
 class _TzCache:
     def __init__(self):
+        if not _os.path.isdir(_cache_dir):
+            _os.mkdir(_cache_dir)
         db.connect()
         db.create_tables([KV])
 
