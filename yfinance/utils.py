@@ -679,11 +679,18 @@ def safe_merge_dfs(df_main, df_sub, interval):
         indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
     # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-    for i in range(len(df_sub.index)):
-        dt = df_sub.index[i]
-        if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-            # Out-of-range
-            indices[i] = -1
+    if intraday:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i].date()
+            if dt < df_main.index[0].date() or dt >= df_main.index[-1].date() + _datetime.timedelta(days=1):
+                # Out-of-range
+                indices[i] = -1
+    else:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
+                # Out-of-range
+                indices[i] = -1
 
     f_outOfRange = indices == -1
     if f_outOfRange.any():
@@ -902,61 +909,11 @@ class ProgressBar:
 # ---------------------------------
 
 
-_cache_dir = _os.path.join(_ad.user_cache_dir(), "py-yfinance")
-DB_PATH = _os.path.join(_cache_dir, 'tkr-tz.db')
-db = _peewee.SqliteDatabase(DB_PATH, pragmas={'journal_mode': 'wal', 'cache_size': -64})
-_tz_cache = None
+_cache_init_lock = Lock()
 
 
 class _TzCacheException(Exception):
     pass
-
-
-class KV(_peewee.Model):
-    key = _peewee.CharField(primary_key=True)
-    value = _peewee.CharField(null=True)
-    
-    class Meta:
-        database = db
-        without_rowid = True
-
-
-class _TzCache:
-    def __init__(self):
-        if not _os.path.isdir(_cache_dir):
-            _os.mkdir(_cache_dir)
-        db.connect()
-        db.create_tables([KV])
-
-        old_cache_file_path = _os.path.join(_cache_dir, "tkr-tz.csv")
-        if _os.path.isfile(old_cache_file_path):
-            _os.remove(old_cache_file_path)
-
-    def lookup(self, key):
-        try:
-            return KV.get(KV.key == key).value
-        except KV.DoesNotExist:
-            return None
-
-    def store(self, key, value):
-        try:
-            if value is None:
-                q = KV.delete().where(KV.key == key)
-                q.execute()
-                return
-            with db.atomic():
-                KV.insert(key=key, value=value).execute()
-        except IntegrityError:
-            # Integrity error means the key already exists. Try updating the key.
-            old_value = self.lookup(key)
-            if old_value != value:
-                get_yf_logger().debug(f"Value for key {key} changed from {old_value} to {value}.")
-                with db.atomic():
-                    q = KV.update(value=value).where(KV.key == key)
-                    q.execute()
-
-    def close(self):
-        db.close()
 
 
 class _TzCacheDummy:
@@ -973,6 +930,112 @@ class _TzCacheDummy:
         return None
 
 
+class _TzCacheManager:
+    _tz_cache = None
+
+    @classmethod
+    def get_tz(cls):
+        if cls._tz_cache is None:
+            cls._initialise()
+        return cls._tz_cache
+
+    @classmethod
+    def _initialise(cls, cache_dir=None):
+        try:
+            cls._tz_cache = _TzCache()
+        except _TzCacheException as err:
+            get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
+                                 "TzCache will not be used. "
+                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+            cls._tz_cache = _TzCacheDummy()
+
+
+class _DBManager:
+    _db = None
+    _cache_dir = _os.path.join(_ad.user_cache_dir(), "py-yfinance")
+
+    @classmethod
+    def get_database(cls):
+        if cls._db is None:
+            cls._initialise()
+        return cls._db
+
+    @classmethod
+    def close_db(cls):
+        if cls._db is not None:
+            try:
+                cls._db.close()
+            except Exception as e:
+                # Must discard exceptions because Python trying to quit.
+                pass
+
+
+    @classmethod
+    def _initialise(cls, cache_dir=None):
+        if cache_dir is not None:
+            cls._cache_dir = cache_dir
+
+        if not _os.path.isdir(cls._cache_dir):
+            _os.mkdir(cls._cache_dir)
+        cls._db = _peewee.SqliteDatabase(
+            _os.path.join(cls._cache_dir, 'tkr-tz.db'),
+            pragmas={'journal_mode': 'wal', 'cache_size': -64}
+        )
+
+        old_cache_file_path = _os.path.join(cls._cache_dir, "tkr-tz.csv")
+        if _os.path.isfile(old_cache_file_path):
+            _os.remove(old_cache_file_path)
+
+    @classmethod
+    def change_location(cls, new_cache_dir):
+        cls._db.close()
+        cls._db = None
+        cls._cache_dir = new_cache_dir
+# close DB when Python exists
+_atexit.register(_DBManager.close_db)
+
+
+class _KV(_peewee.Model):
+    key = _peewee.CharField(primary_key=True)
+    value = _peewee.CharField(null=True)
+    
+    class Meta:
+        database = _DBManager.get_database()
+        without_rowid = True
+
+
+class _TzCache:
+    def __init__(self):
+        db = _DBManager.get_database()
+        db.connect()
+        db.create_tables([_KV])
+
+
+    def lookup(self, key):
+        try:
+            return _KV.get(_KV.key == key).value
+        except _KV.DoesNotExist:
+            return None
+
+    def store(self, key, value):
+        db = _DBManager.get_database()
+        try:
+            if value is None:
+                q = _KV.delete().where(_KV.key == key)
+                q.execute()
+                return
+            with db.atomic():
+                _KV.insert(key=key, value=value).execute()
+        except _peewee.IntegrityError:
+            # Integrity error means the key already exists. Try updating the key.
+            old_value = self.lookup(key)
+            if old_value != value:
+                get_yf_logger().debug(f"Value for key {key} changed from {old_value} to {value}.")
+                with db.atomic():
+                    q = _KV.update(value=value).where(_KV.key == key)
+                    q.execute()
+
+
 def get_tz_cache():
     """
     Get the timezone cache, initializes it and creates cache folder if needed on first call.
@@ -981,20 +1044,7 @@ def get_tz_cache():
     """
     # as this can be called from multiple threads, protect it.
     with _cache_init_lock:
-        global _tz_cache
-        if _tz_cache is None:
-            try:
-                _tz_cache = _TzCache()
-            except _TzCacheException as err:
-                get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
-                                     "TzCache will not be used. "
-                                     "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
-                _tz_cache = _TzCacheDummy()
-
-        return _tz_cache
-
-
-_cache_init_lock = Lock()
+        return _TzCacheManager.get_tz()
 
 
 def set_tz_cache_location(cache_dir: str):
@@ -1005,6 +1055,4 @@ def set_tz_cache_location(cache_dir: str):
     :param cache_dir: Path to use for caches
     :return: None
     """
-    global _cache_dir, _tz_cache
-    assert _tz_cache is None, "Time Zone cache already initialized, setting path must be done before cache is created"
-    _cache_dir = cache_dir
+    _DBManager.change_location(cache_dir)
