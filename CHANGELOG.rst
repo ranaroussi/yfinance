@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.30
+------
+- Fix OperationalError #1698
+
 0.2.29
 ------
 - Fix pandas warning when retrieving quotes. #1672
