@@ -13,6 +13,7 @@ class Holders:
         self._major = None
         self._institutional = None
         self._mutualfund = None
+        self._insider_transactions = None
 
     @property
     def major(self) -> pd.DataFrame:
@@ -31,6 +32,12 @@ class Holders:
         if self._mutualfund is None:
             self._scrape(self.proxy)
         return self._mutualfund
+    
+    @property
+    def insider_transactions(self) -> pd.DataFrame:
+        if self.insider_transactions is None:
+            self._insider_transaction(self.proxy)
+        return self.insider_transactions
 
     def _scrape(self, proxy):
         ticker_url = f"{self._SCRAPE_URL_}/{self._data.ticker}"
@@ -66,8 +73,13 @@ class Holders:
                 self._mutualfund['% Out'] = self._mutualfund[
                                                 '% Out'].str.replace('%', '').astype(float) / 100
                 
-    def get_insider_transaction_reported(ticker: yf.Ticker, proxy = None) -> pd.DataFrame:
-        url = f'https://finance.yahoo.com/quote/{ticker._data.ticker}/insider-transactions'
-        resp = ticker._data.cache_get(url, proxy)
-        insiders = pd.read_html(resp.text)
-        return insiders[2]
+    def _insider_transaction(self, proxy) -> pd.DataFrame:
+        ticker_url = f"{self._SCRAPE_URL_}/{self._data.ticker}"
+
+        try:
+            resp = self._data.cache_get(ticker_url + '/insider-transactions', proxy=proxy)
+            insider_transaction = pd.read_html(resp.text)[2]
+        except Exception:
+            insider_transaction = []
+
+        return insider_transaction
