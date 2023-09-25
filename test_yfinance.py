@@ -53,7 +53,10 @@ class TestTicker(unittest.TestCase):
             ticker.cashflow
             ticker.quarterly_cashflow
             ticker.recommendations_summary
-            ticker.analyst_price_target
+            ticker.analyst_growth_estimates
+            ticker.analyst_trend_details
+            ticker.rev_est
+            ticker.eps_est
             ticker.revenue_forecasts
             ticker.sustainability
             ticker.options
