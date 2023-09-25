@@ -679,11 +679,18 @@ def safe_merge_dfs(df_main, df_sub, interval):
         indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
     # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-    for i in range(len(df_sub.index)):
-        dt = df_sub.index[i]
-        if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-            # Out-of-range
-            indices[i] = -1
+    if intraday:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i].date()
+            if dt < df_main.index[0].date() or dt >= df_main.index[-1].date() + _datetime.timedelta(days=1):
+                # Out-of-range
+                indices[i] = -1
+    else:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
+                # Out-of-range
+                indices[i] = -1
 
     f_outOfRange = indices == -1
     if f_outOfRange.any():
