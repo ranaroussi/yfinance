@@ -936,7 +936,8 @@ class _TzCacheManager:
     @classmethod
     def get_tz(cls):
         if cls._tz_cache is None:
-            cls._initialise()
+            with _cache_init_lock:
+                cls._initialise()
         return cls._tz_cache
 
     @classmethod
@@ -976,7 +977,13 @@ class _DBManager:
             cls._cache_dir = cache_dir
 
         if not _os.path.isdir(cls._cache_dir):
-            _os.mkdir(cls._cache_dir)
+            try:
+                _os.makedirs(cls._cache_dir)
+            except OSError as err:
+                raise _TzCacheException(f"Error creating TzCache folder: '{cls._cache_dir}' reason: {err}")
+        elif not (_os.access(cls._cache_dir, _os.R_OK) and _os.access(cls._cache_dir, _os.W_OK)):
+            raise _TzCacheException(f"Cannot read and write in TzCache folder: '{cls._cache_dir}'")
+
         cls._db = _peewee.SqliteDatabase(
             _os.path.join(cls._cache_dir, 'tkr-tz.db'),
             pragmas={'journal_mode': 'wal', 'cache_size': -64}
@@ -987,10 +994,16 @@ class _DBManager:
             _os.remove(old_cache_file_path)
 
     @classmethod
-    def change_location(cls, new_cache_dir):
-        cls._db.close()
-        cls._db = None
+    def set_location(cls, new_cache_dir):
+        if cls._db is not None:
+            cls._db.close()
+            cls._db = None
         cls._cache_dir = new_cache_dir
+
+    @classmethod
+    def get_location(cls):
+        return cls._cache_dir
+
 # close DB when Python exists
 _atexit.register(_DBManager.close_db)
 
@@ -1000,7 +1013,11 @@ class _KV(_peewee.Model):
     value = _peewee.CharField(null=True)
     
     class Meta:
-        database = _DBManager.get_database()
+        try:
+            database = _DBManager.get_database()
+        except Exception:
+            # This code runs at import, so Logger won't be ready yet, so must discard exception.
+            database = None
         without_rowid = True
 
 
@@ -1043,8 +1060,7 @@ def get_tz_cache():
     dummy cache with same interface as real cash.
     """
     # as this can be called from multiple threads, protect it.
-    with _cache_init_lock:
-        return _TzCacheManager.get_tz()
+    return _TzCacheManager.get_tz()
 
 
 def set_tz_cache_location(cache_dir: str):
@@ -1055,4 +1071,4 @@ def set_tz_cache_location(cache_dir: str):
     :param cache_dir: Path to use for caches
     :return: None
     """
-    _DBManager.change_location(cache_dir)
+    _DBManager.set_location(cache_dir)
