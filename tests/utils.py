@@ -17,6 +17,7 @@ from .context import session_gbl
 import unittest
 # import requests_cache
 import tempfile
+import os
 
 
 class TestUtils(unittest.TestCase):
@@ -40,6 +41,15 @@ class TestUtils(unittest.TestCase):
         cache.store(tkr, tz1)
         cache.store(tkr, tz2)
 
+    def test_setTzCacheLocation(self):
+        self.assertEqual(yf.utils._DBManager.get_location(), self.tempCacheDir.name)
+
+        tkr = 'AMZN'
+        tz1 = "America/New_York"
+        cache = yf.utils.get_tz_cache()
+        cache.store(tkr, tz1)
+
+        self.assertTrue(os.path.exists(os.path.join(self.tempCacheDir.name, "tkr-tz.db")))
 
 def suite():
     suite = unittest.TestSuite()
