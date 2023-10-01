@@ -1008,33 +1008,38 @@ class _DBManager:
 _atexit.register(_DBManager.close_db)
 
 
+db_proxy = _peewee.Proxy()
 class _KV(_peewee.Model):
     key = _peewee.CharField(primary_key=True)
     value = _peewee.CharField(null=True)
     
     class Meta:
-        try:
-            database = _DBManager.get_database()
-        except Exception:
-            # This code runs at import, so Logger won't be ready yet, so must discard exception.
-            database = None
+        database = db_proxy
         without_rowid = True
 
 
 class _TzCache:
     def __init__(self):
+        self.initialised = False
+
+    def initialise(self):
+        if self.initialised:
+            return
         db = _DBManager.get_database()
         db.connect()
+        db_proxy.initialize(db)
         db.create_tables([_KV])
-
+        self.initialised = True
 
     def lookup(self, key):
+        self.initialise()
         try:
             return _KV.get(_KV.key == key).value
         except _KV.DoesNotExist:
             return None
 
     def store(self, key, value):
+        self.initialise()
         db = _DBManager.get_database()
         try:
             if value is None:
