@@ -934,7 +934,7 @@ class _TzCacheManager:
     _tz_cache = None
 
     @classmethod
-    def get_tz(cls):
+    def get_tz_cache(cls):
         if cls._tz_cache is None:
             with _cache_init_lock:
                 cls._initialise()
@@ -1065,7 +1065,7 @@ def get_tz_cache():
     dummy cache with same interface as real cash.
     """
     # as this can be called from multiple threads, protect it.
-    return _TzCacheManager.get_tz()
+    return _TzCacheManager.get_tz_cache()
 
 
 def set_tz_cache_location(cache_dir: str):
