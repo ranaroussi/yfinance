@@ -20,9 +20,7 @@ import tempfile
 import os
 
 
-class TestUtils(unittest.TestCase):
-    session = None
-
+class TestCache(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tempCacheDir = tempfile.TemporaryDirectory()
@@ -51,9 +49,41 @@ class TestUtils(unittest.TestCase):
 
         self.assertTrue(os.path.exists(os.path.join(self.tempCacheDir.name, "tkr-tz.db")))
 
+
+class TestCacheNoPermission(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        yf.set_tz_cache_location("/root/yf-cache")
+
+    def test_tzCacheRootStore(self):
+        # Test that if cache path in read-only filesystem, no exception.
+        tkr = 'AMZN'
+        tz1 = "America/New_York"
+
+        # During attempt to store, will discover cannot write
+        yf.utils.get_tz_cache().store(tkr, tz1)
+
+        # Handling the store failure replaces cache with a dummy
+        cache = yf.utils.get_tz_cache()
+        self.assertTrue(cache.dummy)
+        cache.store(tkr, tz1)
+
+    def test_tzCacheRootLookup(self):
+        # Test that if cache path in read-only filesystem, no exception.
+        tkr = 'AMZN'
+        # During attempt to lookup, will discover cannot write
+        yf.utils.get_tz_cache().lookup(tkr)
+
+        # Handling the lookup failure replaces cache with a dummy
+        cache = yf.utils.get_tz_cache()
+        self.assertTrue(cache.dummy)
+        cache.lookup(tkr)
+
+
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestUtils('Test utils'))
+    suite.addTest(TestCache('Test cache'))
+    suite.addTest(TestCacheNoPermission('Test cache no permission'))
     return suite
 
 

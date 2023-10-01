@@ -942,13 +942,7 @@ class _TzCacheManager:
 
     @classmethod
     def _initialise(cls, cache_dir=None):
-        try:
-            cls._tz_cache = _TzCache()
-        except _TzCacheException as err:
-            get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
-                                 "TzCache will not be used. "
-                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
-            cls._tz_cache = _TzCacheDummy()
+        cls._tz_cache = _TzCache()
 
 
 class _DBManager:
@@ -1020,27 +1014,66 @@ class _KV(_peewee.Model):
 
 class _TzCache:
     def __init__(self):
-        self.initialised = False
+        self.initialised = -1
+        self.db = None
+        self.dummy = False
+
+    def get_db(self):
+        if self.db is not None:
+            return self.db
+
+        try:
+            self.db = _DBManager.get_database()
+        except _TzCacheException as err:
+            get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
+                                 "TzCache will not be used. "
+                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+            self.dummy = True
+            return None
+        return self.db
 
     def initialise(self):
-        if self.initialised:
+        if self.initialised != -1:
             return
-        db = _DBManager.get_database()
+
+        db = self.get_db()
+        if db is None:
+            self.initialised = 0  # failure
+            return
+
         db.connect()
         db_proxy.initialize(db)
         db.create_tables([_KV])
-        self.initialised = True
+        self.initialised = 1  # success
 
     def lookup(self, key):
-        self.initialise()
+        if self.dummy:
+            return None
+
+        if self.initialised == -1:
+            self.initialise()
+
+        if self.initialised == 0:  # failure
+            return None
+
         try:
             return _KV.get(_KV.key == key).value
         except _KV.DoesNotExist:
             return None
 
     def store(self, key, value):
-        self.initialise()
-        db = _DBManager.get_database()
+        if self.dummy:
+            return
+
+        if self.initialised == -1:
+            self.initialise()
+
+        if self.initialised == 0:  # failure
+            return
+
+        db = self.get_db()
+        if db is None:
+            return
         try:
             if value is None:
                 q = _KV.delete().where(_KV.key == key)
@@ -1059,12 +1092,6 @@ class _TzCache:
 
 
 def get_tz_cache():
-    """
-    Get the timezone cache, initializes it and creates cache folder if needed on first call.
-    If folder cannot be created for some reason it will fall back to initialize a
-    dummy cache with same interface as real cash.
-    """
-    # as this can be called from multiple threads, protect it.
     return _TzCacheManager.get_tz_cache()
 
 
