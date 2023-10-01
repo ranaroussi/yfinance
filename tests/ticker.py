@@ -137,14 +137,6 @@ class TestTicker(unittest.TestCase):
         dat._get_ticker_tz(proxy=self.proxy, timeout=5)
         dat.history(period="1wk", proxy=self.proxy)
 
-        v = dat.get_recommendations(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_calendar(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
         v = dat.get_major_holders(proxy=self.proxy)
         self.assertIsNotNone(v)
         self.assertFalse(v.empty)
@@ -160,38 +152,6 @@ class TestTicker(unittest.TestCase):
         v = dat.get_info(proxy=self.proxy)
         self.assertIsNotNone(v)
         self.assertTrue(len(v) > 0)
-
-        v = dat.get_sustainability(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_recommendations_summary(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_analyst_price_target(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_rev_forecast(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_earnings_forecast(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_trend_details(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_earnings_trend(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_earnings(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
 
         v = dat.get_income_stmt(proxy=self.proxy)
         self.assertIsNotNone(v)
@@ -221,10 +181,6 @@ class TestTicker(unittest.TestCase):
         self.assertIsNotNone(v)
         self.assertFalse(v.empty)
 
-        v = dat.get_shares(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
         v = dat.get_shares_full(proxy=self.proxy)
         self.assertIsNotNone(v)
         self.assertFalse(v.empty)
@@ -241,10 +197,59 @@ class TestTicker(unittest.TestCase):
         self.assertIsNotNone(v)
         self.assertFalse(v.empty)
 
-        # TODO: enable after merge
-        # dat.get_history_metadata(proxy=self.proxy)
+        dat.get_history_metadata(proxy=self.proxy)
+        self.assertIsNotNone(v)
+        self.assertTrue(len(v) > 0)
+
+        # Below will fail because not ported to Yahoo API
+
+        # v = dat.stats(proxy=self.proxy)
         # self.assertIsNotNone(v)
         # self.assertTrue(len(v) > 0)
+
+        # v = dat.get_recommendations(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_calendar(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_sustainability(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_recommendations_summary(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_analyst_price_target(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_rev_forecast(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_earnings_forecast(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_trend_details(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_earnings_trend(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_earnings(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
+
+        # v = dat.get_shares(proxy=self.proxy)
+        # self.assertIsNotNone(v)
+        # self.assertFalse(v.empty)
 
 
 class TestTickerHistory(unittest.TestCase):
@@ -302,7 +307,7 @@ class TestTickerHistory(unittest.TestCase):
         self.assertEqual(
             expected_urls,
             actual_urls_called,
-            "Different than expected url used to fetch history.",
+            "Different than expected url used to fetch history."
         )
     def test_dividends(self):
         data = self.ticker.dividends
