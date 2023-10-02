@@ -30,21 +30,21 @@ from .base import TickerBase
 
 
 class Ticker(TickerBase):
-    def __init__(self, ticker, session=None):
-        super(Ticker, self).__init__(ticker, session=session)
+    def __init__(self, ticker, session=None, proxy=None):
+        super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}
         self._underlying  = {}
 
     def __repr__(self):
         return f'yfinance.Ticker object <{self.ticker}>'
 
-    def _download_options(self, date=None, proxy=None):
+    def _download_options(self, date=None):
         if date is None:
             url = f"{self._base_url}/v7/finance/options/{self.ticker}"
         else:
             url = f"{self._base_url}/v7/finance/options/{self.ticker}?date={date}"
 
-        r = self._data.get(url=url, proxy=proxy).json()
+        r = self._data.get(url=url, proxy=self.proxy).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_datetime.datetime.utcfromtimestamp(
@@ -80,9 +80,9 @@ class Ticker(TickerBase):
             data['lastTradeDate'] = data['lastTradeDate'].dt.tz_convert(tz)
         return data
 
-    def option_chain(self, date=None, proxy=None, tz=None):
+    def option_chain(self, date=None, tz=None):
         if date is None:
-            options = self._download_options(proxy=proxy)
+            options = self._download_options()
         else:
             if not self._expirations:
                 self._download_options()
@@ -91,7 +91,7 @@ class Ticker(TickerBase):
                     f"Expiration `{date}` cannot be found. "
                     f"Available expirations are: [{', '.join(self._expirations)}]")
             date = self._expirations[date]
-            options = self._download_options(date, proxy=proxy)
+            options = self._download_options(date)
 
         return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
             "calls": self._options2df(options['calls'], tz=tz),
