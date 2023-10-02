@@ -133,7 +133,7 @@ class TickerBase:
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
-        proxy = proxy or self.proxy or self.proxy
+        proxy = proxy or self.proxy
 
         if debug is not None:
             if debug:
@@ -1640,7 +1640,8 @@ class TickerBase:
 
         return df2
 
-    def _get_ticker_tz(self, proxy, timeout):
+    def _get_ticker_tz(self,timeout, proxy=None):
+        proxy = proxy or self.proxy
         if self._tz is not None:
             return self._tz
         cache = utils.get_tz_cache()
@@ -1664,9 +1665,9 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, proxy, timeout):
+    def _fetch_ticker_tz(self, timeout, proxy=None):
         # Query Yahoo for fast price data just to get returned timezone
-
+        proxy = proxy or self.proxy
         logger = utils.get_yf_logger()
 
         params = {"range": "1d", "interval": "1d"}
@@ -2022,7 +2023,7 @@ class TickerBase:
 
         q = ticker
 
-        self._quote.proxy = proxy or self.proxy or self.proxy
+        self._quote.proxy = proxy or self.proxy
         if self._quote.info is None:
             # Don't print error message cause self._quote.info will print one
             return None
