@@ -13,6 +13,8 @@ import pandas as pd
 from .context import yfinance as yf
 from .context import session_gbl
 from yfinance.exceptions import YFNotImplementedError
+from yfinance.scrapers.quote import  CalendarData
+
 
 
 import unittest
@@ -27,7 +29,7 @@ ticker_attributes = (
     ("actions", pd.DataFrame),
     ("shares", pd.DataFrame),
     ("info", dict),
-    ("calendar", pd.DataFrame),
+    ("calendar", CalendarData),
     ("recommendations", Union[pd.DataFrame, dict]),
     ("earnings", pd.DataFrame),
     ("quarterly_earnings", pd.DataFrame),
