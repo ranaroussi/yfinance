@@ -705,10 +705,12 @@ class CalendarData:
     def __init__(self, ticker: str):
         self.ticker = ticker
         self.offset = 0
+        # Batch request for a single request (probably shouldn't be overwritten)
         self.size = 100
         self.params = {"symbol": ticker}
         self.url = "https://finance.yahoo.com/calendar/earnings"
         self.data = None
+        # toggle when the endpoint returns an html without <table>
         self.has_no_tables = False
 
 
@@ -730,10 +732,13 @@ class CalendarData:
         table["EPS Estimate"] = table["EPS Estimate"].apply(CalendarData.parse_numeric_col)
         table["Reported EPS"] = table["EPS Estimate"].apply(CalendarData.parse_numeric_col)
         table["Surprise(%)"] = table["Surprise(%)"].apply(CalendarData.parse_numeric_col)
-        self.data = table
+        if self.data is None:
+            self.data = table
+        else:
+            # index must be reset as self.data and table will have conflicting indexes 
+            self.data = pd.concat([self.data, table]).reset_index()
 
-
-    def get_calendar(self):
+    def get(self):
         return self.data
 
     def _get_calendar(self):
