@@ -679,11 +679,18 @@ def safe_merge_dfs(df_main, df_sub, interval):
         indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
     # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-    for i in range(len(df_sub.index)):
-        dt = df_sub.index[i]
-        if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-            # Out-of-range
-            indices[i] = -1
+    if intraday:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i].date()
+            if dt < df_main.index[0].date() or dt >= df_main.index[-1].date() + _datetime.timedelta(days=1):
+                # Out-of-range
+                indices[i] = -1
+    else:
+        for i in range(len(df_sub.index)):
+            dt = df_sub.index[i]
+            if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
+                # Out-of-range
+                indices[i] = -1
 
     f_outOfRange = indices == -1
     if f_outOfRange.any():
@@ -927,20 +934,15 @@ class _TzCacheManager:
     _tz_cache = None
 
     @classmethod
-    def get_tz(cls):
+    def get_tz_cache(cls):
         if cls._tz_cache is None:
-            cls._initialise()
+            with _cache_init_lock:
+                cls._initialise()
         return cls._tz_cache
 
     @classmethod
     def _initialise(cls, cache_dir=None):
-        try:
-            cls._tz_cache = _TzCache()
-        except _TzCacheException as err:
-            get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
-                                 "TzCache will not be used. "
-                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
-            cls._tz_cache = _TzCacheDummy()
+        cls._tz_cache = _TzCache()
 
 
 class _DBManager:
@@ -969,7 +971,13 @@ class _DBManager:
             cls._cache_dir = cache_dir
 
         if not _os.path.isdir(cls._cache_dir):
-            _os.mkdir(cls._cache_dir)
+            try:
+                _os.makedirs(cls._cache_dir)
+            except OSError as err:
+                raise _TzCacheException(f"Error creating TzCache folder: '{cls._cache_dir}' reason: {err}")
+        elif not (_os.access(cls._cache_dir, _os.R_OK) and _os.access(cls._cache_dir, _os.W_OK)):
+            raise _TzCacheException(f"Cannot read and write in TzCache folder: '{cls._cache_dir}'")
+
         cls._db = _peewee.SqliteDatabase(
             _os.path.join(cls._cache_dir, 'tkr-tz.db'),
             pragmas={'journal_mode': 'wal', 'cache_size': -64}
@@ -980,38 +988,92 @@ class _DBManager:
             _os.remove(old_cache_file_path)
 
     @classmethod
-    def change_location(cls, new_cache_dir):
-        cls._db.close()
-        cls._db = None
+    def set_location(cls, new_cache_dir):
+        if cls._db is not None:
+            cls._db.close()
+            cls._db = None
         cls._cache_dir = new_cache_dir
+
+    @classmethod
+    def get_location(cls):
+        return cls._cache_dir
+
 # close DB when Python exists
 _atexit.register(_DBManager.close_db)
 
 
+db_proxy = _peewee.Proxy()
 class _KV(_peewee.Model):
     key = _peewee.CharField(primary_key=True)
     value = _peewee.CharField(null=True)
     
     class Meta:
-        database = _DBManager.get_database()
+        database = db_proxy
         without_rowid = True
 
 
 class _TzCache:
     def __init__(self):
-        db = _DBManager.get_database()
-        db.connect()
-        db.create_tables([_KV])
+        self.initialised = -1
+        self.db = None
+        self.dummy = False
 
+    def get_db(self):
+        if self.db is not None:
+            return self.db
+
+        try:
+            self.db = _DBManager.get_database()
+        except _TzCacheException as err:
+            get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
+                                 "TzCache will not be used. "
+                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+            self.dummy = True
+            return None
+        return self.db
+
+    def initialise(self):
+        if self.initialised != -1:
+            return
+
+        db = self.get_db()
+        if db is None:
+            self.initialised = 0  # failure
+            return
+
+        db.connect()
+        db_proxy.initialize(db)
+        db.create_tables([_KV])
+        self.initialised = 1  # success
 
     def lookup(self, key):
+        if self.dummy:
+            return None
+
+        if self.initialised == -1:
+            self.initialise()
+
+        if self.initialised == 0:  # failure
+            return None
+
         try:
             return _KV.get(_KV.key == key).value
         except _KV.DoesNotExist:
             return None
 
     def store(self, key, value):
-        db = _DBManager.get_database()
+        if self.dummy:
+            return
+
+        if self.initialised == -1:
+            self.initialise()
+
+        if self.initialised == 0:  # failure
+            return
+
+        db = self.get_db()
+        if db is None:
+            return
         try:
             if value is None:
                 q = _KV.delete().where(_KV.key == key)
@@ -1030,14 +1092,7 @@ class _TzCache:
 
 
 def get_tz_cache():
-    """
-    Get the timezone cache, initializes it and creates cache folder if needed on first call.
-    If folder cannot be created for some reason it will fall back to initialize a
-    dummy cache with same interface as real cash.
-    """
-    # as this can be called from multiple threads, protect it.
-    with _cache_init_lock:
-        return _TzCacheManager.get_tz()
+    return _TzCacheManager.get_tz_cache()
 
 
 def set_tz_cache_location(cache_dir: str):
@@ -1048,4 +1103,4 @@ def set_tz_cache_location(cache_dir: str):
     :param cache_dir: Path to use for caches
     :return: None
     """
-    _DBManager.change_location(cache_dir)
+    _DBManager.set_location(cache_dir)
