@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.31
+------
+- Fix TZ cache exception blocking import #1705 #1709
+- Fix merging pre-market events with intraday prices #1703
+
 0.2.30
 ------
 - Fix OperationalError #1698
