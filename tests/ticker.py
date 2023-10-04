@@ -13,7 +13,7 @@ import pandas as pd
 from .context import yfinance as yf
 from .context import session_gbl
 from yfinance.exceptions import YFNotImplementedError
-from yfinance.scrapers.quote import  CalendarData
+from yfinance.scrapers.quote import EarningsData 
 
 
 
@@ -29,10 +29,8 @@ ticker_attributes = (
     ("actions", pd.DataFrame),
     ("shares", pd.DataFrame),
     ("info", dict),
-    ("calendar", CalendarData),
+    ("earnings", EarningsData),
     ("recommendations", Union[pd.DataFrame, dict]),
-    ("earnings", pd.DataFrame),
-    ("quarterly_earnings", pd.DataFrame),
     ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("quarterly_cashflow", pd.DataFrame),
     ("cashflow", pd.DataFrame),
@@ -46,7 +44,6 @@ ticker_attributes = (
     ("options", tuple),
     ("news", Any),
     ("earnings_trend", pd.DataFrame),
-    ("earnings_dates", pd.DataFrame),
     ("earnings_forecasts", pd.DataFrame),
 )
 

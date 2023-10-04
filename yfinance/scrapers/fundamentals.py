@@ -28,12 +28,6 @@ class Fundamentals:
         return self._financials
 
     @property
-    def earnings(self) -> dict:
-        if self._earnings is None:
-            raise YFNotImplementedError('earnings')
-        return self._earnings
-
-    @property
     def shares(self) -> pd.DataFrame:
         if self._shares is None:
             raise YFNotImplementedError('shares')

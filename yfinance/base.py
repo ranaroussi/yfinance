@@ -1703,7 +1703,7 @@ class TickerBase:
 
     def get_calendar(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy
-        data = self._quote.calendar
+        data = self._quote.earnings
         if as_dict:
             return data.to_dict()
         return data
@@ -1795,27 +1795,6 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
-        """
-        :Parameters:
-            as_dict: bool
-                Return table as Python dict
-                Default is False
-            freq: str
-                "yearly" or "quarterly"
-                Default is "yearly"
-            proxy: str
-                Optional. Proxy server URL scheme
-                Default is None
-        """
-        self._fundamentals.proxy = proxy
-        data = self._fundamentals.earnings[freq]
-        if as_dict:
-            dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
-                'financialCurrency']
-            return dict_data
-        return data
 
     def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
@@ -2060,96 +2039,6 @@ class TickerBase:
         # parse news
         self._news = data.get("news", [])
         return self._news
-
-    @utils.log_indent_decorator
-    def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
-        """
-        Get earning dates (future and historic)
-        :param limit: max amount of upcoming and recent earnings dates to return.
-                      Default value 12 should return next 4 quarters and last 8 quarters.
-                      Increase if more history is needed.
-
-        :param proxy: requests proxy to use.
-        :return: pandas dataframe
-        """
-        if self._earnings_dates and limit in self._earnings_dates:
-            return self._earnings_dates[limit]
-
-        logger = utils.get_yf_logger()
-
-        page_size = min(limit, 100)  # YF caps at 100, don't go higher
-        page_offset = 0
-        dates = None
-        while True:
-            url = f"{_ROOT_URL_}/calendar/earnings?symbol={self.ticker}&offset={page_offset}&size={page_size}"
-            data = self._data.cache_get(url=url, proxy=proxy).text
-
-            if "Will be right back" in data:
-                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                                   "Our engineers are working quickly to resolve "
-                                   "the issue. Thank you for your patience.")
-
-            try:
-                data = pd.read_html(data)[0]
-            except ValueError:
-                if page_offset == 0:
-                    # Should not fail on first page
-                    if "Showing Earnings for:" in data:
-                        # Actually YF was successful, problem is company doesn't have earnings history
-                        dates = utils.empty_earnings_dates_df()
-                break
-            if dates is None:
-                dates = data
-            else:
-                dates = pd.concat([dates, data], axis=0)
-
-            page_offset += page_size
-            # got less data then we asked for or already fetched all we requested, no need to fetch more pages
-            if len(data) < page_size or len(dates) >= limit:
-                dates = dates.iloc[:limit]
-                break
-            else:
-                # do not fetch more than needed next time
-                page_size = min(limit - len(dates), page_size)
-
-        if dates is None or dates.shape[0] == 0:
-            err_msg = "No earnings dates found, symbol may be delisted"
-            logger.error(f'{self.ticker}: {err_msg}')
-            return None
-        dates = dates.reset_index(drop=True)
-
-        # Drop redundant columns
-        dates = dates.drop(["Symbol", "Company"], axis=1)
-
-        # Convert types
-        for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
-            dates.loc[dates[cn] == '-', cn] = "NaN"
-            dates[cn] = dates[cn].astype(float)
-
-        # Convert % to range 0->1:
-        dates["Surprise(%)"] *= 0.01
-
-        # Parse earnings date string
-        cn = "Earnings Date"
-        # - remove AM/PM and timezone from date string
-        tzinfo = dates[cn].str.extract('([AP]M[a-zA-Z]*)$')
-        dates[cn] = dates[cn].replace(' [AP]M[a-zA-Z]*$', '', regex=True)
-        # - split AM/PM from timezone
-        tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
-        tzinfo.columns = ["AM/PM", "TZ"]
-        # - combine and parse
-        dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
-        dates[cn] = pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
-        # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
-        self._quote.proxy = proxy
-        tz = self._get_ticker_tz(proxy=proxy, timeout=30)
-        dates[cn] = dates[cn].dt.tz_localize(tz)
-
-        dates = dates.set_index("Earnings Date")
-
-        self._earnings_dates[limit] = dates
-
-        return dates
 
     def get_history_metadata(self, proxy=None) -> dict:
         if self._history_metadata is None:

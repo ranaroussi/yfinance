@@ -146,20 +146,11 @@ class Ticker(TickerBase):
         return self.get_fast_info()
 
     @property
-    def calendar(self):
-        return self.get_calendar()
-
-    @property
     def recommendations(self):
         return self.get_recommendations()
-
     @property
-    def earnings(self) -> _pd.DataFrame:
-        return self.get_earnings()
-
-    @property
-    def quarterly_earnings(self) -> _pd.DataFrame:
-        return self.get_earnings(freq='quarterly')
+    def earnings(self):
+        return self._quote.earnings
 
     @property
     def income_stmt(self) -> _pd.DataFrame:

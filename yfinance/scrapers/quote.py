@@ -4,6 +4,7 @@ import logging
 import warnings
 from collections.abc import MutableMapping
 from io import StringIO
+import re
 
 import numpy as _np
 import pandas as pd
@@ -563,7 +564,7 @@ class Quote:
         self._retired_info = None
         self._sustainability = None
         self._recommendations = None
-        self._calendar = CalendarData(data.ticker)
+        self._earnings= EarningsData(data.ticker, proxy)
 
         self._already_scraped = False
         self._already_fetched = False
@@ -590,11 +591,11 @@ class Quote:
         return self._recommendations
 
     @property
-    def calendar(self):
-        return self.get_calendar()
+    def earnings(self):
+        return self.get_earnings()
 
-    def get_calendar(self):
-        return self._calendar._get_calendar()
+    def get_earnings(self):
+        return self._earnings._get_earnings()
 
     def _fetch(self, proxy):
         if self._already_fetched:
@@ -700,11 +701,12 @@ class Quote:
             self._info[k] = v
 
 
-class CalendarData:
+class EarningsData:
 
-    def __init__(self, ticker: str):
+    def __init__(self, ticker: str, proxy=None):
         self.ticker = ticker
         self.offset = 0
+        self.proxy = proxy
         # Batch request for a single request (probably shouldn't be overwritten)
         self.size = 100
         self.params = {"symbol": ticker}
@@ -715,10 +717,17 @@ class CalendarData:
 
 
     @staticmethod
-    def parse_date_string_column(entry: str):
-        date_format = "%b %d, %Y"
+    def parse_date_string_column(entry: str): 
+        # date format: Apr 23, 2024, 6 AMEDT
+        date_format = "%b %d, %Y, %I %p"
         split_date = entry.split(", ")
-        date_string = ", ".join(split_date[:-1])
+
+        # Grab AM/PM and discard timezone
+        hour, period_tz= split_date[-1].split(" ")
+        period = period_tz[:2]
+
+        split_date[-1] = f"{hour} {period}"
+        date_string = ", ".join(split_date)
         return datetime.datetime.strptime(date_string, date_format)
 
     @staticmethod
@@ -728,10 +737,10 @@ class CalendarData:
         return float(entry)
 
     def parse_table(self, table: pd.DataFrame):
-        table['Earnings Date'] = table['Earnings Date'].apply(CalendarData.parse_date_string_column)
-        table["EPS Estimate"] = table["EPS Estimate"].apply(CalendarData.parse_numeric_col)
-        table["Reported EPS"] = table["EPS Estimate"].apply(CalendarData.parse_numeric_col)
-        table["Surprise(%)"] = table["Surprise(%)"].apply(CalendarData.parse_numeric_col)
+        table['Earnings Date'] = table['Earnings Date'].apply(EarningsData.parse_date_string_column)
+        table["EPS Estimate"] = table["EPS Estimate"].apply(EarningsData.parse_numeric_col)
+        table["Reported EPS"] = table["EPS Estimate"].apply(EarningsData.parse_numeric_col)
+        table["Surprise(%)"] = table["Surprise(%)"].apply(EarningsData.parse_numeric_col)
         if self.data is None:
             self.data = table
         else:
@@ -741,12 +750,13 @@ class CalendarData:
     def get(self):
         return self.data
 
-    def _get_calendar(self):
+    def _get_earnings(self):
         if self.has_no_tables:
             return self
         try:
             url = self.url + "?" + urllib.parse.urlencode(self.params)
-            res = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"})
+            res = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"},
+                               proxies=self.proxy)
             if not res.ok or len(res.text) == 0:
                 return self
             tables = pd.read_html(StringIO(res.text))
@@ -770,4 +780,4 @@ class CalendarData:
         else:
             self.params['offset'] = self.size
 
-        return self._get_calendar()
+        return self._get_earnings()
