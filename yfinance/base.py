@@ -2106,6 +2106,6 @@ class TickerBase:
 
     def get_insider_transactions(self, proxy=None):
         if self._holders._insider_transactions is None:
-            self._holders._insider_transactions = self._holders.insider_transactions(self.ticker, proxy=proxy)
+            self._holders._insider_transactions = self._holders._insider_transaction(self.ticker, proxy=proxy)
             
         return self._holders._insider_transactions
