@@ -240,7 +240,7 @@ class Ticker(TickerBase):
         return tuple(self._expirations.keys())
 
     @property
-    def news(self):
+    def news(self) -> list:
         return self.get_news()
 
     @property
