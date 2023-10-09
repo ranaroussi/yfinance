@@ -26,7 +26,7 @@ import json as _json
 import logging
 import time as _time
 import warnings
-from typing import Optional
+from typing import Optional, Union, List
 from urllib.parse import quote as urlencode
 
 import dateutil as _dateutil
@@ -1883,7 +1883,7 @@ class TickerBase:
     def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(proxy, as_dict, pretty, freq)
 
-    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
         """
         :Parameters:
             as_dict: bool
@@ -1919,7 +1919,7 @@ class TickerBase:
         if self._history is not None and "Dividends" in self._history:
             dividends = self._history["Dividends"]
             return dividends[dividends != 0]
-        return pd.Series()
+        return _empty_series
 
     def get_capital_gains(self, proxy=None) -> pd.Series:
         if self._history is None:
@@ -1937,7 +1937,7 @@ class TickerBase:
             return splits[splits != 0]
         return _empty_series
 
-    def get_actions(self, proxy=None) -> pd.Series:
+    def get_actions(self, proxy=None) -> pd.DataFrame:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
@@ -1946,9 +1946,9 @@ class TickerBase:
                 action_columns.append("Capital Gains")
             actions = self._history[action_columns]
             return actions[actions != 0].dropna(how='all').fillna(0)
-        return _empty_series
+        return pd.DataFrame()
 
-    def get_shares(self, proxy=None, as_dict=False):
+    def get_shares(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._fundamentals.proxy = proxy
         data = self._fundamentals.shares
         if as_dict:
