@@ -122,7 +122,7 @@ class Ticker(TickerBase):
         return self.get_dividends()
 
     @property
-    def capital_gains(self):
+    def capital_gains(self) -> _pd.Series:
         return self.get_capital_gains()
 
     @property
