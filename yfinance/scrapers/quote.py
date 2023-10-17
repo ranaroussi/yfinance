@@ -4,6 +4,10 @@ import logging
 import warnings
 from collections.abc import MutableMapping
 
+from io import StringIO
+import urllib.parse
+import requests
+
 import numpy as _np
 import pandas as pd
 
@@ -559,7 +563,7 @@ class Quote:
         self._retired_info = None
         self._sustainability = None
         self._recommendations = None
-        self._calendar = None
+        self._calendar = CalendarData(data.ticker)
 
         self._already_scraped = False
         self._already_fetched = False
@@ -586,9 +590,8 @@ class Quote:
         return self._recommendations
 
     @property
-    def calendar(self) -> pd.DataFrame:
-        if self._calendar is None:
-            raise YFNotImplementedError('calendar')
+    def calendar(self):
+        self._calendar._get_earnings()
         return self._calendar
 
     def _fetch(self, proxy):
@@ -693,3 +696,87 @@ class Quote:
             except Exception:
                 v = None
             self._info[k] = v
+
+
+class CalendarData:
+
+    def __init__(self, ticker: str, proxy=None):
+        self.ticker = ticker
+        self.offset = 0
+        self.proxy = proxy
+        # Batch request for a single request (probably shouldn't be overwritten)
+        self.size = 100
+        self.params = {"symbol": ticker}
+        self.url = "https://finance.yahoo.com/calendar/earnings"
+        self.data = None
+        # toggle when the endpoint returns an html without <table>
+        self.has_no_tables = False
+
+
+    @staticmethod
+    def parse_date_string_column(entry: str): 
+        # date format: Apr 23, 2024, 6 AMEDT
+        date_format = "%b %d, %Y, %I %p"
+        split_date = entry.split(", ")
+
+        # Grab AM/PM and discard timezone
+        hour, period_tz= split_date[-1].split(" ")
+        period = period_tz[:2]
+
+        split_date[-1] = f"{hour} {period}"
+        date_string = ", ".join(split_date)
+        return datetime.datetime.strptime(date_string, date_format)
+
+    @staticmethod
+    def parse_numeric_col(entry: str):
+        if entry == "-":
+            return _np.nan
+        return float(entry)
+
+    def parse_table(self, table: pd.DataFrame):
+        table['Earnings Date'] = table['Earnings Date'].apply(CalendarData.parse_date_string_column)
+        table["EPS Estimate"] = table["EPS Estimate"].apply(CalendarData.parse_numeric_col)
+        table["Reported EPS"] = table["EPS Estimate"].apply(CalendarData.parse_numeric_col)
+        table["Surprise(%)"] = table["Surprise(%)"].apply(CalendarData.parse_numeric_col)
+        if self.data is None:
+            self.data = table
+        else:
+            # index must be reset as self.data and table will have conflicting indexes 
+            self.data = pd.concat([self.data, table]).reset_index()
+
+    def get(self):
+        return self.data
+
+    def _get_earnings(self):
+        if self.has_no_tables:
+            return self
+        try:
+            url = self.url + "?" + urllib.parse.urlencode(self.params)
+            res = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"},
+                               proxies=self.proxy)
+            if not res.ok or len(res.text) == 0:
+                return self
+            tables = pd.read_html(StringIO(res.text))
+            if len(tables) == 0:
+                # len(tables) should technically be 1 or else
+                # pandas would throw an error, but index checking might still be needed
+                return self
+            self.parse_table(tables[0])
+        except ValueError:
+            #Theres no table to be parsed
+            self.has_no_tables = True
+        return self
+
+    def get_next(self):
+        # set parameter size for the first time get_next is called
+        if "size" not in self.params.keys():
+            self.params['size'] = self.size
+
+        if "offset" in self.params.keys():
+            self.params['offset'] = self.params['offset'] + self.size 
+        else:
+            self.params['offset'] = self.size
+
+        return self._get_earnings()
+
+
