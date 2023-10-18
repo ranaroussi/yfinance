@@ -10,6 +10,8 @@ Specific test class:
 """
 import pandas as pd
 
+from yfinance.scrapers.quote import CalendarData
+
 from .context import yfinance as yf
 from .context import session_gbl
 from yfinance.exceptions import YFNotImplementedError
@@ -596,6 +598,15 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test to_dict
         data = self.ticker.get_balance_sheet(as_dict=True, freq="quarterly")
         self.assertIsInstance(data, dict, "data has wrong type")
+
+    def test_ticker_calendar_earnigns(self):
+       calendar = self.ticker.calendar 
+       calendar_df = calendar.get()
+       self.assertIsInstance(calendar, CalendarData)
+       if calendar_df is not None:
+
+            self.assertIsInstance(calendar_df, pd.DataFrame)
+            self.assertTrue(len(calendar_df) > 0)
 
     def test_cash_flow(self):
         expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
