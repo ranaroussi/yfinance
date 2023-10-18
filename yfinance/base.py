@@ -46,8 +46,9 @@ from .const import _BASE_URL_, _ROOT_URL_
 
 
 class TickerBase:
-    def __init__(self, ticker, session=None):
+    def __init__(self, ticker, session=None, proxy=None):
         self.ticker = ticker.upper()
+        self.proxy = proxy
         self.session = session
         self._history = None
         self._history_metadata = None
@@ -132,6 +133,7 @@ class TickerBase:
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
+        proxy = proxy or self.proxy
 
         if debug is not None:
             if debug:
@@ -1638,7 +1640,8 @@ class TickerBase:
 
         return df2
 
-    def _get_ticker_tz(self, proxy, timeout):
+    def _get_ticker_tz(self,timeout, proxy=None):
+        proxy = proxy or self.proxy
         if self._tz is not None:
             return self._tz
         cache = utils.get_tz_cache()
@@ -1662,9 +1665,9 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, proxy, timeout):
+    def _fetch_ticker_tz(self, timeout, proxy=None):
         # Query Yahoo for fast price data just to get returned timezone
-
+        proxy = proxy or self.proxy
         logger = utils.get_yf_logger()
 
         params = {"range": "1d", "interval": "1d"}
@@ -1695,28 +1698,28 @@ class TickerBase:
         return None
 
     def get_recommendations(self, proxy=None, as_dict=False):
-        self._quote.proxy = proxy
+        self._quote.proxy = proxy or self.proxy
         data = self._quote.recommendations
         if as_dict:
             return data.to_dict()
         return data
 
     def get_calendar(self, proxy=None, as_dict=False):
-        self._quote.proxy = proxy
+        self._quote.proxy = proxy or self.proxy
         data = self._quote.calendar
         if as_dict:
             return data.to_dict()
         return data
 
     def get_major_holders(self, proxy=None, as_dict=False):
-        self._holders.proxy = proxy
+        self._holders.proxy = proxy or self.proxy
         data = self._holders.major
         if as_dict:
             return data.to_dict()
         return data
 
     def get_institutional_holders(self, proxy=None, as_dict=False):
-        self._holders.proxy = proxy
+        self._holders.proxy = proxy or self.proxy
         data = self._holders.institutional
         if data is not None:
             if as_dict:
@@ -1724,7 +1727,7 @@ class TickerBase:
             return data
 
     def get_mutualfund_holders(self, proxy=None, as_dict=False):
-        self._holders.proxy = proxy
+        self._holders.proxy = proxy or self.proxy
         data = self._holders.mutualfund
         if data is not None:
             if as_dict:
@@ -1732,7 +1735,7 @@ class TickerBase:
             return data
 
     def get_info(self, proxy=None) -> dict:
-        self._quote.proxy = proxy
+        self._quote.proxy = proxy or self.proxy
         data = self._quote.info
         return data
 
@@ -1747,49 +1750,49 @@ class TickerBase:
         return self.fast_info
 
     def get_sustainability(self, proxy=None, as_dict=False):
-        self._quote.proxy = proxy
+        self._quote.proxy = proxy or self.proxy
         data = self._quote.sustainability
         if as_dict:
             return data.to_dict()
         return data
 
     def get_recommendations_summary(self, proxy=None, as_dict=False):
-        self._quote.proxy = proxy
+        self._quote.proxy = proxy or self.proxy
         data = self._quote.recommendations
         if as_dict:
             return data.to_dict()
         return data
 
     def get_analyst_price_target(self, proxy=None, as_dict=False):
-        self._analysis.proxy = proxy
+        self._analysis.proxy = proxy or self.proxy
         data = self._analysis.analyst_price_target
         if as_dict:
             return data.to_dict()
         return data
 
     def get_rev_forecast(self, proxy=None, as_dict=False):
-        self._analysis.proxy = proxy
+        self._analysis.proxy = proxy or self.proxy
         data = self._analysis.rev_est
         if as_dict:
             return data.to_dict()
         return data
 
     def get_earnings_forecast(self, proxy=None, as_dict=False):
-        self._analysis.proxy = proxy
+        self._analysis.proxy = proxy or self.proxy
         data = self._analysis.eps_est
         if as_dict:
             return data.to_dict()
         return data
 
     def get_trend_details(self, proxy=None, as_dict=False):
-        self._analysis.proxy = proxy
+        self._analysis.proxy = proxy or self.proxy
         data = self._analysis.analyst_trend_details
         if as_dict:
             return data.to_dict()
         return data
 
     def get_earnings_trend(self, proxy=None, as_dict=False):
-        self._analysis.proxy = proxy
+        self._analysis.proxy = proxy or self.proxy
         data = self._analysis.earnings_trend
         if as_dict:
             return data.to_dict()
@@ -1808,7 +1811,7 @@ class TickerBase:
                 Optional. Proxy server URL scheme
                 Default is None
         """
-        self._fundamentals.proxy = proxy
+        self._fundamentals.proxy = proxy or self.proxy
         data = self._fundamentals.earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
@@ -1833,7 +1836,7 @@ class TickerBase:
                 Optional. Proxy server URL scheme
                 Default is None
         """
-        self._fundamentals.proxy = proxy
+        self._fundamentals.proxy = proxy or self.proxy
 
         data = self._fundamentals.financials.get_income_time_series(freq=freq, proxy=proxy)
 
@@ -1866,7 +1869,7 @@ class TickerBase:
                 Optional. Proxy server URL scheme
                 Default is None
         """
-        self._fundamentals.proxy = proxy
+        self._fundamentals.proxy = proxy or self.proxy
 
         data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq, proxy=proxy)
 
@@ -1896,7 +1899,7 @@ class TickerBase:
                 Optional. Proxy server URL scheme
                 Default is None
         """
-        self._fundamentals.proxy = proxy
+        self._fundamentals.proxy = proxy or self.proxy
 
         data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq, proxy=proxy)
 
@@ -1946,7 +1949,7 @@ class TickerBase:
         return []
 
     def get_shares(self, proxy=None, as_dict=False):
-        self._fundamentals.proxy = proxy
+        self._fundamentals.proxy = proxy or self.proxy
         data = self._fundamentals.shares
         if as_dict:
             return data.to_dict()
@@ -2020,7 +2023,7 @@ class TickerBase:
 
         q = ticker
 
-        self._quote.proxy = proxy
+        self._quote.proxy = proxy or self.proxy
         if self._quote.info is None:
             # Don't print error message cause self._quote.info will print one
             return None
@@ -2141,7 +2144,7 @@ class TickerBase:
         dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
         dates[cn] = pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
         # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
-        self._quote.proxy = proxy
+        self._quote.proxy = proxy or self.proxy
         tz = self._get_ticker_tz(proxy=proxy, timeout=30)
         dates[cn] = dates[cn].dt.tz_localize(tz)
 
