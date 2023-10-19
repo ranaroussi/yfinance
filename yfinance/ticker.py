@@ -118,6 +118,10 @@ class Ticker(TickerBase):
         return self.get_mutualfund_holders()
 
     @property
+    def insider_roster(self) -> _pd.DataFrame:
+        return self.get_insider_roster()
+    
+    @property
     def dividends(self) -> _pd.Series:
         return self.get_dividends()
 

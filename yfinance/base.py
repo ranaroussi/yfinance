@@ -40,6 +40,7 @@ from .data import TickerData
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
+from .scrapers.insider import Insider
 from .scrapers.quote import Quote, FastInfo
 
 from .const import _BASE_URL_, _ROOT_URL_
@@ -73,6 +74,7 @@ class TickerBase:
 
         self._analysis = Analysis(self._data)
         self._holders = Holders(self._data)
+        self.insider = Insider(self.data)
         self._quote = Quote(self._data)
         self._fundamentals = Fundamentals(self._data)
 
@@ -1729,6 +1731,14 @@ class TickerBase:
     def get_mutualfund_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.mutualfund
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            return data
+        
+    def get_insider_roster(self, proxy=None, as_dict=False):
+        self._insider.proxy = proxy or self.proxy
+        data = self._insider.roster
         if data is not None:
             if as_dict:
                 return data.to_dict()
