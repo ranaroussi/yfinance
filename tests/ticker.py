@@ -142,132 +142,18 @@ class TestTicker(unittest.TestCase):
             for attribute_name, attribute_type in ticker_attributes:
                 assert_attribute_type(self, dat, attribute_name, attribute_type) 
             
-    #TODO:: Refactor with `assert_attribute` once proxy is accepted as a parameter of `Ticker`
     def test_goodTicker_withProxy(self):
-        # that yfinance works when full api is called on same instance of ticker
-
         tkr = "IBM"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
 
-        dat._fetch_ticker_tz(proxy=self.proxy, timeout=5)
-        dat._get_ticker_tz(proxy=self.proxy, timeout=5)
-        dat.history(period="1wk", proxy=self.proxy)
+        dat._fetch_ticker_tz(timeout=5)
+        dat._get_ticker_tz(timeout=5)
+        dat.history(period="1wk")
 
-        v = dat.get_major_holders(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
+        for attribute_name, attribute_type in ticker_attributes:
+            assert_attribute_type(self, dat, attribute_name, attribute_type)
 
-        v = dat.get_institutional_holders(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_mutualfund_holders(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_info(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(len(v) > 0)
-
-        v = dat.get_income_stmt(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_incomestmt(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_financials(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_balance_sheet(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_balancesheet(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_cash_flow(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_cashflow(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_shares_full(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_isin(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(v != "")
-
-        v = dat.get_news(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(len(v) > 0)
-
-        v = dat.get_earnings_dates(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        dat.get_history_metadata(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(len(v) > 0)
-
-        # Below will fail because not ported to Yahoo API
-
-        # v = dat.stats(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertTrue(len(v) > 0)
-
-        # v = dat.get_recommendations(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_calendar(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_sustainability(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_recommendations_summary(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_analyst_price_target(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_rev_forecast(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_earnings_forecast(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_trend_details(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_earnings_trend(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_earnings(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_shares(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-
+        
 class TestTickerHistory(unittest.TestCase):
     session = None
 
