@@ -21,7 +21,7 @@ info_retired_keys_symbol = {"symbol"}
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
 
 
-_BASIC_URL_ = "https://query2.finance.yahoo.com/v6/finance/quoteSummary"
+_BASIC_URL_ = "https://query2.finance.yahoo.com/v10/finance/quoteSummary"
 
 
 class InfoDictWrapper(MutableMapping):
