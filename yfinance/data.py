@@ -4,6 +4,7 @@ from functools import lru_cache
 import logging
 
 import requests as requests
+from bs4 import BeautifulSoup
 import re
 import random
 import time
@@ -50,13 +51,12 @@ class TickerData:
         self.ticker = ticker
         self._session = session or requests
 
-        self._cookie, self._crumb = None, None
-
     def _get_cookie(self, proxy=None, timeout=30):
-        if self._cookie is not None:
-            return self._cookie
+        if utils.cookie is not None:
+            return utils.cookie
 
-        # response = self.get('https://fc.yahoo.com')
+        utils.get_yf_logger().debug(f"Fetching cookie ...")
+
         # To avoid infinite recursion, do NOT use self.get()
         response = self._session.get(
             url='https://fc.yahoo.com',
@@ -66,39 +66,87 @@ class TickerData:
 
         if not response.cookies:
             raise Exception("Failed to obtain Yahoo auth cookie.")
-        self._cookie = list(response.cookies)[0]
-        return self._cookie
+
+        utils.cookie = list(response.cookies)[0]
+        utils.get_yf_logger().debug(f"cookie = '{utils.cookie}'")
+        return utils.cookie
 
     def _get_crumb(self, proxy=None, timeout=30):
-        if self._crumb is not None:
-            return self._crumb
-        cookie = self._get_cookie()
+        if utils.crumb is not None:
+            return utils.crumb
 
+        utils.get_yf_logger().debug(f"Fetching crumb ...")
+
+        cookie = self._get_cookie()
         crumb_response = self._session.get(
                     url="https://query1.finance.yahoo.com/v1/test/getcrumb",
                     headers=self.user_agent_headers,
                     cookies={cookie.name: cookie.value},
             proxies=proxy,
             timeout=timeout)
+        utils.crumb = crumb_response.text
+        if utils.crumb is None or '<html>' in utils.crumb:
+            raise Exception("Failed to fetch crumb")
 
-        self._crumb = crumb_response.text
-        return self._crumb
+        utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
+        utils.crumb = utils.crumb
+        return utils.crumb
 
+    def _get_crumb_botunit(self, proxy=None, timeout=30):
+        # Credit goes to @bot-unit #1729
+
+        if utils.crumb is not None:
+            return utils.crumb
+
+        utils.get_yf_logger().debug(f"Fetching crumb ...")
+
+        # ToDo: might have to force fetch crumb direct from `requests`, 
+        # to avoid using cached crumb from `requests_cache`
+
+        response = self._session.get('https://guce.yahoo.com/consent', headers=self.user_agent_headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
+        csrfToken = csrfTokenInput['value']
+        sessionIdInput = soup.find('input', attrs={'name': 'sessionId'})
+        sessionId = sessionIdInput['value']
+        originalDoneUrl = 'https://finance.yahoo.com/'
+        namespace = 'yahoo'
+        data = {
+            'agree': ['agree', 'agree'],
+            'consentUUID': 'default',
+            'sessionId': sessionId,
+            'csrfToken': csrfToken,
+            'originalDoneUrl': originalDoneUrl,
+            'namespace': namespace,
+        }
+        self._session.post(f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}', data=data, headers=self.user_agent_headers)
+        self._session.get(f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}', headers=self.user_agent_headers)
+        r = self._session.get('https://query2.finance.yahoo.com/v1/test/getcrumb', headers=self.user_agent_headers)
+        utils.crumb = r.text
+
+        if utils.crumb is None or '<html>' in utils.crumb:
+            raise Exception("Failed to fetch crumb")
+
+        utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
+        utils.crumb = utils.crumb
+        return utils.crumb
 
     def get(self, url, user_agent_headers=None, params=None, cookies=None, proxy=None, timeout=30):
+        utils.get_yf_logger().debug(f'get(): {url}')
         proxy = self._get_proxy(proxy)
 
         # Add cookie & crumb
-        if cookies is None:
-            cookie = self._get_cookie()
-            cookies = {cookie.name: cookie.value}
+        # if cookies is None:
+        #     cookie = self._get_cookie()
+        #     cookies = {cookie.name: cookie.value}
+        # Update: don't need cookie
         if params is None:
             params = {}
         if 'crumb' not in params:
-            params['crumb'] = self._get_crumb()
+            # params['crumb'] = self._get_crumb()
+            params['crumb'] = self._get_crumb_botunit()
 
         response = self._session.get(
-        # response = requests.get(
             url=url,
             params=params,
             cookies=cookies,
