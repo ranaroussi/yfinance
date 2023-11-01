@@ -71,7 +71,7 @@ class TickerData:
         utils.get_yf_logger().debug(f"cookie = '{utils.cookie}'")
         return utils.cookie
 
-    def _get_crumb(self, proxy=None, timeout=30):
+    def _get_crumb_basic(self, proxy=None, timeout=30):
         if utils.crumb is not None:
             return utils.crumb
 
@@ -89,7 +89,6 @@ class TickerData:
             raise Exception("Failed to fetch crumb")
 
         utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
-        utils.crumb = utils.crumb
         return utils.crumb
 
     def _get_crumb_botunit(self, proxy=None, timeout=30):
@@ -128,8 +127,17 @@ class TickerData:
             raise Exception("Failed to fetch crumb")
 
         utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
-        utils.crumb = utils.crumb
         return utils.crumb
+
+    def _get_crumb(self, proxy=None, timeout=30):
+        try:
+            return self._get_crumb_botunit(proxy, timeout)
+        except Exception as e:
+            if "csrfToken" in str(e):
+                # _get_crumb_botunit() fails in USA, but not sure _get_crumb_basic() fixes fetch
+                return self._get_crumb_basic(proxy, timeout)
+            else:
+                raise
 
     def get(self, url, user_agent_headers=None, params=None, cookies=None, proxy=None, timeout=30):
         utils.get_yf_logger().debug(f'get(): {url}')
@@ -143,8 +151,9 @@ class TickerData:
         if params is None:
             params = {}
         if 'crumb' not in params:
-            # params['crumb'] = self._get_crumb()
-            params['crumb'] = self._get_crumb_botunit()
+            # Be careful which URLs get a crumb, because crumb breaks some fetches
+            if 'finance/quoteSummary' in url:
+                params['crumb'] = self._get_crumb()
 
         response = self._session.get(
             url=url,

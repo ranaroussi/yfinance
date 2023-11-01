@@ -569,7 +569,7 @@ class Quote:
     def info(self) -> dict:
         if self._info is None:
             self._fetch(self.proxy)
-            self._fetch_complementary(self.proxy)  # Failing, don't know why. Help!
+            # self._fetch_complementary(self.proxy)  # Failing, don't know why. Help!
 
         return self._info
 
