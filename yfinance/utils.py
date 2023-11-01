@@ -57,9 +57,13 @@ user_agent_headers = {
 
 
 # Quick hack to globally-cache cookie & crumb
+reuse_cookie = True
+reuse_crumb = True
+# reuse_cookie = False
+# reuse_crumb = False
 cookie = None
 crumb = None
-
+crumb_timestamp = None
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
