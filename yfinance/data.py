@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 import requests as requests
 from frozendict import frozendict
 
-from .utils import warn_for_status
+from . import utils
 
 cache_maxsize = 64
 
@@ -89,7 +89,7 @@ class TickerData:
             retry += 1
 
         if 400 <= response.status_code:
-            warn_for_status(response)
+            utils.warn_for_status(response)
             return None
 
         return response.json()
