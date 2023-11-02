@@ -6,22 +6,23 @@ from collections.abc import MutableMapping
 
 import numpy as _np
 import pandas as pd
-
 from yfinance import utils
 from yfinance.data import TickerData
 from yfinance.exceptions import YFNotImplementedError
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
-info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
-info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyTwoWeekChange", "52WeekChange", "fiftyDayAverage", "twoHundredDayAverage"})
+info_retired_keys_price.update(
+    {"regularMarket" + s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
+info_retired_keys_price.update(
+    {"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyTwoWeekChange", "52WeekChange", "fiftyDayAverage",
+     "twoHundredDayAverage"})
 info_retired_keys_price.update({"averageDailyVolume10Day", "averageVolume10days", "averageVolume"})
 info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName", "quoteType"}
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
 
-
-_BASIC_URL_ = "https://query2.finance.yahoo.com/v6/finance/quoteSummary"
+_BASIC_URL_ = "https://query2.finance.yahoo.com/v10/finance/quoteSummary"
 
 
 class InfoDictWrapper(MutableMapping):
@@ -46,10 +47,13 @@ class InfoDictWrapper(MutableMapping):
 
     def __getitem__(self, k):
         if k in info_retired_keys_price:
-            warnings.warn(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead", DeprecationWarning)
+            warnings.warn(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead",
+                          DeprecationWarning)
             return None
         elif k in info_retired_keys_exchange:
-            warnings.warn(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead", DeprecationWarning)
+            warnings.warn(
+                f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead",
+                DeprecationWarning)
             return None
         elif k in info_retired_keys_marketCap:
             warnings.warn(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead", DeprecationWarning)
@@ -67,7 +71,7 @@ class InfoDictWrapper(MutableMapping):
 
     def __iter__(self):
         return iter(self.info)
-    
+
     def __len__(self):
         return len(self.info)
 
@@ -122,7 +126,8 @@ class FastInfo:
         _properties += ["last_price", "previous_close", "open", "day_high", "day_low"]
         _properties += ["regular_market_previous_close"]
         _properties += ["last_volume"]
-        _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
+        _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume",
+                        "three_month_average_volume"]
         _properties += ["year_high", "year_low", "year_change"]
 
         # Because released before fixing key case, need to officially support 
@@ -133,7 +138,7 @@ class FastInfo:
 
         self._sc_to_cc_key = {k: utils.snake_case_2_camelCase(k) for k in sc_keys}
         self._cc_to_sc_key = {v: k for k, v in self._sc_to_cc_key.items()}
- 
+
         self._public_keys = sorted(base_keys + list(self._sc_to_cc_key.values()))
         self._keys = sorted(self._public_keys + sc_keys)
 
@@ -212,7 +217,8 @@ class FastInfo:
         if self._prices_1wk_1h_prepost is None:
             # Temporarily disable error printing
             logging.disable(logging.CRITICAL)
-            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, proxy=self.proxy)
+            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False,
+                                                            prepost=True, proxy=self.proxy)
             logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_prepost
 
@@ -220,7 +226,8 @@ class FastInfo:
         if self._prices_1wk_1h_reg is None:
             # Temporarily disable error printing
             logging.disable(logging.CRITICAL)
-            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, proxy=self.proxy)
+            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False,
+                                                        proxy=self.proxy)
             logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_reg
 
@@ -298,7 +305,8 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548), proxy=self.proxy)
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date() - pd.Timedelta(days=548),
+                                           proxy=self.proxy)
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
@@ -428,7 +436,7 @@ class FastInfo:
             self._50d_day_average = None
         else:
             n = prices.shape[0]
-            a = n-50
+            a = n - 50
             b = n
             if a < 0:
                 a = 0
@@ -446,7 +454,7 @@ class FastInfo:
             self._200d_day_average = None
         else:
             n = prices.shape[0]
-            a = n-200
+            a = n - 200
             b = n
             if a < 0:
                 a = 0
@@ -465,7 +473,7 @@ class FastInfo:
             self._10d_avg_vol = None
         else:
             n = prices.shape[0]
-            a = n-10
+            a = n - 10
             b = n
             if a < 0:
                 a = 0
@@ -595,28 +603,37 @@ class Quote:
         if self._already_fetched:
             return
         self._already_fetched = True
-        modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+        modules = ("summaryDetail,"
+                   "financialData,"
+                   "indexTrend,"
+                   "defaultKeyStatistics")
         params_dict = {"modules": modules, "ssl": "true"}
         result = self._data.get_raw_json(
             _BASIC_URL_ + f"/{self._data.ticker}", params=params_dict, proxy=proxy
         )
+
+        if result is None:
+            return
+
         result["quoteSummary"]["result"][0]["symbol"] = self._data.ticker
         query1_info = next(
             (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._data.ticker),
             None,
         )
+
         # Most keys that appear in multiple dicts have same value. Except 'maxAge' because
         # Yahoo not consistent with days vs seconds. Fix it here:
         for k in query1_info:
             if "maxAge" in query1_info[k] and query1_info[k]["maxAge"] == 1:
                 query1_info[k]["maxAge"] = 86400
         query1_info = {
-            k1: v1 
-            for k, v in query1_info.items() 
-            if isinstance(v, dict) 
-            for k1, v1 in v.items() 
+            k1: v1
+            for k, v in query1_info.items()
+            if isinstance(v, dict)
+            for k1, v1 in v.items()
             if v1
         }
+
         # recursively format but only because of 'companyOfficers'
 
         def _format(k, v):
@@ -631,6 +648,7 @@ class Quote:
             else:
                 v2 = v
             return v2
+
         for k, v in query1_info.items():
             query1_info[k] = _format(k, v)
         self._info = query1_info
