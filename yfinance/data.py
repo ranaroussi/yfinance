@@ -85,7 +85,6 @@ class TickerData:
         while response is None or (retry < self.max_retries and 400 <= response.status_code):
             response = self.get(url, user_agent_headers=user_agent_headers, params=params,
                                 proxy=proxy, timeout=timeout)
-            print(retry)
             retry += 1
 
         if 400 <= response.status_code:
