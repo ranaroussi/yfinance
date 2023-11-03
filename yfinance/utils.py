@@ -22,10 +22,12 @@
 from __future__ import print_function
 
 import atexit as _atexit
+
 import datetime as _datetime
 import logging
 import os as _os
 import re as _re
+import peewee as _peewee
 import sys as _sys
 import threading
 import warnings
@@ -33,18 +35,17 @@ from functools import lru_cache
 from inspect import getmembers
 from threading import Lock
 from types import FunctionType
-from typing import List, Optional
+from typing import Dict, Union, List, Optional
 
 import appdirs as _ad
 import numpy as _np
 import pandas as _pd
-import peewee as _peewee
 import pytz as _tz
 import requests as _requests
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
-from yfinance import const
 
+from yfinance import const
 from .const import _BASE_URL_
 
 try:
@@ -298,8 +299,7 @@ def retrieve_financial_details(data):
     TTM_dicts = []  # Save a dictionary object to store the TTM financials.
     Annual_dicts = []  # Save a dictionary object to store the Annual financials.
 
-    for key, timeseries in data.get('timeSeries',
-                                    {}).items():  # Loop through the time series data to grab the key financial figures.
+    for key, timeseries in data.get('timeSeries', {}).items():  # Loop through the time series data to grab the key financial figures.
         try:
             if timeseries:
                 time_series_dict = {'index': key}
@@ -635,14 +635,12 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                 if not _np.isnan(quotes["High"].iloc[n - 1]):
                     quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[n - 1], quotes["High"].iloc[n - 2]])
                     if "Adj High" in quotes.columns:
-                        quotes.loc[idx2, "Adj High"] = _np.nanmax(
-                            [quotes["Adj High"].iloc[n - 1], quotes["Adj High"].iloc[n - 2]])
+                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[n - 1], quotes["Adj High"].iloc[n - 2]])
 
                 if not _np.isnan(quotes["Low"].iloc[n - 1]):
                     quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[n - 1], quotes["Low"].iloc[n - 2]])
                     if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2, "Adj Low"] = _np.nanmin(
-                            [quotes["Adj Low"].iloc[n - 1], quotes["Adj Low"].iloc[n - 2]])
+                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[n - 1], quotes["Adj Low"].iloc[n - 2]])
 
                 quotes.loc[idx2, "Close"] = quotes["Close"].iloc[n - 1]
                 if "Adj Close" in quotes.columns:
@@ -675,8 +673,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
         # Solution = use dates, not datetimes, to map/merge.
         df_main['_date'] = df_main.index.date
         df_sub['_date'] = df_sub.index.date
-        indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1] + td]), df_sub['_date'],
-                                   side='left')
+        indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
         df_main = df_main.drop('_date', axis=1)
         df_sub = df_sub.drop('_date', axis=1)
     else:
@@ -705,7 +702,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 df_main['Dividends'] = 0.0
                 return df_main
         else:
-            empty_row_data = {c: [_np.nan] for c in const.price_colnames} | {'Volume': [0]}
+            empty_row_data = {c:[_np.nan] for c in const.price_colnames}|{'Volume':[0]}
             if interval == '1d':
                 # For 1d, add all out-of-range event dates
                 for i in _np.where(f_outOfRange)[0]:
@@ -741,8 +738,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_outOfRange = indices == -1
     if f_outOfRange.any():
         if intraday or interval in ['1d', '1wk']:
-            raise Exception(
-                f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
+            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
         get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
         indices = indices[~f_outOfRange]
@@ -843,10 +839,8 @@ def format_history_metadata(md, tradingPeriodsOnly=True):
                 post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
                 regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
 
-                pre_df = pre_df.rename(columns={"start": "pre_start", "end": "pre_end"}).drop(["timezone", "gmtoffset"],
-                                                                                              axis=1)
-                post_df = post_df.rename(columns={"start": "post_start", "end": "post_end"}).drop(
-                    ["timezone", "gmtoffset"], axis=1)
+                pre_df = pre_df.rename(columns={"start": "pre_start", "end": "pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                post_df = post_df.rename(columns={"start": "post_start", "end": "post_end"}).drop(["timezone", "gmtoffset"], axis=1)
                 regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
 
                 cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
@@ -971,6 +965,7 @@ class _DBManager:
                 # Must discard exceptions because Python trying to quit.
                 pass
 
+
     @classmethod
     def _initialise(cls, cache_dir=None):
         if cache_dir is not None:
@@ -1004,17 +999,15 @@ class _DBManager:
     def get_location(cls):
         return cls._cache_dir
 
-
 # close DB when Python exists
 _atexit.register(_DBManager.close_db)
 
+
 db_proxy = _peewee.Proxy()
-
-
 class _KV(_peewee.Model):
     key = _peewee.CharField(primary_key=True)
     value = _peewee.CharField(null=True)
-
+    
     class Meta:
         database = db_proxy
         without_rowid = True
