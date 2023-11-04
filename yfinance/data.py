@@ -121,6 +121,36 @@ class TickerData:
                     response = self._session.get('https://guce.yahoo.com/consent', headers=self.user_agent_headers)
             else:
                 response = self._session.get('https://guce.yahoo.com/consent', headers=self.user_agent_headers)
+
+            # ----------------------------------------------------------------------------------------------------
+            # BEGINNING OF THE US LOGIC
+            # If running the code from the US, `response.url` will have redirected to www.yahoo.com without 
+            # first displaying a cookie acceptance page. The page already contains the crumb. Below, we just extract it.
+            # This will get us the crumb, but it doesn't yet win the battle.
+            if response.url == 'https://www.yahoo.com?guccounter=1':
+                # You're in the US? Then your cookie acceptance is assumed/implied. Come right in!
+                pattern = r"(?<=window\.YAHOO\.context = )\{.*?(\n})(?=;)"
+                match = re.search(pattern, response.text, re.DOTALL)
+                crumb = None
+                if match:
+                    yContextStr = match.group(0)
+                    try:
+                        yContext = json.loads(yContextStr)
+                        crumb = yContext["crumb"]
+                    except:
+                        msg = "No crumb! Found window.YAHOO.context, but crumb wasn't in it"
+                else:
+                    msg = "No crumb! Couldn't find window.YAHOO.context"
+                if isinstance(crumb, str):
+                    #Success! We have a crumb.
+                    utils.crumb = crumb
+                    utils.cookie = True # I am not sure what this does, or if we need it.
+                    return utils.crumb
+                else:
+                    raise Exception(msg)
+            # END OF THE US LOGIC
+            # -----------------------------------------------------------------------------------------------------
+
             soup = BeautifulSoup(response.content, 'html.parser')
             csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
             csrfToken = csrfTokenInput['value']
@@ -230,10 +260,6 @@ class TickerData:
         proxy = self._get_proxy(proxy)
 
         # Add cookie & crumb
-        # if cookies is None:
-        #     cookie = self._get_cookie()
-        #     cookies = {cookie.name: cookie.value}
-        # Update: don't need cookie
         if params is None:
             params = {}
         if 'crumb' not in params:
