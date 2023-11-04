@@ -225,7 +225,7 @@ class TickerData:
                 raise
 
     @utils.log_indent_decorator
-    def get(self, url, user_agent_headers=None, params=None, cookies=None, proxy=None, timeout=30):
+    def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
         utils.get_yf_logger().debug(f'get(): {url}')
         proxy = self._get_proxy(proxy)
 
@@ -244,7 +244,6 @@ class TickerData:
         response = self._session.get(
             url=url,
             params=params,
-            cookies=cookies,
             proxies=proxy,
             timeout=timeout,
             headers=user_agent_headers or self.user_agent_headers)
