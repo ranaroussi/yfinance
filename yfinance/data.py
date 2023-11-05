@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 import re
 import random
 import time
+import pickle
+import os
 
 from frozendict import frozendict
 
@@ -62,6 +64,27 @@ class TickerData:
         if self._session_is_caching and utils.cookie is None:
             print("!! WARNING: cookie & crumb does not work well with requests_cache. Am using requests_cache.cache_disabled() to ensure cookie & crumb are fresh, but that isn't thread-safe.")
 
+    def _save_cookies(self):
+        fn = os.path.join(utils._DBManager.get_location(), 'cookie.pkl')
+        try:
+            with open(fn, 'wb') as file:
+                pickle.dump(self._session.cookies, file)
+            return True
+        except:
+            return False
+
+    def _load_cookies(self):
+        fn = os.path.join(utils._DBManager.get_location(), 'cookie.pkl')
+        if os.path.exists(fn):
+            try:
+                with open(fn, 'rb') as file:
+                    cookies = pickle.load(file)
+                    self._session.cookies.update(cookies)
+                    return True
+            except:
+                return False
+        return False
+
     @utils.log_indent_decorator
     def _get_cookie_basic(self, proxy=None, timeout=30):
         if utils.reuse_cookie and utils.cookie is not None:
@@ -107,94 +130,52 @@ class TickerData:
         return utils.crumb
 
     @utils.log_indent_decorator
-    def _get_crumb_botunit(self, proxy=None, timeout=30):
-        # Credit goes to @bot-unit #1729
+    def _get_cookie_botunit(self, proxy, timeout):
+        if utils.reuse_cookie and utils.cookie is not None:
+            utils.get_yf_logger().debug('reusing cookie')
+            return True
 
-        if utils.reuse_crumb and utils.crumb is not None:
-            utils.get_yf_logger().debug('reusing crumb')
-            return utils.crumb
+        elif self._load_cookies():
+            utils.get_yf_logger().debug('reusing persistent cookie')
+            utils.cookie = True
+            return True
 
-        # Cookie?
-        if (not utils.reuse_cookie) or (utils.cookie is None):
-            if self._session_is_caching:
-                with self._session.cache_disabled():
-                    response = self._session.get(
-                                        url='https://guce.yahoo.com/consent', 
-                                        headers=self.user_agent_headers,
-                                        proxies=proxy,
-                                        timeout=timeout)
-            else:
+        if self._session_is_caching:
+            with self._session.cache_disabled():
                 response = self._session.get(
                                     url='https://guce.yahoo.com/consent', 
                                     headers=self.user_agent_headers,
                                     proxies=proxy,
                                     timeout=timeout)
-
-            # # ----------------------------------------------------------------------------------------------------
-            # # BEGINNING OF THE US LOGIC
-            # # If running the code from the US, `response.url` will have redirected to www.yahoo.com without 
-            # # first displaying a cookie acceptance page. The page already contains the crumb. Below, we just extract it.
-            # # This will get us the crumb, but it doesn't yet win the battle.
-            # if response.url == 'https://www.yahoo.com?guccounter=1':
-            #     # You're in the US? Then your cookie acceptance is assumed/implied. Come right in!
-            #     pattern = r"(?<=window\.YAHOO\.context = )\{.*?(\n})(?=;)"
-            #     match = re.search(pattern, response.text, re.DOTALL)
-            #     crumb = None
-            #     if match:
-            #         yContextStr = match.group(0)
-            #         try:
-            #             yContext = json.loads(yContextStr)
-            #             crumb = yContext["crumb"]
-            #         except:
-            #             msg = "No crumb! Found window.YAHOO.context, but crumb wasn't in it"
-            #     else:
-            #         msg = "No crumb! Couldn't find window.YAHOO.context"
-            #     if isinstance(crumb, str):
-            #         #Success! We have a crumb.
-            #         utils.crumb = crumb
-            #         utils.cookie = True # I am not sure what this does, or if we need it.
-            #         return utils.crumb
-            #     else:
-            #         raise Exception(msg)
-            # # END OF THE US LOGIC
-            # # -----------------------------------------------------------------------------------------------------
-
-            soup = BeautifulSoup(response.content, 'html.parser')
-            csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
-            if csrfTokenInput is None:
-                # raise Exception('csrfToken not found')
-                return None
-            csrfToken = csrfTokenInput['value']
-            utils.get_yf_logger().debug(f"csrfToken='{csrfToken}'")
-            sessionIdInput = soup.find('input', attrs={'name': 'sessionId'})
-            sessionId = sessionIdInput['value']
-            utils.get_yf_logger().debug(f"sessionId='{sessionId}'")
-
-            originalDoneUrl = 'https://finance.yahoo.com/'
-            namespace = 'yahoo'
-            data = {
-                'agree': ['agree', 'agree'],
-                'consentUUID': 'default',
-                'sessionId': sessionId,
-                'csrfToken': csrfToken,
-                'originalDoneUrl': originalDoneUrl,
-                'namespace': namespace,
-            }
-            if self._session_is_caching:
-                with self._session.cache_disabled():
-                    self._session.post(
-                                url=f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
-                                data=data,
+        else:
+            response = self._session.get(
+                                url='https://guce.yahoo.com/consent', 
                                 headers=self.user_agent_headers,
                                 proxies=proxy,
                                 timeout=timeout)
-                    self._session.get(
-                                url=f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}', 
-                                data=data,
-                                headers=self.user_agent_headers,
-                                proxies=proxy,
-                                timeout=timeout)
-            else:
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
+        if csrfTokenInput is None:
+            return False
+        csrfToken = csrfTokenInput['value']
+        utils.get_yf_logger().debug(f'csrfToken = {csrfToken}')
+        sessionIdInput = soup.find('input', attrs={'name': 'sessionId'})
+        sessionId = sessionIdInput['value']
+        utils.get_yf_logger().debug(f"sessionId='{sessionId}")
+
+        originalDoneUrl = 'https://finance.yahoo.com/'
+        namespace = 'yahoo'
+        data = {
+            'agree': ['agree', 'agree'],
+            'consentUUID': 'default',
+            'sessionId': sessionId,
+            'csrfToken': csrfToken,
+            'originalDoneUrl': originalDoneUrl,
+            'namespace': namespace,
+        }
+        if self._session_is_caching:
+            with self._session.cache_disabled():
                 self._session.post(
                             url=f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
                             data=data,
@@ -202,13 +183,37 @@ class TickerData:
                             proxies=proxy,
                             timeout=timeout)
                 self._session.get(
-                            url=f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
+                            url=f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}', 
+                            data=data,
                             headers=self.user_agent_headers,
                             proxies=proxy,
                             timeout=timeout)
-            utils.cookie = True
         else:
-            utils.get_yf_logger().debug('reusing cookie')
+            self._session.post(
+                        url=f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
+                        data=data,
+                        headers=self.user_agent_headers,
+                        proxies=proxy,
+                        timeout=timeout)
+            self._session.get(
+                        url=f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
+                        headers=self.user_agent_headers,
+                        proxies=proxy,
+                        timeout=timeout)
+        utils.cookie = True
+        return True
+
+    @utils.log_indent_decorator
+    def _get_crumb_botunit(self, proxy=None, timeout=30):
+        # Credit goes to @bot-unit #1729
+
+        if utils.reuse_crumb and utils.crumb is not None:
+            utils.get_yf_logger().debug('reusing crumb')
+            return utils.crumb
+
+        if not self._get_cookie_botunit(proxy, timeout):
+            # This cookie stored in session
+            return None
 
         if self._session_is_caching:
             with self._session.cache_disabled():
@@ -231,47 +236,6 @@ class TickerData:
         utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
         return utils.crumb
 
-    @utils.log_indent_decorator
-    def _get_cookie_botunit(self):
-        if utils.reuse_cookie and utils.cookie is not None:
-            utils.get_yf_logger().debug('reusing cookie')
-            return
-
-        s = self._get_crumb_session()
-        response = s.get('https://guce.yahoo.com/consent', headers=self.user_agent_headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
-        csrfToken = csrfTokenInput['value']
-        utils.get_yf_logger().debug(f'csrfToken = {csrfToken}')
-        sessionIdInput = soup.find('input', attrs={'name': 'sessionId'})
-        sessionId = sessionIdInput['value']
-        utils.get_yf_logger().debug(f"sessionId='{sessionId}")
-
-        originalDoneUrl = 'https://finance.yahoo.com/'
-        namespace = 'yahoo'
-        data = {
-            'agree': ['agree', 'agree'],
-            'consentUUID': 'default',
-            'sessionId': sessionId,
-            'csrfToken': csrfToken,
-            'originalDoneUrl': originalDoneUrl,
-            'namespace': namespace,
-        }
-        s.post(f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}', data=data, headers=self.user_agent_headers)
-        s.get(f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}', headers=self.user_agent_headers)
-        utils.cookie = True
-
-    @utils.log_indent_decorator
-    def _get_crumb(self, proxy=None, timeout=30):
-        try:
-            return self._get_crumb_botunit(proxy, timeout)
-        except Exception as e:
-            if "csrfToken" in str(e):
-                # _get_crumb_botunit() fails in USA, but not sure _get_crumb_basic() fixes fetch
-                return self._get_crumb_basic(proxy, timeout)
-            else:
-                raise
-
     def _get_cookie_and_crumb(self, proxy=None, timeout=30):
         cookie = None
         crumb = None
@@ -280,6 +244,8 @@ class TickerData:
         if crumb is None:
             cookie = self._get_cookie_basic(proxy, timeout)
             crumb = self._get_crumb_basic(proxy, timeout)
+        else:
+            self._save_cookies()
 
         return cookie, crumb
 
@@ -288,20 +254,19 @@ class TickerData:
         utils.get_yf_logger().debug(f'get(): {url}')
         proxy = self._get_proxy(proxy)
 
-        cookie, crumb = self._get_cookie_and_crumb()
-
-        # Add cookie & crumb
-        cookie, crumb = None, None
         if params is None:
             params = {}
-        if 'crumb' not in params:
-            # Be careful which URLs get a crumb, because crumb breaks some fetches
-            if 'finance/quoteSummary' in url:
-                cookie, crumb = self._get_cookie_and_crumb()
+        if 'crumb' in params:
+            raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
 
+        # Be careful which URLs get a crumb, because crumb breaks some fetches
+        cookie, crumb = None, None
+        if 'finance/quoteSummary' in url:
+            cookie, crumb = self._get_cookie_and_crumb()
         if crumb is not None:
             params['crumb'] = crumb
         if cookie is not None:
+            # USA fallback adds cookie to GET parameters
             cookies = {cookie.name: cookie.value}
         else:
             cookies = None
