@@ -62,8 +62,9 @@ class TickerData:
             # Is caching
             self._session_is_caching = True
         if self._session_is_caching and utils.cookie is None:
-            print("!! WARNING: cookie & crumb does not work well with requests_cache. Am using requests_cache.cache_disabled() to ensure cookie & crumb are fresh, but that isn't thread-safe.")
+            utils.print_once("!! WARNING: cookie & crumb does not work well with requests_cache. Am using requests_cache.cache_disabled() to ensure cookie & crumb are fresh, but that isn't thread-safe.")
 
+    @utils.log_indent_decorator
     def _save_session_cookies(self):
         fn = os.path.join(utils._DBManager.get_location(), 'session-cookies.pkl')
         try:
@@ -72,6 +73,7 @@ class TickerData:
             return True
         except:
             return False
+    @utils.log_indent_decorator
     def _load_session_cookies(self):
         fn = os.path.join(utils._DBManager.get_location(), 'session-cookies.pkl')
         if os.path.exists(fn):
@@ -97,7 +99,10 @@ class TickerData:
         if os.path.exists(fn):
             try:
                 with open(fn, 'rb') as file:
-                    return pickle.load(file)
+                    cookie = pickle.load(file)
+                if cookie == '':
+                    cookie = None
+                return cookie
             except:
                 return None
         return None
@@ -122,9 +127,10 @@ class TickerData:
             allow_redirects=True)
 
         if not response.cookies:
-            raise Exception("Failed to obtain Yahoo auth cookie.")
-
+            return None
         utils.cookie = list(response.cookies)[0]
+        if utils.cookie == '':
+            return None
         utils.get_yf_logger().debug(f"cookie = '{utils.cookie}'")
         return utils.cookie
 
@@ -135,6 +141,9 @@ class TickerData:
             return utils.crumb
 
         cookie = self._get_cookie_basic()
+        if cookie is None:
+            return None
+
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         if self._session_is_caching:
             with self._session.cache_disabled():
@@ -155,7 +164,7 @@ class TickerData:
                 allow_redirects=True)
         utils.crumb = crumb_response.text
         if utils.crumb is None or '<html>' in utils.crumb:
-            raise Exception("Failed to fetch crumb")
+            return None
 
         utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
         return utils.crumb
@@ -261,8 +270,8 @@ class TickerData:
                         timeout=timeout)
         utils.crumb = r.text
 
-        if utils.crumb is None or '<html>' in utils.crumb:
-            raise Exception("Failed to fetch crumb")
+        if utils.crumb is None or '<html>' in utils.crumb or utils.crumb == '':
+            return None
 
         utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
         return utils.crumb
@@ -284,7 +293,10 @@ class TickerData:
 
     @utils.log_indent_decorator
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
-        utils.get_yf_logger().debug(f'get(): {url}')
+        if len(url) > 200:
+            utils.get_yf_logger().debug(f'get(): {url[:200]}...')
+        else:
+            utils.get_yf_logger().debug(f'get(): {url}')
         proxy = self._get_proxy(proxy)
 
         if params is None:
