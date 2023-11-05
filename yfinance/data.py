@@ -63,19 +63,19 @@ class TickerData:
             print("!! WARNING: cookie & crumb does not work well with requests_cache. Am using requests_cache.cache_disabled() to ensure cookie & crumb are fresh, but that isn't thread-safe.")
 
     @utils.log_indent_decorator
-    def _get_cookie(self, proxy=None, timeout=30):
+    def _get_cookie_basic(self, proxy=None, timeout=30):
         if utils.reuse_cookie and utils.cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
             return utils.cookie
 
         # To avoid infinite recursion, do NOT use self.get()
-
-        s = self._get_crumb_session()
-        response = s.get(
+        # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
+        response = self._session.get(
             url='https://fc.yahoo.com',
             headers=self.user_agent_headers,
             proxies=proxy,
-            timeout=timeout)
+            timeout=timeout,
+            allow_redirects=True)
 
         if not response.cookies:
             raise Exception("Failed to obtain Yahoo auth cookie.")
@@ -85,20 +85,20 @@ class TickerData:
         return utils.cookie
 
     @utils.log_indent_decorator
-    def _get_crumb_basic(self):#, proxy=None, timeout=30):
+    def _get_crumb_basic(self, proxy=None, timeout=30):
         if utils.reuse_crumb and utils.crumb is not None:
             utils.get_yf_logger().debug('reusing crumb')
             return utils.crumb
 
-        s = self._get_crumb_session()
-
-        cookie = self._get_cookie()
-        crumb_response = s.get(
-                    url="https://query1.finance.yahoo.com/v1/test/getcrumb",
-                    headers=self.user_agent_headers,
-                    cookies={cookie.name: cookie.value},
+        cookie = self._get_cookie_basic()
+        # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
+        crumb_response = self._session.get(
+            url="https://query1.finance.yahoo.com/v1/test/getcrumb",
+            headers=self.user_agent_headers,
+            cookies={cookie.name: cookie.value},
             proxies=proxy,
-            timeout=timeout)
+            timeout=timeout,
+            allow_redirects=True)
         utils.crumb = crumb_response.text
         if utils.crumb is None or '<html>' in utils.crumb:
             raise Exception("Failed to fetch crumb")
@@ -107,7 +107,7 @@ class TickerData:
         return utils.crumb
 
     @utils.log_indent_decorator
-    def _get_crumb_botunit_old(self):#, proxy=None, timeout=30):
+    def _get_crumb_botunit(self, proxy=None, timeout=30):
         # Credit goes to @bot-unit #1729
 
         if utils.reuse_crumb and utils.crumb is not None:
@@ -118,41 +118,52 @@ class TickerData:
         if (not utils.reuse_cookie) or (utils.cookie is None):
             if self._session_is_caching:
                 with self._session.cache_disabled():
-                    response = self._session.get('https://guce.yahoo.com/consent', headers=self.user_agent_headers)
+                    response = self._session.get(
+                                        url='https://guce.yahoo.com/consent', 
+                                        headers=self.user_agent_headers,
+                                        proxies=proxy,
+                                        timeout=timeout)
             else:
-                response = self._session.get('https://guce.yahoo.com/consent', headers=self.user_agent_headers)
+                response = self._session.get(
+                                    url='https://guce.yahoo.com/consent', 
+                                    headers=self.user_agent_headers,
+                                    proxies=proxy,
+                                    timeout=timeout)
 
-            # ----------------------------------------------------------------------------------------------------
-            # BEGINNING OF THE US LOGIC
-            # If running the code from the US, `response.url` will have redirected to www.yahoo.com without 
-            # first displaying a cookie acceptance page. The page already contains the crumb. Below, we just extract it.
-            # This will get us the crumb, but it doesn't yet win the battle.
-            if response.url == 'https://www.yahoo.com?guccounter=1':
-                # You're in the US? Then your cookie acceptance is assumed/implied. Come right in!
-                pattern = r"(?<=window\.YAHOO\.context = )\{.*?(\n})(?=;)"
-                match = re.search(pattern, response.text, re.DOTALL)
-                crumb = None
-                if match:
-                    yContextStr = match.group(0)
-                    try:
-                        yContext = json.loads(yContextStr)
-                        crumb = yContext["crumb"]
-                    except:
-                        msg = "No crumb! Found window.YAHOO.context, but crumb wasn't in it"
-                else:
-                    msg = "No crumb! Couldn't find window.YAHOO.context"
-                if isinstance(crumb, str):
-                    #Success! We have a crumb.
-                    utils.crumb = crumb
-                    utils.cookie = True # I am not sure what this does, or if we need it.
-                    return utils.crumb
-                else:
-                    raise Exception(msg)
-            # END OF THE US LOGIC
-            # -----------------------------------------------------------------------------------------------------
+            # # ----------------------------------------------------------------------------------------------------
+            # # BEGINNING OF THE US LOGIC
+            # # If running the code from the US, `response.url` will have redirected to www.yahoo.com without 
+            # # first displaying a cookie acceptance page. The page already contains the crumb. Below, we just extract it.
+            # # This will get us the crumb, but it doesn't yet win the battle.
+            # if response.url == 'https://www.yahoo.com?guccounter=1':
+            #     # You're in the US? Then your cookie acceptance is assumed/implied. Come right in!
+            #     pattern = r"(?<=window\.YAHOO\.context = )\{.*?(\n})(?=;)"
+            #     match = re.search(pattern, response.text, re.DOTALL)
+            #     crumb = None
+            #     if match:
+            #         yContextStr = match.group(0)
+            #         try:
+            #             yContext = json.loads(yContextStr)
+            #             crumb = yContext["crumb"]
+            #         except:
+            #             msg = "No crumb! Found window.YAHOO.context, but crumb wasn't in it"
+            #     else:
+            #         msg = "No crumb! Couldn't find window.YAHOO.context"
+            #     if isinstance(crumb, str):
+            #         #Success! We have a crumb.
+            #         utils.crumb = crumb
+            #         utils.cookie = True # I am not sure what this does, or if we need it.
+            #         return utils.crumb
+            #     else:
+            #         raise Exception(msg)
+            # # END OF THE US LOGIC
+            # # -----------------------------------------------------------------------------------------------------
 
             soup = BeautifulSoup(response.content, 'html.parser')
             csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
+            if csrfTokenInput is None:
+                # raise Exception('csrfToken not found')
+                return None
             csrfToken = csrfTokenInput['value']
             utils.get_yf_logger().debug(f"csrfToken='{csrfToken}'")
             sessionIdInput = soup.find('input', attrs={'name': 'sessionId'})
@@ -171,20 +182,47 @@ class TickerData:
             }
             if self._session_is_caching:
                 with self._session.cache_disabled():
-                    self._session.post(f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}', data=data, headers=self.user_agent_headers)
-                    self._session.get(f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}', headers=self.user_agent_headers)
+                    self._session.post(
+                                url=f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
+                                data=data,
+                                headers=self.user_agent_headers,
+                                proxies=proxy,
+                                timeout=timeout)
+                    self._session.get(
+                                url=f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}', 
+                                data=data,
+                                headers=self.user_agent_headers,
+                                proxies=proxy,
+                                timeout=timeout)
             else:
-                self._session.post(f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}', data=data, headers=self.user_agent_headers)
-                self._session.get(f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}', headers=self.user_agent_headers)
+                self._session.post(
+                            url=f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
+                            data=data,
+                            headers=self.user_agent_headers,
+                            proxies=proxy,
+                            timeout=timeout)
+                self._session.get(
+                            url=f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
+                            headers=self.user_agent_headers,
+                            proxies=proxy,
+                            timeout=timeout)
             utils.cookie = True
         else:
             utils.get_yf_logger().debug('reusing cookie')
 
         if self._session_is_caching:
             with self._session.cache_disabled():
-                r = self._session.get('https://query2.finance.yahoo.com/v1/test/getcrumb', headers=self.user_agent_headers)
+                r = self._session.get(
+                            url='https://query2.finance.yahoo.com/v1/test/getcrumb', 
+                            headers=self.user_agent_headers,
+                            proxies=proxy,
+                            timeout=timeout)
         else:
-            r = self._session.get('https://query2.finance.yahoo.com/v1/test/getcrumb', headers=self.user_agent_headers)
+            r = self._session.get(
+                        url='https://query2.finance.yahoo.com/v1/test/getcrumb', 
+                        headers=self.user_agent_headers,
+                        proxies=proxy,
+                        timeout=timeout)
         utils.crumb = r.text
 
         if utils.crumb is None or '<html>' in utils.crumb:
@@ -224,52 +262,54 @@ class TickerData:
         utils.cookie = True
 
     @utils.log_indent_decorator
-    def _get_crumb_botunit(self, try_count=0):
-        if utils.reuse_cookie and utils.cookie is None:
-            utils.get_yf_logger().debug('reusing cookie')
-            self._get_cookie_botunit()
-
-        s = self._get_crumb_session()
-        crumb = s.get('https://query2.finance.yahoo.com/v1/test/getcrumb', headers=self.user_agent_headers).text
-        if crumb == '':
-            if try_count:
-                raise ValueError("_get_crumb_botunit() keeps failing to fetch crumb")
-            utils.cookies = False
-            self._get_crumb_botunit(try_count+1)
-
-        utils.get_yf_logger().debug(f'crumb = {crumb}')
-        utils.crumb = crumb
-        utils.crumb_timestamp = time.time()
-        return utils.crumb
-
-    @utils.log_indent_decorator
     def _get_crumb(self, proxy=None, timeout=30):
         try:
-            return self._get_crumb_botunit_old()
-            # return self._get_crumb_botunit()#proxy, timeout)
+            return self._get_crumb_botunit(proxy, timeout)
         except Exception as e:
             if "csrfToken" in str(e):
                 # _get_crumb_botunit() fails in USA, but not sure _get_crumb_basic() fixes fetch
-                return self._get_crumb_basic()#proxy, timeout)
+                return self._get_crumb_basic(proxy, timeout)
             else:
                 raise
+
+    def _get_cookie_and_crumb(self, proxy=None, timeout=30):
+        cookie = None
+        crumb = None
+
+        crumb = self._get_crumb_botunit()
+        if crumb is None:
+            cookie = self._get_cookie_basic(proxy, timeout)
+            crumb = self._get_crumb_basic(proxy, timeout)
+
+        return cookie, crumb
 
     @utils.log_indent_decorator
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
         utils.get_yf_logger().debug(f'get(): {url}')
         proxy = self._get_proxy(proxy)
 
+        cookie, crumb = self._get_cookie_and_crumb()
+
         # Add cookie & crumb
+        cookie, crumb = None, None
         if params is None:
             params = {}
         if 'crumb' not in params:
             # Be careful which URLs get a crumb, because crumb breaks some fetches
             if 'finance/quoteSummary' in url:
-                params['crumb'] = self._get_crumb()
+                cookie, crumb = self._get_cookie_and_crumb()
+
+        if crumb is not None:
+            params['crumb'] = crumb
+        if cookie is not None:
+            cookies = {cookie.name: cookie.value}
+        else:
+            cookies = None
 
         response = self._session.get(
             url=url,
             params=params,
+            cookies=cookies,
             proxies=proxy,
             timeout=timeout,
             headers=user_agent_headers or self.user_agent_headers)
