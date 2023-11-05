@@ -136,13 +136,23 @@ class TickerData:
 
         cookie = self._get_cookie_basic()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
-        crumb_response = self._session.get(
-            url="https://query1.finance.yahoo.com/v1/test/getcrumb",
-            headers=self.user_agent_headers,
-            cookies={cookie.name: cookie.value},
-            proxies=proxy,
-            timeout=timeout,
-            allow_redirects=True)
+        if self._session_is_caching:
+            with self._session.cache_disabled():
+                crumb_response = self._session.get(
+                    url="https://query1.finance.yahoo.com/v1/test/getcrumb",
+                    headers=self.user_agent_headers,
+                    cookies={cookie.name: cookie.value},
+                    proxies=proxy,
+                    timeout=timeout,
+                    allow_redirects=True)
+        else:
+            crumb_response = self._session.get(
+                url="https://query1.finance.yahoo.com/v1/test/getcrumb",
+                headers=self.user_agent_headers,
+                cookies={cookie.name: cookie.value},
+                proxies=proxy,
+                timeout=timeout,
+                allow_redirects=True)
         utils.crumb = crumb_response.text
         if utils.crumb is None or '<html>' in utils.crumb:
             raise Exception("Failed to fetch crumb")
