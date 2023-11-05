@@ -64,17 +64,16 @@ class TickerData:
         if self._session_is_caching and utils.cookie is None:
             print("!! WARNING: cookie & crumb does not work well with requests_cache. Am using requests_cache.cache_disabled() to ensure cookie & crumb are fresh, but that isn't thread-safe.")
 
-    def _save_cookies(self):
-        fn = os.path.join(utils._DBManager.get_location(), 'cookie.pkl')
+    def _save_session_cookies(self):
+        fn = os.path.join(utils._DBManager.get_location(), 'session-cookies.pkl')
         try:
             with open(fn, 'wb') as file:
                 pickle.dump(self._session.cookies, file)
             return True
         except:
             return False
-
-    def _load_cookies(self):
-        fn = os.path.join(utils._DBManager.get_location(), 'cookie.pkl')
+    def _load_session_cookies(self):
+        fn = os.path.join(utils._DBManager.get_location(), 'session-cookies.pkl')
         if os.path.exists(fn):
             try:
                 with open(fn, 'rb') as file:
@@ -85,10 +84,32 @@ class TickerData:
                 return False
         return False
 
+    def _save_cookie_basic(self, cookie):
+        fn = os.path.join(utils._DBManager.get_location(), 'cookie.pkl')
+        try:
+            with open(fn, 'wb') as file:
+                pickle.dump(cookie, file)
+            return True
+        except:
+            return False
+    def _load_cookie_basic(self):
+        fn = os.path.join(utils._DBManager.get_location(), 'cookie.pkl')
+        if os.path.exists(fn):
+            try:
+                with open(fn, 'rb') as file:
+                    return pickle.load(file)
+            except:
+                return None
+        return None
+
     @utils.log_indent_decorator
     def _get_cookie_basic(self, proxy=None, timeout=30):
         if utils.reuse_cookie and utils.cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
+            return utils.cookie
+
+        utils.cookie = self._load_cookie_basic()
+        if utils.cookie is not None:
             return utils.cookie
 
         # To avoid infinite recursion, do NOT use self.get()
@@ -135,7 +156,7 @@ class TickerData:
             utils.get_yf_logger().debug('reusing cookie')
             return True
 
-        elif self._load_cookies():
+        elif self._load_session_cookies():
             utils.get_yf_logger().debug('reusing persistent cookie')
             utils.cookie = True
             return True
@@ -236,16 +257,18 @@ class TickerData:
         utils.get_yf_logger().debug(f"crumb = '{utils.crumb}'")
         return utils.crumb
 
+    @utils.log_indent_decorator
     def _get_cookie_and_crumb(self, proxy=None, timeout=30):
-        cookie = None
-        crumb = None
+        cookie, crumb = None, None
 
         crumb = self._get_crumb_botunit()
-        if crumb is None:
+        if crumb is not None:
+            self._save_session_cookies()
+        else:
+            # Fallback strategy
             cookie = self._get_cookie_basic(proxy, timeout)
             crumb = self._get_crumb_basic(proxy, timeout)
-        else:
-            self._save_cookies()
+            self._save_cookie_basic(cookie)
 
         return cookie, crumb
 
