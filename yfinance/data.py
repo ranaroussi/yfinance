@@ -292,9 +292,6 @@ class TickerData:
             self._save_session_cookies()
         else:
             # Fallback strategy
-            # cookie = self._get_cookie_basic(proxy, timeout)
-            # crumb = self._get_crumb_basic(proxy, timeout)
-            # self._save_cookie_basic(cookie)
             cookie, crumb = self._get_cookie_and_crumb_basic(proxy, timeout)
 
         return cookie, crumb
@@ -309,21 +306,37 @@ class TickerData:
 
         if params is None:
             params = {}
+        if 'crumb' in params:
+            raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
         
-        if 'cookie' in params and params['cookie'] is not None:
+        cookie, crumb = None, None
+        if 'finance/quoteSummary' in url:
+            cookie, crumb = self._get_cookie_and_crumb()
+        if crumb is not None:
+            params['crumb'] = crumb
+        if cookie is not None:
             # USA fallback adds cookie to GET parameters
-            cookie = params['cookie']
             cookies = {cookie.name: cookie.value}
         else:
             cookies = None
 
-        response = self._session.get(
-            url=url,
-            params=params,
-            cookies=cookies,
-            proxies=proxy,
-            timeout=timeout,
-            headers=user_agent_headers or self.user_agent_headers)
+        request_args = {
+            'url': url,
+            'params': params,
+            'cookies': cookies,
+            'proxies': proxy,
+            'timeout': timeout,
+            'headers': user_agent_headers or self.user_agent_headers
+        }
+
+        response = self._session.get(**request_args)
+        
+        # retry with fallback cookie and crumb if default strategy failed
+        if response.status_code >= 400 and cookie is None:
+            cookie, request_args['params']['crumb'] = self._get_cookie_and_crumb_basic(proxy, timeout)
+            request_args['cookies'] = {cookie.name: cookie.value}
+            response = self._session.get(**request_args)
+
         return response
 
     @lru_cache_freezeargs
@@ -343,15 +356,7 @@ class TickerData:
     def get_raw_json(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
 
-        if 'finance/quoteSummary' in url:
-            params['cookie'], params['crumb']  = self._get_cookie_and_crumb()
-
         response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
-        
-        # retry with fallback cookie and crumb if default method failed
-        if response.status_code >= 400 and params['cookie'] is None:
-            params['cookie'], params['crumb'] = self._get_cookie_and_crumb_basic(proxy, timeout)
-            response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
 
         response.raise_for_status()
         return response.json()
