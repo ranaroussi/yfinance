@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import datetime as _datetime
+from io import StringIO
 import json as _json
 import logging
 import time as _time
@@ -2090,7 +2091,7 @@ class TickerBase:
                                    "the issue. Thank you for your patience.")
 
             try:
-                data = pd.read_html(data)[0]
+                data = pd.read_html(StringIO(data))[0]
             except ValueError:
                 if page_offset == 0:
                     # Should not fail on first page

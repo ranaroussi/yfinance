@@ -325,76 +325,77 @@ class TestTickerHistory(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
 
-# Below will fail because not ported to Yahoo API
-# class TestTickerEarnings(unittest.TestCase):
-#     session = None
+class TestTickerEarnings(unittest.TestCase):
+    session = None
 
-#     @classmethod
-#     def setUpClass(cls):
-#         cls.session = session_gbl
+    @classmethod
+    def setUpClass(cls):
+        cls.session = session_gbl
 
-#     @classmethod
-#     def tearDownClass(cls):
-#         if cls.session is not None:
-#             cls.session.close()
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
 
-#     def setUp(self):
-#         self.ticker = yf.Ticker("GOOGL", session=self.session)
+    def setUp(self):
+        self.ticker = yf.Ticker("GOOGL", session=self.session)
 
-#     def tearDown(self):
-#         self.ticker = None
+    def tearDown(self):
+        self.ticker = None
 
-#     def test_earnings(self):
-#         data = self.ticker.earnings
-#         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-#         self.assertFalse(data.empty, "data is empty")
+    def test_earnings_dates(self):
+        data = self.ticker.earnings_dates
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
-#         data_cached = self.ticker.earnings
-#         self.assertIs(data, data_cached, "data not cached")
+    def test_earnings_dates_with_limit(self):
+        # use ticker with lots of historic earnings
+        ticker = yf.Ticker("IBM")
+        limit = 110
+        data = ticker.get_earnings_dates(limit=limit)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertEqual(len(data), limit, "Wrong number or rows")
 
-#     def test_quarterly_earnings(self):
-#         data = self.ticker.quarterly_earnings
-#         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-#         self.assertFalse(data.empty, "data is empty")
+        data_cached = ticker.get_earnings_dates(limit=limit)
+        self.assertIs(data, data_cached, "data not cached")
 
-#         data_cached = self.ticker.quarterly_earnings
-#         self.assertIs(data, data_cached, "data not cached")
+    # Below will fail because not ported to Yahoo API
 
-#     def test_earnings_forecasts(self):
-#         data = self.ticker.earnings_forecasts
-#         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-#         self.assertFalse(data.empty, "data is empty")
+    # def test_earnings(self):
+    #     data = self.ticker.earnings
+    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+    #     self.assertFalse(data.empty, "data is empty")
 
-#         data_cached = self.ticker.earnings_forecasts
-#         self.assertIs(data, data_cached, "data not cached")
+    #     data_cached = self.ticker.earnings
+    #     self.assertIs(data, data_cached, "data not cached")
 
-#     def test_earnings_dates(self):
-#         data = self.ticker.earnings_dates
-#         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-#         self.assertFalse(data.empty, "data is empty")
+    # def test_quarterly_earnings(self):
+    #     data = self.ticker.quarterly_earnings
+    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+    #     self.assertFalse(data.empty, "data is empty")
 
-#         data_cached = self.ticker.earnings_dates
-#         self.assertIs(data, data_cached, "data not cached")
+    #     data_cached = self.ticker.quarterly_earnings
+    #     self.assertIs(data, data_cached, "data not cached")
 
-#     def test_earnings_trend(self):
-#         data = self.ticker.earnings_trend
-#         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-#         self.assertFalse(data.empty, "data is empty")
+    # def test_earnings_forecasts(self):
+    #     data = self.ticker.earnings_forecasts
+    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+    #     self.assertFalse(data.empty, "data is empty")
 
-#         data_cached = self.ticker.earnings_trend
-#         self.assertIs(data, data_cached, "data not cached")
+    #     data_cached = self.ticker.earnings_forecasts
+    #     self.assertIs(data, data_cached, "data not cached")
 
-#     def test_earnings_dates_with_limit(self):
-#         # use ticker with lots of historic earnings
-#         ticker = yf.Ticker("IBM")
-#         limit = 110
-#         data = ticker.get_earnings_dates(limit=limit)
-#         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-#         self.assertFalse(data.empty, "data is empty")
-#         self.assertEqual(len(data), limit, "Wrong number or rows")
+    #     data_cached = self.ticker.earnings_dates
+    #     self.assertIs(data, data_cached, "data not cached")
 
-#         data_cached = ticker.get_earnings_dates(limit=limit)
-#         self.assertIs(data, data_cached, "data not cached")
+    # def test_earnings_trend(self):
+    #     data = self.ticker.earnings_trend
+    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+    #     self.assertFalse(data.empty, "data is empty")
+
+    #     data_cached = self.ticker.earnings_trend
+    #     self.assertIs(data, data_cached, "data not cached")
 
 
 class TestTickerHolders(unittest.TestCase):
