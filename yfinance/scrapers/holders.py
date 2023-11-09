@@ -1,3 +1,5 @@
+from io import StringIO
+
 import pandas as pd
 
 from yfinance.data import TickerData
@@ -36,7 +38,7 @@ class Holders:
         ticker_url = f"{self._SCRAPE_URL_}/{self._data.ticker}"
         try:
             resp = self._data.cache_get(ticker_url + '/holders', proxy=proxy)
-            holders = pd.read_html(resp.text)
+            holders = pd.read_html(StringIO(resp.text))
         except Exception:
             holders = []
 
