@@ -358,7 +358,7 @@ class YfData(metaclass=SingletonMeta):
 
         request_args = {
             'url': url,
-            'params': params | crumbs,
+            'params': {**params, **crumbs},
             'cookies': cookies,
             'proxies': proxy,
             'timeout': timeout,
