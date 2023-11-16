@@ -231,7 +231,7 @@ class YfData(metaclass=SingletonMeta):
             'proxies': proxy,
             'timeout': timeout}
 
-        get_args = base_args | {'url': 'https://guce.yahoo.com/consent'}
+        get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
         if self._session_is_caching:
             get_args['expire_after'] = self._expire_after
             response = self._session.get(**get_args)
@@ -258,10 +258,10 @@ class YfData(metaclass=SingletonMeta):
             'originalDoneUrl': originalDoneUrl,
             'namespace': namespace,
         }
-        post_args = base_args | {
+        post_args = {**base_args, 
             'url': f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
             'data': data}
-        get_args = base_args | {
+        get_args = {**base_args, 
             'url': f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
             'data': data}
         if self._session_is_caching:
@@ -358,7 +358,7 @@ class YfData(metaclass=SingletonMeta):
 
         request_args = {
             'url': url,
-            'params': params | crumbs,
+            'params': {**params, **crumbs},
             'cookies': cookies,
             'proxies': proxy,
             'timeout': timeout,
