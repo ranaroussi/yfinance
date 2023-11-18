@@ -1,11 +1,6 @@
 Change Log
 ===========
 
-0.2.32b1
-------
-Beta release - add cookie & crumb to request.
-Why beta? Thread-safety needs stress-testing.
-
 0.2.31
 ------
 - Fix TZ cache exception blocking import #1705 #1709
