@@ -1,14 +1,15 @@
 import pandas as pd
 
 from yfinance import utils
-from yfinance.data import TickerData
+from yfinance.data import YfData
 from yfinance.exceptions import YFNotImplementedError
 
 
 class Analysis:
 
-    def __init__(self, data: TickerData, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
+        self._symbol = symbol
         self.proxy = proxy
 
         self._earnings_trend = None
