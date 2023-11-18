@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.32
+------
+Add cookie & crumb to requests #1657
+
 0.2.31
 ------
 - Fix TZ cache exception blocking import #1705 #1709
