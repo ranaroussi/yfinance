@@ -21,22 +21,16 @@
 
 from __future__ import print_function
 
-import atexit as _atexit
-
 import datetime as _datetime
 import logging
-import os as _os
 import re as _re
-import peewee as _peewee
 import sys as _sys
 import threading
 from functools import lru_cache
 from inspect import getmembers
-from threading import Lock
 from types import FunctionType
-from typing import Dict, Union, List, Optional
+from typing import Dict, List, Optional
 
-import appdirs as _ad
 import numpy as _np
 import pandas as _pd
 import pytz as _tz
@@ -701,7 +695,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 df_main['Dividends'] = 0.0
                 return df_main
         else:
-            empty_row_data = {c:[_np.nan] for c in const.price_colnames}|{'Volume':[0]}
+            empty_row_data = {**{c:[_np.nan] for c in const.price_colnames}, 'Volume':[0]}
             if interval == '1d':
                 # For 1d, add all out-of-range event dates
                 for i in _np.where(f_outOfRange)[0]:
@@ -903,204 +897,3 @@ class ProgressBar:
     def __str__(self):
         return str(self.prog_bar)
 
-
-# ---------------------------------
-# TimeZone cache related code
-# ---------------------------------
-
-
-_cache_init_lock = Lock()
-
-
-class _TzCacheException(Exception):
-    pass
-
-
-class _TzCacheDummy:
-    """Dummy cache to use if tz cache is disabled"""
-
-    def lookup(self, tkr):
-        return None
-
-    def store(self, tkr, tz):
-        pass
-
-    @property
-    def tz_db(self):
-        return None
-
-
-class _TzCacheManager:
-    _tz_cache = None
-
-    @classmethod
-    def get_tz_cache(cls):
-        if cls._tz_cache is None:
-            with _cache_init_lock:
-                cls._initialise()
-        return cls._tz_cache
-
-    @classmethod
-    def _initialise(cls, cache_dir=None):
-        cls._tz_cache = _TzCache()
-
-
-class _DBManager:
-    _db = None
-    _cache_dir = _os.path.join(_ad.user_cache_dir(), "py-yfinance")
-
-    @classmethod
-    def get_database(cls):
-        if cls._db is None:
-            cls._initialise()
-        return cls._db
-
-    @classmethod
-    def close_db(cls):
-        if cls._db is not None:
-            try:
-                cls._db.close()
-            except Exception as e:
-                # Must discard exceptions because Python trying to quit.
-                pass
-
-
-    @classmethod
-    def _initialise(cls, cache_dir=None):
-        if cache_dir is not None:
-            cls._cache_dir = cache_dir
-
-        if not _os.path.isdir(cls._cache_dir):
-            try:
-                _os.makedirs(cls._cache_dir)
-            except OSError as err:
-                raise _TzCacheException(f"Error creating TzCache folder: '{cls._cache_dir}' reason: {err}")
-        elif not (_os.access(cls._cache_dir, _os.R_OK) and _os.access(cls._cache_dir, _os.W_OK)):
-            raise _TzCacheException(f"Cannot read and write in TzCache folder: '{cls._cache_dir}'")
-
-        cls._db = _peewee.SqliteDatabase(
-            _os.path.join(cls._cache_dir, 'tkr-tz.db'),
-            pragmas={'journal_mode': 'wal', 'cache_size': -64}
-        )
-
-        old_cache_file_path = _os.path.join(cls._cache_dir, "tkr-tz.csv")
-        if _os.path.isfile(old_cache_file_path):
-            _os.remove(old_cache_file_path)
-
-    @classmethod
-    def set_location(cls, new_cache_dir):
-        if cls._db is not None:
-            cls._db.close()
-            cls._db = None
-        cls._cache_dir = new_cache_dir
-
-    @classmethod
-    def get_location(cls):
-        return cls._cache_dir
-
-# close DB when Python exists
-_atexit.register(_DBManager.close_db)
-
-
-db_proxy = _peewee.Proxy()
-class _KV(_peewee.Model):
-    key = _peewee.CharField(primary_key=True)
-    value = _peewee.CharField(null=True)
-    
-    class Meta:
-        database = db_proxy
-        without_rowid = True
-
-
-class _TzCache:
-    def __init__(self):
-        self.initialised = -1
-        self.db = None
-        self.dummy = False
-
-    def get_db(self):
-        if self.db is not None:
-            return self.db
-
-        try:
-            self.db = _DBManager.get_database()
-        except _TzCacheException as err:
-            get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
-                                 "TzCache will not be used. "
-                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
-            self.dummy = True
-            return None
-        return self.db
-
-    def initialise(self):
-        if self.initialised != -1:
-            return
-
-        db = self.get_db()
-        if db is None:
-            self.initialised = 0  # failure
-            return
-
-        db.connect()
-        db_proxy.initialize(db)
-        db.create_tables([_KV])
-        self.initialised = 1  # success
-
-    def lookup(self, key):
-        if self.dummy:
-            return None
-
-        if self.initialised == -1:
-            self.initialise()
-
-        if self.initialised == 0:  # failure
-            return None
-
-        try:
-            return _KV.get(_KV.key == key).value
-        except _KV.DoesNotExist:
-            return None
-
-    def store(self, key, value):
-        if self.dummy:
-            return
-
-        if self.initialised == -1:
-            self.initialise()
-
-        if self.initialised == 0:  # failure
-            return
-
-        db = self.get_db()
-        if db is None:
-            return
-        try:
-            if value is None:
-                q = _KV.delete().where(_KV.key == key)
-                q.execute()
-                return
-            with db.atomic():
-                _KV.insert(key=key, value=value).execute()
-        except _peewee.IntegrityError:
-            # Integrity error means the key already exists. Try updating the key.
-            old_value = self.lookup(key)
-            if old_value != value:
-                get_yf_logger().debug(f"Value for key {key} changed from {old_value} to {value}.")
-                with db.atomic():
-                    q = _KV.update(value=value).where(_KV.key == key)
-                    q.execute()
-
-
-def get_tz_cache():
-    return _TzCacheManager.get_tz_cache()
-
-
-def set_tz_cache_location(cache_dir: str):
-    """
-    Sets the path to create the "py-yfinance" cache folder in.
-    Useful if the default folder returned by "appdir.user_cache_dir()" is not writable.
-    Must be called before cache is used (that is, before fetching tickers).
-    :param cache_dir: Path to use for caches
-    :return: None
-    """
-    _DBManager.set_location(cache_dir)

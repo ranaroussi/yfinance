@@ -18,6 +18,8 @@ from yfinance.exceptions import YFNotImplementedError
 import unittest
 import requests_cache
 from typing import Union, Any
+import re
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
     ("major_holders", pd.DataFrame),
@@ -76,7 +78,7 @@ class TestTicker(unittest.TestCase):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         for tkr in tkrs:
             # First step: remove ticker from tz-cache
-            yf.utils.get_tz_cache().store(tkr, None)
+            yf.cache.get_tz_cache().store(tkr, None)
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
@@ -295,14 +297,25 @@ class TestTickerHistory(unittest.TestCase):
         will quickly trigger spam-block when doing bulk download of history data.
         """
         symbol = "GOOGL"
-        range = "1y"
+        period = "1y"
         with requests_cache.CachedSession(backend="memory") as session:
             ticker = yf.Ticker(symbol, session=session)
-            ticker.history(range)
-            actual_urls_called = tuple([r.url for r in session.cache.filter()])
+            ticker.history(period=period)
+            actual_urls_called = [r.url for r in session.cache.filter()]
+
+        # Remove 'crumb' argument
+        for i in range(len(actual_urls_called)):
+            u = actual_urls_called[i]
+            parsed_url = urlparse(u)
+            query_params = parse_qs(parsed_url.query)
+            query_params.pop('crumb', None)
+            query_params.pop('cookie', None)
+            u = urlunparse(parsed_url._replace(query=urlencode(query_params, doseq=True)))
+            actual_urls_called[i] = u
+        actual_urls_called = tuple(actual_urls_called)
 
         expected_urls = (
-            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=False&interval=1d&range={range}",
+            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=False&interval=1d&range={period}",
         )
         self.assertEqual(
             expected_urls,
