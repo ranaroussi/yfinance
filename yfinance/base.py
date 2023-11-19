@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import datetime as _datetime
+from io import StringIO
 import json as _json
 import logging
 import time as _time
@@ -34,9 +35,8 @@ import numpy as np
 import pandas as pd
 import requests
 
-from . import shared
-from . import utils
-from .data import TickerData
+from . import shared, utils, cache
+from .data import YfData
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
@@ -69,12 +69,12 @@ class TickerBase:
         if utils.is_isin(self.ticker):
             self.ticker = utils.get_ticker_by_isin(self.ticker, None, session)
 
-        self._data: TickerData = TickerData(self.ticker, session=session)
+        self._data: YfData = YfData(session=session)
 
-        self._analysis = Analysis(self._data)
-        self._holders = Holders(self._data)
-        self._quote = Quote(self._data)
-        self._fundamentals = Fundamentals(self._data)
+        self._analysis = Analysis(self._data, ticker)
+        self._holders = Holders(self._data, ticker)
+        self._quote = Quote(self._data, ticker)
+        self._fundamentals = Fundamentals(self._data, ticker)
 
         self._fast_info = None
 
@@ -1644,12 +1644,12 @@ class TickerBase:
         proxy = proxy or self.proxy
         if self._tz is not None:
             return self._tz
-        cache = utils.get_tz_cache()
-        tz = cache.lookup(self.ticker)
+        c = cache.get_tz_cache()
+        tz = c.lookup(self.ticker)
 
         if tz and not utils.is_valid_timezone(tz):
             # Clear from cache and force re-fetch
-            cache.store(self.ticker, None)
+            c.store(self.ticker, None)
             tz = None
 
         if tz is None:
@@ -1657,7 +1657,7 @@ class TickerBase:
 
             if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
-                cache.store(self.ticker, tz)
+                c.store(self.ticker, tz)
             else:
                 tz = None
 
@@ -2093,7 +2093,7 @@ class TickerBase:
                                    "the issue. Thank you for your patience.")
 
             try:
-                data = pd.read_html(data)[0]
+                data = pd.read_html(StringIO(data))[0]
             except ValueError:
                 if page_offset == 0:
                     # Should not fail on first page

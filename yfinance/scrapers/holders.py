@@ -1,13 +1,16 @@
+from io import StringIO
+
 import pandas as pd
 
-from yfinance.data import TickerData
+from yfinance.data import YfData
 
 
 class Holders:
     _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
-    def __init__(self, data: TickerData, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
+        self._symbol = symbol
         self.proxy = proxy
 
         self._major = None
@@ -33,10 +36,10 @@ class Holders:
         return self._mutualfund
 
     def _scrape(self, proxy):
-        ticker_url = f"{self._SCRAPE_URL_}/{self._data.ticker}"
+        ticker_url = f"{self._SCRAPE_URL_}/{self._symbol}"
         try:
             resp = self._data.cache_get(ticker_url + '/holders', proxy=proxy)
-            holders = pd.read_html(resp.text)
+            holders = pd.read_html(StringIO(resp.text))
         except Exception:
             holders = []
 
