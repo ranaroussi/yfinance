@@ -8,7 +8,7 @@ import numpy as _np
 import pandas as pd
 
 from yfinance import utils
-from yfinance.data import TickerData
+from yfinance.data import YfData
 from yfinance.exceptions import YFNotImplementedError
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
@@ -21,7 +21,7 @@ info_retired_keys_symbol = {"symbol"}
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
 
 
-_BASIC_URL_ = "https://query2.finance.yahoo.com/v6/finance/quoteSummary"
+_BASIC_URL_ = "https://query2.finance.yahoo.com/v10/finance/quoteSummary"
 
 
 class InfoDictWrapper(MutableMapping):
@@ -551,8 +551,9 @@ class FastInfo:
 
 class Quote:
 
-    def __init__(self, data: TickerData, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
+        self._symbol = symbol
         self.proxy = proxy
 
         self._info = None
@@ -596,13 +597,14 @@ class Quote:
             return
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+        modules = ','.join(modules)
         params_dict = {"modules": modules, "ssl": "true"}
         result = self._data.get_raw_json(
-            _BASIC_URL_ + f"/{self._data.ticker}", params=params_dict, proxy=proxy
+            _BASIC_URL_ + f"/{self._symbol}", params=params_dict, proxy=proxy
         )
-        result["quoteSummary"]["result"][0]["symbol"] = self._data.ticker
+        result["quoteSummary"]["result"][0]["symbol"] = self._symbol
         query1_info = next(
-            (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._data.ticker),
+            (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._symbol),
             None,
         )
         # Most keys that appear in multiple dicts have same value. Except 'maxAge' because
@@ -670,7 +672,7 @@ class Quote:
             #     pass
             #
             # For just one/few variable is faster to query directly:
-            url = f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._data.ticker}?symbol={self._data.ticker}"
+            url = f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data

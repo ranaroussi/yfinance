@@ -4,14 +4,15 @@ import json
 import pandas as pd
 
 from yfinance import utils, const
-from yfinance.data import TickerData
+from yfinance.data import YfData
 from yfinance.exceptions import YFinanceException, YFNotImplementedError
 
 
 class Fundamentals:
 
-    def __init__(self, data: TickerData, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
+        self._symbol = symbol
         self.proxy = proxy
 
         self._earnings = None
@@ -21,7 +22,7 @@ class Fundamentals:
         self._financials_data = None
         self._fin_data_quote = None
         self._basics_already_scraped = False
-        self._financials = Financials(data)
+        self._financials = Financials(data, symbol)
 
     @property
     def financials(self) -> "Financials":
@@ -41,8 +42,9 @@ class Fundamentals:
 
 
 class Financials:
-    def __init__(self, data: TickerData):
+    def __init__(self, data: YfData, symbol: str):
         self._data = data
+        self._symbol = symbol
         self._income_time_series = {}
         self._balance_sheet_time_series = {}
         self._cash_flow_time_series = {}
@@ -85,7 +87,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFinanceException as e:
-            utils.get_yf_logger().error(f"{self._data.ticker}: Failed to create {name} financials table for reason: {e}")
+            utils.get_yf_logger().error(f"{self._symbol}: Failed to create {name} financials table for reason: {e}")
         return pd.DataFrame()
 
     def _create_financials_table(self, name, timescale, proxy):
@@ -105,7 +107,7 @@ class Financials:
         timescale = timescale_translation[timescale]
 
         # Step 2: construct url:
-        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._data.ticker}?symbol={self._data.ticker}"
+        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
