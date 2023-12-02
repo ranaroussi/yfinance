@@ -12,7 +12,6 @@ Specific test class:
 # import numpy as np
 
 from .context import yfinance as yf
-from .context import session_gbl
 
 import unittest
 # import requests_cache

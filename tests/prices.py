@@ -132,7 +132,6 @@ class TestPriceHistory(unittest.TestCase):
 
     def test_pricesEventsMerge_bug(self):
         # Reproduce exception when merging intraday prices with future dividend
-        tkr = 'S32.AX'
         interval = '30m'
         df_index = []
         d = 13
@@ -148,7 +147,7 @@ class TestPriceHistory(unittest.TestCase):
         future_div_dt = _dt.datetime(2023, 9, 14, 10)
         divs = _pd.DataFrame(data={"Dividends":[div]}, index=[future_div_dt])
 
-        df2 = yf.utils.safe_merge_dfs(df, divs, interval)
+        yf.utils.safe_merge_dfs(df, divs, interval)
         # No exception = test pass
 
     def test_intraDayWithEvents(self):
@@ -223,8 +222,10 @@ class TestPriceHistory(unittest.TestCase):
                 self.assertTrue((df_divs.index.date == dates).all())
             except AssertionError:
                 print(f'- ticker = {tkr}')
-                print('- response:') ; print(df_divs.index.date)
-                print('- answer:') ; print(dates)
+                print('- response:')
+                print(df_divs.index.date)
+                print('- answer:')
+                print(dates)
                 raise
 
     def test_dailyWithEvents_bugs(self):
@@ -269,60 +270,6 @@ class TestPriceHistory(unittest.TestCase):
         self.assertEqual(df_merged.shape[0], 2)
         self.assertTrue(df_merged[df_prices.columns].iloc[1:].equals(df_prices))
         self.assertEqual(df_merged.index[0], div_dt)
-
-    def test_intraDayWithEvents(self):
-        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
-        test_run = False
-        for tkr in tkrs:
-            start_d = _dt.date.today() - _dt.timedelta(days=59)
-            end_d = None
-            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
-            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
-            if df_daily_divs.shape[0] == 0:
-                continue
-
-            last_div_date = df_daily_divs.index[-1]
-            start_d = last_div_date.date()
-            end_d = last_div_date.date() + _dt.timedelta(days=1)
-            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
-            self.assertTrue((df_intraday["Dividends"] != 0.0).any())
-
-            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
-            df_intraday_divs.index = df_intraday_divs.index.floor('D')
-            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
-
-            test_run = True
-
-        if not test_run:
-            self.skipTest("Skipping test_intraDayWithEvents() because no tickers had a dividend in last 60 days")
-
-    def test_intraDayWithEvents_tase(self):
-        # TASE dividend release pre-market, doesn't merge nicely with intra-day data so check still present
-
-        tase_tkrs = ["ICL.TA", "ESLT.TA", "ONE.TA", "MGDL.TA"]
-        test_run = False
-        for tkr in tase_tkrs:
-            start_d = _dt.date.today() - _dt.timedelta(days=59)
-            end_d = None
-            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
-            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
-            if df_daily_divs.shape[0] == 0:
-                continue
-
-            last_div_date = df_daily_divs.index[-1]
-            start_d = last_div_date.date()
-            end_d = last_div_date.date() + _dt.timedelta(days=1)
-            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
-            self.assertTrue((df_intraday["Dividends"] != 0.0).any())
-
-            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
-            df_intraday_divs.index = df_intraday_divs.index.floor('D')
-            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
-
-            test_run = True
-
-        if not test_run:
-            self.skipTest("Skipping test_intraDayWithEvents_tase() because no tickers had a dividend in last 60 days")
 
     def test_weeklyWithEvents(self):
         # Reproduce issue #521
@@ -415,9 +362,9 @@ class TestPriceHistory(unittest.TestCase):
             raise Exception("Ambiguous DST issue not resolved")
 
     def test_dst_fix(self):
-        # Daily intervals should start at time 00:00. But for some combinations of date and timezone, 
+        # Daily intervals should start at time 00:00. But for some combinations of date and timezone,
         # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
-        # The clue is (a) minutes=0 and (b) hour near 0. 
+        # The clue is (a) minutes=0 and (b) hour near 0.
         # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion.
 
         # The correction is successful if no days are weekend, and weekly data begins Monday
@@ -440,8 +387,8 @@ class TestPriceHistory(unittest.TestCase):
             raise
 
     def test_prune_post_intraday_us(self):
-        # Half-day before USA Thanksgiving. Yahoo normally 
-        # returns an interval starting when regular trading closes, 
+        # Half-day before USA Thanksgiving. Yahoo normally
+        # returns an interval starting when regular trading closes,
         # even if prepost=False.
 
         # Setup
@@ -477,8 +424,8 @@ class TestPriceHistory(unittest.TestCase):
         self.assertEqual(len(late_open_dates), 0)
 
     def test_prune_post_intraday_omx(self):
-        # Half-day before Sweden Christmas. Yahoo normally 
-        # returns an interval starting when regular trading closes, 
+        # Half-day before Sweden Christmas. Yahoo normally
+        # returns an interval starting when regular trading closes,
         # even if prepost=False.
         # If prepost=False, test that yfinance is removing prepost intervals.
 
@@ -528,7 +475,6 @@ class TestPriceHistory(unittest.TestCase):
     def test_prune_post_intraday_asx(self):
         # Setup
         tkr = "BHP.AX"
-        interval = "1h"
         interval_td = _dt.timedelta(hours=1)
         time_open = _dt.time(10)
         time_close = _dt.time(16, 12)
@@ -566,7 +512,7 @@ class TestPriceHistory(unittest.TestCase):
         end = "2019-12-31"
         interval = "3mo"
 
-        df = dat.history(start=start, end=end, interval=interval)
+        dat.history(start=start, end=end, interval=interval)
 
 
 class TestPriceRepair(unittest.TestCase):
@@ -589,7 +535,6 @@ class TestPriceRepair(unittest.TestCase):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
 
         dt_now = _pd.Timestamp.utcnow()
-        td_7d = _dt.timedelta(days=7)
         td_60d = _dt.timedelta(days=60)
 
         # Round time for 'requests_cache' reuse
@@ -599,7 +544,7 @@ class TestPriceRepair(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             end_dt = dt_now
             start_dt = end_dt - td_60d
-            df = dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
+            dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
 
     def test_repair_100x_random_weekly(self):
         # Setup:
@@ -844,7 +789,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_zeroes_daily_adjClose(self):
-        # Test that 'Adj Close' is reconstructed correctly, 
+        # Test that 'Adj Close' is reconstructed correctly,
         # particularly when a dividend occurred within 1 day.
 
         tkr = "INTC"
@@ -914,7 +859,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
     def test_repair_bad_stock_split(self):
-        # Stocks that split in 2022 but no problems in Yahoo data, 
+        # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
         good_tkrs += ['AEI', 'CHRA', 'GHI', 'IRON', 'LXU', 'NUZE', 'RSLS', 'TISI']
@@ -979,8 +924,8 @@ class TestPriceRepair(unittest.TestCase):
                     # print(repaired_df[c] - correct_df[c])
                     raise
 
-        # Had very high price volatility in Jan-2021 around split date that could 
-        # be mistaken for missing stock split adjustment. And old logic did think 
+        # Had very high price volatility in Jan-2021 around split date that could
+        # be mistaken for missing stock split adjustment. And old logic did think
         # column 'High' required fixing - wrong!
         sketchy_tkrs = ['FIZZ']
         intervals = ['1wk']
