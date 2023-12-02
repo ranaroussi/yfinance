@@ -247,9 +247,9 @@ class TickerBase:
             err_msg += f' (period={period})'
 
         fail = False
-        if data is None or type(data) is not dict:
+        if data is None or not isinstance(data, dict):
             fail = True
-        elif type(data) is dict and 'status_code' in data:
+        elif isinstance(data, dict) and 'status_code' in data:
             err_msg += f"(Yahoo status_code = {data['status_code']})"
             fail = True
         elif "chart" in data and data["chart"]["error"]:
@@ -395,7 +395,7 @@ class TickerBase:
         df = df[~df.index.duplicated(keep='first')]  # must do before repair
 
         if isinstance(repair, str) and repair=='silent':
-            utils.log_once(logging.WARNING, f"yfinance: Ticker.history(repair='silent') value is deprecated and will be removed in future version. Repair now silent by default, use logging module to increase verbosity.")
+            utils.log_once(logging.WARNING, "yfinance: Ticker.history(repair='silent') value is deprecated and will be removed in future version. Repair now silent by default, use logging module to increase verbosity.")
             repair = True
         if repair:
             # Do this before auto/back adjust
@@ -521,7 +521,6 @@ class TickerBase:
                 return df
 
         dts_to_repair = df.index[f_repair_rows]
-        indices_to_repair = np.where(f_repair_rows)[0]
 
         if len(dts_to_repair) == 0:
             logger.info("Nothing needs repairing (dts_to_repair[] empty)")
@@ -538,9 +537,6 @@ class TickerBase:
 
         # Group nearby NaN-intervals together to reduce number of Yahoo fetches
         dts_groups = [[dts_to_repair[0]]]
-        last_dt = dts_to_repair[0]
-        last_ind = indices_to_repair[0]
-        td = utils._interval_to_timedelta(interval)
         # Note on setting max size: have to allow space for adding good data
         if sub_interval == "1mo":
             grp_max_size = _dateutil.relativedelta.relativedelta(years=2)
@@ -556,14 +552,11 @@ class TickerBase:
             grp_max_size = _datetime.timedelta(days=30)
         logger.debug(f"grp_max_size = {grp_max_size}")
         for i in range(1, len(dts_to_repair)):
-            ind = indices_to_repair[i]
             dt = dts_to_repair[i]
             if dt.date() < dts_groups[-1][0].date() + grp_max_size:
                 dts_groups[-1].append(dt)
             else:
                 dts_groups.append([dt])
-            last_dt = dt
-            last_ind = ind
 
         logger.debug("Repair groups:")
         for g in dts_groups:
@@ -687,7 +680,7 @@ class TickerBase:
                 df_new.index = new_index
             logger.debug('df_new:' + '\n' + str(df_new))
 
-            # Calibrate! 
+            # Calibrate!
             common_index = np.intersect1d(df_block.index, df_new.index)
             if len(common_index) == 0:
                 # Can't calibrate so don't attempt repair
@@ -701,9 +694,9 @@ class TickerBase:
                 f_tag = df_block_calib['Adj Close'] == tag
                 if f_tag.any():
                     div_adjusts = df_block_calib['Adj Close'] / df_block_calib['Close']
-                    # The loop below assumes each 1d repair is isoloated, i.e. surrounded by 
-                    # good data. Which is case most of time. 
-                    # But in case are repairing a chunk of bad 1d data, back/forward-fill the 
+                    # The loop below assumes each 1d repair is isoloated, i.e. surrounded by
+                    # good data. Which is case most of time.
+                    # But in case are repairing a chunk of bad 1d data, back/forward-fill the
                     # good div-adjustments - not perfect, but a good backup.
                     div_adjusts[f_tag] = np.nan
                     div_adjusts = div_adjusts.fillna(method='bfill').fillna(method='ffill')
@@ -787,14 +780,14 @@ class TickerBase:
             no_fine_data_dts = []
             for idx in bad_dts:
                 if idx not in df_new.index:
-                    # Yahoo didn't return finer-grain data for this interval, 
+                    # Yahoo didn't return finer-grain data for this interval,
                     # so probably no trading happened.
                     no_fine_data_dts.append(idx)
             if len(no_fine_data_dts) > 0:
-                logger.debug(f"Yahoo didn't return finer-grain data for these intervals: " + str(no_fine_data_dts))
+                logger.debug("Yahoo didn't return finer-grain data for these intervals: " + str(no_fine_data_dts))
             for idx in bad_dts:
                 if idx not in df_new.index:
-                    # Yahoo didn't return finer-grain data for this interval, 
+                    # Yahoo didn't return finer-grain data for this interval,
                     # so probably no trading happened.
                     continue
                 df_new_row = df_new.loc[idx]
@@ -929,11 +922,13 @@ class TickerBase:
                     if fi[j]:
                         df2.loc[idx, c] = df.loc[idx, c] * 0.01
 
-                c = "High" ; j = data_cols.index(c)
+                c = "High"
+                j = data_cols.index(c)
                 if fi[j]:
                     df2.loc[idx, c] = df2.loc[idx, ["Open", "Close"]].max()
 
-                c = "Low" ; j = data_cols.index(c)
+                c = "Low"
+                j = data_cols.index(c)
                 if fi[j]:
                     df2.loc[idx, c] = df2.loc[idx, ["Open", "Close"]].min()
 
@@ -949,11 +944,13 @@ class TickerBase:
                     if fi[j]:
                         df2.loc[idx, c] = df.loc[idx, c] * 100.0
 
-                c = "High" ; j = data_cols.index(c)
+                c = "High"
+                j = data_cols.index(c)
                 if fi[j]:
                     df2.loc[idx, c] = df2.loc[idx, ["Open", "Close"]].max()
 
-                c = "Low" ; j = data_cols.index(c)
+                c = "Low"
+                j = data_cols.index(c)
                 if fi[j]:
                     df2.loc[idx, c] = df2.loc[idx, ["Open", "Close"]].min()
 
@@ -1142,7 +1139,7 @@ class TickerBase:
         div_indices = np.where(f_div)[0]
         last_div_idx = div_indices[-1]
         if last_div_idx == 0:
-            # Not enough data to recalculate the div-adjustment, 
+            # Not enough data to recalculate the div-adjustment,
             # because need close day before
             logger.debug('div-adjust-repair: Insufficient data to recalculate div-adjustment')
             return df
@@ -1186,13 +1183,13 @@ class TickerBase:
         # stock split to old price data.
         #
         # There is a slight complication, because Yahoo does another stupid thing.
-        # Sometimes the old data is adjusted twice. So cannot simply assume 
-        # which direction to reverse adjustment - have to analyse prices and detect. 
+        # Sometimes the old data is adjusted twice. So cannot simply assume
+        # which direction to reverse adjustment - have to analyse prices and detect.
         # Not difficult.
 
         if df.empty:
             return df
-            
+
         logger = utils.get_yf_logger()
 
         interday = interval in ['1d', '1wk', '1mo', '3mo']
@@ -1220,7 +1217,7 @@ class TickerBase:
     def _fix_prices_sudden_change(self, df, interval, tz_exchange, change, correct_volume=False):
         if df.empty:
             return df
-            
+
         logger = utils.get_yf_logger()
 
         df = df.sort_index(ascending=False)
@@ -1239,9 +1236,8 @@ class TickerBase:
             logger.debug(f'price-repair-split: start_min={start_min}')
 
         OHLC = ['Open', 'High', 'Low', 'Close']
-        OHLCA = OHLC + ['Adj Close']
 
-        # Do not attempt repair of the split is small, 
+        # Do not attempt repair of the split is small,
         # could be mistaken for normal price variance
         if 0.8 < split < 1.25:
             logger.info("price-repair-split: Split ratio too close to 1. Won't repair")
@@ -1279,10 +1275,10 @@ class TickerBase:
         else:
             debug_cols = []
 
-        # Calculate daily price % change. To reduce effect of price volatility, 
+        # Calculate daily price % change. To reduce effect of price volatility,
         # calculate change for each OHLC column.
         if interday and interval != '1d' and split not in [100.0, 100, 0.001]:
-            # Avoid using 'Low' and 'High'. For multiday intervals, these can be 
+            # Avoid using 'Low' and 'High'. For multiday intervals, these can be
             # very volatile so reduce ability to detect genuine stock split errors
             _1d_change_x = np.full((n, 2), 1.0)
             price_data = df2[['Open','Close']].to_numpy()
@@ -1422,7 +1418,7 @@ class TickerBase:
                 else:
                     threshold = _datetime.timedelta(days=threshold_days)
                 if gap_td < threshold:
-                    logger.info(f'price-repair-split: 100x changes are too soon after stock split events, aborting')
+                    logger.info('price-repair-split: 100x changes are too soon after stock split events, aborting')
                     return df
 
         # if logger.isEnabledFor(logging.DEBUG):
@@ -1434,9 +1430,12 @@ class TickerBase:
         def map_signals_to_ranges(f, f_up, f_down):
             # Ensure 0th element is False, because True is nonsense
             if f[0]:
-                f = np.copy(f) ; f[0] = False
-                f_up = np.copy(f_up) ; f_up[0] = False
-                f_down = np.copy(f_down) ; f_down[0] = False
+                f = np.copy(f)
+                f[0] = False
+                f_up = np.copy(f_up)
+                f_up[0] = False
+                f_down = np.copy(f_down)
+                f_down[0] = False
 
             if not f.any():
                 return []
@@ -1467,9 +1466,9 @@ class TickerBase:
         if correct_columns_individually:
             f_corrected = np.full(n, False)
             if correct_volume:
-                # If Open or Close is repaired but not both, 
+                # If Open or Close is repaired but not both,
                 # then this means the interval has a mix of correct
-                # and errors. A problem for correcting Volume, 
+                # and errors. A problem for correcting Volume,
                 # so use a heuristic:
                 # - if both Open & Close were Nx bad => Volume is Nx bad
                 # - if only one of Open & Close are Nx bad => Volume is 0.5*Nx bad
@@ -1483,7 +1482,7 @@ class TickerBase:
                 if appears_suspended and (idx_latest_active is not None and idx_latest_active >= idx_first_f):
                     # Suspended midway during data date range.
                     # 1: process data before suspension in index-ascending (date-descending) order.
-                    # 2: process data after suspension in index-descending order. Requires signals to be reversed, 
+                    # 2: process data after suspension in index-descending order. Requires signals to be reversed,
                     #    then returned ranges to also be reversed, because this logic was originally written for
                     #    index-ascending (date-descending) order.
                     fj = f[:, j]
@@ -1508,7 +1507,8 @@ class TickerBase:
                         for i in range(len(ranges_after)):
                             r = ranges_after[i]
                             ranges_after[i] = (n-r[1], n-r[0], r[2])
-                    ranges = ranges_before ; ranges.extend(ranges_after)
+                    ranges = ranges_before
+                    ranges.extend(ranges_after)
                 else:
                     ranges = map_signals_to_ranges(f[:, j], f_up[:, j], f_down[:, j])
                 logger.debug(f"column '{c}' ranges: {ranges}")
@@ -1541,9 +1541,11 @@ class TickerBase:
                         ranges = []
                     for r in ranges:
                         if r[2] == 'split':
-                            m = split ; m_rcp = split_rcp
+                            m = split
+                            m_rcp = split_rcp
                         else:
-                            m = split_rcp ; m_rcp = split
+                            m = split_rcp
+                            m_rcp = split
                         if interday:
                             logger.info(f"price-repair-split: Corrected {fix_type} on col={c} range=[{df2.index[r[1]-1].date()}:{df2.index[r[0]].date()}] m={m:.4f}")
                         else:
@@ -1573,7 +1575,7 @@ class TickerBase:
             if appears_suspended and (idx_latest_active is not None and idx_latest_active >= idx_first_f):
                 # Suspended midway during data date range.
                 # 1: process data before suspension in index-ascending (date-descending) order.
-                # 2: process data after suspension in index-descending order. Requires signals to be reversed, 
+                # 2: process data after suspension in index-descending order. Requires signals to be reversed,
                 #    then returned ranges to also be reversed, because this logic was originally written for
                 #    index-ascending (date-descending) order.
                 ranges_before = map_signals_to_ranges(f[idx_latest_active:], f_up[idx_latest_active:], f_down[idx_latest_active:])
@@ -1595,7 +1597,8 @@ class TickerBase:
                     for i in range(len(ranges_after)):
                         r = ranges_after[i]
                         ranges_after[i] = (n-r[1], n-r[0], r[2])
-                ranges = ranges_before ; ranges.extend(ranges_after)
+                ranges = ranges_before
+                ranges.extend(ranges_after)
             else:
                 ranges = map_signals_to_ranges(f, f_up, f_down)
             if start_min is not None:
@@ -1607,9 +1610,11 @@ class TickerBase:
                         del ranges[i]
             for r in ranges:
                 if r[2] == 'split':
-                    m = split ; m_rcp = split_rcp
+                    m = split
+                    m_rcp = split_rcp
                 else:
-                    m = split_rcp ; m_rcp = split
+                    m = split_rcp
+                    m_rcp = split
                 logger.debug(f"price-repair-split: range={r} m={m}")
                 for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
@@ -1965,11 +1970,9 @@ class TickerBase:
         if start is not None:
             start_ts = utils._parse_user_dt(start, tz)
             start = pd.Timestamp.fromtimestamp(start_ts).tz_localize("UTC").tz_convert(tz)
-            start_d = start.date()
         if end is not None:
             end_ts = utils._parse_user_dt(end, tz)
             end = pd.Timestamp.fromtimestamp(end_ts).tz_localize("UTC").tz_convert(tz)
-            end_d = end.date()
         if end is None:
             end = dt_now
         if start is None:
@@ -1991,7 +1994,7 @@ class TickerBase:
             return None
         try:
             fail = json_data["finance"]["error"]["code"] == "Bad Request"
-        except KeyError as e:
+        except KeyError:
             fail = False
         if fail:
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")

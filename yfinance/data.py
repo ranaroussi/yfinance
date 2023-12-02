@@ -8,6 +8,7 @@ import datetime
 from frozendict import frozendict
 
 from . import utils, cache
+import threading
 
 cache_maxsize = 64
 
@@ -33,7 +34,6 @@ def lru_cache_freezeargs(func):
     return wrapped
 
 
-import threading
 class SingletonMeta(type):
     """
     Metaclass that creates a Singleton instance.
@@ -68,8 +68,8 @@ class YfData(metaclass=SingletonMeta):
             # Not caching
             self._session_is_caching = False
         else:
-            # Is caching. This is annoying. 
-            # Can't simply use a non-caching session to fetch cookie & crumb, 
+            # Is caching. This is annoying.
+            # Can't simply use a non-caching session to fetch cookie & crumb,
             # because then the caching-session won't have cookie.
             self._session_is_caching = True
             from requests_cache import DO_NOT_CACHE
@@ -207,7 +207,7 @@ class YfData(metaclass=SingletonMeta):
 
         utils.get_yf_logger().debug(f"crumb = '{self._crumb}'")
         return self._crumb
-    
+
     @utils.log_indent_decorator
     def _get_cookie_and_crumb_basic(self, proxy, timeout):
         cookie = self._get_cookie_basic(proxy, timeout)
@@ -257,10 +257,10 @@ class YfData(metaclass=SingletonMeta):
             'originalDoneUrl': originalDoneUrl,
             'namespace': namespace,
         }
-        post_args = {**base_args, 
+        post_args = {**base_args,
             'url': f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
             'data': data}
-        get_args = {**base_args, 
+        get_args = {**base_args,
             'url': f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
             'data': data}
         if self._session_is_caching:
@@ -288,7 +288,7 @@ class YfData(metaclass=SingletonMeta):
             return None
 
         get_args = {
-            'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb', 
+            'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
             'headers': self.user_agent_headers,
             'proxies': proxy,
             'timeout': timeout}
