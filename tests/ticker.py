@@ -627,13 +627,15 @@ class TestTickerMiscFinancials(unittest.TestCase):
     #     data_cached = self.ticker.sustainability
     #     self.assertIs(data, data_cached, "data not cached")
 
-    # def test_recommendations(self):
-    #     data = self.ticker.recommendations
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+    def test_recommendations(self):
+        data = self.ticker.recommendations
+        data_summary = self.ticker.recommendations_summary
+        self.assertTrue(data.equals(data_summary))
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
-    #     data_cached = self.ticker.recommendations
-    #     self.assertIs(data, data_cached, "data not cached")
+        data_cached = self.ticker.recommendations
+        self.assertIs(data, data_cached, "data not cached")
 
     # def test_recommendations_summary(self):
     #     data = self.ticker.recommendations_summary

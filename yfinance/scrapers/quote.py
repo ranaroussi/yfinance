@@ -9,7 +9,8 @@ import pandas as pd
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.exceptions import YFNotImplementedError
+from yfinance.const import quote_summary_valid_modules, _BASE_URL_
+from yfinance.exceptions import YFNotImplementedError, YFinanceDataException, YFinanceException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -21,7 +22,7 @@ info_retired_keys_symbol = {"symbol"}
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
 
 
-_BASIC_URL_ = "https://query2.finance.yahoo.com/v10/finance/quoteSummary"
+_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 
 class InfoDictWrapper(MutableMapping):
@@ -569,7 +570,7 @@ class Quote:
     @property
     def info(self) -> dict:
         if self._info is None:
-            self._fetch(self.proxy)
+            self._fetch_info(self.proxy)
             self._fetch_complementary(self.proxy)
 
         return self._info
@@ -583,7 +584,12 @@ class Quote:
     @property
     def recommendations(self) -> pd.DataFrame:
         if self._recommendations is None:
-            raise YFNotImplementedError('recommendations')
+            result = self._fetch(self.proxy, modules=['recommendationTrend'])
+            try:
+                data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
+            except (KeyError, IndexError):
+                raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+            self._recommendations = pd.DataFrame(data)
         return self._recommendations
 
     @property
@@ -592,16 +598,27 @@ class Quote:
             raise YFNotImplementedError('calendar')
         return self._calendar
 
-    def _fetch(self, proxy):
+    @staticmethod
+    def valid_modules():
+        return quote_summary_valid_modules
+
+    def _fetch(self, proxy, modules: list):
+        if not isinstance(modules, list):
+            raise YFinanceException("Should provide a list of modules, see available modules using `valid_modules`")
+
+        modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
+        if len(modules) == 0:
+            raise YFinanceException("No valid modules provided, see available modules using `valid_modules`")
+        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol}
+        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        return result
+
+    def _fetch_info(self, proxy):
         if self._already_fetched:
             return
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
-        modules = ','.join(modules)
-        params_dict = {"modules": modules, "ssl": "true"}
-        result = self._data.get_raw_json(
-            _BASIC_URL_ + f"/{self._symbol}", params=params_dict, proxy=proxy
-        )
+        result = self._fetch(proxy, modules=modules)
         result["quoteSummary"]["result"][0]["symbol"] = self._symbol
         query1_info = next(
             (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._symbol),
@@ -643,7 +660,7 @@ class Quote:
         self._already_fetched_complementary = True
 
         # self._scrape(proxy)  # decrypt broken
-        self._fetch(proxy)
+        self._fetch_info(proxy)
         if self._info is None:
             return
 

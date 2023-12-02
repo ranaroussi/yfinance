@@ -1698,6 +1698,10 @@ class TickerBase:
         return None
 
     def get_recommendations(self, proxy=None, as_dict=False):
+        """
+        Returns a DataFrame with the recommendations
+        Columns: period  strongBuy  buy  hold  sell  strongSell
+        """
         self._quote.proxy = proxy or self.proxy
         data = self._quote.recommendations
         if as_dict:
@@ -1757,11 +1761,7 @@ class TickerBase:
         return data
 
     def get_recommendations_summary(self, proxy=None, as_dict=False):
-        self._quote.proxy = proxy or self.proxy
-        data = self._quote.recommendations
-        if as_dict:
-            return data.to_dict()
-        return data
+        return self.get_recommendations(proxy=proxy, as_dict=as_dict)
 
     def get_analyst_price_target(self, proxy=None, as_dict=False):
         self._analysis.proxy = proxy or self.proxy
