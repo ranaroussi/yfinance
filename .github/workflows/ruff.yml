@@ -4,6 +4,7 @@ on:
     branches:
       - master
       - main
+      - dev
 jobs:
   ruff:
     runs-on: ubuntu-latest
