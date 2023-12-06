@@ -99,7 +99,6 @@ class YfData(metaclass=SingletonMeta):
             self._cookie_lock.acquire()
 
         try:
-            self._cookie_strategy = strategy
             if self._cookie_strategy == 'csrf':
                 utils.get_yf_logger().debug(f'toggling cookie strategy {self._cookie_strategy} -> basic')
                 self._session.cookies.clear()
@@ -203,6 +202,7 @@ class YfData(metaclass=SingletonMeta):
             crumb_response = self._session.get(**get_args)
         self._crumb = crumb_response.text
         if self._crumb is None or '<html>' in self._crumb:
+            utils.get_yf_logger().debug("Didn't receive crumb")
             return None
 
         utils.get_yf_logger().debug(f"crumb = '{self._crumb}'")
@@ -215,7 +215,7 @@ class YfData(metaclass=SingletonMeta):
         return cookie, crumb
 
     def _get_cookie_csrf(self, proxy, timeout):
-        if utils.reuse_cookie and self._cookie is not None:
+        if self._cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
             return True
 
@@ -239,6 +239,7 @@ class YfData(metaclass=SingletonMeta):
         soup = BeautifulSoup(response.content, 'html.parser')
         csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
         if csrfTokenInput is None:
+            utils.get_yf_logger().debug('Failed to find "csrfToken" in response')
             return False
         csrfToken = csrfTokenInput['value']
         utils.get_yf_logger().debug(f'csrfToken = {csrfToken}')
@@ -299,6 +300,7 @@ class YfData(metaclass=SingletonMeta):
         self._crumb = r.text
 
         if self._crumb is None or '<html>' in self._crumb or self._crumb == '':
+            utils.get_yf_logger().debug("Didn't receive crumb")
             return None
 
         utils.get_yf_logger().debug(f"crumb = '{self._crumb}'")
@@ -363,6 +365,7 @@ class YfData(metaclass=SingletonMeta):
             'headers': user_agent_headers or self.user_agent_headers
         }
         response = self._session.get(**request_args)
+        utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
             # Retry with other cookie strategy
             if strategy == 'basic':
@@ -374,6 +377,7 @@ class YfData(metaclass=SingletonMeta):
             if strategy == 'basic':
                 request_args['cookies'] = {cookie.name: cookie.value}
             response = self._session.get(**request_args)
+            utils.get_yf_logger().debug(f'response code={response.status_code}')
 
         return response
 
