@@ -71,10 +71,10 @@ class TickerBase:
 
         self._data: YfData = YfData(session=session)
 
-        self._analysis = Analysis(self._data, ticker)
-        self._holders = Holders(self._data, ticker)
-        self._quote = Quote(self._data, ticker)
-        self._fundamentals = Fundamentals(self._data, ticker)
+        self._analysis = Analysis(self._data, self.ticker)
+        self._holders = Holders(self._data, self.ticker)
+        self._quote = Quote(self._data, self.ticker)
+        self._fundamentals = Fundamentals(self._data, self.ticker)
 
         self._fast_info = None
 
