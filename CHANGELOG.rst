@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.2.33
+------
+Cookie fixes:
+- fix backup strategy #1759
+- fix Ticker(ISIN) #1760
+
 0.2.32
 ------
 Add cookie & crumb to requests #1657
