@@ -223,6 +223,15 @@ class TestTickerHistory(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
+    def test_reconstruct_intervals_batch(self):
+        data = self.ticker.history(period="3mo", interval="1d", prepost=True, repair=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        reconstructed = self.ticker._reconstruct_intervals_batch(data, "1wk", True)
+        self.assertIsInstance(reconstructed, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
 
 class TestTickerEarnings(unittest.TestCase):
     session = None
