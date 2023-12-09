@@ -1297,8 +1297,13 @@ class TickerBase:
         # Update: if a VERY large dividend is paid out, then can be mistaken for a 1:2 stock split.
         # Fix = use adjusted prices
         adj = df2['Adj Close'].to_numpy() / df2['Close'].to_numpy()
+        df_dtype = price_data.dtype
+        if df_dtype == np.int64:
+            price_data = price_data.astype('float')
         for j in range(price_data.shape[1]):
             price_data[:,j] *= adj
+        if df_dtype == np.int64:
+            price_data = price_data.astype('int')
 
         _1d_change_x[1:] = price_data[1:, ] / price_data[:-1, ]
         f_zero_num_denom = f_zero | np.roll(f_zero, 1, axis=0)
