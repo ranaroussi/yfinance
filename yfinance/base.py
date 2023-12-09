@@ -1751,6 +1751,12 @@ class TickerBase:
     def get_info(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         data = self._quote.info
+        try:
+            holders = self.get_institutional_holders()
+            expenseRatio = holders[holders[0] == 'Expense Ratio (net)'][1].values[0]
+            data['annualNetExpenseRatio'] = expenseRatio
+        except Exception:
+            pass
         return data
 
     def get_fast_info(self, proxy=None):
