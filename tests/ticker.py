@@ -18,7 +18,6 @@ from yfinance.exceptions import YFNotImplementedError
 import unittest
 import requests_cache
 from typing import Union, Any
-import re
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
