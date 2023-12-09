@@ -26,7 +26,7 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 
 class InfoDictWrapper(MutableMapping):
-    """ Simple wrapper around info dict, intercepting 'gets' to 
+    """ Simple wrapper around info dict, intercepting 'gets' to
     print how-to-migrate messages for specific keys. Requires
     override dict API"""
 
@@ -68,7 +68,7 @@ class InfoDictWrapper(MutableMapping):
 
     def __iter__(self):
         return iter(self.info)
-    
+
     def __len__(self):
         return len(self.info)
 
@@ -126,7 +126,7 @@ class FastInfo:
         _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
         _properties += ["year_high", "year_low", "year_change"]
 
-        # Because released before fixing key case, need to officially support 
+        # Because released before fixing key case, need to officially support
         # camel-case but also secretly support snake-case
         base_keys = [k for k in _properties if '_' not in k]
 
@@ -134,7 +134,7 @@ class FastInfo:
 
         self._sc_to_cc_key = {k: utils.snake_case_2_camelCase(k) for k in sc_keys}
         self._cc_to_sc_key = {v: k for k, v in self._sc_to_cc_key.items()}
- 
+
         self._public_keys = sorted(base_keys + list(self._sc_to_cc_key.values()))
         self._keys = sorted(self._public_keys + sc_keys)
 
@@ -157,7 +157,7 @@ class FastInfo:
 
     def __getitem__(self, k):
         if not isinstance(k, str):
-            raise KeyError(f"key must be a string")
+            raise KeyError("key must be a string")
         if k not in self._keys:
             raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
         if k in self._cc_to_sc_key:
@@ -177,7 +177,6 @@ class FastInfo:
         return self.__str__()
 
     def toJSON(self, indent=4):
-        d = {k: self[k] for k in self.keys()}
         return json.dumps({k: self[k] for k in self.keys()}, indent=indent)
 
     def _get_1y_prices(self, fullDaysOnly=False):
@@ -337,7 +336,7 @@ class FastInfo:
         else:
             prices = prices[["Close"]].groupby(prices.index.date).last()
             if prices.shape[0] < 2:
-                # Very few symbols have previousClose despite no 
+                # Very few symbols have previousClose despite no
                 # no trading data e.g. 'QCSTIX'.
                 fail = True
             else:
@@ -356,12 +355,12 @@ class FastInfo:
             return self._reg_prev_close
         prices = self._get_1y_prices()
         if prices.shape[0] == 1:
-            # Tiny % of tickers don't return daily history before last trading day, 
+            # Tiny % of tickers don't return daily history before last trading day,
             # so backup option is hourly history:
             prices = self._get_1wk_1h_reg_prices()
             prices = prices[["Close"]].groupby(prices.index.date).last()
         if prices.shape[0] < 2:
-            # Very few symbols have regularMarketPreviousClose despite no 
+            # Very few symbols have regularMarketPreviousClose despite no
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
             self._tkr.info  # trigger fetch
@@ -630,10 +629,10 @@ class Quote:
             if "maxAge" in query1_info[k] and query1_info[k]["maxAge"] == 1:
                 query1_info[k]["maxAge"] = 86400
         query1_info = {
-            k1: v1 
-            for k, v in query1_info.items() 
-            if isinstance(v, dict) 
-            for k1, v1 in v.items() 
+            k1: v1
+            for k, v in query1_info.items()
+            if isinstance(v, dict)
+            for k1, v1 in v.items()
             if v1
         }
         # recursively format but only because of 'companyOfficers'

@@ -172,7 +172,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
                                  rounding=rounding, timeout=timeout)
             if progress:
                 shared._PROGRESS_BAR.animate()
-    
+
     if progress:
         shared._PROGRESS_BAR.completed()
 
@@ -262,7 +262,7 @@ def _download_one_threaded(ticker, start=None, end=None,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
-    data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
+    _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
                          keepna, timeout)
     if progress:
