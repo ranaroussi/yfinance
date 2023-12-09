@@ -862,7 +862,7 @@ class TestPriceRepair(unittest.TestCase):
         # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
-        good_tkrs += ['AEI', 'CHRA', 'GHI', 'IRON', 'LXU', 'NUZE', 'RSLS', 'TISI']
+        good_tkrs += ['AEI', 'GHI', 'IRON', 'LXU', 'NUZE', 'RSLS', 'TISI']
         good_tkrs += ['BOL.ST', 'TUI1.DE']
         intervals = ['1d', '1wk', '1mo', '3mo']
         for tkr in good_tkrs:
