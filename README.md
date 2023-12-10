@@ -42,6 +42,32 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
+## Installation
+
+Install `yfinance` using `pip`:
+
+``` {.sourceCode .bash}
+$ pip install yfinance --upgrade --no-cache-dir
+```
+
+To install `yfinance` using `conda`, see
+[this](https://anaconda.org/ranaroussi/yfinance). 
+
+Test new features by installing betas, provide feedback in [corresponding Discussion](https://github.com/ranaroussi/yfinance/discussions):
+``` {.sourceCode .bash}
+$ pip install yfinance --upgrade --no-cache-dir --pre
+```
+
+To install with extra dependencies, replace `extra` with `nospam` for custom requests or `repair` for price repairing functionality:
+``` {.sourceCode .bash}
+$ pip install yfinance[extra]
+```
+
+To view the full list of [required dependencies](https://github.com/ranaroussi/yfinance/blob/main/requirements.txt) and extra packages, see [this](https://github.com/ranaroussi/yfinance/blob/f08fe83290136d103d46d67524f5b6e7b6b827ff/setup.py#L62).
+
+
+---
+
 ## Quick Start
 
 ### The Ticker module
@@ -155,8 +181,9 @@ data = yf.download("SPY AAPL", period="1mo")
 
 ### Smarter scraping
 
-To use a custom `requests` session (for example to cache calls to the
-API or customize the `User-agent` header), pass a `session=` argument to
+Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). 
+
+To use a custom `requests` session (for example to cache calls to the API or customize the `User-agent` header), pass a `session=` argument to
 the Ticker constructor.
 
 ```python
@@ -230,23 +257,8 @@ yf.set_tz_cache_location("custom/cache/location")
 
 ---
 
-## Installation
 
-Install `yfinance` using `pip`:
-
-``` {.sourceCode .bash}
-$ pip install yfinance --upgrade --no-cache-dir
-```
-
-Test new features by installing betas, provide feedback in [corresponding Discussion](https://github.com/ranaroussi/yfinance/discussions):
-``` {.sourceCode .bash}
-$ pip install yfinance --upgrade --no-cache-dir --pre
-```
-
-To install `yfinance` using `conda`, see
-[this](https://anaconda.org/ranaroussi/yfinance).
-
-### Requirements
+<!-- ### Requirements
 
 -   [Python](https://www.python.org) \>= 2.7, 3.4+
 -   [Pandas](https://github.com/pydata/pandas) \>= 1.3.0
@@ -263,7 +275,7 @@ To install `yfinance` using `conda`, see
 #### Optional (if you want to use `pandas_datareader`)
 
 -   [pandas\_datareader](https://github.com/pydata/pandas-datareader)
-    \>= 0.4.0
+    \>= 0.4.0 -->
 
 ## Developers: want to contribute?
 
