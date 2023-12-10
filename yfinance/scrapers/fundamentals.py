@@ -72,7 +72,8 @@ class Financials:
     def get_financials_plot_from_ics(self, freq="yearly", proxy=None) -> plt.figure:
         if len(self._income_time_series) == 0:
             self._income_time_series = self.get_income_time_series(freq, proxy)
-        data = self._income_time_series[freq]
+        
+        data = self._income_time_series
 
         if "Total Revenue" in data.index:
             revenue_data = data.loc["Total Revenue"]
