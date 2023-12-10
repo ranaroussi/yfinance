@@ -93,12 +93,18 @@ class Holders:
     
     def _scrape_insider_transactions(self, proxy):
         ticker_url = f"{self._SCRAPE_URL_}/{self._symbol}"
-        try:
-            resp = self._data.cache_get(ticker_url + '/insider-transactions', proxy=proxy)
-            insider_transactions = pd.read_html(StringIO(resp.text))
-        except Exception:
-            insider_transactions = []
+        resp = self._data.cache_get(ticker_url + '/insider-transactions', proxy=proxy)
 
+        if "Will be right back" in resp.text:
+                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                                   "Our engineers are working quickly to resolve "
+                                   "the issue. Thank you for your patience.")
+        
+        try:
+            insider_transactions = pd.read_html(StringIO(resp.text))
+        except ValueError:
+            insider_transactions = []
+        
         if len(insider_transactions) >= 3:
             self._insider_purchases = insider_transactions[0]
             self._insider_transactions = insider_transactions[2]
@@ -110,6 +116,7 @@ class Holders:
         if self._insider_transactions is not None:
             holders = self._insider_transactions
 
+            # add positions column
             def split_insider_title(input_string):
                 import re
                 parts = input_string.split(' ')
@@ -127,22 +134,52 @@ class Holders:
             holders = holders[['Insider', 'Position'] + holders.columns\
                               .difference(['Insider', 'Position']).tolist()]
 
-            holders.fillna('N/A', inplace=True) 
+            # add N/A for no information
+            holders.fillna('N/A', inplace=True)
+            holders = holders.reset_index(drop=True)
+            
+            if 'Date' in holders:
+                holders['Date'] = pd.to_datetime(holders['Date'])
+
+            if 'Shares' in holders:
+                holders['Shares'] = holders['Shares'].astype(int)
+
             self._insider_transactions = holders
 
         if self._insider_purchases is not None:
             holders = self._insider_purchases
             
             holders.fillna('N/A', inplace=True) 
+            holders = holders.reset_index(drop=True)
+
+            if 'Shares' in holders:
+                def convert_shares(value):
+                    import re
+                    if re.match(r'^\d+(\.?\d*)?[BbMmKk%]$', value):
+                        return value  # Leave values like '40.9B', '7.30%', etc. unchanged
+                    
+                    elif pd.notna(pd.to_numeric(value, errors='coerce')):
+                        return int(value)  # Convert to integer if possible
+                    
+                    else:
+                        return value 
+                    
+                holders['Shares'] = holders['Shares'].apply(convert_shares)
             self._insider_purchases = holders
 
 
     def _scrape_insider_ros(self, proxy):
         ticker_url = f"{self._SCRAPE_URL_}/{self._symbol}"
-        try:
-            resp = self._data.cache_get(ticker_url + '/insider-roster', proxy=proxy)
+        resp = self._data.cache_get(ticker_url + '/insider-roster', proxy=proxy)
+        
+        if "Will be right back" in resp.text:
+                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                                   "Our engineers are working quickly to resolve "
+                                   "the issue. Thank you for your patience.")
+
+        try:    
             insider_roster = pd.read_html(StringIO(resp.text))
-        except Exception:
+        except ValueError:
             insider_roster = []
 
         if len(insider_roster) >= 1:
@@ -169,6 +206,10 @@ class Holders:
             
             holders = holders[['Individual or Entity', 'Position'] + holders.columns\
                               .difference(['Individual or Entity', 'Position']).tolist()]
+
+            # add N/A for no information
+            holders.fillna('N/A', inplace=True)
+            holders = holders.reset_index(drop=True)
 
             self._insider_roster = holders
 
