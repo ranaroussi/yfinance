@@ -561,6 +561,7 @@ class Quote:
         self._retired_info = None
         self._sustainability = None
         self._recommendations = None
+        self._upgrades_downgrades = None
         self._calendar = None
 
         self._already_scraped = False
@@ -591,6 +592,23 @@ class Quote:
                 raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
             self._recommendations = pd.DataFrame(data)
         return self._recommendations
+
+    @property
+    def upgrades_downgrades(self) -> pd.DataFrame:
+        if self._upgrades_downgrades is None:
+            result = self._fetch(self.proxy, modules=['upgradeDowngradeHistory'])
+            try:
+                data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
+                if len(data) == 0:
+                    raise YFinanceDataException(f"No upgrade/downgrade history found for {self._symbol}")
+                df = pd.DataFrame(data)
+                df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
+                df.set_index('GradeDate', inplace=True)
+                df.index = pd.to_datetime(df.index, unit='s')
+                self._upgrades_downgrades = df
+            except (KeyError, IndexError):
+                raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+        return self._upgrades_downgrades
 
     @property
     def calendar(self) -> pd.DataFrame:
