@@ -1856,15 +1856,15 @@ class TickerBase:
         if as_dict:
             return data.to_dict()
         return data
-    
-    def get_financials_plot(self, proxy=None, freq="yearly"):
-        return self._fundamentals.financials.get_financials_plot_from_ics(freq=freq, proxy=proxy)
 
     def get_incomestmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(proxy, as_dict, pretty, freq)
 
     def get_financials(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(proxy, as_dict, pretty, freq)
+    
+    def get_financials_plot(self, proxy=None, freq="yearly"):
+        return self._fundamentals.financials.get_financials_plot_from_ics(freq=freq, proxy=proxy)
 
     def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
