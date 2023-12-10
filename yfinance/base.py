@@ -732,7 +732,7 @@ class TickerBase:
                     f_close_bad = df_block_calib['Close'] == tag
                     df_new['Adj Close'] = df_block['Close'] * div_adjusts
                     if f_close_bad.any():
-                        df_new.loc[f_close_bad, 'Adj Close'] = df_new['Close'].iloc[f_close_bad] * div_adjusts[f_close_bad]
+                        df_new.loc[f_close_bad, 'Adj Close'] = df_new['Close'][f_close_bad] * div_adjusts[f_close_bad]
 
             # Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
