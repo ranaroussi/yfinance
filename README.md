@@ -87,6 +87,9 @@ msft.quarterly_cashflow
 msft.major_holders
 msft.institutional_holders
 msft.mutualfund_holders
+msft.insider_transactions
+msft.insider_purchases
+msft.insider_roster_holders
 
 # Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.

@@ -1747,6 +1747,30 @@ class TickerBase:
             if as_dict:
                 return data.to_dict()
             return data
+    
+    def get_insider_purchases(self, proxy=None, as_dict=False):
+        self._holders.proxy = proxy or self.proxy
+        data = self._holders.insider_purchases
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            return data
+
+    def get_insider_transactions(self, proxy=None, as_dict=False):
+        self._holders.proxy = proxy or self.proxy
+        data = self._holders.insider_transactions
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            return data
+
+    def get_insider_roster_holders(self, proxy=None, as_dict=False):
+        self._holders.proxy = proxy or self.proxy
+        data = self._holders.insider_roster
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            return data
 
     def get_info(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy

@@ -24,6 +24,9 @@ ticker_attributes = (
     ("major_holders", pd.DataFrame),
     ("institutional_holders", pd.DataFrame),
     ("mutualfund_holders", pd.DataFrame),
+    ("insider_transactions", pd.DataFrame),
+    ("insider_purchases", pd.DataFrame),
+    ("insider_roster_holders", pd.DataFrame),
     ("splits", pd.Series),
     ("actions", pd.DataFrame),
     ("shares", pd.DataFrame),
@@ -336,6 +339,30 @@ class TestTickerHolders(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.mutualfund_holders
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_insider_transactions(self):
+        data = self.ticker.insider_transactions
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_transactions
+        self.assertIs(data, data_cached, "data not cached")
+    
+    def test_insider_purchases(self):
+        data = self.ticker.insider_purchases
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_purchases
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_insider_roster_holders(self):
+        data = self.ticker.insider_roster_holders
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_roster_holders
         self.assertIs(data, data_cached, "data not cached")
 
 
