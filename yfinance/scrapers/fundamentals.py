@@ -2,6 +2,8 @@ import datetime
 import json
 
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 from yfinance import utils, const
 from yfinance.data import YfData
@@ -66,6 +68,60 @@ class Financials:
         if freq not in res:
             res[freq] = self._fetch_time_series("cash-flow", freq, proxy)
         return res[freq]
+    
+    def get_financials_plot_from_ics(self, freq="yearly", proxy=None) -> plt.figure:
+        if len(self._income_time_series) == 0:
+            self._income_time_series = self.get_income_time_series(freq, proxy)
+        data = self._income_time_series[freq]
+
+        if "Total Revenue" in data.index:
+            revenue_data = data.loc["Total Revenue"]
+        elif "TotalRevenue" in data.index:
+            revenue_data = data.loc["TotalRevenue"]
+        else:
+            raise ValueError("Index name for revenue data not found")
+
+        if "Total Revenue" in data.index:
+            income_data = data.loc["Net Income"]
+        elif "TotalRevenue" in data.index:
+            income_data = data.loc["NetIncome"]
+        else:
+            raise ValueError("Index name for revenue data not found")
+
+        # format the y-axis labels
+        def format_y_axis_labels(value, _):
+            if value == 0:
+                return ""
+            if value >= 1e9:
+                return f"{value / 1e9:.2f}B"
+            elif value >= 1e6:
+                return f"{value / 1e6:.2f}M"
+            else:
+                return f"{value:.2f}"
+
+        fig, ax = plt.subplots()
+        revenue_data[::-1].plot(kind='bar', ax=ax, color='#00c074', position=1, width=0.2, zorder=3)
+        income_data[::-1].plot(kind='bar', ax=ax, color='#188fff', position=0, width=0.2, zorder=3)
+
+        ax.legend(['Revenue', 'Earnings'])
+
+        if freq == "yearly":
+            # YYYY format
+            ax.set_xticklabels([label.get_text()[:4] for label in ax.get_xticklabels()], rotation=0)
+            ax.set_title('Annual Financials')
+        elif freq == "quarterly":
+            # Convert quarterly labels to XQYYYY format
+            quarter_labels = [f"{int(label.get_text()[5:7]) // 3}Q{label.get_text()[:4]}" for label in ax.get_xticklabels()]
+            ax.set_xticklabels(quarter_labels, rotation=0)
+            ax.set_title('Quarterly Financials')
+
+        ax.yaxis.set_major_formatter(FuncFormatter(format_y_axis_labels))
+        ax.grid(zorder=0, color='lightgrey', linestyle='-', linewidth=0.5, axis='y')
+
+        plt.ylabel('$', rotation=0)
+        plt.gca().yaxis.set_label_coords(-0.065, -0.065)
+        plt.show()
+        return
 
     @utils.log_indent_decorator
     def _fetch_time_series(self, name, timescale, proxy=None):
@@ -147,3 +203,4 @@ class Financials:
         df = df[sorted(df.columns, reverse=True)]
 
         return df
+    
