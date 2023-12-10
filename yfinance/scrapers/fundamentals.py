@@ -69,7 +69,7 @@ class Financials:
             res[freq] = self._fetch_time_series("cash-flow", freq, proxy)
         return res[freq]
     
-    def get_financials_plot_from_ics(self, freq="yearly", proxy=None) -> plt.figure:
+    def get_financials_plot_from_ics(self, freq="yearly", proxy=None) -> None:
         if len(self._income_time_series) == 0:
             self._income_time_series = self.get_income_time_series(freq, proxy)
         
