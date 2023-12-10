@@ -31,9 +31,11 @@ ticker_attributes = (
     ("info", dict),
     ("calendar", pd.DataFrame),
     ("recommendations", Union[pd.DataFrame, dict]),
+    ("recommendations_summary", Union[pd.DataFrame, dict]),
+    ("upgrades_downgrades", Union[pd.DataFrame, dict]),
+    ("recommendations_history", Union[pd.DataFrame, dict]),
     ("earnings", pd.DataFrame),
     ("quarterly_earnings", pd.DataFrame),
-    ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("quarterly_cashflow", pd.DataFrame),
     ("cashflow", pd.DataFrame),
     ("quarterly_balance_sheet", pd.DataFrame),
@@ -637,13 +639,26 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.recommendations
         self.assertIs(data, data_cached, "data not cached")
 
-    # def test_recommendations_summary(self):
+    # def test_recommendations_summary(self):  # currently alias for recommendations
     #     data = self.ticker.recommendations_summary
     #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
     #     self.assertFalse(data.empty, "data is empty")
 
     #     data_cached = self.ticker.recommendations_summary
     #     self.assertIs(data, data_cached, "data not cached")
+
+    def test_recommendations_history(self):  # alias for upgrades_downgrades
+        data = self.ticker.upgrades_downgrades
+        data_history = self.ticker.recommendations_history
+        self.assertTrue(data.equals(data_history))
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertTrue(len(data.columns) == 4, "data has wrong number of columns")
+        self.assertEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
+        self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
+
+        data_cached = self.ticker.upgrades_downgrades
+        self.assertIs(data, data_cached, "data not cached")
 
     # def test_analyst_price_target(self):
     #     data = self.ticker.analyst_price_target

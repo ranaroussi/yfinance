@@ -1708,6 +1708,21 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    def get_recommendations_summary(self, proxy=None, as_dict=False):
+        return self.get_recommendations(proxy=proxy, as_dict=as_dict)
+
+    def get_upgrades_downgrades(self, proxy=None, as_dict=False):
+        """
+        Returns a DataFrame with the recommendations changes (upgrades/downgrades)
+        Index: date of grade
+        Columns: firm toGrade fromGrade action
+        """
+        self._quote.proxy = proxy or self.proxy
+        data = self._quote.upgrades_downgrades
+        if as_dict:
+            return data.to_dict()
+        return data
+
     def get_calendar(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy or self.proxy
         data = self._quote.calendar
@@ -1759,9 +1774,6 @@ class TickerBase:
         if as_dict:
             return data.to_dict()
         return data
-
-    def get_recommendations_summary(self, proxy=None, as_dict=False):
-        return self.get_recommendations(proxy=proxy, as_dict=as_dict)
 
     def get_analyst_price_target(self, proxy=None, as_dict=False):
         self._analysis.proxy = proxy or self.proxy
