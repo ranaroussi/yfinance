@@ -24,7 +24,6 @@ from __future__ import print_function
 import datetime as _datetime
 import logging
 import re as _re
-import sys
 import sys as _sys
 import threading
 from functools import lru_cache
