@@ -1965,6 +1965,48 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    def get_earnings_estimate(self, proxy=None, as_dict=False):
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.earnings_estimate
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_revenue_estimate(self, proxy=None, as_dict=False):
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.revenue_estimate
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_earnings_history(self, proxy=None, as_dict=False):
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.earnings_history
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_eps_trend(self, proxy=None, as_dict=False):
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.eps_trend
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_eps_revisions(self, proxy=None, as_dict=False):
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.eps_revisions
+        if as_dict:
+            return data.to_dict()
+        return data
+
+    def get_growth_estimates(self, proxy=None, as_dict=False):
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.growth_estimates
+        if as_dict:
+            return data.to_dict()
+        return data
+
     @utils.log_indent_decorator
     def get_shares_full(self, start=None, end=None, proxy=None):
         logger = utils.get_yf_logger()
