@@ -66,7 +66,7 @@ setup(
                       'beautifulsoup4>=4.11.1', 'html5lib>=1.1'],
     extras_require={
         'nospam': ['requests_cache>=1.1.1', 'requests_ratelimiter>=0.4.2'],
-        'repair': ['scipy>=1.10.1'],
+        'repair': ['scipy>=1.6.3'],
     },
     # Note: Pandas.read_html() needs html5lib & beautifulsoup4
     entry_points={
