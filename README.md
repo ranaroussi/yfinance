@@ -181,10 +181,10 @@ data = yf.download("SPY AAPL", period="1mo")
 
 ### Smarter scraping
 
-Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). 
+Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). These packages help cache calls such that Yahoo is not spammed with requests. 
 
-To use a custom `requests` session (for example to cache calls to the API or customize the `User-agent` header), pass a `session=` argument to
-the Ticker constructor.
+To use a custom `requests` session, pass a `session=` argument to
+the Ticker constructor. This allows for caching calls to the API as well as a custom way to modify requests via  the `User-agent` header.
 
 ```python
 import requests_cache
@@ -195,7 +195,7 @@ ticker = yf.Ticker('msft', session=session)
 ticker.actions
 ```
 
-Combine a `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-limiter/blocker that can corrupt data.
+Combine `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-limiter/blocker that can corrupt data.
 ```python
 from requests import Session
 from requests_cache import CacheMixin, SQLiteCache
