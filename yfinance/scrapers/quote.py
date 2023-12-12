@@ -594,7 +594,25 @@ class Quote:
     @property
     def calendar(self) -> pd.DataFrame:
         if self._calendar is None:
-            raise YFNotImplementedError('calendar')
+            result = self._fetch(self.proxy, modules=['calendarEvents'])
+            try:
+                fileds = ['exDividendDate', 'dividendDate']
+                result = result["quoteSummary"]["result"][0]["calendarEvents"]
+                data = dict()
+                for field in fileds:
+                    if field in result:
+                        data[field] = result[field]
+                earnings = result.get('earnings')
+                if earnings is not None and len(earnings.get('earningsDate', [])) > 0:
+                    data['earningsDate'] = earnings['earningsDate'][0]
+                df = pd.DataFrame.from_dict(data, orient='index')
+                if not df.empty:
+                    df.columns = ['Date']
+                    df.index.name = 'Event'
+                    df['Date'] = pd.to_datetime(df['Date'], unit='s').dt.date
+                self._calendar = df
+            except (KeyError, IndexError):
+                raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
         return self._calendar
 
     @staticmethod
@@ -608,7 +626,7 @@ class Quote:
         modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
         if len(modules) == 0:
             raise YFinanceException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol}
+        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
         return result
 
