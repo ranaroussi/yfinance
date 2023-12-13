@@ -50,21 +50,15 @@ Install `yfinance` using `pip`:
 $ pip install yfinance --upgrade --no-cache-dir
 ```
 
-To install `yfinance` using `conda`, see
-[this](https://anaconda.org/ranaroussi/yfinance). 
+[With Conda](https://anaconda.org/ranaroussi/yfinance).
 
-Test new features by installing betas, provide feedback in [corresponding Discussion](https://github.com/ranaroussi/yfinance/discussions):
+To install with optional dependencies, replace `optional` with: `nospam` for [caching-requests](#smarter-scraping), `repair` for [price repair](https://github.com/ranaroussi/yfinance/wiki/Price-repair), or `nospam,repair` for both:
+
 ``` {.sourceCode .bash}
-$ pip install yfinance --upgrade --no-cache-dir --pre
+$ pip install yfinance[optional]
 ```
 
-To install with extra dependencies, replace `extra` with `nospam` for custom requests or `repair` for price repairing functionality:
-``` {.sourceCode .bash}
-$ pip install yfinance[extra]
-```
-
-To view the full list of [required dependencies](https://github.com/ranaroussi/yfinance/blob/main/requirements.txt) and extra packages, see [this](https://github.com/ranaroussi/yfinance/blob/f08fe83290136d103d46d67524f5b6e7b6b827ff/setup.py#L62).
-
+[Required dependencies](./requirements.txt) , [all dependencies](./setup.py#L62).
 
 ---
 
@@ -256,26 +250,6 @@ yf.set_tz_cache_location("custom/cache/location")
 ```
 
 ---
-
-
-<!-- ### Requirements
-
--   [Python](https://www.python.org) \>= 2.7, 3.4+
--   [Pandas](https://github.com/pydata/pandas) \>= 1.3.0
--   [Numpy](http://www.numpy.org) \>= 1.16.5
--   [requests](http://docs.python-requests.org/en/master) \>= 2.31
--   [lxml](https://pypi.org/project/lxml) \>= 4.9.1
--   [appdirs](https://pypi.org/project/appdirs) \>= 1.4.4
--   [pytz](https://pypi.org/project/pytz) \>=2022.5
--   [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
--   [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
--   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
--   [peewee](https://pypi.org/project/peewee)  \>= 3.16.2
-
-#### Optional (if you want to use `pandas_datareader`)
-
--   [pandas\_datareader](https://github.com/pydata/pandas-datareader)
-    \>= 0.4.0 -->
 
 ## Developers: want to contribute?
 
