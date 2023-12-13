@@ -14,13 +14,21 @@ class FundProfile:
         self.proxy = proxy
 
         self._description = None
+
         self._top_holdings = None
         self._equity_holdings = None
         self._bond_holdings = None
         self._bond_ratings = None
         self._sector_weightings = None
-        self._profile = None
-        self._perfomance = None
+
+        self._fund_overview = None
+        self._fund_operations = None
+
+        self._annualTotalReturns = None
+        self._pastQuarterlyReturns = None
+        self._performanceOverview = None
+        self._riskOverviewStatistics = None
+        self._trailingReturns = None
 
     @property
     def description(self) -> str:
@@ -59,16 +67,46 @@ class FundProfile:
         return self._sector_weightings
 
     @property
-    def profile(self) -> pd.DataFrame:
-        if self._profile is None:
+    def fund_overview(self) -> pd.DataFrame:
+        if self._fund_overview is None:
             self._fetch_and_parse()
-        return self._profile
+        return self._fund_overview
 
     @property
-    def perfomance(self) -> pd.DataFrame:
-        if self._perfomance is None:
+    def fund_operations(self) -> pd.DataFrame:
+        if self._fund_operations is None:
             self._fetch_and_parse()
-        return self._perfomance
+        return self._fund_operations
+
+    @property
+    def annual_total_returns(self) -> pd.DataFrame:
+        if self._annualTotalReturns is None:
+            self._fetch_and_parse()
+        return self._annualTotalReturns
+
+    @property
+    def past_quarterly_returns(self) -> pd.DataFrame:
+        if self._pastQuarterlyReturns is None:
+            self._fetch_and_parse()
+        return self._pastQuarterlyReturns
+
+    @property
+    def performance_overview(self) -> pd.DataFrame:
+        if self._performanceOverview is None:
+            self._fetch_and_parse()
+        return self._performanceOverview
+
+    @property
+    def risk_overview_statistics(self) -> pd.DataFrame:
+        if self._riskOverviewStatistics is None:
+            self._fetch_and_parse()
+        return self._riskOverviewStatistics
+
+    @property
+    def trailing_returns(self) -> pd.DataFrame:
+        if self._trailingReturns is None:
+            self._fetch_and_parse()
+        return self._trailingReturns
 
     def _fetch(self, proxy):
         modules = ','.join(["quoteType", "summaryProfile", "topHoldings", "fundPerformance", "fundProfile"])
@@ -104,7 +142,7 @@ class FundProfile:
     def _parse_description(self, data):  # done
         self._description = data.get("longBusinessSummary", "")
 
-    def _parse_top_holdings(self, data):
+    def _parse_top_holdings(self, data):  # done
         # fill bond ratings
         _bond_ratings = dict((key, d[key]) for d in data.get("bondRatings", []) for key in d)
         if len(_bond_ratings) > 0:
@@ -176,13 +214,29 @@ class FundProfile:
         self._perfomance = df
 
     def _parse_fund_profile(self, data):
-        if "maxAge" in data:
-            del data["maxAge"]
-        df = pd.DataFrame.from_dict(data, orient="index")
-        if not df.empty:
-            df.columns.name = "Profile"
-            df.rename(columns={df.columns[0]: 'Value'}, inplace=True)
-        self._profile = df
+        self._fund_overview = pd.DataFrame(
+            {
+                "Data": ["Category", "Family", "Legal Type"],
+                "Value": [data.get("categoryName", ""), data.get("family", ""), data.get("legalType", "")]
+            }
+        )
+        self._fund_operations = pd.DataFrame(
+            {
+                "Attributes": ["Annual Report Expense Ratio", "Annual Holdings Turnover", "Total Net Assets"],
+                self._symbol: [
+                    data.get("feesExpensesInvestment", {}).get("annualReportExpenseRatio", ""),
+                    data.get("feesExpensesInvestment", {}).get("annualHoldingsTurnover", ""),
+                    data.get("feesExpensesInvestment", {}).get("totalNetAssets", "")
+                ],
+                "Category Average": [
+                    data.get("feesExpensesInvestmentCat", {}).get("annualReportExpenseRatio", ""),
+                    data.get("feesExpensesInvestmentCat", {}).get("annualHoldingsTurnover", ""),
+                    data.get("feesExpensesInvestmentCat", {}).get("totalNetAssets", "")
+                ]
+            }
+        )  # .convert_dtypes()  # are we sure we want to convert dtypes here?
+
+
 
 """
 Ticker: IVV
@@ -501,20 +555,6 @@ Ticker: ILTB
                                                                          'threeYear': -0.096361704,
                                                                          'ytd': 0.0297735}},
                                                                          
-                              'fundProfile': {'categoryName': 'Long-Term Bond',
-                                              'family': 'iShares',
-                                              'feesExpensesInvestment': {'annualHoldingsTurnover': 0.1,
-                                                                         'annualReportExpenseRatio': 0.00059999997,
-                                                                         'projectionValues': {},
-                                                                         'totalNetAssets': 0.0},
-                                              'feesExpensesInvestmentCat': {'annualHoldingsTurnover': 14.5,
-                                                                            'annualReportExpenseRatio': 0.0017,
-                                                                            'projectionValuesCat': {},
-                                                                            'totalNetAssets': 0.0},
-                                              'legalType': 'Exchange Traded '
-                                                           'Fund',
-                                              'maxAge': 1,
-                                              'styleBoxUrl': 'https://s.yimg.com/lq/i/fi/3_0stylelargeeq.gif'},
 
 
 """
