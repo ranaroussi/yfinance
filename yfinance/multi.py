@@ -259,8 +259,8 @@ def _realign_dfs():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
-                           actions=False, progress=True, period="max",
-                           interval="1d", prepost=False, proxy=None,
+                           actions=False, progress=True, period=None,
+                           interval='1d', prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
     data = _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
@@ -271,10 +271,21 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
-                  actions=False, period="max", interval="1d",
+                  actions=False, period=None, interval='1d',
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
     data = None
+    
+    # Check if both start and end are provided when period is set
+    if period is not None and (start is not None or end is not None):
+        raise ValueError("If period is provided, both start and end should not be used.")
+
+    # Check if either start or end is provided when period is not set
+    if period is None and (start is not None or end is not None):
+        raise ValueError("If start or end is provided, period should not be used.")
+    
+    
+    
     try:
         data = Ticker(ticker).history(
                 period=period, interval=interval,
