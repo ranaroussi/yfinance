@@ -154,6 +154,18 @@ class Ticker(TickerBase):
         return self.get_recommendations()
 
     @property
+    def recommendations_summary(self):
+        return self.get_recommendations_summary()
+
+    @property
+    def upgrades_downgrades(self):
+        return self.get_upgrades_downgrades()
+
+    @property
+    def recommendations_history(self):
+        return self.get_upgrades_downgrades()
+
+    @property
     def earnings(self) -> _pd.DataFrame:
         return self.get_earnings()
 
@@ -216,10 +228,6 @@ class Ticker(TickerBase):
     @property
     def quarterly_cashflow(self) -> _pd.DataFrame:
         return self.quarterly_cash_flow
-
-    @property
-    def recommendations_summary(self):
-        return self.get_recommendations_summary()
 
     @property
     def analyst_price_target(self) -> _pd.DataFrame:
