@@ -146,7 +146,7 @@ class Ticker(TickerBase):
         return self.get_fast_info()
 
     @property
-    def calendar(self) -> _pd.DataFrame:
+    def calendar(self):
         return self.get_calendar()
 
     @property
