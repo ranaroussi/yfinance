@@ -101,17 +101,70 @@ class FundProfile:
             return data["raw"]
         return data
 
-    def _parse_description(self, data):
+    def _parse_description(self, data):  # done
         self._description = data.get("longBusinessSummary", "")
 
     def _parse_top_holdings(self, data):
-        if "maxAge" in data:
-            del data["maxAge"]
-        df = pd.DataFrame.from_dict(data, orient="index")
-        if not df.empty:
-            df.columns.name = "Symbol"
-            df.rename(columns={df.columns[0]: 'Name'}, inplace=True)
-        self._top_holdings = df
+        # fill bond ratings
+        _bond_ratings = dict((key, d[key]) for d in data.get("bondRatings", []) for key in d)
+        if len(_bond_ratings) > 0:
+            self._bond_ratings = pd.DataFrame(
+                {
+                    "Rating": list(_bond_ratings.keys()),
+                    "Value": list(_bond_ratings.values())
+                }
+            ).convert_dtypes()
+        else:
+            self._bond_ratings = pd.DataFrame()
+        # fill bond holdings
+        _bond_holdings = data.get("bondHoldings", {})
+        if len(_bond_holdings) > 0:
+            self._bond_holdings = pd.DataFrame(
+                {
+                    "Bond": ["Duration", "Maturity", "Position"],
+                    "Value": [_bond_holdings.get("duration"), _bond_holdings.get("maturity"), data.get("bondPosition")]
+                }
+            ).convert_dtypes()
+        else:
+            self._bond_holdings = pd.DataFrame()
+        # fill equity holdings
+        _equity_holdings = data.get("equityHoldings", {})
+        if len(_equity_holdings) > 0:
+            self._equity_holdings = pd.DataFrame(
+                {
+                    "Equity": list(_equity_holdings.keys()),
+                    "Value": list(_equity_holdings.values())
+                }
+            ).convert_dtypes()
+        else:
+            self._equity_holdings = pd.DataFrame()
+        # fill sector weightings
+        _sector_weightings = dict((key, d[key]) for d in data.get("sectorWeightings", []) for key in d)
+        if len(_sector_weightings) > 0:
+            self._sector_weightings = pd.DataFrame(
+                {
+                    "Sector": list(_sector_weightings.keys()),
+                    "Value": list(_sector_weightings.values())
+                }
+            ).convert_dtypes()
+        else:
+            self._sector_weightings = pd.DataFrame()
+        # fill holdings
+        _holdings = data.get("holdings", [])
+        _symbol = []
+        _name = []
+        _holding_percent = []
+        for item in _holdings:
+            _symbol.append(item["symbol"])
+            _name.append(item["holdingName"])
+            _holding_percent.append(item["holdingPercent"])
+        self._top_holdings = pd.DataFrame(
+            {
+                "Symbol": _symbol,
+                "Name": _name,
+                "Holding Percent": _holding_percent
+            }
+        ).convert_dtypes()
 
     def _parse_fund_performance(self, data):
         if "maxAge" in data:
@@ -318,168 +371,6 @@ Ticker: IVV
                                                            'Fund',
                                               'maxAge': 1,
                                               'styleBoxUrl': 'https://s.yimg.com/lq/i/fi/3_0stylelargeeq2.gif'},
-                              'quoteType': {'exchange': 'PCX',
-                                            'firstTradeDateEpochUtc': 958743000,
-                                            'gmtOffSetMilliseconds': -18000000,
-                                            'longName': 'iShares Core S&P 500 '
-                                                        'ETF',
-                                            'maxAge': 1,
-                                            'quoteType': 'ETF',
-                                            'shortName': 'iShares Core S&P 500 '
-                                                         'ETF',
-                                            'symbol': 'IVV',
-                                            'timeZoneFullName': 'America/New_York',
-                                            'timeZoneShortName': 'EST',
-                                            'underlyingSymbol': 'IVV',
-                                            'uuid': '17732e4a-0401-33ba-977d-a9848ab99a1e'},
-                              'summaryProfile': {'companyOfficers': [],
-                                                 'longBusinessSummary': 'The '
-                                                                        'index '
-                                                                        'measures '
-                                                                        'the '
-                                                                        'performance '
-                                                                        'of '
-                                                                        'the '
-                                                                        'large-capitalization '
-                                                                        'sector '
-                                                                        'of '
-                                                                        'the '
-                                                                        'U.S. '
-                                                                        'equity '
-                                                                        'market, '
-                                                                        'as '
-                                                                        'determined '
-                                                                        'by '
-                                                                        'SPDJI. '
-                                                                        'The '
-                                                                        'fund '
-                                                                        'generally '
-                                                                        'will '
-                                                                        'invest '
-                                                                        'at '
-                                                                        'least '
-                                                                        '80% '
-                                                                        'of '
-                                                                        'its '
-                                                                        'assets '
-                                                                        'in '
-                                                                        'the '
-                                                                        'component '
-                                                                        'securities '
-                                                                        'of '
-                                                                        'its '
-                                                                        'index '
-                                                                        'and '
-                                                                        'in '
-                                                                        'investments '
-                                                                        'that '
-                                                                        'have '
-                                                                        'economic '
-                                                                        'characteristics '
-                                                                        'that '
-                                                                        'are '
-                                                                        'substantially '
-                                                                        'identical '
-                                                                        'to '
-                                                                        'the '
-                                                                        'component '
-                                                                        'securities '
-                                                                        'of '
-                                                                        'its '
-                                                                        'index '
-                                                                        'and '
-                                                                        'may '
-                                                                        'invest '
-                                                                        'up to '
-                                                                        '20% '
-                                                                        'of '
-                                                                        'its '
-                                                                        'assets '
-                                                                        'in '
-                                                                        'certain '
-                                                                        'futures, '
-                                                                        'options '
-                                                                        'and '
-                                                                        'swap '
-                                                                        'contracts, '
-                                                                        'cash '
-                                                                        'and '
-                                                                        'cash '
-                                                                        'equivalents.',
-                                                 'maxAge': 86400,
-                                                 'phone': '1-800-474-2737'},
-                              'topHoldings': {'bondHoldings': {},
-                                              'bondPosition': 0.0,
-                                              'bondRatings': [{'us_government': 0.0}],
-                                              'equityHoldings': {'priceToBook': 0.24986,
-                                                                 'priceToCashflow': 0.06365,
-                                                                 'priceToEarnings': 0.04416,
-                                                                 'priceToSales': 0.38772},
-                                              'holdings': [{'holdingName': 'Microsoft '
-                                                                           'Corp',
-                                                            'holdingPercent': 0.0732494,
-                                                            'symbol': 'MSFT'},
-                                                           {'holdingName': 'Apple '
-                                                                           'Inc',
-                                                            'holdingPercent': 0.072633296,
-                                                            'symbol': 'AAPL'},
-                                                           {'holdingName': 'Amazon.com '
-                                                                           'Inc',
-                                                            'holdingPercent': 0.034512803,
-                                                            'symbol': 'AMZN'},
-                                                           {'holdingName': 'NVIDIA '
-                                                                           'Corp',
-                                                            'holdingPercent': 0.0300576,
-                                                            'symbol': 'NVDA'},
-                                                           {'holdingName': 'Alphabet '
-                                                                           'Inc '
-                                                                           'Class '
-                                                                           'A',
-                                                            'holdingPercent': 0.0204588,
-                                                            'symbol': 'GOOGL'},
-                                                           {'holdingName': 'Meta '
-                                                                           'Platforms '
-                                                                           'Inc '
-                                                                           'Class '
-                                                                           'A',
-                                                            'holdingPercent': 0.018918999,
-                                                            'symbol': 'META'},
-                                                           {'holdingName': 'Alphabet '
-                                                                           'Inc '
-                                                                           'Class '
-                                                                           'C',
-                                                            'holdingPercent': 0.0175856,
-                                                            'symbol': 'GOOG'},
-                                                           {'holdingName': 'Tesla '
-                                                                           'Inc',
-                                                            'holdingPercent': 0.017249301,
-                                                            'symbol': 'TSLA'},
-                                                           {'holdingName': 'Berkshire '
-                                                                           'Hathaway '
-                                                                           'Inc '
-                                                                           'Class '
-                                                                           'B',
-                                                            'holdingPercent': 0.0170823,
-                                                            'symbol': 'BRK-B'},
-                                                           {'holdingName': 'UnitedHealth '
-                                                                           'Group '
-                                                                           'Inc',
-                                                            'holdingPercent': 0.0133278,
-                                                            'symbol': 'UNH'}],
-                                              'maxAge': 1,
-                                              'sectorWeightings': [{'realestate': 0.024300002},
-                                                                   {'consumer_cyclical': 0.1091},
-                                                                   {'basic_materials': 0.022},
-                                                                   {'consumer_defensive': 0.0627},
-                                                                   {'technology': 0.29709998},
-                                                                   {'communication_services': 0.0861},
-                                                                   {'financial_services': 0.1249},
-                                                                   {'utilities': 0.024},
-                                                                   {'industrials': 0.081599995},
-                                                                   {'energy': 0.040999997},
-                                                                   {'healthcare': 0.1272}],
-                                              'stockPosition': 0.9969}}]}}
-
 
 
 Ticker: ILTB
@@ -609,6 +500,7 @@ Ticker: ILTB
                                                                          'threeMonth': 0.033599302,
                                                                          'threeYear': -0.096361704,
                                                                          'ytd': 0.0297735}},
+                                                                         
                               'fundProfile': {'categoryName': 'Long-Term Bond',
                                               'family': 'iShares',
                                               'feesExpensesInvestment': {'annualHoldingsTurnover': 0.1,
@@ -623,107 +515,6 @@ Ticker: ILTB
                                                            'Fund',
                                               'maxAge': 1,
                                               'styleBoxUrl': 'https://s.yimg.com/lq/i/fi/3_0stylelargeeq.gif'},
-                              'quoteType': {'exchange': 'PCX',
-                                            'firstTradeDateEpochUtc': 1260369000,
-                                            'gmtOffSetMilliseconds': -18000000,
-                                            'longName': 'iShares Core 10+ Year '
-                                                        'USD Bond ETF',
-                                            'maxAge': 1,
-                                            'quoteType': 'ETF',
-                                            'shortName': 'iShares Core 10  '
-                                                         'Year USD Bond ',
-                                            'symbol': 'ILTB',
-                                            'timeZoneFullName': 'America/New_York',
-                                            'timeZoneShortName': 'EST',
-                                            'underlyingSymbol': 'ILTB',
-                                            'uuid': '0d410db8-3e43-3ded-840c-ed89a65fe0ba'},
-                              'summaryProfile': {'companyOfficers': [],
-                                                 'longBusinessSummary': 'The '
-                                                                        'underlying '
-                                                                        'index '
-                                                                        'measures '
-                                                                        'the '
-                                                                        'performance '
-                                                                        'of '
-                                                                        'U.S. '
-                                                                        'dollar-denominated '
-                                                                        'taxable '
-                                                                        'bonds '
-                                                                        'that '
-                                                                        'are '
-                                                                        'rated '
-                                                                        'either '
-                                                                        'investment-grade '
-                                                                        'or '
-                                                                        'high '
-                                                                        'yield '
-                                                                        'with '
-                                                                        'remaining '
-                                                                        'maturities '
-                                                                        'greater '
-                                                                        'than '
-                                                                        'ten '
-                                                                        'years. '
-                                                                        'The '
-                                                                        'fund '
-                                                                        'will '
-                                                                        'invest '
-                                                                        'at '
-                                                                        'least '
-                                                                        '80% '
-                                                                        'of '
-                                                                        'its '
-                                                                        'assets '
-                                                                        'in '
-                                                                        'the '
-                                                                        'component '
-                                                                        'securities '
-                                                                        'of '
-                                                                        'the '
-                                                                        'underlying '
-                                                                        'index '
-                                                                        'and '
-                                                                        'TBAs '
-                                                                        'that '
-                                                                        'have '
-                                                                        'economic '
-                                                                        'characteristics '
-                                                                        'that '
-                                                                        'are '
-                                                                        'substantially '
-                                                                        'identical '
-                                                                        'to '
-                                                                        'the '
-                                                                        'economic '
-                                                                        'characteristics '
-                                                                        'of '
-                                                                        'the '
-                                                                        'component '
-                                                                        'securities '
-                                                                        'of '
-                                                                        'the '
-                                                                        'underlying '
-                                                                        'index.',
-                                                 'maxAge': 86400,
-                                                 'phone': '1-800-474-2737'},
-                              'topHoldings': {'bondHoldings': {'duration': 4.07,
-                                                               'maturity': 81.91},
-                                              'bondPosition': 0.9947,
-                                              'bondRatings': [{'bb': 0.020499999},
-                                                              {'aa': 0.4746},
-                                                              {'aaa': 0.0176},
-                                                              {'a': 0.2189},
-                                                              {'other': 0.00029999999},
-                                                              {'b': 0.0128},
-                                                              {'bbb': 0.2482},
-                                                              {'below_b': 0.0070999996},
-                                                              {'us_government': 0.48630002}],
-                                              'equityHoldings': {'priceToBook': 0.0,
-                                                                 'priceToCashflow': 0.0,
-                                                                 'priceToEarnings': 0.0,
-                                                                 'priceToSales': 0.0},
-                                              'holdings': [],
-                                              'maxAge': 1,
-                                              'sectorWeightings': [],
-                                              'stockPosition': 0.0}}]}}
+
+
 """
