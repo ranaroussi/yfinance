@@ -216,8 +216,21 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         return shared._DFS[ticker]
 
     try:
+        for key , df in shared._DFS.items():
+            assert not df.empty
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys())
+    except AssertionError:
+        dfs = {}
+        empty_dfs = []
+        for key, df in shared._DFS.items():
+            if not df.empty:
+                dfs[key] = df
+            else:
+                empty_dfs.append(key)
+        logger.error(f'{empty_dfs} tickers have no data in given time frame. Dropping {empty_dfs} and continuing...')
+        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
+                          keys=dfs.keys())
     except Exception:
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
