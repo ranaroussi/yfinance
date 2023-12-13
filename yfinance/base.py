@@ -1751,6 +1751,9 @@ class TickerBase:
     def get_info(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         data = self._quote.info
+        data['bookValuePerShare'] = data['bookValue']
+        bal_sheet = self.get_balance_sheet()
+        data['bookValue'] = bal_sheet.loc['TangibleBookValue'][0]
         return data
 
     def get_fast_info(self, proxy=None):
