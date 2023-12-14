@@ -726,41 +726,25 @@ class Quote:
                 else:
                     self.info[k] = None
 
-
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
         result = self._fetch(self.proxy, modules=['calendarEvents'])
         try:
-            dates = []
-            events = []
-            earnings_stats = None
+            self._calendar = {}
             _events = result["quoteSummary"]["result"][0]["calendarEvents"]
             if 'dividendDate' in _events:
-                dates.append(str(datetime.datetime.fromtimestamp(_events['dividendDate']).date()))
-                events.append('Dividend Date')
+                self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
             if 'exDividendDate' in _events:
-                dates.append(str(datetime.datetime.fromtimestamp(_events['exDividendDate']).date()))
-                events.append('Ex-Dividend Date')
+                self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
             # splits = _events.get('splitDate')  # need to check later, i will add code for this if found data
             earnings = _events.get('earnings')
             if earnings is not None:
-                _dates = earnings.get('earningsDate', [])
-                earnings['earningsDate'] = str(datetime.datetime.fromtimestamp(_dates[0]).date()) \
-                    if len(_dates) == 1 \
-                    else str(datetime.datetime.fromtimestamp(_dates[0]).date()) + ' - ' + str(datetime.datetime.fromtimestamp(_dates[1]).date())
-                dates.append(earnings['earningsDate'])
-                events.append('Earnings Date')
-                earnings_stats = pd.DataFrame.from_dict(earnings, orient='index')
-                earnings_stats.columns = ['Value']
-                earnings_stats.index.name = 'Key'
-            # return empty dataframe if no events
-            if len(dates) == 0:
-                self._calendar = pd.DataFrame()
-                return
-            # create calendar dataframe
-            df = pd.DataFrame({'Event': events, 'Date': dates})
-            # add earnings stats as attributes
-            df.attrs['earnings'] = earnings_stats
-            self._calendar = df
+                self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
+                self._calendar['Earnings High'] = earnings.get('earningsHigh', None)
+                self._calendar['Earnings Low'] = earnings.get('earningsLow', None)
+                self._calendar['Earnings Average'] = earnings.get('earningsAverage', None)
+                self._calendar['Revenue High'] = earnings.get('revenueHigh', None)
+                self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
+                self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
         except (KeyError, IndexError):
             raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
