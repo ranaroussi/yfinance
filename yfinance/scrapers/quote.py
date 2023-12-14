@@ -730,7 +730,7 @@ class Quote:
         # secFilings return too old data, so not requesting it for now
         result = self._fetch(self.proxy, modules=['calendarEvents'])
         try:
-            self._calendar = {}
+            self._calendar = dict()
             _events = result["quoteSummary"]["result"][0]["calendarEvents"]
             if 'dividendDate' in _events:
                 self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()

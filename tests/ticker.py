@@ -713,8 +713,6 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def test_calendar(self):
         data = self.ticker.calendar
-        print(self.ticker.ticker)
-        print(data)
         self.assertIsInstance(data, dict, "data has wrong type")
         self.assertTrue(len(data) > 0, "data is empty")
         self.assertIn("Earnings Date", data.keys(), "data missing expected key")
