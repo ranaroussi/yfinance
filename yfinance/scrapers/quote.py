@@ -594,7 +594,7 @@ class Quote:
     @property
     def calendar(self) -> pd.DataFrame:
         if self._calendar is None:
-            self._fecth_calendar()
+            self._fetch_calendar()
         return self._calendar
 
     @staticmethod
@@ -712,7 +712,7 @@ class Quote:
                 v = None
             self._info[k] = v
 
-    def _fecth_calendar(self):
+    def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
         result = self._fetch(self.proxy, modules=['calendarEvents'])
         try:
