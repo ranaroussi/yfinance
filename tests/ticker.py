@@ -24,15 +24,20 @@ ticker_attributes = (
     ("major_holders", pd.DataFrame),
     ("institutional_holders", pd.DataFrame),
     ("mutualfund_holders", pd.DataFrame),
+    ("insider_transactions", pd.DataFrame),
+    ("insider_purchases", pd.DataFrame),
+    ("insider_roster_holders", pd.DataFrame),
     ("splits", pd.Series),
     ("actions", pd.DataFrame),
     ("shares", pd.DataFrame),
     ("info", dict),
     ("calendar", pd.DataFrame),
     ("recommendations", Union[pd.DataFrame, dict]),
+    ("recommendations_summary", Union[pd.DataFrame, dict]),
+    ("upgrades_downgrades", Union[pd.DataFrame, dict]),
+    ("recommendations_history", Union[pd.DataFrame, dict]),
     ("earnings", pd.DataFrame),
     ("quarterly_earnings", pd.DataFrame),
-    ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("quarterly_cashflow", pd.DataFrame),
     ("cashflow", pd.DataFrame),
     ("quarterly_balance_sheet", pd.DataFrame),
@@ -347,6 +352,30 @@ class TestTickerHolders(unittest.TestCase):
         data_cached = self.ticker.mutualfund_holders
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_insider_transactions(self):
+        data = self.ticker.insider_transactions
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_transactions
+        self.assertIs(data, data_cached, "data not cached")
+    
+    def test_insider_purchases(self):
+        data = self.ticker.insider_purchases
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_purchases
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_insider_roster_holders(self):
+        data = self.ticker.insider_roster_holders
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_roster_holders
+        self.assertIs(data, data_cached, "data not cached")
+
 
 class TestTickerMiscFinancials(unittest.TestCase):
     session = None
@@ -645,13 +674,26 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.recommendations
         self.assertIs(data, data_cached, "data not cached")
 
-    # def test_recommendations_summary(self):
+    # def test_recommendations_summary(self):  # currently alias for recommendations
     #     data = self.ticker.recommendations_summary
     #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
     #     self.assertFalse(data.empty, "data is empty")
 
     #     data_cached = self.ticker.recommendations_summary
     #     self.assertIs(data, data_cached, "data not cached")
+
+    def test_recommendations_history(self):  # alias for upgrades_downgrades
+        data = self.ticker.upgrades_downgrades
+        data_history = self.ticker.recommendations_history
+        self.assertTrue(data.equals(data_history))
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertTrue(len(data.columns) == 4, "data has wrong number of columns")
+        self.assertEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
+        self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
+
+        data_cached = self.ticker.upgrades_downgrades
+        self.assertIs(data, data_cached, "data not cached")
 
     # def test_analyst_price_target(self):
     #     data = self.ticker.analyst_price_target
@@ -719,6 +761,18 @@ class TestTickerInfo(unittest.TestCase):
             print(k)
             self.assertIn("symbol", data.keys(), f"Did not find expected key '{k}' in info dict")
         self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
+
+    def test_complementary_info(self):
+        # This test is to check that we can successfully retrieve the trailing PEG ratio
+
+        # We don't expect this one to have a trailing PEG ratio
+        data1 = self.tickers[0].info
+        self.assertEqual(data1['trailingPegRatio'], None)
+
+        # This one should have a trailing PEG ratio
+        data2 = self.tickers[2].info
+        self.assertEqual(data2['trailingPegRatio'], 1.2713)
+        pass
 
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()
