@@ -713,9 +713,20 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def test_calendar(self):
         data = self.ticker.calendar
-        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-        self.assertFalse(data.empty, "data is empty")
-
+        print(self.ticker.ticker)
+        print(data)
+        self.assertIsInstance(data, dict, "data has wrong type")
+        self.assertTrue(len(data) > 0, "data is empty")
+        self.assertIn("Earnings Date", data.keys(), "data missing expected key")
+        self.assertIn("Earnings Average", data.keys(), "data missing expected key")
+        self.assertIn("Earnings Low", data.keys(), "data missing expected key")
+        self.assertIn("Earnings High", data.keys(), "data missing expected key")
+        self.assertIn("Revenue Average", data.keys(), "data missing expected key")
+        self.assertIn("Revenue Low", data.keys(), "data missing expected key")
+        self.assertIn("Revenue High", data.keys(), "data missing expected key")
+        # dividend date is not available for tested ticker GOOGL
+        # self.assertIn("Dividend Date", data.keys(), "data missing expected key")
+        # ex-dividend date is not always available
         data_cached = self.ticker.calendar
         self.assertIs(data, data_cached, "data not cached")
 
