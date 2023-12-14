@@ -701,7 +701,7 @@ class Quote:
             json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
             if json_data["timeseries"]["error"] is not None:
-                raise YFinanceException(f"Failed to parse json response from Yahoo Finance: " + json_data["error"])
+                raise YFinanceException("Failed to parse json response from Yahoo Finance: " + json_data["error"])
             for k in keys:
                 keydict = json_data["timeseries"]["result"][0]
                 if k in keydict:
