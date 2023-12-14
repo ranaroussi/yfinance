@@ -762,6 +762,18 @@ class TestTickerInfo(unittest.TestCase):
             self.assertIn("symbol", data.keys(), f"Did not find expected key '{k}' in info dict")
         self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
 
+    def test_complementary_info(self):
+        # This test is to check that we can successfully retrieve the trailing PEG ratio
+
+        # We don't expect this one to have a trailing PEG ratio
+        data1 = self.tickers[0].info
+        self.assertEqual(data1['trailingPegRatio'], None)
+
+        # This one should have a trailing PEG ratio
+        data2 = self.tickers[2].info
+        self.assertEqual(data2['trailingPegRatio'], 1.2713)
+        pass
+
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()
     #     for ticker in self.tickers:
