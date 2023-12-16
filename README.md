@@ -216,11 +216,13 @@ yf.pdr_override() # <== that's all it takes :-)
 data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
 ```
 
-### Timezone cache store
+### Persistent cache store
 
-When fetching price data, all dates are localized to stock exchange timezone. 
-But timezone retrieval is relatively slow, so yfinance attemps to cache them 
-in your users cache folder. 
+To reduce Yahoo, yfinance store some data locally: timezones to localize dates, and cookie. Cache location is:
+- Windows = C:/Users/\<USER\>/AppData/Local/py-yfinance
+- Linux = /home/\<USER\>/.cache/py-yfinance
+- MacOS = /Users/\<USER\>/Library/Caches/py-yfinance
+
 You can direct cache to use a different location with `set_tz_cache_location()`:
 ```python
 import yfinance as yf
