@@ -158,7 +158,10 @@ class Ticker(TickerBase):
         return self.get_fast_info()
 
     @property
-    def calendar(self) -> _pd.DataFrame:
+    def calendar(self) -> dict:
+        """
+        Returns a dictionary of events, earnings, and dividends for the ticker
+        """
         return self.get_calendar()
 
     @property
