@@ -610,9 +610,9 @@ class Quote:
         return self._upgrades_downgrades
 
     @property
-    def calendar(self) -> pd.DataFrame:
+    def calendar(self) -> dict:
         if self._calendar is None:
-            raise YFNotImplementedError('calendar')
+            self._fetch_calendar()
         return self._calendar
 
     @staticmethod
@@ -626,7 +626,7 @@ class Quote:
         modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
         if len(modules) == 0:
             raise YFinanceException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol}
+        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
         return result
 
@@ -727,3 +727,25 @@ class Quote:
                 else:
                     self.info[k] = None
 
+    def _fetch_calendar(self):
+        # secFilings return too old data, so not requesting it for now
+        result = self._fetch(self.proxy, modules=['calendarEvents'])
+        try:
+            self._calendar = dict()
+            _events = result["quoteSummary"]["result"][0]["calendarEvents"]
+            if 'dividendDate' in _events:
+                self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
+            if 'exDividendDate' in _events:
+                self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
+            # splits = _events.get('splitDate')  # need to check later, i will add code for this if found data
+            earnings = _events.get('earnings')
+            if earnings is not None:
+                self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
+                self._calendar['Earnings High'] = earnings.get('earningsHigh', None)
+                self._calendar['Earnings Low'] = earnings.get('earningsLow', None)
+                self._calendar['Earnings Average'] = earnings.get('earningsAverage', None)
+                self._calendar['Revenue High'] = earnings.get('revenueHigh', None)
+                self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
+                self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
+        except (KeyError, IndexError):
+            raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
