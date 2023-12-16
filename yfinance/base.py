@@ -1733,12 +1733,9 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_calendar(self, proxy=None, as_dict=False):
+    def get_calendar(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
-        data = self._quote.calendar
-        if as_dict:
-            return data.to_dict()
-        return data
+        return self._quote.calendar
 
     def get_major_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
