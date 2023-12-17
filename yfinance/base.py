@@ -1650,7 +1650,7 @@ class TickerBase:
 
         return df2
 
-    def _get_ticker_tz(self,timeout, proxy=None):
+    def _get_ticker_tz(self, proxy, timeout):
         proxy = proxy or self.proxy
         if self._tz is not None:
             return self._tz
@@ -1675,7 +1675,7 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, timeout, proxy=None):
+    def _fetch_ticker_tz(self, proxy, timeout):
         # Query Yahoo for fast price data just to get returned timezone
         proxy = proxy or self.proxy
         logger = utils.get_yf_logger()
