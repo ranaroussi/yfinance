@@ -86,7 +86,7 @@ class TestTicker(unittest.TestCase):
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(proxy=None, timeout=5)
 
             self.assertIsNotNone(tz)
 
