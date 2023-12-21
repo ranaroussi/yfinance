@@ -217,11 +217,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
 
     try:
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
-                          keys=shared._DFS.keys())
+                          keys=shared._DFS.keys(), names=['Ticker', 'Price'])
     except Exception:
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
-                          keys=shared._DFS.keys())
+                          keys=shared._DFS.keys(), names=['Ticker', 'Price'])
     data.index = _pd.to_datetime(data.index)
     # switch names back to isins if applicable
     data.rename(columns=shared._ISINS, inplace=True)
