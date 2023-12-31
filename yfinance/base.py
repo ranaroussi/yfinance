@@ -218,7 +218,8 @@ class TickerBase:
 
             data = data.json()
         except Exception:
-            pass
+            if raise_errors:
+                raise
 
         # Store the meta data that gets retrieved simultaneously
         try:
