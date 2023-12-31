@@ -2167,7 +2167,7 @@ class TickerBase:
 
         # Convert types
         for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
-            dates.loc[dates[cn] == '-', cn] = "NaN"
+            dates.loc[dates[cn] == '-', cn] = float("nan")
             dates[cn] = dates[cn].astype(float)
 
         # Convert % to range 0->1:
