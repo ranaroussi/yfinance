@@ -1,0 +1,9 @@
+import yfinance as yf
+start_date = '2022-01-01'
+end_date = '2023-01-01'
+ticker = 'GOOGL'
+data = yf.download(ticker, start_date, end_date)
+print(data.tail()) # the most recent prices
+
+# Export data to a CSV file
+data.to_csv(f"{DHC }.csv")
