@@ -111,6 +111,11 @@ msft.insider_transactions
 msft.insider_purchases
 msft.insider_roster_holders
 
+# show recommendations
+msft.recommendations
+msft.recommendations_summary
+msft.upgrades_downgrades
+
 # Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates

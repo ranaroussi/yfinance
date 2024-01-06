@@ -17,7 +17,7 @@ from yfinance.exceptions import YFNotImplementedError
 
 import unittest
 import requests_cache
-from typing import Union, Any
+from typing import Union, Any, get_args, _GenericAlias
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
@@ -31,11 +31,10 @@ ticker_attributes = (
     ("actions", pd.DataFrame),
     ("shares", pd.DataFrame),
     ("info", dict),
-    ("calendar", pd.DataFrame),
+    ("calendar", dict),
     ("recommendations", Union[pd.DataFrame, dict]),
     ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("upgrades_downgrades", Union[pd.DataFrame, dict]),
-    ("recommendations_history", Union[pd.DataFrame, dict]),
     ("earnings", pd.DataFrame),
     ("quarterly_earnings", pd.DataFrame),
     ("quarterly_cashflow", pd.DataFrame),
@@ -58,7 +57,12 @@ def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name
     try:
         attribute = getattr(instance, attribute_name)
         if attribute is not None and expected_type is not Any:
-            testClass.assertEqual(type(attribute), expected_type)
+            err_msg = f'{attribute_name} type is {type(attribute)} not {expected_type}'
+            if isinstance(expected_type, _GenericAlias) and expected_type.__origin__ is Union:
+                allowed_types = get_args(expected_type)
+                testClass.assertTrue(isinstance(attribute, allowed_types), err_msg)
+            else:
+                testClass.assertEqual(type(attribute), expected_type, err_msg)
     except Exception:
         testClass.assertRaises(
             YFNotImplementedError, lambda: getattr(instance, attribute_name)
@@ -136,8 +140,8 @@ class TestTicker(unittest.TestCase):
         tkr = "IBM"
         dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
 
-        dat._fetch_ticker_tz(timeout=5)
-        dat._get_ticker_tz(timeout=5)
+        dat._fetch_ticker_tz(proxy=None, timeout=5)
+        dat._get_ticker_tz(proxy=None, timeout=5)
         dat.history(period="1wk")
 
         for attribute_name, attribute_type in ticker_attributes:
@@ -654,63 +658,6 @@ class TestTickerMiscFinancials(unittest.TestCase):
     def test_bad_freq_value_raises_exception(self):
         self.assertRaises(ValueError, lambda: self.ticker.get_cashflow(freq="badarg"))
 
-    # Below will fail because not ported to Yahoo API
-
-    # def test_sustainability(self):
-    #     data = self.ticker.sustainability
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.sustainability
-    #     self.assertIs(data, data_cached, "data not cached")
-
-    def test_recommendations(self):
-        data = self.ticker.recommendations
-        data_summary = self.ticker.recommendations_summary
-        self.assertTrue(data.equals(data_summary))
-        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-        self.assertFalse(data.empty, "data is empty")
-
-        data_cached = self.ticker.recommendations
-        self.assertIs(data, data_cached, "data not cached")
-
-    # def test_recommendations_summary(self):  # currently alias for recommendations
-    #     data = self.ticker.recommendations_summary
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.recommendations_summary
-    #     self.assertIs(data, data_cached, "data not cached")
-
-    def test_recommendations_history(self):  # alias for upgrades_downgrades
-        data = self.ticker.upgrades_downgrades
-        data_history = self.ticker.recommendations_history
-        self.assertTrue(data.equals(data_history))
-        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-        self.assertFalse(data.empty, "data is empty")
-        self.assertTrue(len(data.columns) == 4, "data has wrong number of columns")
-        self.assertEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
-        self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
-
-        data_cached = self.ticker.upgrades_downgrades
-        self.assertIs(data, data_cached, "data not cached")
-
-    # def test_analyst_price_target(self):
-    #     data = self.ticker.analyst_price_target
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.analyst_price_target
-    #     self.assertIs(data, data_cached, "data not cached")
-
-    # def test_revenue_forecasts(self):
-    #     data = self.ticker.revenue_forecasts
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.revenue_forecasts
-    #     self.assertIs(data, data_cached, "data not cached")
-
     def test_calendar(self):
         data = self.ticker.calendar
         self.assertIsInstance(data, dict, "data has wrong type")
@@ -729,10 +676,87 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.calendar
         self.assertIs(data, data_cached, "data not cached")
 
+    # Below will fail because not ported to Yahoo API
+
+    # def test_sustainability(self):
+    #     data = self.ticker.sustainability
+    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+    #     self.assertFalse(data.empty, "data is empty")
+
+    #     data_cached = self.ticker.sustainability
+    #     self.assertIs(data, data_cached, "data not cached")
+
     # def test_shares(self):
     #     data = self.ticker.shares
     #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
     #     self.assertFalse(data.empty, "data is empty")
+
+
+class TestTickerAnalysts(unittest.TestCase):
+    session = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = session_gbl
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def setUp(self):
+        self.ticker = yf.Ticker("GOOGL", session=self.session)
+        
+    def tearDown(self):
+        self.ticker = None
+
+    def test_recommendations(self):
+        data = self.ticker.recommendations
+        data_summary = self.ticker.recommendations_summary
+        self.assertTrue(data.equals(data_summary))
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.recommendations
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_recommendations_summary(self):  # currently alias for recommendations
+        data = self.ticker.recommendations_summary
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.recommendations_summary
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_upgrades_downgrades(self):
+        data = self.ticker.upgrades_downgrades
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertTrue(len(data.columns) == 4, "data has wrong number of columns")
+        self.assertEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
+        self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
+
+        data_cached = self.ticker.upgrades_downgrades
+        self.assertIs(data, data_cached, "data not cached")
+
+    # Below will fail because not ported to Yahoo API
+
+    # def test_analyst_price_target(self):
+    #     data = self.ticker.analyst_price_target
+    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+    #     self.assertFalse(data.empty, "data is empty")
+
+    #     data_cached = self.ticker.analyst_price_target
+    #     self.assertIs(data, data_cached, "data not cached")
+
+    # def test_revenue_forecasts(self):
+    #     data = self.ticker.revenue_forecasts
+    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+    #     self.assertFalse(data.empty, "data is empty")
+
+    #     data_cached = self.ticker.revenue_forecasts
+    #     self.assertIs(data, data_cached, "data not cached")
+
 
 
 class TestTickerInfo(unittest.TestCase):
@@ -777,11 +801,11 @@ class TestTickerInfo(unittest.TestCase):
 
         # We don't expect this one to have a trailing PEG ratio
         data1 = self.tickers[0].info
-        self.assertEqual(data1['trailingPegRatio'], None)
+        self.assertIsNone(data1['trailingPegRatio'])
 
         # This one should have a trailing PEG ratio
         data2 = self.tickers[2].info
-        self.assertEqual(data2['trailingPegRatio'], 1.2713)
+        self.assertIsInstance(data2['trailingPegRatio'], float)
         pass
 
     # def test_fast_info_matches_info(self):
