@@ -18,22 +18,26 @@ from yfinance.exceptions import YFNotImplementedError
 import unittest
 import requests_cache
 from typing import Union, Any
-import re
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
     ("major_holders", pd.DataFrame),
     ("institutional_holders", pd.DataFrame),
     ("mutualfund_holders", pd.DataFrame),
+    ("insider_transactions", pd.DataFrame),
+    ("insider_purchases", pd.DataFrame),
+    ("insider_roster_holders", pd.DataFrame),
     ("splits", pd.Series),
     ("actions", pd.DataFrame),
     ("shares", pd.DataFrame),
     ("info", dict),
     ("calendar", pd.DataFrame),
     ("recommendations", Union[pd.DataFrame, dict]),
+    ("recommendations_summary", Union[pd.DataFrame, dict]),
+    ("upgrades_downgrades", Union[pd.DataFrame, dict]),
+    ("recommendations_history", Union[pd.DataFrame, dict]),
     ("earnings", pd.DataFrame),
     ("quarterly_earnings", pd.DataFrame),
-    ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("quarterly_cashflow", pd.DataFrame),
     ("cashflow", pd.DataFrame),
     ("quarterly_balance_sheet", pd.DataFrame),
@@ -82,7 +86,7 @@ class TestTicker(unittest.TestCase):
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(proxy=None, timeout=5)
 
             self.assertIsNotNone(tz)
 
@@ -128,132 +132,18 @@ class TestTicker(unittest.TestCase):
             for attribute_name, attribute_type in ticker_attributes:
                 assert_attribute_type(self, dat, attribute_name, attribute_type) 
             
-    #TODO:: Refactor with `assert_attribute` once proxy is accepted as a parameter of `Ticker`
     def test_goodTicker_withProxy(self):
-        # that yfinance works when full api is called on same instance of ticker
-
         tkr = "IBM"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
 
-        dat._fetch_ticker_tz(proxy=self.proxy, timeout=5)
-        dat._get_ticker_tz(proxy=self.proxy, timeout=5)
-        dat.history(period="1wk", proxy=self.proxy)
+        dat._fetch_ticker_tz(timeout=5)
+        dat._get_ticker_tz(timeout=5)
+        dat.history(period="1wk")
 
-        v = dat.get_major_holders(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
+        for attribute_name, attribute_type in ticker_attributes:
+            assert_attribute_type(self, dat, attribute_name, attribute_type)
 
-        v = dat.get_institutional_holders(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_mutualfund_holders(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_info(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(len(v) > 0)
-
-        v = dat.get_income_stmt(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_incomestmt(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_financials(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_balance_sheet(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_balancesheet(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_cash_flow(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_cashflow(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_shares_full(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        v = dat.get_isin(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(v != "")
-
-        v = dat.get_news(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(len(v) > 0)
-
-        v = dat.get_earnings_dates(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertFalse(v.empty)
-
-        dat.get_history_metadata(proxy=self.proxy)
-        self.assertIsNotNone(v)
-        self.assertTrue(len(v) > 0)
-
-        # Below will fail because not ported to Yahoo API
-
-        # v = dat.stats(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertTrue(len(v) > 0)
-
-        # v = dat.get_recommendations(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_calendar(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_sustainability(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_recommendations_summary(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_analyst_price_target(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_rev_forecast(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_earnings_forecast(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_trend_details(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_earnings_trend(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_earnings(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-        # v = dat.get_shares(proxy=self.proxy)
-        # self.assertIsNotNone(v)
-        # self.assertFalse(v.empty)
-
-
+        
 class TestTickerHistory(unittest.TestCase):
     session = None
 
@@ -335,6 +225,15 @@ class TestTickerHistory(unittest.TestCase):
     def test_actions(self):
         data = self.ticker.actions
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+    def test_reconstruct_intervals_batch(self):
+        data = self.ticker.history(period="3mo", interval="1d", prepost=True, repair=True)
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        reconstructed = self.ticker._reconstruct_intervals_batch(data, "1wk", True)
+        self.assertIsInstance(reconstructed, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
 
@@ -451,6 +350,30 @@ class TestTickerHolders(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.mutualfund_holders
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_insider_transactions(self):
+        data = self.ticker.insider_transactions
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_transactions
+        self.assertIs(data, data_cached, "data not cached")
+    
+    def test_insider_purchases(self):
+        data = self.ticker.insider_purchases
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_purchases
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_insider_roster_holders(self):
+        data = self.ticker.insider_roster_holders
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        data_cached = self.ticker.insider_roster_holders
         self.assertIs(data, data_cached, "data not cached")
 
 
@@ -741,21 +664,36 @@ class TestTickerMiscFinancials(unittest.TestCase):
     #     data_cached = self.ticker.sustainability
     #     self.assertIs(data, data_cached, "data not cached")
 
-    # def test_recommendations(self):
-    #     data = self.ticker.recommendations
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+    def test_recommendations(self):
+        data = self.ticker.recommendations
+        data_summary = self.ticker.recommendations_summary
+        self.assertTrue(data.equals(data_summary))
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
-    #     data_cached = self.ticker.recommendations
-    #     self.assertIs(data, data_cached, "data not cached")
+        data_cached = self.ticker.recommendations
+        self.assertIs(data, data_cached, "data not cached")
 
-    # def test_recommendations_summary(self):
+    # def test_recommendations_summary(self):  # currently alias for recommendations
     #     data = self.ticker.recommendations_summary
     #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
     #     self.assertFalse(data.empty, "data is empty")
 
     #     data_cached = self.ticker.recommendations_summary
     #     self.assertIs(data, data_cached, "data not cached")
+
+    def test_recommendations_history(self):  # alias for upgrades_downgrades
+        data = self.ticker.upgrades_downgrades
+        data_history = self.ticker.recommendations_history
+        self.assertTrue(data.equals(data_history))
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        self.assertTrue(len(data.columns) == 4, "data has wrong number of columns")
+        self.assertEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
+        self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
+
+        data_cached = self.ticker.upgrades_downgrades
+        self.assertIs(data, data_cached, "data not cached")
 
     # def test_analyst_price_target(self):
     #     data = self.ticker.analyst_price_target
@@ -773,13 +711,23 @@ class TestTickerMiscFinancials(unittest.TestCase):
     #     data_cached = self.ticker.revenue_forecasts
     #     self.assertIs(data, data_cached, "data not cached")
 
-    # def test_calendar(self):
-    #     data = self.ticker.calendar
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.calendar
-    #     self.assertIs(data, data_cached, "data not cached")
+    def test_calendar(self):
+        data = self.ticker.calendar
+        self.assertIsInstance(data, dict, "data has wrong type")
+        self.assertTrue(len(data) > 0, "data is empty")
+        self.assertIn("Earnings Date", data.keys(), "data missing expected key")
+        self.assertIn("Earnings Average", data.keys(), "data missing expected key")
+        self.assertIn("Earnings Low", data.keys(), "data missing expected key")
+        self.assertIn("Earnings High", data.keys(), "data missing expected key")
+        self.assertIn("Revenue Average", data.keys(), "data missing expected key")
+        self.assertIn("Revenue Low", data.keys(), "data missing expected key")
+        self.assertIn("Revenue High", data.keys(), "data missing expected key")
+        # dividend date is not available for tested ticker GOOGL
+        if self.ticker.ticker != "GOOGL":
+            self.assertIn("Dividend Date", data.keys(), "data missing expected key")
+        # ex-dividend date is not always available
+        data_cached = self.ticker.calendar
+        self.assertIs(data, data_cached, "data not cached")
 
     # def test_shares(self):
     #     data = self.ticker.shares
@@ -823,6 +771,18 @@ class TestTickerInfo(unittest.TestCase):
             print(k)
             self.assertIn("symbol", data.keys(), f"Did not find expected key '{k}' in info dict")
         self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
+
+    def test_complementary_info(self):
+        # This test is to check that we can successfully retrieve the trailing PEG ratio
+
+        # We don't expect this one to have a trailing PEG ratio
+        data1 = self.tickers[0].info
+        self.assertEqual(data1['trailingPegRatio'], None)
+
+        # This one should have a trailing PEG ratio
+        data2 = self.tickers[2].info
+        self.assertEqual(data2['trailingPegRatio'], 1.2713)
+        pass
 
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()

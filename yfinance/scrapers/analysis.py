@@ -1,6 +1,5 @@
 import pandas as pd
 
-from yfinance import utils
 from yfinance.data import YfData
 from yfinance.exceptions import YFNotImplementedError
 

@@ -99,7 +99,7 @@ class Financials:
 
         try:
             return self.get_financials_time_series(timescale, keys, proxy)
-        except Exception as e:
+        except Exception:
             pass
 
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:

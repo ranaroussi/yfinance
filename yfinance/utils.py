@@ -29,7 +29,7 @@ import threading
 from functools import lru_cache
 from inspect import getmembers
 from types import FunctionType
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as _np
 import pandas as _pd
@@ -40,11 +40,6 @@ from pytz import UnknownTimeZoneError
 
 from yfinance import const
 from .const import _BASE_URL_
-
-try:
-    import ujson as _json
-except ImportError:
-    import json as _json
 
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -62,7 +57,7 @@ def attributes(obj):
 
 @lru_cache(maxsize=20)
 def print_once(msg):
-    # 'warnings' module suppression of repeat messages does not work. 
+    # 'warnings' module suppression of repeat messages does not work.
     # This function replicates correct behaviour
     print(msg)
 
@@ -585,8 +580,8 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
 
 
 def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
-    # Yahoo bug fix. If market is open today then Yahoo normally returns 
-    # todays data as a separate row from rest-of week/month interval in above row. 
+    # Yahoo bug fix. If market is open today then Yahoo normally returns
+    # todays data as a separate row from rest-of week/month interval in above row.
     # Seems to depend on what exchange e.g. crypto OK.
     # Fix = merge them together
     n = quotes.shape[0]
@@ -650,7 +645,6 @@ def safe_merge_dfs(df_main, df_sub, interval):
     if df_main.empty:
         return df_main
 
-    df_sub_backup = df_sub.copy()
     data_cols = [c for c in df_sub.columns if c not in df_main]
     if len(data_cols) > 1:
         raise Exception("Expected 1 data col")
@@ -704,7 +698,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
                     empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
                     df_main = _pd.concat([df_main, empty_row], sort=True)
             else:
-                # Else, only add out-of-range event dates if occurring in interval 
+                # Else, only add out-of-range event dates if occurring in interval
                 # immediately after last price row
                 last_dt = df_main.index[-1]
                 next_interval_start_dt = last_dt + td
@@ -712,7 +706,6 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 for i in _np.where(f_outOfRange)[0]:
                     dt = df_sub.index[i]
                     if next_interval_start_dt <= dt < next_interval_end_dt:
-                        new_dt = next_interval_start_dt
                         get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
                         empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
                         df_main = _pd.concat([df_main, empty_row], sort=True)
@@ -772,9 +765,9 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
 def fix_Yahoo_dst_issue(df, interval):
     if interval in ["1d", "1w", "1wk"]:
-        # These intervals should start at time 00:00. But for some combinations of date and timezone, 
+        # These intervals should start at time 00:00. But for some combinations of date and timezone,
         # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
-        # The clue is (a) minutes=0 and (b) hour near 0. 
+        # The clue is (a) minutes=0 and (b) hour near 0.
         # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
         f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22, 23]))
         dst_error_hours = _np.array([0] * df.shape[0])
@@ -865,9 +858,9 @@ class ProgressBar:
         if self.elapsed > self.iterations:
             self.elapsed = self.iterations
         self.update_iteration(1)
-        print('\r' + str(self), end='')
-        _sys.stdout.flush()
-        print()
+        print('\r' + str(self), end='', file=_sys.stderr)
+        _sys.stderr.flush()
+        print("", file=_sys.stderr)
 
     def animate(self, iteration=None):
         if iteration is None:
@@ -876,8 +869,8 @@ class ProgressBar:
         else:
             self.elapsed += iteration
 
-        print('\r' + str(self), end='')
-        _sys.stdout.flush()
+        print('\r' + str(self), end='', file=_sys.stderr)
+        _sys.stderr.flush()
         self.update_iteration()
 
     def update_iteration(self, val=None):

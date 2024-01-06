@@ -42,6 +42,26 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
+## Installation
+
+Install `yfinance` using `pip`:
+
+``` {.sourceCode .bash}
+$ pip install yfinance --upgrade --no-cache-dir
+```
+
+[With Conda](https://anaconda.org/ranaroussi/yfinance).
+
+To install with optional dependencies, replace `optional` with: `nospam` for [caching-requests](#smarter-scraping), `repair` for [price repair](https://github.com/ranaroussi/yfinance/wiki/Price-repair), or `nospam,repair` for both:
+
+``` {.sourceCode .bash}
+$ pip install yfinance[optional]
+```
+
+[Required dependencies](./requirements.txt) , [all dependencies](./setup.py#L62).
+
+---
+
 ## Quick Start
 
 ### The Ticker module
@@ -87,6 +107,9 @@ msft.quarterly_cashflow
 msft.major_holders
 msft.institutional_holders
 msft.mutualfund_holders
+msft.insider_transactions
+msft.insider_purchases
+msft.insider_roster_holders
 
 # Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
@@ -155,9 +178,10 @@ data = yf.download("SPY AAPL", period="1mo")
 
 ### Smarter scraping
 
-To use a custom `requests` session (for example to cache calls to the
-API or customize the `User-agent` header), pass a `session=` argument to
-the Ticker constructor.
+Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). These packages help cache calls such that Yahoo is not spammed with requests. 
+
+To use a custom `requests` session, pass a `session=` argument to
+the Ticker constructor. This allows for caching calls to the API as well as a custom way to modify requests via  the `User-agent` header.
 
 ```python
 import requests_cache
@@ -168,7 +192,7 @@ ticker = yf.Ticker('msft', session=session)
 ticker.actions
 ```
 
-Combine a `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-limiter/blocker that can corrupt data.
+Combine `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-limiter/blocker that can corrupt data.
 ```python
 from requests import Session
 from requests_cache import CacheMixin, SQLiteCache
@@ -231,41 +255,6 @@ yf.set_tz_cache_location("custom/cache/location")
 ```
 
 ---
-
-## Installation
-
-Install `yfinance` using `pip`:
-
-``` {.sourceCode .bash}
-$ pip install yfinance --upgrade --no-cache-dir
-```
-
-Test new features by installing betas, provide feedback in [corresponding Discussion](https://github.com/ranaroussi/yfinance/discussions):
-``` {.sourceCode .bash}
-$ pip install yfinance --upgrade --no-cache-dir --pre
-```
-
-To install `yfinance` using `conda`, see
-[this](https://anaconda.org/ranaroussi/yfinance).
-
-### Requirements
-
--   [Python](https://www.python.org) \>= 2.7, 3.4+
--   [Pandas](https://github.com/pydata/pandas) \>= 1.3.0
--   [Numpy](http://www.numpy.org) \>= 1.16.5
--   [requests](http://docs.python-requests.org/en/master) \>= 2.31
--   [lxml](https://pypi.org/project/lxml) \>= 4.9.1
--   [appdirs](https://pypi.org/project/appdirs) \>= 1.4.4
--   [pytz](https://pypi.org/project/pytz) \>=2022.5
--   [frozendict](https://pypi.org/project/frozendict) \>= 2.3.4
--   [beautifulsoup4](https://pypi.org/project/beautifulsoup4) \>= 4.11.1
--   [html5lib](https://pypi.org/project/html5lib) \>= 1.1
--   [peewee](https://pypi.org/project/peewee)  \>= 3.16.2
-
-#### Optional (if you want to use `pandas_datareader`)
-
--   [pandas\_datareader](https://github.com/pydata/pandas-datareader)
-    \>= 0.4.0
 
 ## Developers: want to contribute?
 
