@@ -177,10 +177,6 @@ class Ticker(TickerBase):
         return self.get_upgrades_downgrades()
 
     @property
-    def recommendations_history(self):
-        return self.get_upgrades_downgrades()
-
-    @property
     def earnings(self) -> _pd.DataFrame:
         return self.get_earnings()
 

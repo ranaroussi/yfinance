@@ -222,7 +222,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys())
-
+    data.index = _pd.to_datetime(data.index)
     # switch names back to isins if applicable
     data.rename(columns=shared._ISINS, inplace=True)
 
