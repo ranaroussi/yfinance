@@ -86,7 +86,6 @@ class TickerBase:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
-                debug=None,  # deprecated
                 raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
@@ -126,22 +125,11 @@ class TickerBase:
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
                 Default is 10 seconds.
-            debug: bool
-                If passed as False, will suppress message printing to console.
-                DEPRECATED, will be removed in future version
             raise_errors: bool
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
         proxy = proxy or self.proxy
-
-        if debug is not None:
-            if debug:
-                utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead: logging.getLogger('yfinance').setLevel(logging.ERROR)")
-                logger.setLevel(logging.ERROR)
-            else:
-                utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
-                logger.setLevel(logging.CRITICAL)
 
         start_user = start
         end_user = end
@@ -395,9 +383,6 @@ class TickerBase:
 
         df = df[~df.index.duplicated(keep='first')]  # must do before repair
 
-        if isinstance(repair, str) and repair=='silent':
-            utils.log_once(logging.WARNING, "yfinance: Ticker.history(repair='silent') value is deprecated and will be removed in future version. Repair now silent by default, use logging module to increase verbosity.")
-            repair = True
         if repair:
             # Do this before auto/back adjust
             logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
