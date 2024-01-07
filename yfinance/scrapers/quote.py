@@ -6,6 +6,7 @@ from collections.abc import MutableMapping
 
 import numpy as _np
 import pandas as pd
+import requests
 
 from yfinance import utils
 from yfinance.data import YfData
@@ -585,28 +586,34 @@ class Quote:
     def recommendations(self) -> pd.DataFrame:
         if self._recommendations is None:
             result = self._fetch(self.proxy, modules=['recommendationTrend'])
-            try:
-                data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
-            except (KeyError, IndexError):
-                raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-            self._recommendations = pd.DataFrame(data)
+            if result is None:
+                self._recommendations = pd.DataFrame()
+            else:
+                try:
+                    data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
+                except (KeyError, IndexError):
+                    raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                self._recommendations = pd.DataFrame(data)
         return self._recommendations
 
     @property
     def upgrades_downgrades(self) -> pd.DataFrame:
         if self._upgrades_downgrades is None:
             result = self._fetch(self.proxy, modules=['upgradeDowngradeHistory'])
-            try:
-                data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
-                if len(data) == 0:
-                    raise YFinanceDataException(f"No upgrade/downgrade history found for {self._symbol}")
-                df = pd.DataFrame(data)
-                df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
-                df.set_index('GradeDate', inplace=True)
-                df.index = pd.to_datetime(df.index, unit='s')
-                self._upgrades_downgrades = df
-            except (KeyError, IndexError):
-                raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+            if result is None:
+                self._upgrades_downgrades = pd.DataFrame()
+            else:
+                try:
+                    data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
+                    if len(data) == 0:
+                        raise YFinanceDataException(f"No upgrade/downgrade history found for {self._symbol}")
+                    df = pd.DataFrame(data)
+                    df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
+                    df.set_index('GradeDate', inplace=True)
+                    df.index = pd.to_datetime(df.index, unit='s')
+                    self._upgrades_downgrades = df
+                except (KeyError, IndexError):
+                    raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
         return self._upgrades_downgrades
 
     @property
@@ -627,7 +634,11 @@ class Quote:
         if len(modules) == 0:
             raise YFinanceException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
-        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        try:
+            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        except requests.exceptions.HTTPError as e:
+            utils.get_yf_logger().error(str(e))
+            return None
         return result
 
     def _fetch_info(self, proxy):
@@ -636,6 +647,10 @@ class Quote:
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         result = self._fetch(proxy, modules=modules)
+        if result is None:
+            self._info = {}
+            return
+
         result["quoteSummary"]["result"][0]["symbol"] = self._symbol
         query1_info = next(
             (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._symbol),
@@ -730,6 +745,10 @@ class Quote:
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
         result = self._fetch(self.proxy, modules=['calendarEvents'])
+        if result is None:
+            self._calendar = {}
+            return
+
         try:
             self._calendar = dict()
             _events = result["quoteSummary"]["result"][0]["calendarEvents"]
