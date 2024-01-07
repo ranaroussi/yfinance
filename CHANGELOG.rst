@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.35
+------
+Internal fixes for 0.2.34
+
 0.2.34
 ------
 Features:

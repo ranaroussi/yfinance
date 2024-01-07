@@ -1,7 +1,9 @@
 # from io import StringIO
 
 import pandas as pd
+import requests
 
+from yfinance import utils
 from yfinance.data import YfData
 from yfinance.const import _BASE_URL_
 from yfinance.exceptions import YFinanceDataException
@@ -76,7 +78,21 @@ class Holders:
         return result
 
     def _fetch_and_parse(self):
-        result = self._fetch(self.proxy)
+        try:
+            result = self._fetch(self.proxy)
+        except requests.exceptions.HTTPError as e:
+            utils.get_yf_logger().error(str(e))
+
+            self._major = pd.DataFrame()
+            self._major_direct_holders = pd.DataFrame()
+            self._institutional = pd.DataFrame()
+            self._mutualfund = pd.DataFrame()
+            self._insider_transactions = pd.DataFrame()
+            self._insider_purchases = pd.DataFrame()
+            self._insider_roster = pd.DataFrame()
+
+            return
+
         try:
             data = result["quoteSummary"]["result"][0]
             # parse "institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"
