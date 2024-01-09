@@ -27,7 +27,7 @@ import json as _json
 import logging
 import time as _time
 import warnings
-from typing import Optional, Union, List
+from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
 import dateutil as _dateutil
