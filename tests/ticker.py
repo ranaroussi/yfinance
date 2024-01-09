@@ -926,7 +926,7 @@ class TestTickerInfo(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestTicker('Test ticker'))
-    #suite.addTest(TestTickerEarnings('Test earnings'))
+    suite.addTest(TestTickerEarnings('Test earnings'))
     suite.addTest(TestTickerHolders('Test holders'))
     suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
