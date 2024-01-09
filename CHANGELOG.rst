@@ -1,6 +1,49 @@
 Change Log
 ===========
 
+0.2.35
+------
+Internal fixes for 0.2.34
+
+0.2.34
+------
+Features:
+- Add Recommendations Trend Summary #1754
+- Add Recommendation upgrades & downgrades #1773
+- Add Insider Roster & Transactions #1772
+- Moved download() progress bar to STDERR #1776
+- PIP optional dependencies #1771
+- Set sensible min versions for optional 'nospam' reqs #1807
+Fixes
+- Fix download() DatetimeIndex on invalid symbols #1779
+- Fix invalid date entering cache DB #1796
+- Fix Ticker.calendar fetch #1790
+- Fixed adding complementary to info #1774
+- Ticker.earnings_dates: fix warning "Value 'NaN' has dtype incompatible with float64" #1810
+- Minor fixes for price repair and related tests #1768
+- Fix price repair div adjust #1798
+- Fix 'raise_errors' argument ignored in Ticker.history() #1806
+Maintenance
+- Fix regression: _get_ticker_tz() args were being swapped. Improve its unit test #1793
+- Refactor Ticker proxy #1711
+- Add Ruff linter checks #1756
+- Resolve Pandas FutureWarnings #1766
+
+0.2.33
+------
+Cookie fixes:
+- fix backup strategy #1759
+- fix Ticker(ISIN) #1760
+
+0.2.32
+------
+Add cookie & crumb to requests #1657
+
+0.2.31
+------
+- Fix TZ cache exception blocking import #1705 #1709
+- Fix merging pre-market events with intraday prices #1703
+
 0.2.30
 ------
 - Fix OperationalError #1698
