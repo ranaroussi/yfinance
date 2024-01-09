@@ -118,6 +118,18 @@ class Ticker(TickerBase):
         return self.get_mutualfund_holders()
 
     @property
+    def insider_purchases(self) -> _pd.DataFrame:
+        return self.get_insider_purchases()
+
+    @property
+    def insider_transactions(self) -> _pd.DataFrame:
+        return self.get_insider_transactions()
+
+    @property
+    def insider_roster_holders(self) -> _pd.DataFrame:
+        return self.get_insider_roster_holders()
+
+    @property
     def dividends(self) -> _pd.Series:
         return self.get_dividends()
 
@@ -146,12 +158,23 @@ class Ticker(TickerBase):
         return self.get_fast_info()
 
     @property
-    def calendar(self) -> _pd.DataFrame:
+    def calendar(self) -> dict:
+        """
+        Returns a dictionary of events, earnings, and dividends for the ticker
+        """
         return self.get_calendar()
 
     @property
     def recommendations(self):
         return self.get_recommendations()
+
+    @property
+    def recommendations_summary(self):
+        return self.get_recommendations_summary()
+
+    @property
+    def upgrades_downgrades(self):
+        return self.get_upgrades_downgrades()
 
     @property
     def earnings(self) -> _pd.DataFrame:
@@ -216,10 +239,6 @@ class Ticker(TickerBase):
     @property
     def quarterly_cashflow(self) -> _pd.DataFrame:
         return self.quarterly_cash_flow
-
-    @property
-    def recommendations_summary(self):
-        return self.get_recommendations_summary()
 
     @property
     def analyst_price_target(self) -> _pd.DataFrame:
