@@ -112,8 +112,24 @@ class TestTicker(unittest.TestCase):
             dat.fast_info[k]
 
         for attribute_name, attribute_type in ticker_attributes:
-            assert_attribute_type(self, dat, attribute_name, attribute_type) 
-       
+            assert_attribute_type(self, dat, attribute_name, attribute_type)
+
+        with self.assertRaises(YFNotImplementedError):
+            assert isinstance(dat.earnings, pd.Series)
+            assert dat.earnings.empty
+        assert isinstance(dat.dividends, pd.Series)
+        assert dat.dividends.empty
+        assert isinstance(dat.splits, pd.Series)
+        assert dat.splits.empty
+        assert isinstance(dat.capital_gains, pd.Series)
+        assert dat.capital_gains.empty
+        with self.assertRaises(YFNotImplementedError):
+            assert isinstance(dat.shares, pd.DataFrame)
+            assert dat.shares.empty
+        assert isinstance(dat.actions, pd.DataFrame)
+        assert dat.actions.empty
+
+
     def test_goodTicker(self):
         # that yfinance works when full api is called on same instance of ticker
 
