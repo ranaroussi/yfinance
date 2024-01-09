@@ -45,9 +45,6 @@ from .scrapers.quote import Quote, FastInfo
 from .const import _BASE_URL_, _ROOT_URL_
 
 
-_empty_series = pd.Series()
-
-
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=None):
         self.ticker = ticker.upper()
@@ -1955,7 +1952,7 @@ class TickerBase:
         if self._history is not None and "Dividends" in self._history:
             dividends = self._history["Dividends"]
             return dividends[dividends != 0]
-        return _empty_series
+        return pd.Series()
 
     def get_capital_gains(self, proxy=None) -> pd.Series:
         if self._history is None:
@@ -1963,7 +1960,7 @@ class TickerBase:
         if self._history is not None and "Capital Gains" in self._history:
             capital_gains = self._history["Capital Gains"]
             return capital_gains[capital_gains != 0]
-        return _empty_series
+        return pd.Series()
 
     def get_splits(self, proxy=None) -> pd.Series:
         if self._history is None:
@@ -1971,7 +1968,7 @@ class TickerBase:
         if self._history is not None and "Stock Splits" in self._history:
             splits = self._history["Stock Splits"]
             return splits[splits != 0]
-        return _empty_series
+        return pd.Series()
 
     def get_actions(self, proxy=None) -> pd.DataFrame:
         if self._history is None:
