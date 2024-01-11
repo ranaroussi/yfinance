@@ -79,7 +79,7 @@ class Financials:
         if name not in allowed_names:
             raise ValueError(f"Illegal argument: name must be one of: {allowed_names}")
         if timescale not in allowed_timescales:
-            raise ValueError(f"Illegal argument: timescale must be one of: {allowed_names}")
+            raise ValueError(f"Illegal argument: timescale must be one of: {allowed_timescales}")
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
