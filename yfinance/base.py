@@ -42,7 +42,7 @@ from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 
-from .const import _BASE_URL_, _ROOT_URL_
+from .const import _BASE_URL_, _ROOT_URL_, price_colnames
 
 
 class TickerBase:
@@ -426,7 +426,9 @@ class TickerBase:
         if not actions:
             df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
         if not keepna:
-            mask_nan_or_zero = (df.isna() | (df == 0)).all(axis=1)
+            data_colnames = price_colnames + ['Volume'] + ['Dividends', 'Stock Splits', 'Capital Gains']
+            data_colnames = [c for c in data_colnames if c in df.columns]
+            mask_nan_or_zero = (df[data_colnames].isna() | (df[data_colnames] == 0)).all(axis=1)
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
 
         logger.debug(f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}')
@@ -455,7 +457,7 @@ class TickerBase:
         else:
             intraday = True
 
-        price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df]
+        price_cols = [c for c in price_colnames if c in df]
         data_cols = price_cols + ["Volume"]
 
         # If interval is weekly then can construct with daily. But if smaller intervals then
@@ -1011,7 +1013,7 @@ class TickerBase:
         elif df2.index.tz != tz_exchange:
             df2.index = df2.index.tz_convert(tz_exchange)
 
-        price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df2.columns]
+        price_cols = [c for c in price_colnames if c in df2.columns]
         f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
         df2_reserve = None
         if intraday:
