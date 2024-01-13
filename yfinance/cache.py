@@ -145,7 +145,14 @@ class _TzCache:
 
         db.connect()
         tz_db_proxy.initialize(db)
-        db.create_tables([_KV])
+        try:
+            db.create_tables([_KV])
+        except _peewee.OperationalError as e:
+            if 'WITHOUT' in str(e):
+                _KV._meta.without_rowid = False
+                db.create_tables([_KV])
+            else:
+                raise
         self.initialised = 1  # success
 
     def lookup(self, key):
@@ -344,7 +351,14 @@ class _CookieCache:
 
         db.connect()
         Cookie_db_proxy.initialize(db)
-        db.create_tables([_CookieSchema])
+        try:
+            db.create_tables([_CookieSchema])
+        except _peewee.OperationalError as e:
+            if 'WITHOUT' in str(e):
+                _CookieSchema._meta.without_rowid = False
+                db.create_tables([_CookieSchema])
+            else:
+                raise
         self.initialised = 1  # success
 
     def lookup(self, strategy):
