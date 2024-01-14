@@ -256,6 +256,42 @@ class TestTickerHistory(unittest.TestCase):
         self.assertIsInstance(reconstructed, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
+    def test_earnings_estimate(self):
+        estimates = self.ticker.earnings_estimate
+        self.assertIsInstance(estimates, pd.DataFrame, "data has wrong type")
+        self.assertFalse(estimates.empty, "data is empty")
+        pass
+
+    def test_revenue_estimate(self):
+        estimates = self.ticker.revenue_estimate
+        self.assertIsInstance(estimates, pd.DataFrame, "data has wrong type")
+        self.assertFalse(estimates.empty, "data is empty")
+        pass
+
+    def test_earnings_history(self):
+        estimates = self.ticker.earnings_history
+        self.assertIsInstance(estimates, pd.DataFrame, "data has wrong type")
+        self.assertFalse(estimates.empty, "data is empty")
+        pass
+
+    def test_eps_trend(self):
+        estimates = self.ticker.eps_trend
+        self.assertIsInstance(estimates, pd.DataFrame, "data has wrong type")
+        self.assertFalse(estimates.empty, "data is empty")
+        pass
+
+    def test_eps_revisions(self):
+        estimates = self.ticker.eps_revisions
+        self.assertIsInstance(estimates, pd.DataFrame, "data has wrong type")
+        self.assertFalse(estimates.empty, "data is empty")
+        pass
+
+    def test_growth_estimates(self):
+        estimates = self.ticker.growth_estimates
+        self.assertIsInstance(estimates, pd.DataFrame, "data has wrong type")
+        self.assertFalse(estimates.empty, "data is empty")
+        pass
+
 
 class TestTickerEarnings(unittest.TestCase):
     session = None

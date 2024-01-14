@@ -281,3 +281,27 @@ class Ticker(TickerBase):
     @property
     def history_metadata(self) -> dict:
         return self.get_history_metadata()
+
+    @property
+    def earnings_estimate(self) -> _pd.DataFrame:
+        return self.get_earnings_estimate()
+
+    @property
+    def revenue_estimate(self) -> _pd.DataFrame:
+        return self.get_revenue_estimate()
+
+    @property
+    def earnings_history(self) -> _pd.DataFrame:
+        return self.get_earnings_history()
+
+    @property
+    def eps_trend(self) -> _pd.DataFrame:
+        return self.get_eps_trend()
+
+    @property
+    def eps_revisions(self) -> _pd.DataFrame:
+        return self.get_eps_revisions()
+
+    @property
+    def growth_estimates(self) -> _pd.DataFrame:
+        return self.get_growth_estimates()
