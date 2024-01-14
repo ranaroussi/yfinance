@@ -1988,42 +1988,42 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_earnings_estimate(self, proxy=None, as_dict=False):
+    def get_earnings_estimate(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._analysis.proxy = proxy or self.proxy
         data = self._analysis.earnings_estimate
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_revenue_estimate(self, proxy=None, as_dict=False):
+    def get_revenue_estimate(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._analysis.proxy = proxy or self.proxy
         data = self._analysis.revenue_estimate
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_earnings_history(self, proxy=None, as_dict=False):
+    def get_earnings_history(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._analysis.proxy = proxy or self.proxy
         data = self._analysis.earnings_history
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_eps_trend(self, proxy=None, as_dict=False):
+    def get_eps_trend(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._analysis.proxy = proxy or self.proxy
         data = self._analysis.eps_trend
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_eps_revisions(self, proxy=None, as_dict=False):
+    def get_eps_revisions(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._analysis.proxy = proxy or self.proxy
         data = self._analysis.eps_revisions
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_growth_estimates(self, proxy=None, as_dict=False):
+    def get_growth_estimates(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._analysis.proxy = proxy or self.proxy
         data = self._analysis.growth_estimates
         if as_dict:
