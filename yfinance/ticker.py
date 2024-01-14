@@ -33,7 +33,7 @@ class Ticker(TickerBase):
     def __init__(self, ticker, session=None, proxy=None):
         super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}
-        self._underlying = {}
+        self._underlying  = {}
 
     def __repr__(self):
         return f'yfinance.Ticker object <{self.ticker}>'
@@ -54,7 +54,7 @@ class Ticker(TickerBase):
 
             opt = r['optionChain']['result'][0].get('options', [])
 
-            return dict(**opt[0], underlying=self._underlying) if len(opt) > 0 else {}
+            return dict(**opt[0],underlying=self._underlying) if len(opt) > 0 else {}
         return {}
 
     def _options2df(self, opt, tz=None):

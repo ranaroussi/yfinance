@@ -14,6 +14,7 @@ from .context import yfinance as yf
 from .context import session_gbl
 from yfinance.exceptions import YFNotImplementedError
 
+
 import unittest
 import requests_cache
 from typing import Union, Any, get_args, _GenericAlias
@@ -52,7 +53,6 @@ ticker_attributes = (
     ("earnings_forecasts", pd.DataFrame),
 )
 
-
 def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name, expected_type):
     try:
         attribute = getattr(instance, attribute_name)
@@ -67,7 +67,6 @@ def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name
         testClass.assertRaises(
             YFNotImplementedError, lambda: getattr(instance, attribute_name)
         )
-
 
 class TestTicker(unittest.TestCase):
     session = None
@@ -151,8 +150,8 @@ class TestTicker(unittest.TestCase):
                 dat.fast_info[k]
 
             for attribute_name, attribute_type in ticker_attributes:
-                assert_attribute_type(self, dat, attribute_name, attribute_type)
-
+                assert_attribute_type(self, dat, attribute_name, attribute_type) 
+            
     def test_goodTicker_withProxy(self):
         tkr = "IBM"
         dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
@@ -164,7 +163,7 @@ class TestTicker(unittest.TestCase):
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)
 
-
+        
 class TestTickerHistory(unittest.TestCase):
     session = None
 
@@ -233,7 +232,6 @@ class TestTickerHistory(unittest.TestCase):
             actual_urls_called,
             "Different than expected url used to fetch history."
         )
-
     def test_dividends(self):
         data = self.ticker.dividends
         self.assertIsInstance(data, pd.Series, "data has wrong type")
@@ -449,7 +447,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
-
+        
         # For ticker 'BSE.AX' (and others), Yahoo not returning 
         # full quarterly financials (usually cash-flow) with all entries, 
         # instead returns a smaller version in different data store.
@@ -486,8 +484,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
-        period = abs((data.columns[0] - data.columns[1]).days)
-        self.assertLess(abs(period - expected_periods_days), 20, "Not returning annual financials")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
 
         # Test property defaults
         data2 = self.ticker.income_stmt
@@ -507,7 +505,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def test_quarterly_income_statement(self):
         expected_keys = ["Total Revenue", "Basic EPS"]
-        expected_periods_days = 365 // 4
+        expected_periods_days = 365//4
 
         # Test contents of table
         data = self.ticker.get_income_stmt(pretty=True, freq="quarterly")
@@ -515,8 +513,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
-        period = abs((data.columns[0] - data.columns[1]).days)
-        self.assertLess(abs(period - expected_periods_days), 20, "Not returning quarterly financials")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
 
         # Test property defaults
         data2 = self.ticker.quarterly_income_stmt
@@ -544,8 +542,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
-        period = abs((data.columns[0] - data.columns[1]).days)
-        self.assertLess(abs(period - expected_periods_days), 20, "Not returning annual financials")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
 
         # Test property defaults
         data2 = self.ticker.balance_sheet
@@ -565,7 +563,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def test_quarterly_balance_sheet(self):
         expected_keys = ["Total Assets", "Net PPE"]
-        expected_periods_days = 365 // 4
+        expected_periods_days = 365//4
 
         # Test contents of table
         data = self.ticker.get_balance_sheet(pretty=True, freq="quarterly")
@@ -573,8 +571,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
-        period = abs((data.columns[0] - data.columns[1]).days)
-        self.assertLess(abs(period - expected_periods_days), 20, "Not returning quarterly financials")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
 
         # Test property defaults
         data2 = self.ticker.quarterly_balance_sheet
@@ -602,8 +600,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
-        period = abs((data.columns[0] - data.columns[1]).days)
-        self.assertLess(abs(period - expected_periods_days), 20, "Not returning annual financials")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning annual financials")
 
         # Test property defaults
         data2 = self.ticker.cashflow
@@ -623,7 +621,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def test_quarterly_cash_flow(self):
         expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
-        expected_periods_days = 365 // 4
+        expected_periods_days = 365//4
 
         # Test contents of table
         data = self.ticker.get_cashflow(pretty=True, freq="quarterly")
@@ -631,8 +629,8 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
-        period = abs((data.columns[0] - data.columns[1]).days)
-        self.assertLess(abs(period - expected_periods_days), 20, "Not returning quarterly financials")
+        period = abs((data.columns[0]-data.columns[1]).days)
+        self.assertLess(abs(period-expected_periods_days), 20, "Not returning quarterly financials")
 
         # Test property defaults
         data2 = self.ticker.quarterly_cashflow
@@ -958,6 +956,7 @@ class TestTickerInfo(unittest.TestCase):
     #                         continue
     #                     else:
     #                         raise
+
 
 
 def suite():

@@ -3,7 +3,6 @@ from io import StringIO
 import pandas as pd
 
 from yfinance.data import YfData
-from yfinance.exceptions import YFNotImplementedError
 
 
 class Analysis:
