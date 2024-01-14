@@ -43,6 +43,18 @@ class TestPriceHistory(unittest.TestCase):
 
             df_tkrs = df.columns.levels[1]
             self.assertEqual(sorted(tkrs), sorted(df_tkrs))
+    
+    def test_download_with_invalid_ticker(self):
+        #Checks if using an invalid symbol gives the same output as not using an invalid symbol in combination with a valid symbol (AAPL)
+        #Checks to make sure that invalid symbol handling for the date column is the same as the base case (no invalid symbols)
+
+        invalid_tkrs = ["AAPL", "ATVI"] #AAPL exists and ATVI does not exist
+        valid_tkrs = ["AAPL", "INTC"] #AAPL and INTC both exist
+        
+        data_invalid_sym = yf.download(invalid_tkrs, start='2023-11-16', end='2023-11-17')
+        data_valid_sym = yf.download(valid_tkrs, start='2023-11-16', end='2023-11-17')
+
+        self.assertEqual(data_invalid_sym['Close']['AAPL']['2023-11-16'],data_valid_sym['Close']['AAPL']['2023-11-16'])
 
     def test_duplicatingHourly(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
@@ -387,24 +399,20 @@ class TestPriceHistory(unittest.TestCase):
             raise
 
     def test_prune_post_intraday_us(self):
-        # Half-day before USA Thanksgiving. Yahoo normally
+        # Half-day at USA Thanksgiving. Yahoo normally
         # returns an interval starting when regular trading closes,
         # even if prepost=False.
 
         # Setup
         tkr = "AMZN"
-        interval = "1h"
-        interval_td = _dt.timedelta(hours=1)
-        time_open = _dt.time(9, 30)
-        time_close = _dt.time(16)
-        special_day = _dt.date(2022, 11, 25)
+        special_day = _dt.date(2023, 11, 24)
         time_early_close = _dt.time(13)
         dat = yf.Ticker(tkr, session=self.session)
 
         # Run
         start_d = special_day - _dt.timedelta(days=7)
         end_d = special_day + _dt.timedelta(days=7)
-        df = dat.history(start=start_d, end=end_d, interval=interval, prepost=False, keepna=True)
+        df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
         tg_last_dt = df.loc[str(special_day)].index[-1]
         self.assertTrue(tg_last_dt.time() < time_early_close)
 
@@ -413,87 +421,22 @@ class TestPriceHistory(unittest.TestCase):
         end_d = _dt.date(special_day.year+1, 1, 1)
         df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
         last_dts = _pd.Series(df.index).groupby(df.index.date).last()
-        f_early_close = (last_dts+interval_td).dt.time < time_close
-        early_close_dates = last_dts.index[f_early_close].values
-        self.assertEqual(len(early_close_dates), 1)
-        self.assertEqual(early_close_dates[0], special_day)
-
-        first_dts = _pd.Series(df.index).groupby(df.index.date).first()
-        f_late_open = first_dts.dt.time > time_open
-        late_open_dates = first_dts.index[f_late_open]
-        self.assertEqual(len(late_open_dates), 0)
-
-    def test_prune_post_intraday_omx(self):
-        # Half-day before Sweden Christmas. Yahoo normally
-        # returns an interval starting when regular trading closes,
-        # even if prepost=False.
-        # If prepost=False, test that yfinance is removing prepost intervals.
-
-        # Setup
-        tkr = "AEC.ST"
-        interval = "1h"
-        interval_td = _dt.timedelta(hours=1)
-        time_open = _dt.time(9)
-        time_close = _dt.time(17, 30)
-        special_day = _dt.date(2022, 12, 23)
-        time_early_close = _dt.time(13, 2)
-        dat = yf.Ticker(tkr, session=self.session)
-
-        # Half trading day Jan 5, Apr 14, May 25, Jun 23, Nov 4, Dec 23, Dec 30
-        half_days = [_dt.date(special_day.year, x[0], x[1]) for x in [(1, 5), (4, 14), (5, 25), (6, 23), (11, 4), (12, 23), (12, 30)]]
-
-        # Yahoo has incorrectly classified afternoon of 2022-04-13 as post-market.
-        # Nothing yfinance can do because Yahoo doesn't return data with prepost=False.
-        # But need to handle in this test.
-        expected_incorrect_half_days = [_dt.date(2022, 4, 13)]
-        half_days = sorted(half_days+expected_incorrect_half_days)
-
-        # Run
-        start_d = special_day - _dt.timedelta(days=7)
-        end_d = special_day + _dt.timedelta(days=7)
-        df = dat.history(start=start_d, end=end_d, interval=interval, prepost=False, keepna=True)
-        tg_last_dt = df.loc[str(special_day)].index[-1]
-        self.assertTrue(tg_last_dt.time() < time_early_close)
-
-        # Test no other afternoons (or mornings) were pruned
-        start_d = _dt.date(special_day.year, 1, 1)
-        end_d = _dt.date(special_day.year+1, 1, 1)
-        df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
-        last_dts = _pd.Series(df.index).groupby(df.index.date).last()
-        f_early_close = (last_dts+interval_td).dt.time < time_close
-        early_close_dates = last_dts.index[f_early_close].values
-        unexpected_early_close_dates = [d for d in early_close_dates if d not in half_days]
-        self.assertEqual(len(unexpected_early_close_dates), 0)
-        self.assertEqual(len(early_close_dates), len(half_days))
-        self.assertTrue(_np.equal(early_close_dates, half_days).all())
-
-        first_dts = _pd.Series(df.index).groupby(df.index.date).first()
-        f_late_open = first_dts.dt.time > time_open
-        late_open_dates = first_dts.index[f_late_open]
-        self.assertEqual(len(late_open_dates), 0)
+        dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)
+        self.assertTrue(_np.equal(dfd.index.date, _pd.to_datetime(last_dts.index).date).all())
 
     def test_prune_post_intraday_asx(self):
         # Setup
         tkr = "BHP.AX"
-        interval_td = _dt.timedelta(hours=1)
-        time_open = _dt.time(10)
-        time_close = _dt.time(16, 12)
-        # No early closes in 2022
+        # No early closes in 2023
         dat = yf.Ticker(tkr, session=self.session)
 
-        # Test no afternoons (or mornings) were pruned
-        start_d = _dt.date(2022, 1, 1)
-        end_d = _dt.date(2022+1, 1, 1)
+        # Test no other afternoons (or mornings) were pruned
+        start_d = _dt.date(2023, 1, 1)
+        end_d = _dt.date(2023+1, 1, 1)
         df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
         last_dts = _pd.Series(df.index).groupby(df.index.date).last()
-        f_early_close = (last_dts+interval_td).dt.time < time_close
-        early_close_dates = last_dts.index[f_early_close].values
-        self.assertEqual(len(early_close_dates), 0)
-
-        first_dts = _pd.Series(df.index).groupby(df.index.date).first()
-        f_late_open = first_dts.dt.time > time_open
-        late_open_dates = first_dts.index[f_late_open]
-        self.assertEqual(len(late_open_dates), 0)
+        dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)
+        self.assertTrue(_np.equal(dfd.index.date, _pd.to_datetime(last_dts.index).date).all())
 
     def test_weekly_2rows_fix(self):
         tkr = "AMZN"

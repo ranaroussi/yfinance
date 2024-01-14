@@ -858,9 +858,9 @@ class ProgressBar:
         if self.elapsed > self.iterations:
             self.elapsed = self.iterations
         self.update_iteration(1)
-        print('\r' + str(self), end='')
-        _sys.stdout.flush()
-        print()
+        print('\r' + str(self), end='', file=_sys.stderr)
+        _sys.stderr.flush()
+        print("", file=_sys.stderr)
 
     def animate(self, iteration=None):
         if iteration is None:
@@ -869,8 +869,8 @@ class ProgressBar:
         else:
             self.elapsed += iteration
 
-        print('\r' + str(self), end='')
-        _sys.stdout.flush()
+        print('\r' + str(self), end='', file=_sys.stderr)
+        _sys.stderr.flush()
         self.update_iteration()
 
     def update_iteration(self, val=None):

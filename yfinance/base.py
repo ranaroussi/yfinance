@@ -27,7 +27,7 @@ import json as _json
 import logging
 import time as _time
 import warnings
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
 import dateutil as _dateutil
@@ -86,7 +86,6 @@ class TickerBase:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
-                debug=None,  # deprecated
                 raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
@@ -126,22 +125,11 @@ class TickerBase:
                 If not None stops waiting for a response after given number of
                 seconds. (Can also be a fraction of a second e.g. 0.01)
                 Default is 10 seconds.
-            debug: bool
-                If passed as False, will suppress message printing to console.
-                DEPRECATED, will be removed in future version
             raise_errors: bool
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
         proxy = proxy or self.proxy
-
-        if debug is not None:
-            if debug:
-                utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead: logging.getLogger('yfinance').setLevel(logging.ERROR)")
-                logger.setLevel(logging.ERROR)
-            else:
-                utils.print_once(f"yfinance: Ticker.history(debug={debug}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
-                logger.setLevel(logging.CRITICAL)
 
         start_user = start
         end_user = end
@@ -218,7 +206,8 @@ class TickerBase:
 
             data = data.json()
         except Exception:
-            pass
+            if raise_errors:
+                raise
 
         # Store the meta data that gets retrieved simultaneously
         try:
@@ -394,9 +383,6 @@ class TickerBase:
 
         df = df[~df.index.duplicated(keep='first')]  # must do before repair
 
-        if isinstance(repair, str) and repair=='silent':
-            utils.log_once(logging.WARNING, "yfinance: Ticker.history(repair='silent') value is deprecated and will be removed in future version. Repair now silent by default, use logging module to increase verbosity.")
-            repair = True
         if repair:
             # Do this before auto/back adjust
             logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
@@ -694,7 +680,7 @@ class TickerBase:
                 f_tag = df_block_calib['Adj Close'] == tag
                 if f_tag.any():
                     div_adjusts = df_block_calib['Adj Close'] / df_block_calib['Close']
-                    # The loop below assumes each 1d repair is isoloated, i.e. surrounded by
+                    # The loop below assumes each 1d repair is isolated, i.e. surrounded by
                     # good data. Which is case most of time.
                     # But in case are repairing a chunk of bad 1d data, back/forward-fill the
                     # good div-adjustments - not perfect, but a good backup.
@@ -706,26 +692,30 @@ class TickerBase:
                         if df_new.loc[dt, "Dividends"] != 0:
                             if idx < n - 1:
                                 # Easy, take div-adjustment from next-day
-                                div_adjusts[idx] = div_adjusts.iloc[idx + 1]
+                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
                             else:
                                 # Take previous-day div-adjustment and reverse todays adjustment
                                 div_adj = 1.0 - df_new_calib["Dividends"].iloc[idx] / df_new_calib['Close'].iloc[
                                     idx - 1]
-                                div_adjusts[idx] = div_adjusts.iloc[idx - 1] / div_adj
+                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1] / div_adj
                         else:
                             if idx > 0:
                                 # Easy, take div-adjustment from previous-day
-                                div_adjusts[idx] = div_adjusts.iloc[idx - 1]
+                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1]
                             else:
                                 # Must take next-day div-adjustment
-                                div_adjusts[idx] = div_adjusts.iloc[idx + 1]
+                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
                                 if df_new_calib["Dividends"].iloc[idx + 1] != 0:
-                                    div_adjusts[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx + 1] / \
+                                    div_adjusts.iloc[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx + 1] / \
                                                         df_new_calib['Close'].iloc[idx]
                     f_close_bad = df_block_calib['Close'] == tag
+                    div_adjusts = div_adjusts.reindex(df_block.index, fill_value=np.nan).ffill().bfill()
                     df_new['Adj Close'] = df_block['Close'] * div_adjusts
                     if f_close_bad.any():
-                        df_new.loc[f_close_bad, 'Adj Close'] = df_new['Close'][f_close_bad] * div_adjusts[f_close_bad]
+                        f_close_bad_new = f_close_bad.reindex(df_new.index, fill_value=False)
+                        div_adjusts_new = div_adjusts.reindex(df_new.index, fill_value=np.nan).ffill().bfill()
+                        div_adjusts_new_np = f_close_bad_new.to_numpy()
+                        df_new.loc[div_adjusts_new_np, 'Adj Close'] = df_new['Close'][div_adjusts_new_np] * div_adjusts_new[div_adjusts_new_np]
 
             # Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
@@ -1650,7 +1640,7 @@ class TickerBase:
 
         return df2
 
-    def _get_ticker_tz(self,timeout, proxy=None):
+    def _get_ticker_tz(self, proxy, timeout):
         proxy = proxy or self.proxy
         if self._tz is not None:
             return self._tz
@@ -1675,7 +1665,7 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, timeout, proxy=None):
+    def _fetch_ticker_tz(self, proxy, timeout):
         # Query Yahoo for fast price data just to get returned timezone
         proxy = proxy or self.proxy
         logger = utils.get_yf_logger()
@@ -1718,12 +1708,24 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_calendar(self, proxy=None, as_dict=False):
+    def get_recommendations_summary(self, proxy=None, as_dict=False):
+        return self.get_recommendations(proxy=proxy, as_dict=as_dict)
+
+    def get_upgrades_downgrades(self, proxy=None, as_dict=False):
+        """
+        Returns a DataFrame with the recommendations changes (upgrades/downgrades)
+        Index: date of grade
+        Columns: firm toGrade fromGrade action
+        """
         self._quote.proxy = proxy or self.proxy
-        data = self._quote.calendar
+        data = self._quote.upgrades_downgrades
         if as_dict:
             return data.to_dict()
         return data
+
+    def get_calendar(self, proxy=None) -> dict:
+        self._quote.proxy = proxy or self.proxy
+        return self._quote.calendar
 
     def get_major_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
@@ -1743,6 +1745,30 @@ class TickerBase:
     def get_mutualfund_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.mutualfund
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            return data
+    
+    def get_insider_purchases(self, proxy=None, as_dict=False):
+        self._holders.proxy = proxy or self.proxy
+        data = self._holders.insider_purchases
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            return data
+
+    def get_insider_transactions(self, proxy=None, as_dict=False):
+        self._holders.proxy = proxy or self.proxy
+        data = self._holders.insider_transactions
+        if data is not None:
+            if as_dict:
+                return data.to_dict()
+            return data
+
+    def get_insider_roster_holders(self, proxy=None, as_dict=False):
+        self._holders.proxy = proxy or self.proxy
+        data = self._holders.insider_roster
         if data is not None:
             if as_dict:
                 return data.to_dict()
@@ -1769,9 +1795,6 @@ class TickerBase:
         if as_dict:
             return data.to_dict()
         return data
-
-    def get_recommendations_summary(self, proxy=None, as_dict=False):
-        return self.get_recommendations(proxy=proxy, as_dict=as_dict)
 
     def get_analyst_price_target(self, proxy=None, as_dict=False):
         self._analysis.proxy = proxy or self.proxy
@@ -1893,7 +1916,7 @@ class TickerBase:
     def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(proxy, as_dict, pretty, freq)
 
-    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
         """
         :Parameters:
             as_dict: bool
@@ -1923,31 +1946,31 @@ class TickerBase:
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(proxy, as_dict, pretty, freq)
 
-    def get_dividends(self, proxy=None):
+    def get_dividends(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Dividends" in self._history:
             dividends = self._history["Dividends"]
             return dividends[dividends != 0]
-        return []
+        return pd.Series()
 
-    def get_capital_gains(self, proxy=None):
+    def get_capital_gains(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Capital Gains" in self._history:
             capital_gains = self._history["Capital Gains"]
             return capital_gains[capital_gains != 0]
-        return []
+        return pd.Series()
 
-    def get_splits(self, proxy=None):
+    def get_splits(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Stock Splits" in self._history:
             splits = self._history["Stock Splits"]
             return splits[splits != 0]
-        return []
+        return pd.Series()
 
-    def get_actions(self, proxy=None):
+    def get_actions(self, proxy=None) -> pd.DataFrame:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
@@ -1956,9 +1979,9 @@ class TickerBase:
                 action_columns.append("Capital Gains")
             actions = self._history[action_columns]
             return actions[actions != 0].dropna(how='all').fillna(0)
-        return []
+        return pd.DataFrame()
 
-    def get_shares(self, proxy=None, as_dict=False):
+    def get_shares(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._fundamentals.proxy = proxy or self.proxy
         data = self._fundamentals.shares
         if as_dict:
@@ -2097,7 +2120,7 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
-    def get_news(self, proxy=None):
+    def get_news(self, proxy=None) -> list:
         if self._news:
             return self._news
 
@@ -2176,7 +2199,7 @@ class TickerBase:
 
         # Convert types
         for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
-            dates.loc[dates[cn] == '-', cn] = "NaN"
+            dates.loc[dates[cn] == '-', cn] = float("nan")
             dates[cn] = dates[cn].astype(float)
 
         # Convert % to range 0->1:
