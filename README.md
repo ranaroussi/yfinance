@@ -55,7 +55,7 @@ $ pip install yfinance --upgrade --no-cache-dir
 To install with optional dependencies, replace `optional` with: `nospam` for [caching-requests](#smarter-scraping), `repair` for [price repair](https://github.com/ranaroussi/yfinance/wiki/Price-repair), or `nospam,repair` for both:
 
 ``` {.sourceCode .bash}
-$ pip install yfinance[optional]
+$ pip install "yfinance[optional]"
 ```
 
 [Required dependencies](./requirements.txt) , [all dependencies](./setup.py#L62).

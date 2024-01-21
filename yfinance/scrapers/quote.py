@@ -733,10 +733,11 @@ class Quote:
 
             json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
-            if json_data["timeseries"]["error"] is not None:
-                raise YFinanceException("Failed to parse json response from Yahoo Finance: " + json_data["error"])
+            json_result = json_data.get("timeseries") or json_data.get("finance")
+            if json_result["error"] is not None:
+                raise YFinanceException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
             for k in keys:
-                keydict = json_data["timeseries"]["result"][0]
+                keydict = json_result["result"][0]
                 if k in keydict:
                     self._info[k] = keydict[k][-1]["reportedValue"]["raw"]
                 else:

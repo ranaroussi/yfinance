@@ -134,7 +134,7 @@ class Ticker(TickerBase):
         return self.get_dividends()
 
     @property
-    def capital_gains(self):
+    def capital_gains(self) -> _pd.Series:
         return self.get_capital_gains()
 
     @property
@@ -146,7 +146,7 @@ class Ticker(TickerBase):
         return self.get_actions()
 
     @property
-    def shares(self) -> _pd.DataFrame :
+    def shares(self) -> _pd.DataFrame:
         return self.get_shares()
 
     @property
@@ -259,7 +259,7 @@ class Ticker(TickerBase):
         return tuple(self._expirations.keys())
 
     @property
-    def news(self):
+    def news(self) -> list:
         return self.get_news()
 
     @property
