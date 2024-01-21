@@ -27,7 +27,7 @@ import json as _json
 import logging
 import time as _time
 import warnings
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
 import dateutil as _dateutil
@@ -42,7 +42,10 @@ from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 
-from .const import _BASE_URL_, _ROOT_URL_
+from .const import _BASE_URL_, _ROOT_URL_, price_colnames
+
+
+_empty_series = pd.Series()
 
 
 class TickerBase:
@@ -426,7 +429,9 @@ class TickerBase:
         if not actions:
             df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
         if not keepna:
-            mask_nan_or_zero = (df.isna() | (df == 0)).all(axis=1)
+            data_colnames = price_colnames + ['Volume'] + ['Dividends', 'Stock Splits', 'Capital Gains']
+            data_colnames = [c for c in data_colnames if c in df.columns]
+            mask_nan_or_zero = (df[data_colnames].isna() | (df[data_colnames] == 0)).all(axis=1)
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
 
         logger.debug(f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}')
@@ -455,7 +460,7 @@ class TickerBase:
         else:
             intraday = True
 
-        price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df]
+        price_cols = [c for c in price_colnames if c in df]
         data_cols = price_cols + ["Volume"]
 
         # If interval is weekly then can construct with daily. But if smaller intervals then
@@ -1011,7 +1016,7 @@ class TickerBase:
         elif df2.index.tz != tz_exchange:
             df2.index = df2.index.tz_convert(tz_exchange)
 
-        price_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close"] if c in df2.columns]
+        price_cols = [c for c in price_colnames if c in df2.columns]
         f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
         df2_reserve = None
         if intraday:
@@ -1916,7 +1921,7 @@ class TickerBase:
     def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(proxy, as_dict, pretty, freq)
 
-    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
+    def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
         """
         :Parameters:
             as_dict: bool
@@ -1946,31 +1951,31 @@ class TickerBase:
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(proxy, as_dict, pretty, freq)
 
-    def get_dividends(self, proxy=None):
+    def get_dividends(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Dividends" in self._history:
             dividends = self._history["Dividends"]
             return dividends[dividends != 0]
-        return []
+        return pd.Series()
 
-    def get_capital_gains(self, proxy=None):
+    def get_capital_gains(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Capital Gains" in self._history:
             capital_gains = self._history["Capital Gains"]
             return capital_gains[capital_gains != 0]
-        return []
+        return _empty_series
 
-    def get_splits(self, proxy=None):
+    def get_splits(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Stock Splits" in self._history:
             splits = self._history["Stock Splits"]
             return splits[splits != 0]
-        return []
+        return pd.Series()
 
-    def get_actions(self, proxy=None):
+    def get_actions(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
@@ -1979,9 +1984,9 @@ class TickerBase:
                 action_columns.append("Capital Gains")
             actions = self._history[action_columns]
             return actions[actions != 0].dropna(how='all').fillna(0)
-        return []
+        return _empty_series
 
-    def get_shares(self, proxy=None, as_dict=False):
+    def get_shares(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._fundamentals.proxy = proxy or self.proxy
         data = self._fundamentals.shares
         if as_dict:
@@ -2078,7 +2083,7 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
-    def get_news(self, proxy=None):
+    def get_news(self, proxy=None) -> list:
         if self._news:
             return self._news
 
