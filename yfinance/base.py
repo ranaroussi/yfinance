@@ -82,7 +82,7 @@ class TickerBase:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
-    def history(self, period="1mo", interval="1d",
+    def history(self, period=None, interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
@@ -92,6 +92,7 @@ class TickerBase:
             period : str
                 Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
                 Either Use period parameter or use start and end
+                Default is '1mo'
             interval : str
                 Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
                 Intraday data cannot extend last 60 days
@@ -130,6 +131,14 @@ class TickerBase:
         """
         logger = utils.get_yf_logger()
         proxy = proxy or self.proxy
+
+        if period is not None and (start is not None or end is not None):
+            utils.print_once(f"yfinance: Ticker.history(): don't mix 'period' with 'start'/'end', am ignoring your dates")
+            start = None
+            end = None
+        if period is None and start is None and end is None:
+            # Manually handle 'period' default because need to know if user set period="1mo"
+            period = "1mo"
 
         start_user = start
         end_user = end
