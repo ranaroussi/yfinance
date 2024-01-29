@@ -1,7 +1,0 @@
-pytest
-requests-cache
-requests-ratelimiter
-scipy
-appdirs
-scipy>=1.2
-
