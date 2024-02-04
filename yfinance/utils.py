@@ -689,7 +689,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 df_main['Dividends'] = 0.0
                 return df_main
         else:
-            empty_row_data = {**{c:[_np.nan] for c in const.price_colnames}, 'Volume':[0]}
+            empty_row_data = {**{c:[_np.nan] for c in const._PRICE_COLNAMES_}, 'Volume':[0]}
             if interval == '1d':
                 # For 1d, add all out-of-range event dates
                 for i in _np.where(f_outOfRange)[0]:

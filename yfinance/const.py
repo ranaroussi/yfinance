@@ -115,7 +115,7 @@ fundamentals_keys = {
                   "PaymentstoSuppliersforGoodsandServices", "ClassesofCashReceiptsfromOperatingActivities",
                   "OtherCashReceiptsfromOperatingActivities", "ReceiptsfromGovernmentGrants", "ReceiptsfromCustomers"]}
 
-price_colnames = ['Open', 'High', 'Low', 'Close', 'Adj Close']
+_PRICE_COLNAMES_ = ['Open', 'High', 'Low', 'Close', 'Adj Close']
 
 quote_summary_valid_modules = (
     "summaryProfile",  # contains general information about the company
