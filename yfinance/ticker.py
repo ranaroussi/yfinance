@@ -27,6 +27,7 @@ from collections import namedtuple as _namedtuple
 import pandas as _pd
 
 from .base import TickerBase
+from .const import _BASE_URL_
 
 
 class Ticker(TickerBase):
@@ -40,9 +41,9 @@ class Ticker(TickerBase):
 
     def _download_options(self, date=None):
         if date is None:
-            url = f"{self._base_url}/v7/finance/options/{self.ticker}"
+            url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}"
         else:
-            url = f"{self._base_url}/v7/finance/options/{self.ticker}?date={date}"
+            url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}?date={date}"
 
         r = self._data.get(url=url, proxy=self.proxy).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
