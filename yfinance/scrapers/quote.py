@@ -251,8 +251,6 @@ class FastInfo:
         if self._currency is not None:
             return self._currency
 
-        if self._tkr._history_metadata is None:
-            self._get_1y_prices()
         md = self._tkr.get_history_metadata(proxy=self.proxy)
         self._currency = md["currency"]
         return self._currency
@@ -262,8 +260,6 @@ class FastInfo:
         if self._quote_type is not None:
             return self._quote_type
 
-        if self._tkr._history_metadata is None:
-            self._get_1y_prices()
         md = self._tkr.get_history_metadata(proxy=self.proxy)
         self._quote_type = md["instrumentType"]
         return self._quote_type
