@@ -772,7 +772,7 @@ def fix_Yahoo_dst_issue(df, interval):
         f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22, 23]))
         dst_error_hours = _np.array([0] * df.shape[0])
         dst_error_hours[f_pre_midnight] = 24 - df.index[f_pre_midnight].hour
-        df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
+        df.index += _pd.to_timedelta(dst_error_hours, unit='h')
     return df
 
 
