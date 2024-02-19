@@ -852,6 +852,7 @@ class PriceHistory:
         if f_zeroes.any():
             df2_zeroes = df2[f_zeroes]
             df2 = df2[~f_zeroes]
+            df = df[~f_zeroes]  # all row slicing must be applied to both df and df2
         else:
             df2_zeroes = None
         if df2.shape[0] <= 1:
@@ -958,7 +959,7 @@ class PriceHistory:
             if "Repaired?" not in df2_zeroes.columns:
                 df2_zeroes["Repaired?"] = False
             df2 = pd.concat([df2, df2_zeroes]).sort_index()
-            df2.index = pd.to_datetime()
+            df2.index = pd.to_datetime(df2.index)
 
         return df2
 
