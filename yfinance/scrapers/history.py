@@ -1200,7 +1200,6 @@ class PriceHistory:
 
         logger = utils.get_yf_logger()
 
-        df = df.sort_index(ascending=False)
         split = change
         split_rcp = 1.0 / split
         interday = interval in ['1d', '1wk', '1mo', '3mo']
@@ -1223,7 +1222,7 @@ class PriceHistory:
             logger.info("price-repair-split: Split ratio too close to 1. Won't repair")
             return df
 
-        df2 = df.copy()
+        df2 = df.copy().sort_index(ascending=False)
         if df2.index.tz is None:
             df2.index = df2.index.tz_localize(tz_exchange)
         elif df2.index.tz != tz_exchange:
@@ -1244,7 +1243,7 @@ class PriceHistory:
             idx_latest_active = int(idx_latest_active[0])
         log_msg = f'price-repair-split: appears_suspended={appears_suspended}, idx_latest_active={idx_latest_active}'
         if idx_latest_active is not None:
-            log_msg += f' ({df.index[idx_latest_active].date()})'
+            log_msg += f' ({df2.index[idx_latest_active].date()})'
         logger.debug(log_msg)
 
         if logger.isEnabledFor(logging.DEBUG):
@@ -1385,7 +1384,7 @@ class PriceHistory:
 
         # Update: if any 100x changes are soon after a stock split, so could be confused with split error, then abort
         threshold_days = 30
-        f_splits = df['Stock Splits'].to_numpy() != 0.0
+        f_splits = df2['Stock Splits'].to_numpy() != 0.0
         if change in [100.0, 0.01] and f_splits.any():
             indices_A = np.where(f_splits)[0]
             indices_B = np.where(f)[0]
@@ -1501,8 +1500,8 @@ class PriceHistory:
                     # Prune ranges that are older than start_min
                     for i in range(len(ranges)-1, -1, -1):
                         r = ranges[i]
-                        if df.index[r[0]].date() < start_min:
-                            logger.debug(f'price-repair-split: Pruning {c} range {df.index[r[0]]}->{df.index[r[1]-1]} because too old.')
+                        if df2.index[r[0]].date() < start_min:
+                            logger.debug(f'price-repair-split: Pruning {c} range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.')
                             del ranges[i]
 
                 if len(ranges) > 0:
@@ -1590,8 +1589,8 @@ class PriceHistory:
                 # Prune ranges that are older than start_min
                 for i in range(len(ranges)-1, -1, -1):
                     r = ranges[i]
-                    if df.index[r[0]].date() < start_min:
-                        logger.debug(f'price-repair-split: Pruning range {df.index[r[0]]}->{df.index[r[1]-1]} because too old.')
+                    if df2.index[r[0]].date() < start_min:
+                        logger.debug(f'price-repair-split: Pruning range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.')
                         del ranges[i]
             for r in ranges:
                 if r[2] == 'split':
@@ -1628,4 +1627,4 @@ class PriceHistory:
             else:
                 df2['Volume'] = df2['Volume'].round(0).astype('int')
 
-        return df2
+        return df2.sort_index()
