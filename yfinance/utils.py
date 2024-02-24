@@ -689,7 +689,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
                 df_main['Dividends'] = 0.0
                 return df_main
         else:
-            empty_row_data = {**{c:[_np.nan] for c in const.price_colnames}, 'Volume':[0]}
+            empty_row_data = {**{c:[_np.nan] for c in const._PRICE_COLNAMES_}, 'Volume':[0]}
             if interval == '1d':
                 # For 1d, add all out-of-range event dates
                 for i in _np.where(f_outOfRange)[0]:
@@ -772,7 +772,7 @@ def fix_Yahoo_dst_issue(df, interval):
         f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22, 23]))
         dst_error_hours = _np.array([0] * df.shape[0])
         dst_error_hours[f_pre_midnight] = 24 - df.index[f_pre_midnight].hour
-        df.index += _pd.TimedeltaIndex(dst_error_hours, 'h')
+        df.index += _pd.to_timedelta(dst_error_hours, 'h')
     return df
 
 
