@@ -277,7 +277,7 @@ class TestPriceHistory(unittest.TestCase):
         # Reproduce issue #1634 - 1d dividend out-of-range, should be prepended to prices
         div_dt = _pd.Timestamp(2022, 7, 21).tz_localize("America/New_York")
         df_dividends = _pd.DataFrame(data={"Dividends":[1.0]}, index=[div_dt])
-        df_prices = _pd.DataFrame(data={c:[1.0] for c in yf.const.price_colnames}|{'Volume':0}, index=[div_dt+_dt.timedelta(days=1)])
+        df_prices = _pd.DataFrame(data={c:[1.0] for c in yf.const._PRICE_COLNAMES_}|{'Volume':0}, index=[div_dt+_dt.timedelta(days=1)])
         df_merged = yf.utils.safe_merge_dfs(df_prices, df_dividends, '1d')
         self.assertEqual(df_merged.shape[0], 2)
         self.assertTrue(df_merged[df_prices.columns].iloc[1:].equals(df_prices))
@@ -470,6 +470,18 @@ class TestPriceRepair(unittest.TestCase):
         if cls.session is not None:
             cls.session.close()
 
+    def test_types(self):
+        tkr = 'INTC'
+        dat = yf.Ticker(tkr, session=self.session)
+
+        data = dat.history(period="3mo", interval="1d", prepost=True, repair=True)
+        self.assertIsInstance(data, _pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        reconstructed = dat._lazy_load_price_history()._reconstruct_intervals_batch(data, "1wk", True)
+        self.assertIsInstance(reconstructed, _pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
     def test_reconstruct_2m(self):
         # 2m repair requires 1m data.
         # Yahoo restricts 1m fetches to 7 days max within last 30 days.
@@ -494,6 +506,7 @@ class TestPriceRepair(unittest.TestCase):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
+        hist = dat._lazy_load_price_history()
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [470.5, 473.5, 474.5, 470],
@@ -517,7 +530,7 @@ class TestPriceRepair(unittest.TestCase):
 
         # Run test
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = hist._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -548,6 +561,7 @@ class TestPriceRepair(unittest.TestCase):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
+        hist = dat._lazy_load_price_history()
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [400,    398,    392.5,  417],
@@ -574,7 +588,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
+        df_repaired = hist._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -606,6 +620,7 @@ class TestPriceRepair(unittest.TestCase):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
+        hist = dat._lazy_load_price_history()
 
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
         df = _pd.DataFrame(data={"Open":      [478,    476,   476,   472],
@@ -627,7 +642,7 @@ class TestPriceRepair(unittest.TestCase):
         df.index = df.index.tz_localize(tz_exchange)
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        df_repaired = dat._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False)
+        df_repaired = hist._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False)
 
         # First test - no errors left
         for c in data_cols:
@@ -656,6 +671,7 @@ class TestPriceRepair(unittest.TestCase):
             for interval in ['1d', '1wk']:
                 dat = yf.Ticker(tkr, session=self.session)
                 tz_exchange = dat.fast_info["timezone"]
+                hist = dat._lazy_load_price_history()
 
                 data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
                 _dp = os.path.dirname(__file__)
@@ -672,7 +688,7 @@ class TestPriceRepair(unittest.TestCase):
                 df.index = _pd.to_datetime(df.index, utc=True).tz_convert(tz_exchange)
                 df = df.sort_index()
 
-                df_repaired = dat._fix_unit_switch(df_bad, interval, tz_exchange)
+                df_repaired = hist._fix_unit_switch(df_bad, interval, tz_exchange)
                 df_repaired = df_repaired.sort_index()
 
                 # First test - no errors left
@@ -704,6 +720,7 @@ class TestPriceRepair(unittest.TestCase):
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
+        hist = dat._lazy_load_price_history()
         tz_exchange = dat.fast_info["timezone"]
 
         df_bad = _pd.DataFrame(data={"Open":      [0,      102.04, 102.04],
@@ -719,7 +736,7 @@ class TestPriceRepair(unittest.TestCase):
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
 
-        repaired_df = dat._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
+        repaired_df = hist._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
 
         correct_df = df_bad.copy()
         correct_df.loc["2022-11-01", "Open"] = 102.080002
@@ -753,6 +770,7 @@ class TestPriceRepair(unittest.TestCase):
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
         df.index = df.index.tz_localize(tz_exchange)
+        hist = dat._lazy_load_price_history()
 
         rtol = 5e-3
         for i in [0, 1, 2]:
@@ -761,7 +779,7 @@ class TestPriceRepair(unittest.TestCase):
                 df_slice_bad = df_slice.copy()
                 df_slice_bad.loc[df_slice_bad.index[j], "Adj Close"] = 0.0
 
-                df_slice_bad_repaired = dat._fix_zeroes(df_slice_bad, "1d", tz_exchange, prepost=False)
+                df_slice_bad_repaired = hist._fix_zeroes(df_slice_bad, "1d", tz_exchange, prepost=False)
                 for c in ["Close", "Adj Close"]:
                     self.assertTrue(_np.isclose(df_slice_bad_repaired[c], df_slice[c], rtol=rtol).all())
                 self.assertTrue("Repaired?" in df_slice_bad_repaired.columns)
@@ -771,8 +789,9 @@ class TestPriceRepair(unittest.TestCase):
         tkr = "INTC"
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
+        hist = dat._lazy_load_price_history()
 
-        correct_df = dat.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
+        correct_df = hist.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
 
         df_bad = correct_df.copy()
         bad_idx = correct_df.index[10]
@@ -783,7 +802,7 @@ class TestPriceRepair(unittest.TestCase):
         df_bad.loc[bad_idx, "Adj Close"] = _np.nan
         df_bad.loc[bad_idx, "Volume"] = 0
 
-        repaired_df = dat._fix_zeroes(df_bad, "1h", tz_exchange, prepost=False)
+        repaired_df = hist._fix_zeroes(df_bad, "1h", tz_exchange, prepost=False)
 
         for c in ["Open", "Low", "High", "Close"]:
             try:
@@ -812,11 +831,12 @@ class TestPriceRepair(unittest.TestCase):
             for interval in intervals:
                 dat = yf.Ticker(tkr, session=self.session)
                 tz_exchange = dat.fast_info["timezone"]
+                hist = dat._lazy_load_price_history()
 
                 _dp = os.path.dirname(__file__)
                 df_good = dat.history(start='2020-01-01', end=_dt.date.today(), interval=interval, auto_adjust=False)
 
-                repaired_df = dat._fix_bad_stock_split(df_good, interval, tz_exchange)
+                repaired_df = hist._fix_bad_stock_split(df_good, interval, tz_exchange)
 
                 # Expect no change from repair
                 df_good = df_good.sort_index()
@@ -836,6 +856,7 @@ class TestPriceRepair(unittest.TestCase):
         for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz_exchange = dat.fast_info["timezone"]
+            hist = dat._lazy_load_price_history()
 
             _dp = os.path.dirname(__file__)
             interval = '1d'
@@ -846,7 +867,7 @@ class TestPriceRepair(unittest.TestCase):
             df_bad = _pd.read_csv(fp, index_col="Date")
             df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
 
-            repaired_df = dat._fix_bad_stock_split(df_bad, "1d", tz_exchange)
+            repaired_df = hist._fix_bad_stock_split(df_bad, "1d", tz_exchange)
 
             fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split-fixed.csv")
             correct_df = _pd.read_csv(fp, index_col="Date")
@@ -876,11 +897,12 @@ class TestPriceRepair(unittest.TestCase):
             for interval in intervals:
                 dat = yf.Ticker(tkr, session=self.session)
                 tz_exchange = dat.fast_info["timezone"]
+                hist = dat._lazy_load_price_history()
 
                 _dp = os.path.dirname(__file__)
-                df_good = dat.history(start='2020-11-30', end='2021-04-01', interval=interval, auto_adjust=False)
+                df_good = hist.history(start='2020-11-30', end='2021-04-01', interval=interval, auto_adjust=False)
 
-                repaired_df = dat._fix_bad_stock_split(df_good, interval, tz_exchange)
+                repaired_df = hist._fix_bad_stock_split(df_good, interval, tz_exchange)
 
                 # Expect no change from repair
                 df_good = df_good.sort_index()
@@ -900,12 +922,13 @@ class TestPriceRepair(unittest.TestCase):
 
         dat = yf.Ticker(tkr, session=self.session)
         tz_exchange = dat.fast_info["timezone"]
+        hist = dat._lazy_load_price_history()
 
         _dp = os.path.dirname(__file__)
         df_bad = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust.csv"), index_col="Date")
         df_bad.index = _pd.to_datetime(df_bad.index)
 
-        repaired_df = dat._fix_missing_div_adjust(df_bad, "1d", tz_exchange)
+        repaired_df = hist._fix_missing_div_adjust(df_bad, "1d", tz_exchange)
 
         correct_df = _pd.read_csv(os.path.join(_dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust-fixed.csv"), index_col="Date")
         correct_df.index = _pd.to_datetime(correct_df.index)

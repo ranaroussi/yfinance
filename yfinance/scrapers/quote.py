@@ -1,6 +1,5 @@
 import datetime
 import json
-import logging
 import warnings
 from collections.abc import MutableMapping
 
@@ -182,10 +181,7 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            # Temporarily disable error printing
-            logging.disable(logging.CRITICAL)
             self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, keepna=True, proxy=self.proxy)
-            logging.disable(logging.NOTSET)
             self._md = self._tkr.get_history_metadata(proxy=self.proxy)
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -211,18 +207,12 @@ class FastInfo:
 
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
-            # Temporarily disable error printing
-            logging.disable(logging.CRITICAL)
             self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, proxy=self.proxy)
-            logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
-            # Temporarily disable error printing
-            logging.disable(logging.CRITICAL)
             self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, proxy=self.proxy)
-            logging.disable(logging.NOTSET)
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -261,8 +251,6 @@ class FastInfo:
         if self._currency is not None:
             return self._currency
 
-        if self._tkr._history_metadata is None:
-            self._get_1y_prices()
         md = self._tkr.get_history_metadata(proxy=self.proxy)
         self._currency = md["currency"]
         return self._currency
@@ -272,8 +260,6 @@ class FastInfo:
         if self._quote_type is not None:
             return self._quote_type
 
-        if self._tkr._history_metadata is None:
-            self._get_1y_prices()
         md = self._tkr.get_history_metadata(proxy=self.proxy)
         self._quote_type = md["instrumentType"]
         return self._quote_type
