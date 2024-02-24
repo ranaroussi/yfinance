@@ -151,4 +151,5 @@ quote_summary_valid_modules = (
     "sectorTrend",
     "recommendationTrend",
     "futuresChain",
+    "topHoldings"
 )

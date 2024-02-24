@@ -282,3 +282,7 @@ class Ticker(TickerBase):
     @property
     def history_metadata(self) -> dict:
         return self.get_history_metadata()
+
+    @property
+    def major_holdings(self):
+        return self.get_major_holdings()
