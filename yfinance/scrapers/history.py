@@ -852,7 +852,7 @@ class PriceHistory:
         if f_zeroes.any():
             df2_zeroes = df2[f_zeroes]
             df2 = df2[~f_zeroes]
-            df = df[~f_zeroes]  # all row slicing must be applied to both df and df2
+            df_orig = df[~f_zeroes]  # all row slicing must be applied to both df and df2
         else:
             df2_zeroes = None
         if df2.shape[0] <= 1:
@@ -954,7 +954,7 @@ class PriceHistory:
             fj = f_either[:, j]
             if fj.any():
                 c = data_cols[j]
-                df2.loc[fj, c] = df.loc[fj, c]
+                df2.loc[fj, c] = df_orig.loc[fj, c]
         if df2_zeroes is not None:
             if "Repaired?" not in df2_zeroes.columns:
                 df2_zeroes["Repaired?"] = False
