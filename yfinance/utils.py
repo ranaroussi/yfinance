@@ -184,7 +184,7 @@ def get_all_by_isin(isin, proxy=None, session=None):
         raise ValueError("Invalid ISIN number")
     session = session or _requests
     url = f"{_BASE_URL_}/v1/finance/search?q={isin}"
-    data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
+    data = session.get(url=url, proxies=proxy, headers=user_agent_headers, timeout=5)
     try:
         data = data.json()
         ticker = data.get('quotes', [{}])[0]
