@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import appdirs as _ad
+import platformdirs as _ad
 import datetime as _dt
 import sys
 import os
