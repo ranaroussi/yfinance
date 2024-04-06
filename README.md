@@ -228,23 +228,6 @@ yfinance?](https://stackoverflow.com/questions/63107801)
         -   How to download single or multiple tickers into a single
             dataframe with single level column names and a ticker column
 
-### `pandas_datareader` override
-
-If your code uses `pandas_datareader` and you want to download data
-faster, you can "hijack" `pandas_datareader.data.get_data_yahoo()`
-method to use **yfinance** while making sure the returned data is in the
-same format as **pandas\_datareader**'s `get_data_yahoo()`.
-
-```python
-from pandas_datareader import data as pdr
-
-import yfinance as yf
-yf.pdr_override() # <== that's all it takes :-)
-
-# download dataframe
-data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
-```
-
 ### Persistent cache store
 
 To reduce Yahoo, yfinance store some data locally: timezones to localize dates, and cookie. Cache location is:
