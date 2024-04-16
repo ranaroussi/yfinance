@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.38
+------
+Fix holders & insiders #1908
+
 0.2.37
 ------
 Small fixes:
