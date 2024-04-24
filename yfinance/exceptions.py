@@ -37,6 +37,7 @@ class YFPricesMissingError(YFTickerMissingError):
 
 
 class YFEarningsDateMissing(YFTickerMissingError):
+    # note that this does not get raised. Added in case of raising it in the future
     def __init__(self, ticker):
         super().__init__(ticker, "No earnings dates found")
 

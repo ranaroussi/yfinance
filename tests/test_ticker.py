@@ -12,7 +12,7 @@ import pandas as pd
 
 from .context import yfinance as yf
 from .context import session_gbl
-from yfinance.exceptions import YFNotImplementedError
+from yfinance.exceptions import YFChartError, YFInvalidPeriodError, YFNotImplementedError, YFPricesMissingError, YFTickerMissingError, YFTzMissingError
 
 
 import unittest
@@ -129,6 +129,30 @@ class TestTicker(unittest.TestCase):
         assert isinstance(dat.actions, pd.DataFrame)
         assert dat.actions.empty
 
+    def test_invalid_period(self):
+        tkr = 'VALE'
+        dat = yf.Ticker(tkr, session=self.session)
+        with self.assertRaises(YFInvalidPeriodError):
+            dat.history(period="2wks", interval="1d", raise_errors=True)
+        with self.assertRaises(YFInvalidPeriodError):
+            dat.history(period="2mo", interval="1d", raise_errors=True)
+
+
+    def test_prices_missing(self):
+        # this test will need to be updated every time someone wants to run a test
+        # hard to find a ticker that matches this error other than options
+        # META call option, 2024 April 26th @ strike of 180000
+        tkr = 'META240426C00180000'
+        dat = yf.Ticker(tkr, session=self.session)
+        with self.assertRaises(YFPricesMissingError):
+            dat.history(period="5d", interval="1m", raise_errors=True)
+
+    def test_ticker_missing(self):
+        tkr = 'ATVI'
+        dat = yf.Ticker(tkr, session=self.session)
+        # A missing ticker can trigger either a niche error or the generalized error
+        with self.assertRaises((YFTickerMissingError, YFTzMissingError, YFChartError)):
+            dat.history(period="3mo", interval="1d", raise_errors=True)
 
     def test_goodTicker(self):
         # that yfinance works when full api is called on same instance of ticker
@@ -150,8 +174,8 @@ class TestTicker(unittest.TestCase):
                 dat.fast_info[k]
 
             for attribute_name, attribute_type in ticker_attributes:
-                assert_attribute_type(self, dat, attribute_name, attribute_type) 
-            
+                assert_attribute_type(self, dat, attribute_name, attribute_type)
+
     def test_goodTicker_withProxy(self):
         tkr = "IBM"
         dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
@@ -163,7 +187,7 @@ class TestTicker(unittest.TestCase):
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)
 
-        
+
 class TestTickerHistory(unittest.TestCase):
     session = None
 
@@ -370,7 +394,7 @@ class TestTickerHolders(unittest.TestCase):
 
         data_cached = self.ticker.insider_transactions
         self.assertIs(data, data_cached, "data not cached")
-    
+
     def test_insider_purchases(self):
         data = self.ticker.insider_purchases
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
@@ -402,9 +426,9 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
-        
-        # For ticker 'BSE.AX' (and others), Yahoo not returning 
-        # full quarterly financials (usually cash-flow) with all entries, 
+
+        # For ticker 'BSE.AX' (and others), Yahoo not returning
+        # full quarterly financials (usually cash-flow) with all entries,
         # instead returns a smaller version in different data store.
         self.ticker_old_fmt = yf.Ticker("BSE.AX", session=self.session)
 
@@ -713,7 +737,7 @@ class TestTickerAnalysts(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
-        
+
     def tearDown(self):
         self.ticker = None
 
@@ -813,7 +837,6 @@ class TestTickerInfo(unittest.TestCase):
         # This one should have a trailing PEG ratio
         data2 = self.tickers[2].info
         self.assertIsInstance(data2['trailingPegRatio'], float)
-        pass
 
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()
@@ -851,7 +874,7 @@ class TestTickerInfo(unittest.TestCase):
     #             key_rename_map[yf.utils.snake_case_2_camelCase(k)] = key_rename_map[k]
 
     #     # Note: share count items in info[] are bad. Sometimes the float > outstanding!
-    #     # So often fast_info["shares"] does not match. 
+    #     # So often fast_info["shares"] does not match.
     #     # Why isn't fast_info["shares"] wrong? Because using it to calculate market cap always correct.
     #     bad_keys = {"shares"}
 
