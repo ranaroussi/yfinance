@@ -191,8 +191,8 @@ class PriceHistory:
             fail = True
         elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"]:
             fail = True
-        elif period is not None and "timestamp" not in data["chart"]["result"][0] and period not in \
-                self._history_metadata["validRanges"]:
+        elif period is not None and period not in self._history_metadata["validRanges"]:
+            # even if timestamp is in the data, the data doesn't encompass the period requested
             # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
             _exception = YFInvalidPeriodError(self.ticker, period, self._history_metadata['validRanges'])
             fail = True
@@ -222,6 +222,7 @@ class PriceHistory:
                     quotes = quotes.iloc[0:quotes.shape[0] - 1]
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
+            print(err_msg)
             shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
             if raise_errors:
                 raise _exception
