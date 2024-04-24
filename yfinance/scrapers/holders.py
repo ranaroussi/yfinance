@@ -6,7 +6,7 @@ import requests
 from yfinance import utils
 from yfinance.data import YfData
 from yfinance.const import _BASE_URL_
-from yfinance.exceptions import YFinanceDataException
+from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
 
@@ -104,7 +104,7 @@ class Holders:
             self._parse_insider_holders(data["insiderHolders"])
             self._parse_net_share_purchase_activity(data["netSharePurchaseActivity"])
         except (KeyError, IndexError):
-            raise YFinanceDataException("Failed to parse holders json data.")
+            raise YFDataException("Failed to parse holders json data.")
 
     @staticmethod
     def _parse_raw_values(data):
@@ -189,7 +189,7 @@ class Holders:
         if not df.empty:
             df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
             df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
-            
+
             df.rename(columns={
                 "name": "Name",
                 "relation": "Position",
@@ -242,5 +242,3 @@ class Holders:
             }
         ).convert_dtypes()
         self._insider_purchases = df
-
-    
