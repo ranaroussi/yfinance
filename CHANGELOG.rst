@@ -1,6 +1,27 @@
 Change Log
 ===========
 
+0.2.38
+------
+Fix holders & insiders #1908
+
+0.2.37
+------
+Small fixes:
+- Fix Pandas warnings #1838 #1844
+- Fix price repair bug, typos, refactor #1866 #1865 #1849
+- Stop disabling logging #1841
+
+0.2.36
+------
+Small fixes:
+- Update README.md for better copy-ability  #1823 
+- Name download() column levels  #1795 
+- Fix history(keepna=False) when repair=True  #1824 
+- Replace empty list with empty pd.Series  #1724 
+- Handle peewee with old sqlite  #1827 
+- Fix JSON error handling  #1830 #1833
+
 0.2.35
 ------
 Internal fixes for 0.2.34
