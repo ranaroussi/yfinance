@@ -43,14 +43,14 @@ class TestPriceHistory(unittest.TestCase):
 
             df_tkrs = df.columns.levels[1]
             self.assertEqual(sorted(tkrs), sorted(df_tkrs))
-    
+
     def test_download_with_invalid_ticker(self):
         #Checks if using an invalid symbol gives the same output as not using an invalid symbol in combination with a valid symbol (AAPL)
         #Checks to make sure that invalid symbol handling for the date column is the same as the base case (no invalid symbols)
 
         invalid_tkrs = ["AAPL", "ATVI"] #AAPL exists and ATVI does not exist
         valid_tkrs = ["AAPL", "INTC"] #AAPL and INTC both exist
-        
+
         data_invalid_sym = yf.download(invalid_tkrs, start='2023-11-16', end='2023-11-17')
         data_valid_sym = yf.download(valid_tkrs, start='2023-11-16', end='2023-11-17')
 
@@ -61,8 +61,7 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
-
-            dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
+            dt_utc = _dt.datetime.now(_dt.UTC)
             dt = dt_utc.astimezone(_tz.timezone(tz))
             start_d = dt.date() - _dt.timedelta(days=7)
             df = dat.history(start=start_d, interval="1h")
@@ -82,7 +81,7 @@ class TestPriceHistory(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
-            dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
+            dt_utc = _dt.datetime.now(_dt.UTC)
             dt = dt_utc.astimezone(_tz.timezone(tz))
             if dt.time() < _dt.time(17, 0):
                 continue
