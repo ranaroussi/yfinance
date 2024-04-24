@@ -32,6 +32,7 @@ import requests
 
 from . import utils, cache
 from .data import YfData
+from .exceptions import YFinanceEarningsDateMissing
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
@@ -192,7 +193,7 @@ class TickerBase:
             if as_dict:
                 return data.to_dict()
             return data
-    
+
     def get_insider_purchases(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_purchases
@@ -567,7 +568,8 @@ class TickerBase:
                 page_size = min(limit - len(dates), page_size)
 
         if dates is None or dates.shape[0] == 0:
-            err_msg = "No earnings dates found, symbol may be delisted"
+            _exception = YFinanceEarningsDateMissing(self.ticker)
+            err_msg = str(_exception)
             logger.error(f'{self.ticker}: {err_msg}')
             return None
         dates = dates.reset_index(drop=True)
