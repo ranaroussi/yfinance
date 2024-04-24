@@ -1,13 +1,13 @@
-class YFinanceException(Exception):
+class YFException(Exception):
     def __init__(self, description=""):
         super().__init__(description)
 
 
-class YFinanceDataException(YFinanceException):
+class YFDataException(YFException):
     pass
 
 
-class YFinanceChartError(YFinanceException):
+class YFChartError(YFException):
     def __init__(self, ticker, description):
         self.ticker = ticker
         super().__init__(f"{self.ticker}: {description}")
@@ -18,30 +18,30 @@ class YFNotImplementedError(NotImplementedError):
         super().__init__(f"Have not implemented fetching '{method_name}' from Yahoo API")
 
 
-class YFinanceTickerMissingError(YFinanceException):
+class YFTickerMissingError(YFException):
     def __init__(self, ticker, rationale):
         super().__init__(f"${ticker}: possibly delisted; {rationale}")
         self.rationale = rationale
         self.ticker = rationale
 
 
-class YFinanceTimezoneMissingError(YFinanceTickerMissingError):
+class YFTzMissingError(YFTickerMissingError):
     def __init__(self, ticker):
         super().__init__(ticker, "No timezone found")
 
 
-class YFinancePriceDataMissingError(YFinanceTickerMissingError):
+class YFPricesMissingError(YFTickerMissingError):
     def __init__(self, ticker, debug_info):
         self.debug_info = debug_info
         super().__init__(ticker, f"No price data found {debug_info}")
 
 
-class YFinanceEarningsDateMissing(YFinanceTickerMissingError):
+class YFEarningsDateMissing(YFTickerMissingError):
     def __init__(self, ticker):
         super().__init__(ticker, "No earnings dates found")
 
 
-class YFinanceInvalidPeriodError(YFinanceException):
+class YFInvalidPeriodError(YFException):
     def __init__(self, ticker, invalid_period, valid_ranges):
         self.ticker = ticker
         self.invalid_period = invalid_period

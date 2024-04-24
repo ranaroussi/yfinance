@@ -7,7 +7,7 @@ import time as _time
 
 from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
-from yfinance.exceptions import YFinanceChartError, YFinanceInvalidPeriodError, YFinancePriceDataMissingError, YFinanceTimezoneMissingError
+from yfinance.exceptions import YFChartError, YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError
 
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None, proxy=None):
@@ -81,7 +81,7 @@ class PriceHistory:
             tz = self.tz
             if tz is None:
                 # Every valid ticker has a timezone. A missing timezone is a problem problem
-                _exception = YFinanceTimezoneMissingError(self.ticker)
+                _exception = YFTzMissingError(self.ticker)
                 err_msg = str(_exception)
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
@@ -161,7 +161,7 @@ class PriceHistory:
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
-        _exception = YFinancePriceDataMissingError(self.ticker, '')
+        _exception = YFPricesMissingError(self.ticker, '')
         if start or period is None or period.lower() == "max":
             _price_data_debug += f' ({params["interval"]} '
             if start_user is not None:
@@ -187,18 +187,18 @@ class PriceHistory:
             _price_data_debug += f"(Yahoo status_code = {data['status_code']})"
             fail = True
         elif "chart" in data and data["chart"]["error"]:
-            _exception = YFinanceChartError(self.ticker, data["chart"]["error"]["description"])
+            _exception = YFChartError(self.ticker, data["chart"]["error"]["description"])
             fail = True
         elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"]:
             fail = True
         elif period is not None and "timestamp" not in data["chart"]["result"][0] and period not in \
                 self._history_metadata["validRanges"]:
             # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
-            _exception = YFinanceInvalidPeriodError(self.ticker, period, self._history_metadata['validRanges'])
+            _exception = YFInvalidPeriodError(self.ticker, period, self._history_metadata['validRanges'])
             fail = True
 
-        if isinstance(_exception, YFinancePriceDataMissingError):
-            _exception = YFinancePriceDataMissingError(self.ticker, _price_data_debug)
+        if isinstance(_exception, YFPricesMissingError):
+            _exception = YFPricesMissingError(self.ticker, _price_data_debug)
 
         err_msg = str(_exception)
         if fail:

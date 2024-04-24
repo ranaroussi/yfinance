@@ -32,7 +32,7 @@ import requests
 
 from . import utils, cache
 from .data import YfData
-from .exceptions import YFinanceEarningsDateMissing
+from .exceptions import YFEarningsDateMissing
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
@@ -568,7 +568,7 @@ class TickerBase:
                 page_size = min(limit - len(dates), page_size)
 
         if dates is None or dates.shape[0] == 0:
-            _exception = YFinanceEarningsDateMissing(self.ticker)
+            _exception = YFEarningsDateMissing(self.ticker)
             err_msg = str(_exception)
             logger.error(f'{self.ticker}: {err_msg}')
             return None

@@ -10,7 +10,7 @@ import requests
 from yfinance import utils
 from yfinance.data import YfData
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_
-from yfinance.exceptions import YFNotImplementedError, YFinanceDataException, YFinanceException
+from yfinance.exceptions import YFNotImplementedError, YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -578,7 +578,7 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
                 except (KeyError, IndexError):
-                    raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
                 self._recommendations = pd.DataFrame(data)
         return self._recommendations
 
@@ -592,14 +592,14 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
                     if len(data) == 0:
-                        raise YFinanceDataException(f"No upgrade/downgrade history found for {self._symbol}")
+                        raise YFDataException(f"No upgrade/downgrade history found for {self._symbol}")
                     df = pd.DataFrame(data)
                     df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
                     df.set_index('GradeDate', inplace=True)
                     df.index = pd.to_datetime(df.index, unit='s')
                     self._upgrades_downgrades = df
                 except (KeyError, IndexError):
-                    raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
         return self._upgrades_downgrades
 
     @property
@@ -614,11 +614,11 @@ class Quote:
 
     def _fetch(self, proxy, modules: list):
         if not isinstance(modules, list):
-            raise YFinanceException("Should provide a list of modules, see available modules using `valid_modules`")
+            raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
         modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
         if len(modules) == 0:
-            raise YFinanceException("No valid modules provided, see available modules using `valid_modules`")
+            raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
@@ -721,7 +721,7 @@ class Quote:
             json_data = json.loads(json_str)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:
-                raise YFinanceException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
+                raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
             for k in keys:
                 keydict = json_result["result"][0]
                 if k in keydict:
@@ -754,4 +754,4 @@ class Quote:
                 self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
                 self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
         except (KeyError, IndexError):
-            raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+            raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
