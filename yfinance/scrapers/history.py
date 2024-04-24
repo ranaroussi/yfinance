@@ -224,7 +224,7 @@ class PriceHistory:
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
             if raise_errors:
-                raise Exception(err_msg)
+                raise _exception
             else:
                 logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
