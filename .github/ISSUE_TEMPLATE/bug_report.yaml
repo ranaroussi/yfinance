@@ -6,23 +6,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        # IMPORTANT - Read and follow these instructions carefully. Help us help you.
-
-        ### Does issue already exist?
-
-        Use the search tool. Don't annoy everyone by duplicating existing Issues.
+        # !!! IMPORTANT !!! FOLLOW THESE INSTRUCTIONS CAREFULLY !!!
 
         ### Are you up-to-date?
 
-        Upgrade to the latest version and confirm the issue/bug is still there.
+        Upgrade to the latest version: `$ pip install yfinance --upgrade --no-cache-dir`
 
-        `$ pip install yfinance --upgrade --no-cache-dir`
-
-        Confirm by running:
-
-        `import yfinance as yf ; print(yf.__version__)`
-
-        and comparing against [PIP](https://pypi.org/project/yfinance/#history).
+        Confirm latest version by running: `import yfinance as yf ; print(yf.__version__)` and comparing against [PyPI](https://pypi.org/project/yfinance/#history).
 
         ### Does Yahoo actually have the data?
 
@@ -33,6 +23,10 @@ body:
         ### Are you spamming Yahoo?
 
         Yahoo Finance free service has rate-limiting https://github.com/ranaroussi/yfinance/discussions/1513. Once limit hit, Yahoo can delay, block, or return bad data -> not a `yfinance` bug.
+        
+        ### Does issue already exist?
+
+        Use the search tool. Don't duplicate existing issues.
         
   - type: markdown
     attributes:
