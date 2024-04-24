@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+0.2.37
+------
+Small fixes:
+- Fix Pandas warnings #1838 #1844
+- Fix price repair bug, typos, refactor #1866 #1865 #1849
+- Stop disabling logging #1841
+
 0.2.36
 ------
 Small fixes:
