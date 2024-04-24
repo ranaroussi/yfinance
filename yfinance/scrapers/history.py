@@ -1,4 +1,3 @@
-
 import datetime as _datetime
 import dateutil as _dateutil
 import logging
@@ -8,6 +7,7 @@ import time as _time
 
 from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
+from yfinance.exceptions import YFinanceChartError, YFinanceInvalidPeriodError, YFinancePriceDataMissingError, YFinanceTimezoneMissingError
 
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None, proxy=None):
@@ -23,7 +23,7 @@ class PriceHistory:
 
         # Limit recursion depth when repairing prices
         self._reconstruct_start_interval = None
-        
+
     @utils.log_indent_decorator
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
@@ -80,14 +80,15 @@ class PriceHistory:
             # Check can get TZ. Fail => probably delisted
             tz = self.tz
             if tz is None:
-                # Every valid ticker has a timezone. Missing = problem
-                err_msg = "No timezone found, symbol may be delisted"
+                # Every valid ticker has a timezone. A missing timezone is a problem problem
+                _exception = YFinanceTimezoneMissingError(self.ticker)
+                err_msg = str(_exception)
                 shared._DFS[self.ticker] = utils.empty_df()
-                shared._ERRORS[self.ticker] = err_msg
+                shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
                 if raise_errors:
-                    raise Exception(f'{self.ticker}: {err_msg}')
+                    raise _exception
                 else:
-                    logger.error(f'{self.ticker}: {err_msg}')
+                    logger.error(err_msg)
                 return utils.empty_df()
 
             if end is None:
@@ -159,48 +160,54 @@ class PriceHistory:
             self._history_metadata = {}
 
         intraday = params["interval"][-1] in ("m", 'h')
-        err_msg = "No price data found, symbol may be delisted"
+        _price_data_debug = ''
+        _exception = YFinancePriceDataMissingError(self.ticker, '')
         if start or period is None or period.lower() == "max":
-            err_msg += f' ({params["interval"]} '
+            _price_data_debug += f' ({params["interval"]} '
             if start_user is not None:
-                err_msg += f'{start_user}'
+                _price_data_debug += f'{start_user}'
             elif not intraday:
-                err_msg += f'{pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz).date()}'
+                _price_data_debug += f'{pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz).date()}'
             else:
-                err_msg += f'{pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz)}'
-            err_msg += ' -> '
+                _price_data_debug += f'{pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz)}'
+            _price_data_debug += ' -> '
             if end_user is not None:
-                err_msg += f'{end_user})'
+                _price_data_debug += f'{end_user})'
             elif not intraday:
-                err_msg += f'{pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz).date()})'
+                _price_data_debug += f'{pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz).date()})'
             else:
-                err_msg += f'{pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz)})'
+                _price_data_debug += f'{pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz)})'
         else:
-            err_msg += f' (period={period})'
+            _price_data_debug += f' (period={period})'
 
         fail = False
         if data is None or not isinstance(data, dict):
             fail = True
         elif isinstance(data, dict) and 'status_code' in data:
-            err_msg += f"(Yahoo status_code = {data['status_code']})"
+            _price_data_debug += f"(Yahoo status_code = {data['status_code']})"
             fail = True
         elif "chart" in data and data["chart"]["error"]:
-            err_msg = data["chart"]["error"]["description"]
+            _exception = YFinanceChartError(self.ticker, data["chart"]["error"]["description"])
             fail = True
         elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"]:
             fail = True
         elif period is not None and "timestamp" not in data["chart"]["result"][0] and period not in \
                 self._history_metadata["validRanges"]:
             # User provided a bad period. The minimum should be '1d', but sometimes Yahoo accepts '1h'.
-            err_msg = f"Period '{period}' is invalid, must be one of {self._history_metadata['validRanges']}"
+            _exception = YFinanceInvalidPeriodError(self.ticker, period, self._history_metadata['validRanges'])
             fail = True
+
+        if isinstance(_exception, YFinancePriceDataMissingError):
+            _exception = YFinancePriceDataMissingError(self.ticker, _price_data_debug)
+
+        err_msg = str(_exception)
         if fail:
             shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
+            shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
             if raise_errors:
-                raise Exception(f'{self.ticker}: {err_msg}')
+                raise _exception
             else:
-                logger.error(f'{self.ticker}: {err_msg}')
+                logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
             return utils.empty_df()
@@ -215,11 +222,11 @@ class PriceHistory:
                     quotes = quotes.iloc[0:quotes.shape[0] - 1]
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
+            shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
             if raise_errors:
-                raise Exception(f'{self.ticker}: {err_msg}')
+                raise Exception(err_msg)
             else:
-                logger.error(f'{self.ticker}: {err_msg}')
+                logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
             return shared._DFS[self.ticker]
