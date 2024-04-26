@@ -1014,9 +1014,13 @@ class PriceHistory:
             df2 = df2[~f_zero_or_nan_ignore]
             f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
 
-        f_high_low_good = (~df2["High"].isna().to_numpy()) & (~df2["Low"].isna().to_numpy())
         f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
-        f_vol_bad = (df2["Volume"] == 0).to_numpy() & f_high_low_good & f_change
+        if self.ticker.endswith("=X"):
+            # FX, volume always 0
+            f_vol_bad = None
+        else:
+            f_high_low_good = (~df2["High"].isna().to_numpy()) & (~df2["Low"].isna().to_numpy())
+            f_vol_bad = (df2["Volume"] == 0).to_numpy() & f_high_low_good & f_change
 
         # If stock split occurred, then trading must have happened.
         # I should probably rename the function, because prices aren't zero ...
@@ -1029,7 +1033,9 @@ class PriceHistory:
 
         # Check whether worth attempting repair
         f_prices_bad = f_prices_bad.to_numpy()
-        f_bad_rows = f_prices_bad.any(axis=1) | f_vol_bad
+        f_bad_rows = f_prices_bad.any(axis=1)
+        if f_vol_bad is not None:
+            f_bad_rows = f_bad_rows | f_vol_bad
         if not f_bad_rows.any():
             logger.info("price-repair-missing: No price=0 errors to repair")
             if "Repaired?" not in df.columns:
