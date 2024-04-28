@@ -210,7 +210,7 @@ class PriceHistory:
             quotes = utils.parse_quotes(data["chart"]["result"][0])
             # Yahoo bug fix - it often appends latest price even if after end date
             if end and not quotes.empty:
-                endDt = pd.to_datetime(_datetime.datetime.utcfromtimestamp(end))
+                endDt = pd.to_datetime(end, unit='s')
                 if quotes.index[quotes.shape[0] - 1] >= endDt:
                     quotes = quotes.iloc[0:quotes.shape[0] - 1]
         except Exception:
