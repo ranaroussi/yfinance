@@ -42,6 +42,14 @@ Yahoo! finance API is intended for personal use only.**
 
 ---
 
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Advanced](#logging)
+- [Wiki](https://github.com/ranaroussi/yfinance/wiki)
+- [Contribute](#developers-want-to-contribute)
+
+---
+
 ## Installation
 
 Install `yfinance` using `pip`:
