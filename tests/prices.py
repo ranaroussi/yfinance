@@ -62,7 +62,7 @@ class TestPriceHistory(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
-            dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
+            dt_utc = _pd.Timestamp.utcnow()
             dt = dt_utc.astimezone(_tz.timezone(tz))
             start_d = dt.date() - _dt.timedelta(days=7)
             df = dat.history(start=start_d, interval="1h")
@@ -82,7 +82,7 @@ class TestPriceHistory(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
-            dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
+            dt_utc = _pd.Timestamp.utcnow()
             dt = dt_utc.astimezone(_tz.timezone(tz))
             if dt.time() < _dt.time(17, 0):
                 continue
