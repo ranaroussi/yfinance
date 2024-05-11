@@ -116,7 +116,7 @@ msft.recommendations
 msft.recommendations_summary
 msft.upgrades_downgrades
 
-# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
+# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default.
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates
 
@@ -183,7 +183,7 @@ data = yf.download("SPY AAPL", period="1mo")
 
 ### Smarter scraping
 
-Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). These packages help cache calls such that Yahoo is not spammed with requests. 
+Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). These packages help cache calls such that Yahoo is not spammed with requests.
 
 To use a custom `requests` session, pass a `session=` argument to
 the Ticker constructor. This allows for caching calls to the API as well as a custom way to modify requests via  the `User-agent` header.
@@ -231,11 +231,13 @@ yfinance?](https://stackoverflow.com/questions/63107801)
 ### Persistent cache store
 
 To reduce Yahoo, yfinance store some data locally: timezones to localize dates, and cookie. Cache location is:
+
 - Windows = C:/Users/\<USER\>/AppData/Local/py-yfinance
 - Linux = /home/\<USER\>/.cache/py-yfinance
 - MacOS = /Users/\<USER\>/Library/Caches/py-yfinance
 
 You can direct cache to use a different location with `set_tz_cache_location()`:
+
 ```python
 import yfinance as yf
 yf.set_tz_cache_location("custom/cache/location")
@@ -262,7 +264,7 @@ intended for research and educational purposes. You should refer to Yahoo!'s ter
 ([here](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm),
 [here](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html), and
 [here](https://policies.yahoo.com/us/en/yahoo/terms/index.htm)) for
-detailes on your rights to use the actual data downloaded.
+details on your rights to use the actual data downloaded.
 
 ---
 

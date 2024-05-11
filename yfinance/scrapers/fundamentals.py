@@ -5,7 +5,7 @@ import pandas as pd
 
 from yfinance import utils, const
 from yfinance.data import YfData
-from yfinance.exceptions import YFinanceException, YFNotImplementedError
+from yfinance.exceptions import YFException, YFNotImplementedError
 
 
 class Fundamentals:
@@ -70,7 +70,7 @@ class Financials:
     @utils.log_indent_decorator
     def _fetch_time_series(self, name, timescale, proxy=None):
         # Fetching time series preferred over scraping 'QuoteSummaryStore',
-        # because it matches what Yahoo shows. But for some tickers returns nothing, 
+        # because it matches what Yahoo shows. But for some tickers returns nothing,
         # despite 'QuoteSummaryStore' containing valid data.
 
         allowed_names = ["income", "balance-sheet", "cash-flow"]
@@ -86,7 +86,7 @@ class Financials:
 
             if statement is not None:
                 return statement
-        except YFinanceException as e:
+        except YFException as e:
             utils.get_yf_logger().error(f"{self._symbol}: Failed to create {name} financials table for reason: {e}")
         return pd.DataFrame()
 
