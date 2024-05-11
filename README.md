@@ -268,28 +268,6 @@ details on your rights to use the actual data downloaded.
 
 ---
 
-### Running Tests
-
-Tests have been written using the built-in Python module `unittest`
-
-An example of running all tests in a file that calls `unittest.main`:
-
-```sh
-python -m unittest tests.test_prices
-```
-
-An example of running a test of a single method (applicable to a class as well):
-
-```sh
-python -m unittest tests.test_prices.TestPriceRepair.test_ticker_missing
-```
-
-To run all tests
-
-```sh
-python -m unittest discover -s tests
-```
-
 ### P.S.
 
 Please drop me an note with any feedback you have.

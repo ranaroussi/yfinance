@@ -22,7 +22,7 @@ class YFTickerMissingError(YFException):
     def __init__(self, ticker, rationale):
         super().__init__(f"${ticker}: possibly delisted; {rationale}")
         self.rationale = rationale
-        self.ticker = rationale
+        self.ticker = ticker
 
 
 class YFTzMissingError(YFTickerMissingError):

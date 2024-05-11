@@ -80,7 +80,7 @@ class PriceHistory:
             # Check can get TZ. Fail => probably delisted
             tz = self.tz
             if tz is None:
-                # Every valid ticker has a timezone. A missing timezone is a problem problem
+                # Every valid ticker has a timezone. A missing timezone is a problem.
                 _exception = YFTzMissingError(self.ticker)
                 err_msg = str(_exception)
                 shared._DFS[self.ticker] = utils.empty_df()
