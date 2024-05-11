@@ -60,7 +60,23 @@ class YfData(metaclass=SingletonMeta):
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
     def __init__(self, session=None):
-        self._session = session or requests.Session()
+        self._crumb = None
+        self._cookie = None
+
+        # Default to using 'basic' strategy
+        self._cookie_strategy = 'basic'
+        # If it fails, then fallback method is 'csrf'
+        # self._cookie_strategy = 'csrf'
+
+        self._cookie_lock = threading.Lock()
+
+        self._set_session(session or requests.Session())
+
+    def _set_session(self, session):
+        if session is None:
+            return
+        with self._cookie_lock:
+            self._session = session
 
         try:
             self._session.cache
@@ -74,23 +90,6 @@ class YfData(metaclass=SingletonMeta):
             self._session_is_caching = True
             from requests_cache import DO_NOT_CACHE
             self._expire_after = DO_NOT_CACHE
-        self._crumb = None
-        self._cookie = None
-        if self._session_is_caching and self._cookie is None:
-            utils.print_once("WARNING: cookie & crumb does not work well with requests_cache. Am experimenting with 'expire_after=DO_NOT_CACHE', but you need to help stress-test.")
-
-        # Default to using 'basic' strategy
-        self._cookie_strategy = 'basic'
-        # If it fails, then fallback method is 'csrf'
-        # self._cookie_strategy = 'csrf'
-
-        self._cookie_lock = threading.Lock()
-
-    def _set_session(self, session):
-        if session is None:
-            return
-        with self._cookie_lock:
-            self._session = session
 
     def _set_cookie_strategy(self, strategy, have_lock=False):
         if strategy == self._cookie_strategy:
