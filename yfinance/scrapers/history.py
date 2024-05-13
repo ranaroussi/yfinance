@@ -338,7 +338,7 @@ class PriceHistory:
             # Do this before auto/back adjust
             logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
-            df = self._fix_bad_stock_split(df, interval, tz_exchange)
+            df = self._fix_bad_stock_splits(df, interval, tz_exchange)
             # Must repair 100x and split errors before price reconstruction
             df = self._fix_zeroes(df, interval, tz_exchange, prepost)
             df = self._fix_missing_div_adjust(df, interval, tz_exchange)
@@ -981,7 +981,12 @@ class PriceHistory:
         # This function fixes the second.
         # Eventually Yahoo fixes but could take them 2 weeks.
 
-        return self._fix_prices_sudden_change(df, interval, tz_exchange, 100.0)
+        if self._history_metadata['currency'] == 'KWF':
+            # Kuwaiti Dinar divided into 1000 not 100
+            n = 1000
+        else:
+            n = 100
+        return self._fix_prices_sudden_change(df, interval, tz_exchange, n)
 
     @utils.log_indent_decorator
     def _fix_zeroes(self, df, interval, tz_exchange, prepost):
@@ -1171,9 +1176,12 @@ class PriceHistory:
         return df2
 
     @utils.log_indent_decorator
-    def _fix_bad_stock_split(self, df, interval, tz_exchange):
-        # Repair idea is to look for BIG daily price changes that closely match the
-        # most recent stock split ratio. This indicates Yahoo failed to apply a new
+    def _fix_bad_stock_splits(self, df, interval, tz_exchange):
+        # Original logic only considered latest split adjustment could be missing, but 
+        # actually **any** split adjustment can be missing. So check all splits in df.
+        #
+        # Improved logic looks for BIG daily price changes that closely match the
+        # **nearest future** stock split ratio. This indicates Yahoo failed to apply a new
         # stock split to old price data.
         #
         # There is a slight complication, because Yahoo does another stupid thing.
@@ -1190,22 +1198,28 @@ class PriceHistory:
         if not interday:
             return df
 
-        # Find the most recent stock split
-        df = df.sort_index(ascending=False)
+        df = df.sort_index()   # scan splits oldest -> newest
         split_f = df['Stock Splits'].to_numpy() != 0
         if not split_f.any():
             logger.debug('price-repair-split: No splits in data')
             return df
-        most_recent_split_day = df.index[split_f].max()
-        split = df.loc[most_recent_split_day, 'Stock Splits']
-        if most_recent_split_day == df.index[0]:
-            logger.info(
-                "price-repair-split: Need 1+ day of price data after split to determine true price. Won't repair")
-            return df
 
-        logger.debug(f'price-repair-split: Most recent split = {split:.4f} @ {most_recent_split_day.date()}')
+        for split_idx in np.where(split_f)[0]:
+            split_dt = df.index[split_idx]
+            split = df.loc[split_dt, 'Stock Splits']
+            if split_dt == df.index[0]:
+                continue
 
-        return self._fix_prices_sudden_change(df, interval, tz_exchange, split, correct_volume=True)
+            cutoff_idx = min(df.shape[0], split_idx+1)  # add one row after to detect big change
+            df_pre_split = df.iloc[0:cutoff_idx+1]
+
+            df_pre_split_repaired = self._fix_prices_sudden_change(df_pre_split, interval, tz_exchange, split, correct_volume=True)
+            # Merge back in:
+            if cutoff_idx == df.shape[0]-1:
+                df = df_pre_split_repaired
+            else:
+                df = pd.concat([df_pre_split_repaired.sort_index(), df.iloc[cutoff_idx+1:]])
+        return df
 
     @utils.log_indent_decorator
     def _fix_prices_sudden_change(self, df, interval, tz_exchange, change, correct_volume=False):
@@ -1302,10 +1316,12 @@ class PriceHistory:
             # average change
             _1d_change_minx = np.average(_1d_change_x, axis=1)
         else:
-            # change nearest to 1.0
-            diff = np.abs(_1d_change_x - 1.0)
-            j_indices = np.argmin(diff, axis=1)
-            _1d_change_minx = _1d_change_x[np.arange(n), j_indices]
+            # # change nearest to 1.0
+            # diff = np.abs(_1d_change_x - 1.0)
+            # j_indices = np.argmin(diff, axis=1)
+            # _1d_change_minx = _1d_change_x[np.arange(n), j_indices]
+            # Still sensitive to extreme-low low. Try median:
+            _1d_change_minx = np.median(_1d_change_x, axis=1)
         f_na = np.isnan(_1d_change_minx)
         if f_na.any():
             # Possible if data was too old for reconstruction.
