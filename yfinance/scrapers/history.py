@@ -1204,7 +1204,7 @@ class PriceHistory:
             logger.debug('price-repair-split: No splits in data')
             return df
 
-        logger.debug(f'price-repair-split: Splits: {str(df['Stock Splits'][split_f].to_dict())}')
+        logger.debug(f'price-repair-split: Splits: {str(df["Stock Splits"][split_f].to_dict())}')
 
         if 'Repaired?' not in df.columns:
             df['Repaired?'] = False
