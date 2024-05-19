@@ -1,6 +1,22 @@
 Change Log
 ===========
 
+0.2.39
+------
+Fixes:
+- Fix switching session from/to requests_cache #1930
+Price repair:
+- Fix potential for price repair to discard price=0 rows #1874
+- Don't price-repair FX volume=0, is normal #1920
+- Improve 'sudden change' repair for splits & currency  #1931
+Information:
+- Fix help(yf.download) not showing the information about the function #1913 @vittoboa
+- Add more specific error throwing based on PR 1918 #1928 @elibroftw @marcofognog
+Maintenance:
+- Replace dead 'appdirs' package with 'platformdirs' #1896
+- Deprecate 'pandas_datareader', remove a deprecated argument #1897
+- Fix: datetime.datetime.utcnow() is deprecated ... #1922
+
 0.2.38
 ------
 Fix holders & insiders #1908
