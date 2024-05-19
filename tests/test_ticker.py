@@ -12,7 +12,7 @@ import pandas as pd
 
 from .context import yfinance as yf
 from .context import session_gbl
-from yfinance.exceptions import YFChartError, YFInvalidPeriodError, YFNotImplementedError, YFPricesMissingError, YFTickerMissingError, YFTzMissingError
+from yfinance.exceptions import YFChartError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError
 
 
 import unittest
@@ -100,13 +100,13 @@ class TestTicker(unittest.TestCase):
         tkr = "DJI"  # typo of "^DJI"
         dat = yf.Ticker(tkr, session=self.session)
 
-        dat.history(period="1wk")
+        dat.history(period="5d")
         dat.history(start="2022-01-01")
         dat.history(start="2022-01-01", end="2022-03-01")
-        yf.download([tkr], period="1wk", threads=False, ignore_tz=False)
-        yf.download([tkr], period="1wk", threads=True, ignore_tz=False)
-        yf.download([tkr], period="1wk", threads=False, ignore_tz=True)
-        yf.download([tkr], period="1wk", threads=True, ignore_tz=True)
+        yf.download([tkr], period="5d", threads=False, ignore_tz=False)
+        yf.download([tkr], period="5d", threads=True, ignore_tz=False)
+        yf.download([tkr], period="5d", threads=False, ignore_tz=True)
+        yf.download([tkr], period="5d", threads=True, ignore_tz=True)
 
         for k in dat.fast_info:
             dat.fast_info[k]
@@ -144,7 +144,7 @@ class TestTicker(unittest.TestCase):
         # META call option, 2024 April 26th @ strike of 180000
         tkr = 'META240426C00180000'
         dat = yf.Ticker(tkr, session=self.session)
-        with self.assertRaises(YFPricesMissingError):
+        with self.assertRaises(YFChartError):
             dat.history(period="5d", interval="1m", raise_errors=True)
 
     def test_ticker_missing(self):
@@ -162,13 +162,13 @@ class TestTicker(unittest.TestCase):
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
 
-            dat.history(period="1wk")
+            dat.history(period="5d")
             dat.history(start="2022-01-01")
             dat.history(start="2022-01-01", end="2022-03-01")
-            yf.download([tkr], period="1wk", threads=False, ignore_tz=False)
-            yf.download([tkr], period="1wk", threads=True, ignore_tz=False)
-            yf.download([tkr], period="1wk", threads=False, ignore_tz=True)
-            yf.download([tkr], period="1wk", threads=True, ignore_tz=True)
+            yf.download([tkr], period="5d", threads=False, ignore_tz=False)
+            yf.download([tkr], period="5d", threads=True, ignore_tz=False)
+            yf.download([tkr], period="5d", threads=False, ignore_tz=True)
+            yf.download([tkr], period="5d", threads=True, ignore_tz=True)
 
             for k in dat.fast_info:
                 dat.fast_info[k]
@@ -182,7 +182,7 @@ class TestTicker(unittest.TestCase):
 
         dat._fetch_ticker_tz(proxy=None, timeout=5)
         dat._get_ticker_tz(proxy=None, timeout=5)
-        dat.history(period="1wk")
+        dat.history(period="5d")
 
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)

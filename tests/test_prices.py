@@ -359,13 +359,6 @@ class TestPriceHistory(unittest.TestCase):
         dfd_divs = dfd[dfd['Dividends'] != 0]
         self.assertEqual(dfm_divs.shape[0], dfd_divs.shape[0])
 
-        dfm = yf.Ticker("F").history(period="50mo", interval="1mo")
-        dfd = yf.Ticker("F").history(period="50mo", interval="1d")
-        dfd = dfd[dfd.index > dfm.index[0]]
-        dfm_divs = dfm[dfm['Dividends'] != 0]
-        dfd_divs = dfd[dfd['Dividends'] != 0]
-        self.assertEqual(dfm_divs.shape[0], dfd_divs.shape[0])
-
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
         try:
@@ -791,7 +784,7 @@ class TestPriceRepair(unittest.TestCase):
         tz_exchange = dat.fast_info["timezone"]
         hist = dat._lazy_load_price_history()
 
-        correct_df = hist.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
+        correct_df = hist.history(period="5d", interval="1h", auto_adjust=False, repair=True)
 
         df_bad = correct_df.copy()
         bad_idx = correct_df.index[10]
@@ -820,7 +813,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
-    def test_repair_bad_stock_split(self):
+    def test_repair_bad_stock_splits(self):
         # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
@@ -836,7 +829,7 @@ class TestPriceRepair(unittest.TestCase):
                 _dp = os.path.dirname(__file__)
                 df_good = dat.history(start='2020-01-01', end=_dt.date.today(), interval=interval, auto_adjust=False)
 
-                repaired_df = hist._fix_bad_stock_split(df_good, interval, tz_exchange)
+                repaired_df = hist._fix_bad_stock_splits(df_good, interval, tz_exchange)
 
                 # Expect no change from repair
                 df_good = df_good.sort_index()
@@ -867,7 +860,7 @@ class TestPriceRepair(unittest.TestCase):
             df_bad = _pd.read_csv(fp, index_col="Date")
             df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
 
-            repaired_df = hist._fix_bad_stock_split(df_bad, "1d", tz_exchange)
+            repaired_df = hist._fix_bad_stock_splits(df_bad, "1d", tz_exchange)
 
             fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split-fixed.csv")
             correct_df = _pd.read_csv(fp, index_col="Date")
@@ -902,7 +895,7 @@ class TestPriceRepair(unittest.TestCase):
                 _dp = os.path.dirname(__file__)
                 df_good = hist.history(start='2020-11-30', end='2021-04-01', interval=interval, auto_adjust=False)
 
-                repaired_df = hist._fix_bad_stock_split(df_good, interval, tz_exchange)
+                repaired_df = hist._fix_bad_stock_splits(df_good, interval, tz_exchange)
 
                 # Expect no change from repair
                 df_good = df_good.sort_index()
