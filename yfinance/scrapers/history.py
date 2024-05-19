@@ -1204,14 +1204,25 @@ class PriceHistory:
             logger.debug('price-repair-split: No splits in data')
             return df
 
+        logger.debug(f'price-repair-split: Splits: {str(df['Stock Splits'][split_f].to_dict())}')
+
+        if not 'Repaired?' in df.columns:
+            df['Repaired?'] = False
         for split_idx in np.where(split_f)[0]:
             split_dt = df.index[split_idx]
             split = df.loc[split_dt, 'Stock Splits']
             if split_dt == df.index[0]:
                 continue
 
-            cutoff_idx = min(df.shape[0], split_idx+1)  # add one row after to detect big change
+            # Add on a week:
+            if interval in ['1wk', '1mo', '3mo']:
+                split_idx += 1
+            else:
+                split_idx += 5
+            cutoff_idx = min(df.shape[0], split_idx)  # add one row after to detect big change
             df_pre_split = df.iloc[0:cutoff_idx+1]
+            logger.debug(f'price-repair-split: split_idx={split_idx} split_dt={split_dt}')
+            logger.debug(f'price-repair-split: df dt range: {df_pre_split.index[0].date()} -> {df_pre_split.index[-1].date()}')
 
             df_pre_split_repaired = self._fix_prices_sudden_change(df_pre_split, interval, tz_exchange, split, correct_volume=True)
             # Merge back in:
@@ -1240,7 +1251,7 @@ class PriceHistory:
             # start_min = 1 year before oldest split
             f = df['Stock Splits'].to_numpy() != 0.0
             start_min = (df.index[f].min() - _dateutil.relativedelta.relativedelta(years=1)).date()
-            logger.debug(f'price-repair-split: start_min={start_min}')
+        logger.debug(f'price-repair-split: start_min={start_min} change={change}')
 
         OHLC = ['Open', 'High', 'Low', 'Close']
 
@@ -1438,8 +1449,13 @@ class PriceHistory:
         # if logger.isEnabledFor(logging.DEBUG):
         #     df_debug['i'] = list(range(0, df_debug.shape[0]))
         #     df_debug['i_rev'] = df_debug.shape[0]-1 - df_debug['i']
+        #     if correct_columns_individually:
+        #         f_change = df_debug[[c+'_f_down' for c in debug_cols]].any(axis=1) | df_debug[[c+'_f_up' for c in debug_cols]].any(axis=1)
+        #     else:
+        #         f_change = df_debug['f_down'] | df_debug['f_up']
+        #     f_change = f_change | np.roll(f_change, -1) | np.roll(f_change, 1) | np.roll(f_change, -2) | np.roll(f_change, 2)
         #     with pd.option_context('display.max_rows', None, 'display.max_columns', 10, 'display.width', 1000):  # more options can be specified also
-        #         logger.debug(f"price-repair-split: my workings:" + '\n' + str(df_debug))
+        #         logger.debug(f"price-repair-split: my workings:" + '\n' + str(df_debug[f_change]))
 
         def map_signals_to_ranges(f, f_up, f_down):
             # Ensure 0th element is False, because True is nonsense
