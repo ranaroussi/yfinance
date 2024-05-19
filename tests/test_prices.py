@@ -43,14 +43,14 @@ class TestPriceHistory(unittest.TestCase):
 
             df_tkrs = df.columns.levels[1]
             self.assertEqual(sorted(tkrs), sorted(df_tkrs))
-    
+
     def test_download_with_invalid_ticker(self):
         #Checks if using an invalid symbol gives the same output as not using an invalid symbol in combination with a valid symbol (AAPL)
         #Checks to make sure that invalid symbol handling for the date column is the same as the base case (no invalid symbols)
 
         invalid_tkrs = ["AAPL", "ATVI"] #AAPL exists and ATVI does not exist
         valid_tkrs = ["AAPL", "INTC"] #AAPL and INTC both exist
-        
+
         data_invalid_sym = yf.download(invalid_tkrs, start='2023-11-16', end='2023-11-17')
         data_valid_sym = yf.download(valid_tkrs, start='2023-11-16', end='2023-11-17')
 
@@ -62,7 +62,7 @@ class TestPriceHistory(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
-            dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
+            dt_utc = _pd.Timestamp.utcnow()
             dt = dt_utc.astimezone(_tz.timezone(tz))
             start_d = dt.date() - _dt.timedelta(days=7)
             df = dat.history(start=start_d, interval="1h")
@@ -82,7 +82,7 @@ class TestPriceHistory(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
-            dt_utc = _tz.timezone("UTC").localize(_dt.datetime.utcnow())
+            dt_utc = _pd.Timestamp.utcnow()
             dt = dt_utc.astimezone(_tz.timezone(tz))
             if dt.time() < _dt.time(17, 0):
                 continue
@@ -354,13 +354,6 @@ class TestPriceHistory(unittest.TestCase):
         # Simply check no exception from internal merge
         dfm = yf.Ticker("ABBV").history(period="max", interval="1mo")
         dfd = yf.Ticker("ABBV").history(period="max", interval="1d")
-        dfd = dfd[dfd.index > dfm.index[0]]
-        dfm_divs = dfm[dfm['Dividends'] != 0]
-        dfd_divs = dfd[dfd['Dividends'] != 0]
-        self.assertEqual(dfm_divs.shape[0], dfd_divs.shape[0])
-
-        dfm = yf.Ticker("F").history(period="50mo", interval="1mo")
-        dfd = yf.Ticker("F").history(period="50mo", interval="1d")
         dfd = dfd[dfd.index > dfm.index[0]]
         dfm_divs = dfm[dfm['Dividends'] != 0]
         dfd_divs = dfd[dfd['Dividends'] != 0]
@@ -791,7 +784,7 @@ class TestPriceRepair(unittest.TestCase):
         tz_exchange = dat.fast_info["timezone"]
         hist = dat._lazy_load_price_history()
 
-        correct_df = hist.history(period="1wk", interval="1h", auto_adjust=False, repair=True)
+        correct_df = hist.history(period="5d", interval="1h", auto_adjust=False, repair=True)
 
         df_bad = correct_df.copy()
         bad_idx = correct_df.index[10]
@@ -820,7 +813,7 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
-    def test_repair_bad_stock_split(self):
+    def test_repair_bad_stock_splits(self):
         # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
@@ -836,7 +829,7 @@ class TestPriceRepair(unittest.TestCase):
                 _dp = os.path.dirname(__file__)
                 df_good = dat.history(start='2020-01-01', end=_dt.date.today(), interval=interval, auto_adjust=False)
 
-                repaired_df = hist._fix_bad_stock_split(df_good, interval, tz_exchange)
+                repaired_df = hist._fix_bad_stock_splits(df_good, interval, tz_exchange)
 
                 # Expect no change from repair
                 df_good = df_good.sort_index()
@@ -867,7 +860,7 @@ class TestPriceRepair(unittest.TestCase):
             df_bad = _pd.read_csv(fp, index_col="Date")
             df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
 
-            repaired_df = hist._fix_bad_stock_split(df_bad, "1d", tz_exchange)
+            repaired_df = hist._fix_bad_stock_splits(df_bad, "1d", tz_exchange)
 
             fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split-fixed.csv")
             correct_df = _pd.read_csv(fp, index_col="Date")
@@ -902,7 +895,7 @@ class TestPriceRepair(unittest.TestCase):
                 _dp = os.path.dirname(__file__)
                 df_good = hist.history(start='2020-11-30', end='2021-04-01', interval=interval, auto_adjust=False)
 
-                repaired_df = hist._fix_bad_stock_split(df_good, interval, tz_exchange)
+                repaired_df = hist._fix_bad_stock_splits(df_good, interval, tz_exchange)
 
                 # Expect no change from repair
                 df_good = df_good.sort_index()

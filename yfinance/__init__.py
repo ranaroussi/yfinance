@@ -35,6 +35,8 @@ def pdr_override():
     make pandas datareader optional
     otherwise can be called via fix_yahoo_finance.download(...)
     """
+    from .utils import print_once
+    print_once("yfinance: pandas_datareader support is deprecated & semi-broken so will be removed in a future verison. Just use yfinance.")
     try:
         import pandas_datareader
         pandas_datareader.data.get_data_yahoo = download

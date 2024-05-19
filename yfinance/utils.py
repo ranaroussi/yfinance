@@ -26,7 +26,7 @@ import logging
 import re as _re
 import sys as _sys
 import threading
-from functools import lru_cache
+from functools import lru_cache, wraps
 from inspect import getmembers
 from types import FunctionType
 from typing import List, Optional
@@ -95,6 +95,7 @@ def get_indented_logger(name=None):
 
 
 def log_indent_decorator(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         logger = get_indented_logger('yfinance')
         logger.debug(f'Entering {func.__name__}()')
