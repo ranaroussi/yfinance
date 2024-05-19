@@ -21,7 +21,6 @@
 
 from __future__ import print_function
 
-import datetime as _datetime
 from collections import namedtuple as _namedtuple
 
 import pandas as _pd

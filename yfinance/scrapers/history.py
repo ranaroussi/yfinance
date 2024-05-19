@@ -1206,7 +1206,7 @@ class PriceHistory:
 
         logger.debug(f'price-repair-split: Splits: {str(df['Stock Splits'][split_f].to_dict())}')
 
-        if not 'Repaired?' in df.columns:
+        if 'Repaired?' not in df.columns:
             df['Repaired?'] = False
         for split_idx in np.where(split_f)[0]:
             split_dt = df.index[split_idx]
