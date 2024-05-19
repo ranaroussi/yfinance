@@ -124,7 +124,7 @@ msft.recommendations
 msft.recommendations_summary
 msft.upgrades_downgrades
 
-# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default. 
+# Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default.
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates
 
@@ -191,7 +191,7 @@ data = yf.download("SPY AAPL", period="1mo")
 
 ### Smarter scraping
 
-Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). These packages help cache calls such that Yahoo is not spammed with requests. 
+Install the `nospam` packages for smarter scraping using `pip` (see [Installation](#installation)). These packages help cache calls such that Yahoo is not spammed with requests.
 
 To use a custom `requests` session, pass a `session=` argument to
 the Ticker constructor. This allows for caching calls to the API as well as a custom way to modify requests via  the `User-agent` header.
@@ -236,31 +236,16 @@ yfinance?](https://stackoverflow.com/questions/63107801)
         -   How to download single or multiple tickers into a single
             dataframe with single level column names and a ticker column
 
-### `pandas_datareader` override
-
-If your code uses `pandas_datareader` and you want to download data
-faster, you can "hijack" `pandas_datareader.data.get_data_yahoo()`
-method to use **yfinance** while making sure the returned data is in the
-same format as **pandas\_datareader**'s `get_data_yahoo()`.
-
-```python
-from pandas_datareader import data as pdr
-
-import yfinance as yf
-yf.pdr_override() # <== that's all it takes :-)
-
-# download dataframe
-data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
-```
-
 ### Persistent cache store
 
 To reduce Yahoo, yfinance store some data locally: timezones to localize dates, and cookie. Cache location is:
+
 - Windows = C:/Users/\<USER\>/AppData/Local/py-yfinance
 - Linux = /home/\<USER\>/.cache/py-yfinance
 - MacOS = /Users/\<USER\>/Library/Caches/py-yfinance
 
 You can direct cache to use a different location with `set_tz_cache_location()`:
+
 ```python
 import yfinance as yf
 yf.set_tz_cache_location("custom/cache/location")
@@ -287,7 +272,7 @@ intended for research and educational purposes. You should refer to Yahoo!'s ter
 ([here](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm),
 [here](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html), and
 [here](https://policies.yahoo.com/us/en/yahoo/terms/index.htm)) for
-detailes on your rights to use the actual data downloaded.
+details on your rights to use the actual data downloaded.
 
 ---
 
