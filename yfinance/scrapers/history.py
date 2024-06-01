@@ -236,7 +236,7 @@ class PriceHistory:
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
-            quotes2 = quotes.resample('30T')
+            quotes2 = quotes.resample('30min')
             quotes = pd.DataFrame(index=quotes2.last().index, data={
                 'Open': quotes2['Open'].first(),
                 'High': quotes2['High'].max(),
