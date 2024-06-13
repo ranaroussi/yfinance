@@ -10,7 +10,7 @@ import requests
 from yfinance import utils
 from yfinance.data import YfData
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_
-from yfinance.exceptions import YFNotImplementedError, YFDataException, YFException
+from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -565,7 +565,15 @@ class Quote:
     @property
     def sustainability(self) -> pd.DataFrame:
         if self._sustainability is None:
-            raise YFNotImplementedError('sustainability')
+            result = self._fetch(self.proxy, modules=['esgScores'])
+            if result is None:
+                self._sustainability = pd.DataFrame()
+            else:
+                try:
+                    data = result["quoteSummary"]["result"][0]
+                except (KeyError, IndexError):
+                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                self._sustainability = pd.DataFrame(data)
         return self._sustainability
 
     @property

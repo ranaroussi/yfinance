@@ -707,15 +707,14 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.calendar
         self.assertIs(data, data_cached, "data not cached")
 
-    # Below will fail because not ported to Yahoo API
 
-    # def test_sustainability(self):
-    #     data = self.ticker.sustainability
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+    def test_sustainability(self):
+        data = self.ticker.sustainability
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
-    #     data_cached = self.ticker.sustainability
-    #     self.assertIs(data, data_cached, "data not cached")
+        data_cached = self.ticker.sustainability
+        self.assertIs(data, data_cached, "data not cached")
 
     # def test_shares(self):
     #     data = self.ticker.shares
