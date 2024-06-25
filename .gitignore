@@ -10,6 +10,7 @@ build/
 *.html
 *.css
 *.png
+test.ipynb
 
 # Environments
 .env
