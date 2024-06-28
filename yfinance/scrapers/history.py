@@ -98,7 +98,19 @@ class PriceHistory:
             if start is None:
                 if interval == "1m":
                     start = end - 604800  # Subtract 7 days
+                
+                # 1 hour interval supports up to 730 days
+                elif interval == "1h":
+                    max_start_datetime = pd.Timestamp.utcnow().floor("D") - _datetime.timedelta(days=729)
+                    start = int(max_start_datetime.timestamp())
+                
+                # 5m to 90m interval supports up to 60 days
+                elif interval in ["5m", "15m", "30m", "60m", "90m"]:
+                    max_start_datetime = pd.Timestamp.utcnow().floor("D") - _datetime.timedelta(days=59)
+                    start = int(max_start_datetime.timestamp())
+
                 else:
+                    # 99 years is not available for intervals less than 1d
                     max_start_datetime = pd.Timestamp.utcnow().floor("D") - _datetime.timedelta(days=99 * 365)
                     start = int(max_start_datetime.timestamp())
             else:
