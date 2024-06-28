@@ -265,6 +265,7 @@ class PriceHistory:
             tps = self._history_metadata["tradingPeriods"]
             if not isinstance(tps, pd.DataFrame):
                 self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
+                self._history_metadata_formatted = True
                 tps = self._history_metadata["tradingPeriods"]
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
         logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
@@ -391,7 +392,7 @@ class PriceHistory:
     def get_history_metadata(self, proxy=None) -> dict:
         if self._history_metadata is None:
             # Request intraday data, because then Yahoo returns exchange schedule.
-            self.history(period="1wk", interval="1h", prepost=True, proxy=proxy)
+            self.history(period="5d", interval="1h", prepost=True, proxy=proxy)
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
