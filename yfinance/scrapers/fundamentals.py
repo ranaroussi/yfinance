@@ -7,6 +7,8 @@ from yfinance import utils, const
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
+import warnings
+warnings.simplefilter('once', DeprecationWarning)
 
 class Fundamentals:
 
@@ -30,9 +32,8 @@ class Fundamentals:
 
     @property
     def earnings(self) -> dict:
-        if self._earnings is None:
-            raise YFNotImplementedError('earnings')
-        return self._earnings
+        utils.print_once("'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.")
+        return None
 
     @property
     def shares(self) -> pd.DataFrame:
