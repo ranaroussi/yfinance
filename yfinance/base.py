@@ -289,6 +289,8 @@ class TickerBase:
                 Default is None
         """
         self._fundamentals.proxy = proxy or self.proxy
+        if self._fundamentals.earnings is None:
+            return None
         data = self._fundamentals.earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
