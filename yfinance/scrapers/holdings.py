@@ -1,4 +1,3 @@
-from io import StringIO
 import pandas as pd
 from bs4 import BeautifulSoup
 
@@ -72,4 +71,4 @@ class Holdings:
             self._major_holdings = tables
 
         except Exception:
-            holdings = []
+            self._major_holdings = []
