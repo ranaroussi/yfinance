@@ -76,7 +76,6 @@ class PriceHistory:
 
         start_user = start
         end_user = end
-
         if start or period is None or period.lower() == "max":
             # Check can get TZ. Fail => probably delisted
             tz = self.tz
@@ -98,18 +97,13 @@ class PriceHistory:
                 end = utils._parse_user_dt(end, tz)
             if start is None:
                 if interval == "1m":
-                    start = end - 604800  # Subtract 7 days
-                
-                elif interval == "1h":
-                    start = end - 63072000 # Subtract 730 days
-                
-                # 5m to 90m interval supports up to 60 days
-                elif interval in ("5m", "15m", "30m", "60m", "90m"):
-                    start = end - 5184000 # Subtract 60 days
-
+                    start = end - 604800   # 7 days
+                elif interval in ("5m", "15m", "30m", "90m"):
+                    start = end - 5184000  # 60 days
+                elif interval in ("1h", '60m'):
+                    start = end - 63072000  # 730 days
                 else:
-                    max_start_datetime = pd.Timestamp.utcnow().floor("D") - _datetime.timedelta(days=99 * 365)
-                    start = int(max_start_datetime.timestamp())
+                    start = end - 3122064000  # 99 years
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
