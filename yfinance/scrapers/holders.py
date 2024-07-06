@@ -6,7 +6,7 @@ import requests
 from yfinance import utils
 from yfinance.data import YfData
 from yfinance.const import _BASE_URL_
-from yfinance.exceptions import YFinanceDataException
+from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
 
@@ -73,8 +73,8 @@ class Holders:
     def _fetch(self, proxy):
         modules = ','.join(
             ["institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"])
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol, "formatted": "false"}
-        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false"}
+        result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
         return result
 
     def _fetch_and_parse(self):
@@ -104,7 +104,7 @@ class Holders:
             self._parse_insider_holders(data["insiderHolders"])
             self._parse_net_share_purchase_activity(data["netSharePurchaseActivity"])
         except (KeyError, IndexError):
-            raise YFinanceDataException("Failed to parse holders json data.")
+            raise YFDataException("Failed to parse holders json data.")
 
     @staticmethod
     def _parse_raw_values(data):
@@ -189,7 +189,7 @@ class Holders:
         if not df.empty:
             df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
             df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
-            
+
             df.rename(columns={
                 "name": "Name",
                 "relation": "Position",
@@ -242,5 +242,3 @@ class Holders:
             }
         ).convert_dtypes()
         self._insider_purchases = df
-
-    
