@@ -29,21 +29,7 @@ from .cache import set_tz_cache_location
 __version__ = version.version
 __author__ = "Ran Aroussi"
 
+import warnings
+warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
 
-def pdr_override():
-    """
-    make pandas datareader optional
-    otherwise can be called via fix_yahoo_finance.download(...)
-    """
-    from .utils import print_once
-    print_once("yfinance: pandas_datareader support is deprecated & semi-broken so will be removed in a future verison. Just use yfinance.")
-    try:
-        import pandas_datareader
-        pandas_datareader.data.get_data_yahoo = download
-        pandas_datareader.data.get_data_yahoo_actions = download
-        pandas_datareader.data.DataReader = download
-    except Exception:
-        pass
-
-
-__all__ = ['download', 'Ticker', 'Tickers', 'pdr_override', 'enable_debug_mode', 'set_tz_cache_location']
+__all__ = ['download', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location']
