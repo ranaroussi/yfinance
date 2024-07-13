@@ -239,7 +239,7 @@ class PriceHistory:
         # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
-            quotes2 = quotes.resample('30T')
+            quotes2 = quotes.resample('30min')
             quotes = pd.DataFrame(index=quotes2.last().index, data={
                 'Open': quotes2['Open'].first(),
                 'High': quotes2['High'].max(),
@@ -1029,6 +1029,7 @@ class PriceHistory:
             f_zero_or_nan_ignore = np.isin(f_prices_bad.index.date, dts)
             df2_reserve = df2[f_zero_or_nan_ignore]
             df2 = df2[~f_zero_or_nan_ignore]
+            df2 = df2.copy()
             f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
 
         f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
@@ -1598,9 +1599,9 @@ class PriceHistory:
                 f_open_and_closed_fixed = f_open_fixed & f_close_fixed
                 f_open_xor_closed_fixed = np.logical_xor(f_open_fixed, f_close_fixed)
                 if f_open_and_closed_fixed.any():
-                    df2.loc[f_open_and_closed_fixed, "Volume"] *= m_rcp
+                    df2.loc[f_open_and_closed_fixed, "Volume"] = (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp).round().astype('int')
                 if f_open_xor_closed_fixed.any():
-                    df2.loc[f_open_xor_closed_fixed, "Volume"] *= 0.5 * m_rcp
+                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype('int')
 
             df2.loc[f_corrected, 'Repaired?'] = True
 
@@ -1653,7 +1654,8 @@ class PriceHistory:
                 for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
                 if correct_volume:
-                    df2.iloc[r[0]:r[1], df2.columns.get_loc("Volume")] *= m_rcp
+                    col_loc = df2.columns.get_loc("Volume")
+                    df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).round().astype('int')
                 df2.iloc[r[0]:r[1], df2.columns.get_loc('Repaired?')] = True
                 if r[0] == r[1] - 1:
                     if interday:
