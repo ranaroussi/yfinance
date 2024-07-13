@@ -230,7 +230,7 @@ class TickerBase:
 
     @property
     def basic_info(self):
-        warnings.warn("'Ticker.basic_info' is renamed to 'Ticker.fast_info', hopefully purpose is clearer", DeprecationWarning)
+        warnings.warn("'Ticker.basic_info' is deprecated and will be removed in future, Switch to 'Ticker.fast_info'", DeprecationWarning)
         return self.fast_info
 
     def get_sustainability(self, proxy=None, as_dict=False):
@@ -289,6 +289,8 @@ class TickerBase:
                 Default is None
         """
         self._fundamentals.proxy = proxy or self.proxy
+        if self._fundamentals.earnings is None:
+            return None
         data = self._fundamentals.earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
