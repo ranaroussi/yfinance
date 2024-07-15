@@ -1234,7 +1234,11 @@ class PriceHistory:
             if cutoff_idx == df.shape[0]-1:
                 df = df_pre_split_repaired
             else:
-                df = pd.concat([df_pre_split_repaired.sort_index(), df.iloc[cutoff_idx+1:]])
+                df_post_cutoff = df.iloc[cutoff_idx+1:]
+                if df_post_cutoff.empty:
+                    df = df_pre_split_repaired.sort_index()
+                else:
+                    df = pd.concat([df_pre_split_repaired.sort_index(), df_post_cutoff])
         return df
 
     @utils.log_indent_decorator
