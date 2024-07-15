@@ -35,8 +35,6 @@ ticker_attributes = (
     ("recommendations", Union[pd.DataFrame, dict]),
     ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("upgrades_downgrades", Union[pd.DataFrame, dict]),
-    ("earnings", pd.DataFrame),
-    ("quarterly_earnings", pd.DataFrame),
     ("quarterly_cashflow", pd.DataFrame),
     ("cashflow", pd.DataFrame),
     ("quarterly_balance_sheet", pd.DataFrame),
@@ -114,9 +112,6 @@ class TestTicker(unittest.TestCase):
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)
 
-        with self.assertRaises(YFNotImplementedError):
-            assert isinstance(dat.earnings, pd.Series)
-            assert dat.earnings.empty
         assert isinstance(dat.dividends, pd.Series)
         assert dat.dividends.empty
         assert isinstance(dat.splits, pd.Series)
@@ -308,22 +303,6 @@ class TestTickerEarnings(unittest.TestCase):
         self.assertIs(data, data_cached, "data not cached")
 
     # Below will fail because not ported to Yahoo API
-
-    # def test_earnings(self):
-    #     data = self.ticker.earnings
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.earnings
-    #     self.assertIs(data, data_cached, "data not cached")
-
-    # def test_quarterly_earnings(self):
-    #     data = self.ticker.quarterly_earnings
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.quarterly_earnings
-    #     self.assertIs(data, data_cached, "data not cached")
 
     # def test_earnings_forecasts(self):
     #     data = self.ticker.earnings_forecasts
