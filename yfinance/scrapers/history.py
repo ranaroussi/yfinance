@@ -1029,6 +1029,9 @@ class PriceHistory:
             f_zero_or_nan_ignore = np.isin(f_prices_bad.index.date, dts)
             df2_reserve = df2[f_zero_or_nan_ignore]
             df2 = df2[~f_zero_or_nan_ignore]
+            if df2.empty:
+                # No good data
+                return df
             df2 = df2.copy()
             f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
 
@@ -1038,7 +1041,19 @@ class PriceHistory:
             f_vol_bad = None
         else:
             f_high_low_good = (~df2["High"].isna().to_numpy()) & (~df2["Low"].isna().to_numpy())
-            f_vol_bad = (df2["Volume"] == 0).to_numpy() & f_high_low_good & f_change
+            f_vol_zero = (df2["Volume"] == 0).to_numpy()
+            f_vol_bad = f_vol_zero & f_high_low_good & f_change
+            # ^ intra-interval price changed without volume, bad
+
+            if interval[-1] not in ['mh']:
+                # Interday data: if close changes between intervals with volume=0 then volume is wrong.
+                # Possible can repair with intraday, but usually Yahoo does not have the volume.
+                close_diff = df2['Close'].diff()
+                close_diff.iloc[0] = 0
+                close_chg_pct_abs = np.abs(close_diff / df2['Close'])
+                f_bad_price_chg = (close_chg_pct_abs > 0.05).to_numpy() & f_vol_zero
+                f_bad_price_chg = f_bad_price_chg & (~f_vol_bad)  # exclude where already know volume is bad
+                f_vol_bad = f_vol_bad | f_bad_price_chg
 
         # If stock split occurred, then trading must have happened.
         # I should probably rename the function, because prices aren't zero ...
