@@ -867,6 +867,7 @@ class PriceHistory:
             df_orig = df[~f_zeroes]  # all row slicing must be applied to both df and df2
         else:
             df2_zeroes = None
+            df_orig = df
         if df2.shape[0] <= 1:
             logger.info("price-repair-100x: Insufficient good data for detecting 100x price errors")
             if "Repaired?" not in df.columns:
@@ -1088,7 +1089,8 @@ class PriceHistory:
         for i in range(len(price_cols)):
             c = price_cols[i]
             df2.loc[f_prices_bad[:, i], c] = tag
-        df2.loc[f_vol_bad, "Volume"] = tag
+        if f_vol_bad is not None:
+            df2.loc[f_vol_bad, "Volume"] = tag
         # If volume=0 or NaN for bad prices, then tag volume for repair
         f_vol_zero_or_nan = (df2["Volume"].to_numpy() == 0) | (df2["Volume"].isna().to_numpy())
         df2.loc[f_prices_bad.any(axis=1) & f_vol_zero_or_nan, "Volume"] = tag
