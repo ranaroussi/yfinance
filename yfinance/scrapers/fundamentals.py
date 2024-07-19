@@ -1,12 +1,12 @@
 import datetime
 import json
+import warnings
 
 import pandas as pd
 
 from yfinance import utils, const
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
-
 
 class Fundamentals:
 
@@ -30,9 +30,8 @@ class Fundamentals:
 
     @property
     def earnings(self) -> dict:
-        if self._earnings is None:
-            raise YFNotImplementedError('earnings')
-        return self._earnings
+        warnings.warn("'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", DeprecationWarning)
+        return None
 
     @property
     def shares(self) -> pd.DataFrame:

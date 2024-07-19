@@ -97,10 +97,13 @@ class PriceHistory:
                 end = utils._parse_user_dt(end, tz)
             if start is None:
                 if interval == "1m":
-                    start = end - 604800  # Subtract 7 days
+                    start = end - 604800   # 7 days
+                elif interval in ("5m", "15m", "30m", "90m"):
+                    start = end - 5184000  # 60 days
+                elif interval in ("1h", '60m'):
+                    start = end - 63072000  # 730 days
                 else:
-                    max_start_datetime = pd.Timestamp.utcnow().floor("D") - _datetime.timedelta(days=99 * 365)
-                    start = int(max_start_datetime.timestamp())
+                    start = end - 3122064000  # 99 years
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
@@ -265,6 +268,7 @@ class PriceHistory:
             tps = self._history_metadata["tradingPeriods"]
             if not isinstance(tps, pd.DataFrame):
                 self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
+                self._history_metadata_formatted = True
                 tps = self._history_metadata["tradingPeriods"]
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
         logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
@@ -391,7 +395,7 @@ class PriceHistory:
     def get_history_metadata(self, proxy=None) -> dict:
         if self._history_metadata is None:
             # Request intraday data, because then Yahoo returns exchange schedule.
-            self.history(period="1wk", interval="1h", prepost=True, proxy=proxy)
+            self.history(period="5d", interval="1h", prepost=True, proxy=proxy)
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
@@ -863,6 +867,7 @@ class PriceHistory:
             df_orig = df[~f_zeroes]  # all row slicing must be applied to both df and df2
         else:
             df2_zeroes = None
+            df_orig = df
         if df2.shape[0] <= 1:
             logger.info("price-repair-100x: Insufficient good data for detecting 100x price errors")
             if "Repaired?" not in df.columns:
@@ -1025,6 +1030,10 @@ class PriceHistory:
             f_zero_or_nan_ignore = np.isin(f_prices_bad.index.date, dts)
             df2_reserve = df2[f_zero_or_nan_ignore]
             df2 = df2[~f_zero_or_nan_ignore]
+            if df2.empty:
+                # No good data
+                return df
+            df2 = df2.copy()
             f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
 
         f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
@@ -1033,7 +1042,19 @@ class PriceHistory:
             f_vol_bad = None
         else:
             f_high_low_good = (~df2["High"].isna().to_numpy()) & (~df2["Low"].isna().to_numpy())
-            f_vol_bad = (df2["Volume"] == 0).to_numpy() & f_high_low_good & f_change
+            f_vol_zero = (df2["Volume"] == 0).to_numpy()
+            f_vol_bad = f_vol_zero & f_high_low_good & f_change
+            # ^ intra-interval price changed without volume, bad
+
+            if not intraday:
+                # Interday data: if close changes between intervals with volume=0 then volume is wrong.
+                # Possible can repair with intraday, but usually Yahoo does not have the volume.
+                close_diff = df2['Close'].diff()
+                close_diff.iloc[0] = 0
+                close_chg_pct_abs = np.abs(close_diff / df2['Close'])
+                f_bad_price_chg = (close_chg_pct_abs > 0.05).to_numpy() & f_vol_zero
+                f_bad_price_chg = f_bad_price_chg & (~f_vol_bad)  # exclude where already know volume is bad
+                f_vol_bad = f_vol_bad | f_bad_price_chg
 
         # If stock split occurred, then trading must have happened.
         # I should probably rename the function, because prices aren't zero ...
@@ -1068,7 +1089,8 @@ class PriceHistory:
         for i in range(len(price_cols)):
             c = price_cols[i]
             df2.loc[f_prices_bad[:, i], c] = tag
-        df2.loc[f_vol_bad, "Volume"] = tag
+        if f_vol_bad is not None:
+            df2.loc[f_vol_bad, "Volume"] = tag
         # If volume=0 or NaN for bad prices, then tag volume for repair
         f_vol_zero_or_nan = (df2["Volume"].to_numpy() == 0) | (df2["Volume"].isna().to_numpy())
         df2.loc[f_prices_bad.any(axis=1) & f_vol_zero_or_nan, "Volume"] = tag
@@ -1229,7 +1251,11 @@ class PriceHistory:
             if cutoff_idx == df.shape[0]-1:
                 df = df_pre_split_repaired
             else:
-                df = pd.concat([df_pre_split_repaired.sort_index(), df.iloc[cutoff_idx+1:]])
+                df_post_cutoff = df.iloc[cutoff_idx+1:]
+                if df_post_cutoff.empty:
+                    df = df_pre_split_repaired.sort_index()
+                else:
+                    df = pd.concat([df_pre_split_repaired.sort_index(), df_post_cutoff])
         return df
 
     @utils.log_indent_decorator
@@ -1594,9 +1620,9 @@ class PriceHistory:
                 f_open_and_closed_fixed = f_open_fixed & f_close_fixed
                 f_open_xor_closed_fixed = np.logical_xor(f_open_fixed, f_close_fixed)
                 if f_open_and_closed_fixed.any():
-                    df2.loc[f_open_and_closed_fixed, "Volume"] *= m_rcp
+                    df2.loc[f_open_and_closed_fixed, "Volume"] = (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp).round().astype('int')
                 if f_open_xor_closed_fixed.any():
-                    df2.loc[f_open_xor_closed_fixed, "Volume"] *= 0.5 * m_rcp
+                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype('int')
 
             df2.loc[f_corrected, 'Repaired?'] = True
 
@@ -1649,7 +1675,8 @@ class PriceHistory:
                 for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
                 if correct_volume:
-                    df2.iloc[r[0]:r[1], df2.columns.get_loc("Volume")] *= m_rcp
+                    col_loc = df2.columns.get_loc("Volume")
+                    df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).round().astype('int')
                 df2.iloc[r[0]:r[1], df2.columns.get_loc('Repaired?')] = True
                 if r[0] == r[1] - 1:
                     if interday:
