@@ -119,6 +119,8 @@ msft.insider_transactions
 msft.insider_purchases
 msft.insider_roster_holders
 
+msfs.sustainability
+
 # show recommendations
 msft.recommendations
 msft.recommendations_summary
