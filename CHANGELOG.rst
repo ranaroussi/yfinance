@@ -1,6 +1,20 @@
 Change Log
 ===========
 
+0.2.41
+------
+Improvements:
+- add keys to financials #1965 #1985
+- fetch Sustainability #1959
+- improve price-repair-zeroes #1990
+Fixes (prices):
+- fetching when period='max' #1967
+- metadata: Fix '1wk is invalid' & repeated calls #1970
+- Pandas warnings #1955 #1981
+- price repair syntax errors #1989
+Maintenance:
+- deprecate Ticker.earnings #1977
+
 0.2.40
 ------
 Fix typo in 0.2.39 c7af213
