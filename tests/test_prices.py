@@ -864,7 +864,7 @@ class TestPriceRepair(unittest.TestCase):
 
             fp = os.path.join(_dp, "data", tkr.replace('.','-')+'-'+interval+"-bad-stock-split-fixed.csv")
             correct_df = _pd.read_csv(fp, index_col="Date")
-            correct_df.index = _pd.to_datetime(correct_df.index)
+            correct_df.index = _pd.to_datetime(correct_df.index, utc=True)
 
             repaired_df = repaired_df.sort_index()
             correct_df = correct_df.sort_index()
