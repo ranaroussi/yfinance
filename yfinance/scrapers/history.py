@@ -1046,7 +1046,7 @@ class PriceHistory:
             f_vol_bad = f_vol_zero & f_high_low_good & f_change
             # ^ intra-interval price changed without volume, bad
 
-            if interval[-1] not in ['mh']:
+            if not intraday:
                 # Interday data: if close changes between intervals with volume=0 then volume is wrong.
                 # Possible can repair with intraday, but usually Yahoo does not have the volume.
                 close_diff = df2['Close'].diff()
