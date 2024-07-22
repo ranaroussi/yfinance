@@ -225,7 +225,6 @@ class PriceHistory:
                     quotes = quotes.iloc[0:quotes.shape[0] - 1]
         except Exception:
             shared._DFS[self.ticker] = utils.empty_df()
-            print(err_msg)
             shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
             if raise_errors:
                 raise _exception
