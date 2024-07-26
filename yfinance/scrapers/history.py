@@ -9,6 +9,9 @@ from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
 from yfinance.exceptions import YFChartError, YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError
 
+import warnings
+_warned_auto_adjust = False
+
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None, proxy=None):
         self._data = data
@@ -27,7 +30,7 @@ class PriceHistory:
     @utils.log_indent_decorator
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False, repair=False, keepna=False,
+                auto_adjust=None, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
                 raise_errors=False) -> pd.DataFrame:
         """
@@ -73,6 +76,13 @@ class PriceHistory:
         """
         logger = utils.get_yf_logger()
         proxy = proxy or self.proxy
+
+        if auto_adjust is None:
+            global _warned_auto_adjust
+            if not _warned_auto_adjust:
+                warnings.warn("You have not set argument 'auto_adjust'. This defaults to True = adjust for dividends, but you should be setting it (Yahoo sets to True).", UserWarning)
+                _warned_auto_adjust = True
+            auto_adjust = True
 
         start_user = start
         end_user = end

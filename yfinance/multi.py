@@ -32,10 +32,13 @@ from . import Ticker, utils
 from .data import YfData
 from . import shared
 
+import warnings
+_warned_auto_adjust = False
+
 
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
-             group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
+             group_by='column', auto_adjust=None, back_adjust=False, repair=False, keepna=False,
              progress=True, period="max", interval="1d", prepost=False,
              proxy=None, rounding=False, timeout=10, session=None):
     """Download yahoo tickers
@@ -87,6 +90,13 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             Optional. Pass your own session object to be used for all requests
     """
     logger = utils.get_yf_logger()
+
+    if auto_adjust is None:
+        global _warned_auto_adjust
+        if not _warned_auto_adjust:
+            warnings.warn("You have not set argument 'auto_adjust'. This defaults to False, but you should be setting it (Yahoo sets to True).", UserWarning)
+            _warned_auto_adjust = True
+        auto_adjust = False
 
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
