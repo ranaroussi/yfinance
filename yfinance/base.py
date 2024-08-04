@@ -21,25 +21,26 @@
 
 from __future__ import print_function
 
-from io import StringIO
 import json as _json
+import re
 import warnings
+from io import StringIO
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
 import pandas as pd
+import pytz
 import requests
 
 from . import utils, cache
+from .const import _BASE_URL_, _ROOT_URL_
 from .data import YfData
 from .exceptions import YFEarningsDateMissing
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
+from .scrapers.history import PriceHistory
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
-from .scrapers.history import PriceHistory
-
-from .const import _BASE_URL_, _ROOT_URL_
 
 
 class TickerBase:
@@ -534,6 +535,15 @@ class TickerBase:
 
         logger = utils.get_yf_logger()
 
+        ticker_tz = ""
+
+        def get_ticker_tz():
+            nonlocal ticker_tz
+            if ticker_tz == "":
+                self._quote.proxy = proxy or self.proxy
+                ticker_tz = self._get_ticker_tz(proxy=proxy, timeout=30)
+            return ticker_tz
+
         page_size = min(limit, 100)  # YF caps at 100, don't go higher
         page_offset = 0
         dates = None
@@ -589,20 +599,20 @@ class TickerBase:
 
         # Parse earnings date string
         cn = "Earnings Date"
-        # - remove AM/PM and timezone from date string
-        tzinfo = dates[cn].str.extract('([AP]M[a-zA-Z]*)$')
-        dates[cn] = dates[cn].replace(' [AP]M[a-zA-Z]*$', '', regex=True)
-        # - split AM/PM from timezone
-        tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
-        tzinfo.columns = ["AM/PM", "TZ"]
-        # - combine and parse
-        dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
-        dates[cn] = pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
-        # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
-        self._quote.proxy = proxy or self.proxy
-        tz = self._get_ticker_tz(proxy=proxy, timeout=30)
-        dates[cn] = dates[cn].dt.tz_localize(tz)
 
+        def map_date(time_str: str):
+            tz_match = re.search('([AP]M)([a-zA-Z]*)$', time_str)
+            tz_str = tz_match.group(2).strip()
+            # - remove AM/PM and timezone from date string
+            time_str = time_str.replace(tz_str, "")
+            try:
+                tz = pytz.timezone(tz_str)
+            except pytz.UnknownTimeZoneError:
+                tz = get_ticker_tz()
+
+            return pd.to_datetime(time_str, format="%b %d, %Y, %I %p").tz_localize(tz)
+
+        dates[cn] = dates[cn].map(map_date)
         dates = dates.set_index("Earnings Date")
 
         self._earnings_dates[limit] = dates
