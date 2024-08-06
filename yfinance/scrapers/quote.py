@@ -496,6 +496,7 @@ class Quote:
         self._recommendations = None
         self._upgrades_downgrades = None
         self._calendar = None
+        self._sec_filings = None
 
         self._already_scraped = False
         self._already_fetched = False
@@ -562,6 +563,13 @@ class Quote:
         if self._calendar is None:
             self._fetch_calendar()
         return self._calendar
+
+    @property
+    def sec_filings(self) -> dict:
+        if self._sec_filings is None:
+            f = self._fetch_sec_filings()
+            self._sec_filings = {} if f is None else f
+        return self._sec_filings
 
     @staticmethod
     def valid_modules():
@@ -710,3 +718,35 @@ class Quote:
                 self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
         except (KeyError, IndexError):
             raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+
+
+    def _fetch_sec_filings(self):
+        result = self._fetch(self.proxy, modules=['secFilings'])
+        if result is None:
+            return None
+
+        filings = result["quoteSummary"]["result"][0]["secFilings"]["filings"]
+
+        # Improve structure
+        for f in filings:
+            if 'exhibits' in f:
+                f['exhibits'] = {e['type']:e['url'] for e in f['exhibits']}
+            f['date'] = datetime.datetime.strptime(f['date'], '%Y-%m-%d').date()
+
+        # Experimental: convert to pandas
+        # for i in range(len(filings)):
+        #     f = filings[i]
+        #     if 'exhibits' in f:
+        #         for e in f['exhibits']:
+        #             f[e['type']] = e['url']
+        #         del f['exhibits']
+        #     filings[i] = f
+        # filings = pd.DataFrame(filings)
+        # for c in filings.columns:
+        #     if c.startswith('EX-'):
+        #         filings[c] = filings[c].astype(str)
+        #         filings.loc[filings[c]=='nan', c] = ''
+        # filings = filings.drop('epochDate', axis=1)
+        # filings = filings.set_index('date')
+
+        return filings

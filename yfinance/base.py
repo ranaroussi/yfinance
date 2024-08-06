@@ -171,6 +171,10 @@ class TickerBase:
         self._quote.proxy = proxy or self.proxy
         return self._quote.calendar
 
+    def get_sec_filings(self, proxy=None) -> dict:
+        self._quote.proxy = proxy or self.proxy
+        return self._quote.sec_filings
+
     def get_major_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.major
