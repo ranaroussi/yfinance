@@ -100,6 +100,8 @@ msft.capital_gains  # only for mutual funds & etfs
 msft.get_shares_full(start="2022-01-01", end=None)
 
 # show financials:
+msft.calendar
+msft.sec_filings
 # - income statement
 msft.income_stmt
 msft.quarterly_income_stmt

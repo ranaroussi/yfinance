@@ -169,6 +169,10 @@ class Ticker(TickerBase):
         return self.get_calendar()
 
     @property
+    def sec_filings(self) -> dict:
+        return self.get_sec_filings()
+
+    @property
     def recommendations(self):
         return self.get_recommendations()
 
