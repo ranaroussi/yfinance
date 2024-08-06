@@ -96,13 +96,13 @@ class Holders:
         try:
             data = result["quoteSummary"]["result"][0]
             # parse "institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"
-            self._parse_institution_ownership(data["institutionOwnership"])
-            self._parse_fund_ownership(data["fundOwnership"])
-            # self._parse_major_direct_holders(data["majorDirectHolders"])  # need more data to investigate
-            self._parse_major_holders_breakdown(data["majorHoldersBreakdown"])
-            self._parse_insider_transactions(data["insiderTransactions"])
-            self._parse_insider_holders(data["insiderHolders"])
-            self._parse_net_share_purchase_activity(data["netSharePurchaseActivity"])
+            self._parse_institution_ownership(data.get("institutionOwnership", {}))
+            self._parse_fund_ownership(data.get("fundOwnership", {}))
+            # self._parse_major_direct_holders(data.get("majorDirectHolders", {}))  # need more data to investigate
+            self._parse_major_holders_breakdown(data.get("majorHoldersBreakdown", {}))
+            self._parse_insider_transactions(data.get("insiderTransactions", {}))
+            self._parse_insider_holders(data.get("insiderHolders", {}))
+            self._parse_net_share_purchase_activity(data.get("netSharePurchaseActivity", {}))
         except (KeyError, IndexError):
             raise YFDataException("Failed to parse holders json data.")
 
@@ -113,7 +113,7 @@ class Holders:
         return data
 
     def _parse_institution_ownership(self, data):
-        holders = data["ownershipList"]
+        holders = data.get("ownershipList", {})
         for owner in holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
@@ -125,7 +125,7 @@ class Holders:
         self._institutional = df
 
     def _parse_fund_ownership(self, data):
-        holders = data["ownershipList"]
+        holders = data.get("ownershipList", {})
         for owner in holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
@@ -137,7 +137,7 @@ class Holders:
         self._mutualfund = df
 
     def _parse_major_direct_holders(self, data):
-        holders = data["holders"]
+        holders = data.get("holders", {})
         for owner in holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
@@ -158,7 +158,7 @@ class Holders:
         self._major = df
 
     def _parse_insider_transactions(self, data):
-        holders = data["transactions"]
+        holders = data.get("transactions", {})
         for owner in holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
@@ -180,7 +180,7 @@ class Holders:
         self._insider_transactions = df
 
     def _parse_insider_holders(self, data):
-        holders = data["holders"]
+        holders = data.get("holders", {})
         for owner in holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
