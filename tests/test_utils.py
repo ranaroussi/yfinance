@@ -8,9 +8,10 @@ Specific test class:
    python -m unittest tests.utils.TestTicker
 
 """
+from datetime import datetime
 from unittest import TestSuite
 
-# import pandas as pd
+import pandas as pd
 # import numpy as np
 
 from .context import yfinance as yf
@@ -81,10 +82,34 @@ class TestCacheNoPermission(unittest.TestCase):
         cache.lookup(tkr)
 
 
+class TestPandas(unittest.TestCase):
+    date_strings = ["2024-08-07 09:05:00+02:00", "2024-08-07 09:05:00-04:00"]
+
+    @unittest.expectedFailure
+    def test_mixed_timezones_to_datetime_fails(self):
+        series = pd.Series(self.date_strings)
+        series = series.map(pd.Timestamp)
+        converted = pd.to_datetime(series)
+        self.assertIsNotNone(converted[0].tz)
+
+    def test_mixed_timezones_to_datetime(self):
+        series = pd.Series(self.date_strings)
+        series = series.map(pd.Timestamp)
+        converted = pd.to_datetime(series, utc=True)
+        self.assertIsNotNone(converted[0].tz)
+        i = 0
+        for dt in converted:
+            dt: datetime
+            ts: pd.Timestamp = series[i]
+            self.assertEqual(dt.isoformat(), ts.tz_convert(tz="UTC").isoformat())
+            i += 1
+
+
 def suite():
     ts: TestSuite = unittest.TestSuite()
     ts.addTest(TestCache('Test cache'))
     ts.addTest(TestCacheNoPermission('Test cache no permission'))
+    ts.addTest(TestPandas("Test pandas"))
     return ts
 
 

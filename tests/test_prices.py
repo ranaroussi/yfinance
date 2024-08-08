@@ -1,13 +1,13 @@
-from .context import yfinance as yf
-from .context import session_gbl
-
+import datetime as _dt
+import os
 import unittest
 
-import os
-import datetime as _dt
-import pytz as _tz
 import numpy as _np
 import pandas as _pd
+import pytz as _tz
+
+from .context import session_gbl
+from .context import yfinance as yf
 
 
 class TestPriceHistory(unittest.TestCase):
@@ -32,17 +32,23 @@ class TestPriceHistory(unittest.TestCase):
                 f = df.index.time == _dt.time(0)
                 self.assertTrue(f.all())
 
-    def test_download(self):
+    def test_download_multi_large_interval(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         intervals = ["1d", "1wk", "1mo"]
         for interval in intervals:
-            df = yf.download(tkrs, period="5y", interval=interval)
+            with self.subTest(interval):
+                df = yf.download(tkrs, period="5y", interval=interval)
 
-            f = df.index.time == _dt.time(0)
-            self.assertTrue(f.all())
+                f = df.index.time == _dt.time(0)
+                self.assertTrue(f.all())
 
-            df_tkrs = df.columns.levels[1]
-            self.assertEqual(sorted(tkrs), sorted(df_tkrs))
+                df_tkrs = df.columns.levels[1]
+                self.assertEqual(sorted(tkrs), sorted(df_tkrs))
+
+    def test_download_multi_small_interval(self):
+        use_tkrs = ["AAPL", "0Q3.DE", "ATVI"]
+        df = yf.download(use_tkrs, period="1d", interval="5m")
+        self.assertEqual(df.index.tz, _dt.timezone.utc)
 
     def test_download_with_invalid_ticker(self):
         #Checks if using an invalid symbol gives the same output as not using an invalid symbol in combination with a valid symbol (AAPL)
