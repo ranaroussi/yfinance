@@ -176,6 +176,28 @@ def enable_debug_mode():
     setup_debug_formatting()
 
 
+def search(
+    query, quotesCount=10, newsCount=5, enableFuzzyQuery=True, proxy=None, session=None
+):
+    session = session or _requests
+    url = f"{_BASE_URL_}/v1/finance/search"
+    data = session.get(
+        url=url,
+        proxies=proxy,
+        params={
+            'q': query,
+            'quotesCount': quotesCount,
+            'newsCount': newsCount,
+            'enableFuzzyQuery': enableFuzzyQuery
+        },
+        headers=user_agent_headers
+    )
+    try:
+        return data.json()
+    except Exception:
+        return {}
+
+
 def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9])$", string))
 
@@ -183,11 +205,8 @@ def is_isin(string):
 def get_all_by_isin(isin, proxy=None, session=None):
     if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
-    session = session or _requests
-    url = f"{_BASE_URL_}/v1/finance/search?q={isin}"
-    data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
     try:
-        data = data.json()
+        data = search(isin, quotesCount=1, proxy=proxy, session=session)
         ticker = data.get('quotes', [{}])[0]
         return {
             'ticker': {
