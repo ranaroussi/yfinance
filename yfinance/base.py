@@ -512,11 +512,16 @@ class TickerBase:
         # Getting data from json
         url = f"{_BASE_URL_}/v1/finance/search?q={self.ticker}"
         data = self._data.cache_get(url=url, proxy=proxy)
-        if "Will be right back" in data.text:
+        if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
-        data = data.json()
+        try:
+            data = data.json()
+        except (_json.JSONDecodeError): 
+            logger = utils.get_yf_logger()
+            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+            data = {}
 
         # parse news
         self._news = data.get("news", [])
