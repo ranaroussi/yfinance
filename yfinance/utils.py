@@ -141,39 +141,45 @@ yf_logger = None
 yf_log_indented = False
 
 
+class YFLogFormatter(logging.Filter):
+    # Help be consistent with structuring YF log messages
+    def filter(self, record):
+        msg = record.msg
+        if hasattr(record, 'yf_cat'):
+            msg = f"{record.yf_cat}: {msg}"
+        if hasattr(record, 'yf_interval'):
+            msg = f"{record.yf_interval}: {msg}"
+        if hasattr(record, 'yf_symbol'):
+            msg = f"{record.yf_symbol}: {msg}"
+        record.msg = msg
+        return True
+
+
 def get_yf_logger():
     global yf_logger
-    if yf_logger is None:
-        yf_logger = logging.getLogger('yfinance')
     global yf_log_indented
     if yf_log_indented:
         yf_logger = get_indented_logger('yfinance')
+    elif yf_logger is None:
+        yf_logger = logging.getLogger('yfinance')
+        yf_logger.addFilter(YFLogFormatter())
     return yf_logger
 
 
-def setup_debug_formatting():
+def enable_debug_mode():
     global yf_logger
-    yf_logger = get_yf_logger()
-
-    if not yf_logger.isEnabledFor(logging.DEBUG):
-        yf_logger.warning("logging mode not set to 'DEBUG', so not setting up debug formatting")
-        return
-
     global yf_log_indented
     if not yf_log_indented:
+        yf_logger = logging.getLogger('yfinance')
+        yf_logger.setLevel(logging.DEBUG)
         if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
             h = logging.StreamHandler()
             # Ensure different level strings don't interfere with indentation
             formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
             h.setFormatter(formatter)
             yf_logger.addHandler(h)
-
-    yf_log_indented = True
-
-
-def enable_debug_mode():
-    get_yf_logger().setLevel(logging.DEBUG)
-    setup_debug_formatting()
+        yf_logger = get_indented_logger()
+        yf_log_indented = True
 
 
 def is_isin(string):
