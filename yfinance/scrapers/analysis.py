@@ -36,7 +36,7 @@ class Analysis:
         try:
             data = self._fetch(['financialData'])
             data = data['quoteSummary']['result'][0]['financialData']
-        except:
+        except (TypeError, KeyError):
             self._analyst_price_targets = {}
             return self._analyst_price_targets
 
@@ -115,7 +115,7 @@ class Analysis:
         try:
             data = self._fetch(['earningsHistory'])
             data = data['quoteSummary']['result'][0]['earningsHistory']['history']
-        except:
+        except (TypeError, KeyError):
             self._earnings_history = pd.DataFrame()
             return self._earnings_history
 
@@ -201,7 +201,7 @@ class Analysis:
         try:
             trends = self._fetch(['industryTrend', 'sectorTrend', 'indexTrend'])
             trends = trends['quoteSummary']['result'][0]
-        except:
+        except (TypeError, KeyError):
             self._growth_estimates = pd.DataFrame()
             return self._growth_estimates
 
@@ -260,5 +260,5 @@ class Analysis:
         try:
             data = self._fetch(['earningsTrend'])
             self._earnings_trend = data['quoteSummary']['result'][0]['earningsTrend']['trend']
-        except:
+        except (TypeError, KeyError):
             self._earnings_trend = []
