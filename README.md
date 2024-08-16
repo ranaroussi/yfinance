@@ -128,6 +128,15 @@ msft.recommendations
 msft.recommendations_summary
 msft.upgrades_downgrades
 
+# show analysts data
+msft.analyst_price_targets
+msft.earnings_estimate
+msft.revenue_estimate
+msft.earnings_history
+msft.eps_trend
+msft.eps_revisions
+msft.growth_estimates
+
 # Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default.
 # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
 msft.earnings_dates
