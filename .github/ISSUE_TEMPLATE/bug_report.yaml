@@ -55,7 +55,7 @@ body:
     id: debug-log
     attributes:
       label: "Debug log"
-      description: "Run code with debug logging enabled and post the full output. IMPORTANT INSTRUCTIONS: https://github.com/ranaroussi/yfinance/tree/main#logging"
+      description: "Run code with debug logging enabled - `yf.enable_debug_mode()` - and post the full output. Context: https://github.com/ranaroussi/yfinance/tree/main#logging"
     validations:
       required: true
 
