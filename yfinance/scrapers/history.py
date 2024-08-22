@@ -1483,10 +1483,10 @@ class PriceHistory:
                 close_chgs_pct = close_deltas / df2['Close'].iloc[lookback_idx:lookahead_idx].to_numpy()
                 adjClose_chgs_pct = adjClose_deltas / df2['Adj Close'].iloc[lookback_idx:lookahead_idx].to_numpy()
                 # Check if adjustment is too much. Need a big dividend % to be sure.
-                if div_pct > 0.2:
-                    adjClose_chg_pct = np.min(adjClose_chgs_pct)
-                    close_chg_pct = np.min(close_chgs_pct)
-                    if adjClose_chg_pct < 0.0 and adjClose_chg_pct < 1.0001*close_chg_pct:
+                if div_pct > 0.15:
+                    adjClose_chg_pct = np.max(adjClose_chgs_pct)
+                    close_chg_pct = np.max(close_chgs_pct)
+                    if adjClose_chg_pct > 0.1 and adjClose_chg_pct > 1.0001*close_chg_pct:
                         # Bigger drop
                         div_adj_exceeds_prices = True
 
@@ -1503,11 +1503,15 @@ class PriceHistory:
             if div_missing_from_adjclose:
                 div_adj_is_too_small = False  # redundant information
 
+            if div_adj_exceeds_prices and div_adj_is_too_small:
+                # Contradiction. Assume former tricked by low-liquidity price action
+                div_adj_exceeds_prices = False
+
             div_status = {'present adj': present_adj}
             div_status['adj_missing'] = div_missing_from_adjclose
             div_status['adj_exceeds_prices'] = div_adj_exceeds_prices
             div_status['adj_exceeds_div'] = div_adj_exceeds_div
-            div_status['adj_too_small'] = div_adj_is_too_small
+            div_status['div_exceeds_adj'] = div_adj_is_too_small
 
             for k,v in div_status.items():
                 if k not in div_status_df:
@@ -1521,12 +1525,12 @@ class PriceHistory:
                         raise Exception(k,v,type(v))
                 div_status_df.loc[dt, k] = v
 
-        checks = ['adj_missing', 'adj_too_small', 'adj_exceeds_div', 'adj_exceeds_prices', 'div_too_big', 'div_too_small', 'fx_mixup']
+        checks = ['adj_missing', 'adj_exceeds_div', 'adj_exceeds_prices', 'div_exceeds_adj', 'div_too_big', 'div_too_small', 'fx_mixup']
         checks = [c for c in checks if c in div_status_df.columns]
 
         div_status_df['phantom'] = False
         phantom_proximity_threshold = _datetime.timedelta(days=7)
-        f = div_status_df['div_too_big'] | div_status_df['adj_too_small']
+        f = div_status_df['div_too_big'] | div_status_df['div_exceeds_adj']
         if f.any():
             # One/some of these may be phantom dividends. Clue is if another correct dividend is very close
             indices = np.where(f)[0]
@@ -1668,17 +1672,26 @@ class PriceHistory:
                 if c == 'div_too_big':
                     true_threshold = 1.0
                     fals_threshold = 0.2
-                    if 'adj_too_small' not in cluster.columns:
-                        # More likely that 'div_too_big' are false positives: NOT too big
-                         fals_threshold = 2/3
-                    elif cluster['adj_too_small'].all():
-                        # The present adjustment also contradicts the dividend yields, 
+
+                    if 'div_exceeds_adj' in cluster.columns and cluster['div_exceeds_adj'].all():
+                        # Dividend too big for prices AND the present adjustment,
                         # more likely the dividends are too big.
                         if (cluster['vol'][fc][f_fail]==0).all():
                             # No trading volume to cross-check, so higher thresholds
                             fals_threshold = 2/3
                         else:
-                            true_threshold = 1/2
+                            # Relax thresholds
+                            true_threshold = 2/5
+
+                    elif 'adj_exceeds_prices' in cluster.columns and cluster['adj_exceeds_prices'].all():
+                        # Both dividend and present adjust too big for prices,
+                        # more likely the dividends are too big.
+                        true_threshold = 1/2
+
+                    elif not ('div_exceeds_adj' in cluster.columns or 'adj_exceeds_prices' in cluster.columns):
+                        # Present adjustment seems correct, so more likely that 'div_too_big' are false positives: NOT too big
+                        fals_threshold = 1/2
+
                     if pct_fail >= true_threshold:
                         div_status_df.loc[fc, c] = True
                         continue
@@ -1689,13 +1702,9 @@ class PriceHistory:
                 if c == 'div_too_small':
                     true_threshold = 1.0
                     fals_threshold = 0.1
-                    if 'adj_exceeds_div' not in cluster.columns and 'adj_exceeds_prices' not in cluster.columns:
-                        # More likely that 'div_too_small' are false positives: NOT too small
+                    if 'adj_exceeds_div' not in cluster.columns:
+                        # Adjustment confirms dividends => more likely that 'div_too_small' are false positives: NOT too small
                         fals_threshold = 2/3
-                    elif ('adj_exceeds_div' in cluster.columns and cluster['adj_exceeds_div'].all()) \
-                         ('adj_exceeds_prices' in cluster.columns and cluster['adjadj_exceeds_prices_exceeds_div'].all()):
-                        # More likely that falses are false negatives
-                        true_threshold = 0.5
                     if pct_fail >= true_threshold:
                         div_status_df.loc[fc, c] = True
                         continue
@@ -1707,7 +1716,7 @@ class PriceHistory:
                     if cluster[c].iloc[-1] and n_fail == 1:
                         # Only the latest/last row is missing, genuine error
                         continue
-                if c == 'adj_too_small':
+                if c == 'div_exceeds_adj':
                     continue
 
                 if c == 'phantom' and self.ticker in ['KAP.IL', 'SAND']:
@@ -1759,18 +1768,17 @@ class PriceHistory:
                 dt = row.name
 
                 adj_missing = 'adj_missing' in row and row['adj_missing']
-                adj_too_small = 'adj_too_small' in row and row['adj_too_small']
+                div_exceeds_adj = 'div_exceeds_adj' in row and row['div_exceeds_adj']
                 adj_exceeds_div = 'adj_exceeds_div' in row and row['adj_exceeds_div']
                 adj_exceeds_prices = 'adj_exceeds_prices' in row and row['adj_exceeds_prices']
                 div_too_small = 'div_too_small' in row and row['div_too_small']
                 div_too_big = 'div_too_big' in row and row['div_too_big']
 
-                adj_too_big = adj_exceeds_div or adj_exceeds_prices
-
                 n_failed_checks = np.sum([row[c] for c in checks if c in row])
                 if n_failed_checks == 1:
-                    if adj_too_small or adj_too_big:
-                        k = 'too-small div-adjust' if adj_too_small else 'too-big div-adjust'
+                    if div_exceeds_adj or adj_exceeds_div:
+                        # Simply recalculate Adj Close
+                        k = 'too-small div-adjust' if div_exceeds_adj else 'too-big div-adjust'
                         div_repairs.setdefault(k, []).append(dt)
                         adj_correction = (1.0 - row['%']) / row['present adj']
                         enddt = dt-_datetime.timedelta(seconds=1)
@@ -1847,7 +1855,7 @@ class PriceHistory:
                         df2_nan.loc[:enddt, 'Repaired?'] = True
                         cluster.loc[dt, 'Fixed?'] = True
 
-                    elif div_too_big and adj_too_small:
+                    elif div_too_big and div_exceeds_adj:
                         # Adj Close is correct, just need to fix Dividend.
                         # Probably just a currency unit mixup.
                         df2.loc[dt, 'Dividends'] /= currency_divide
@@ -1869,7 +1877,7 @@ class PriceHistory:
                         div_repairs.setdefault(k, []).append(dt)
                         cluster.loc[dt, 'Fixed?'] = True
 
-                    elif adj_too_big and div_too_big:
+                    elif div_too_big and adj_exceeds_prices:
                         # Assume div 100x error, and that Yahoo used this wrong dividend.
                         # 'adj_too_big=True' is probably redundant information, knowing div too big
                         # is enough to require also fixing adjustment
