@@ -171,6 +171,10 @@ class TickerBase:
         self._quote.proxy = proxy or self.proxy
         return self._quote.calendar
 
+    def get_sec_filings(self, proxy=None) -> dict:
+        self._quote.proxy = proxy or self.proxy
+        return self._quote.sec_filings
+
     def get_major_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.major
@@ -240,40 +244,67 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_analyst_price_target(self, proxy=None, as_dict=False):
+    def get_analyst_price_targets(self, proxy=None) -> dict:
+        """
+        Keys:   current  low  high  mean  median
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.analyst_price_target
-        if as_dict:
-            return data.to_dict()
+        data = self._analysis.analyst_price_targets
         return data
 
-    def get_rev_forecast(self, proxy=None, as_dict=False):
+    def get_earnings_estimate(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.rev_est
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.earnings_estimate
+        return data.to_dict() if as_dict else data
 
-    def get_earnings_forecast(self, proxy=None, as_dict=False):
+    def get_revenue_estimate(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.eps_est
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.revenue_estimate
+        return data.to_dict() if as_dict else data
 
-    def get_trend_details(self, proxy=None, as_dict=False):
+    def get_earnings_history(self, proxy=None, as_dict=False):
+        """
+        Index:      pd.DatetimeIndex
+        Columns:    epsEstimate  epsActual  epsDifference  surprisePercent
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.analyst_trend_details
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.earnings_history
+        return data.to_dict() if as_dict else data
 
-    def get_earnings_trend(self, proxy=None, as_dict=False):
+    def get_eps_trend(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.earnings_trend
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.eps_trend
+        return data.to_dict() if as_dict else data
+
+    def get_eps_revisions(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    upLast7days  upLast30days  downLast7days  downLast30days
+        """
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.eps_revisions
+        return data.to_dict() if as_dict else data
+
+    def get_growth_estimates(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y +5y -5y
+        Columns:    stock  industry  sector  index
+        """
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.growth_estimates
+        return data.to_dict() if as_dict else data
 
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
         """
@@ -508,11 +539,16 @@ class TickerBase:
         # Getting data from json
         url = f"{_BASE_URL_}/v1/finance/search?q={self.ticker}"
         data = self._data.cache_get(url=url, proxy=proxy)
-        if "Will be right back" in data.text:
+        if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
-        data = data.json()
+        try:
+            data = data.json()
+        except (_json.JSONDecodeError): 
+            logger = utils.get_yf_logger()
+            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+            data = {}
 
         # parse news
         self._news = data.get("news", [])

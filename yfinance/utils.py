@@ -141,39 +141,45 @@ yf_logger = None
 yf_log_indented = False
 
 
+class YFLogFormatter(logging.Filter):
+    # Help be consistent with structuring YF log messages
+    def filter(self, record):
+        msg = record.msg
+        if hasattr(record, 'yf_cat'):
+            msg = f"{record.yf_cat}: {msg}"
+        if hasattr(record, 'yf_interval'):
+            msg = f"{record.yf_interval}: {msg}"
+        if hasattr(record, 'yf_symbol'):
+            msg = f"{record.yf_symbol}: {msg}"
+        record.msg = msg
+        return True
+
+
 def get_yf_logger():
     global yf_logger
-    if yf_logger is None:
-        yf_logger = logging.getLogger('yfinance')
     global yf_log_indented
     if yf_log_indented:
         yf_logger = get_indented_logger('yfinance')
+    elif yf_logger is None:
+        yf_logger = logging.getLogger('yfinance')
+        yf_logger.addFilter(YFLogFormatter())
     return yf_logger
 
 
-def setup_debug_formatting():
+def enable_debug_mode():
     global yf_logger
-    yf_logger = get_yf_logger()
-
-    if not yf_logger.isEnabledFor(logging.DEBUG):
-        yf_logger.warning("logging mode not set to 'DEBUG', so not setting up debug formatting")
-        return
-
     global yf_log_indented
     if not yf_log_indented:
+        yf_logger = logging.getLogger('yfinance')
+        yf_logger.setLevel(logging.DEBUG)
         if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
             h = logging.StreamHandler()
             # Ensure different level strings don't interfere with indentation
             formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
             h.setFormatter(formatter)
             yf_logger.addHandler(h)
-
-    yf_log_indented = True
-
-
-def enable_debug_mode():
-    get_yf_logger().setLevel(logging.DEBUG)
-    setup_debug_formatting()
+        yf_logger = get_indented_logger()
+        yf_log_indented = True
 
 
 def is_isin(string):
@@ -425,8 +431,16 @@ def _interval_to_timedelta(interval):
         return relativedelta(months=1)
     elif interval == "3mo":
         return relativedelta(months=3)
+    elif interval == "6mo":
+        return relativedelta(months=6)
     elif interval == "1y":
         return relativedelta(years=1)
+    elif interval == "2y":
+        return relativedelta(years=2)
+    elif interval == "5y":
+        return relativedelta(years=5)
+    elif interval == "10y":
+        return relativedelta(years=10)
     elif interval == "1wk":
         return _pd.Timedelta(days=7)
     else:
@@ -580,7 +594,7 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     return quotes
 
 
-def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
+def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, repair=False, currency=None):
     # Yahoo bug fix. If market is open today then Yahoo normally returns
     # todays data as a separate row from rest-of week/month interval in above row.
     # Seems to depend on what exchange e.g. crypto OK.
@@ -618,6 +632,30 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                     # Yahoo returning last interval duplicated, which means
                     # Yahoo is not returning live data (phew!)
                     return quotes
+
+                ss = quotes['Stock Splits'].iloc[-2:].replace(0,1).prod()
+                if repair:
+                    # First, check if one row is ~100x the other. A £/pence mixup on LSE.
+                    # Avoid if a stock split near 100
+                    if currency == 'KWF':
+                        # Kuwaiti Dinar divided into 1000 not 100
+                        currency_divide = 1000
+                    else:
+                        currency_divide = 100
+                    # if ss < 75 or ss > 125:
+                    if abs(ss/currency_divide-1) > 0.25:
+                        ratio = quotes.loc[idx1, const._PRICE_COLNAMES_] / quotes.loc[idx2, const._PRICE_COLNAMES_]
+                        if ((ratio/currency_divide-1).abs() < 0.05).all():
+                            # newer prices are 100x
+                            for c in const._PRICE_COLNAMES_:
+                                quotes.loc[idx2, c] *= 100
+                        elif((ratio*currency_divide-1).abs() < 0.05).all():
+                            # newer prices are 0.01x
+                            for c in const._PRICE_COLNAMES_:
+                                quotes.loc[idx2, c] *= 0.01
+
+                # quotes.loc[idx2, 'Stock Splits'] = 2  # wtf? why doing this?
+
                 if _np.isnan(quotes.loc[idx2, "Open"]):
                     quotes.loc[idx2, "Open"] = quotes["Open"].iloc[n - 1]
                 # Note: nanmax() & nanmin() ignores NaNs, but still need to check not all are NaN to avoid warnings
@@ -635,6 +673,9 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
                 if "Adj Close" in quotes.columns:
                     quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[n - 1]
                 quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[n - 1]
+                quotes.loc[idx2, "Dividends"] += quotes["Dividends"].iloc[n - 1]
+                if ss != 1.0:
+                    quotes.loc[idx2, "Stock Splits"] = ss
                 quotes = quotes.drop(quotes.index[n - 1])
 
     return quotes
@@ -885,7 +926,7 @@ class ProgressBar:
         num_hashes = int(round((percent_done / 100.0) * all_full))
         self.prog_bar = '[' + self.fill_char * num_hashes + ' ' * (all_full - num_hashes) + ']'
         pct_place = (len(self.prog_bar) // 2) - len(str(percent_done))
-        pct_string = f'{percent_done}%%'
+        pct_string = f'{percent_done}%'
         self.prog_bar = self.prog_bar[0:pct_place] + (pct_string + self.prog_bar[pct_place + len(pct_string):])
 
     def __str__(self):

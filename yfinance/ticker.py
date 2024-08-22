@@ -92,6 +92,11 @@ class Ticker(TickerBase):
             date = self._expirations[date]
             options = self._download_options(date)
 
+        if not options:
+            return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
+                "calls": None, "puts": None, "underlying": None
+            })
+
         return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
             "calls": self._options2df(options['calls'], tz=tz),
             "puts": self._options2df(options['puts'], tz=tz),
@@ -162,6 +167,10 @@ class Ticker(TickerBase):
         Returns a dictionary of events, earnings, and dividends for the ticker
         """
         return self.get_calendar()
+
+    @property
+    def sec_filings(self) -> dict:
+        return self.get_sec_filings()
 
     @property
     def recommendations(self):
@@ -240,12 +249,32 @@ class Ticker(TickerBase):
         return self.quarterly_cash_flow
 
     @property
-    def analyst_price_target(self) -> _pd.DataFrame:
-        return self.get_analyst_price_target()
+    def analyst_price_targets(self) -> dict:
+        return self.get_analyst_price_targets()
 
     @property
-    def revenue_forecasts(self) -> _pd.DataFrame:
-        return self.get_rev_forecast()
+    def earnings_estimate(self) -> _pd.DataFrame:
+        return self.get_earnings_estimate()
+
+    @property
+    def revenue_estimate(self) -> _pd.DataFrame:
+        return self.get_revenue_estimate()
+
+    @property
+    def earnings_history(self) -> _pd.DataFrame:
+        return self.get_earnings_history()
+
+    @property
+    def eps_trend(self) -> _pd.DataFrame:
+        return self.get_eps_trend()
+
+    @property
+    def eps_revisions(self) -> _pd.DataFrame:
+        return self.get_eps_revisions()
+
+    @property
+    def growth_estimates(self) -> _pd.DataFrame:
+        return self.get_growth_estimates()
 
     @property
     def sustainability(self) -> _pd.DataFrame:
@@ -262,20 +291,8 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def trend_details(self) -> _pd.DataFrame:
-        return self.get_trend_details()
-
-    @property
-    def earnings_trend(self) -> _pd.DataFrame:
-        return self.get_earnings_trend()
-
-    @property
     def earnings_dates(self) -> _pd.DataFrame:
         return self.get_earnings_dates()
-
-    @property
-    def earnings_forecasts(self) -> _pd.DataFrame:
-        return self.get_earnings_forecast()
 
     @property
     def history_metadata(self) -> dict:
