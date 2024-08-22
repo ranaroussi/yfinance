@@ -647,7 +647,7 @@ class TickerBase:
                 except Exception:
                     dt = dt.tz_localize(tz_backup)
                 dates2.append(dt)
-            dates[cn] = pd.to_datetime(dates2)
+            dates[cn] = pd.to_datetime(dates2, utc=True).tz_convert(dates2[0].tzinfo)
 
         dates = dates.set_index("Earnings Date")
 
