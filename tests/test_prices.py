@@ -178,9 +178,8 @@ class TestPriceHistory(unittest.TestCase):
             if df_daily_divs.shape[0] == 0:
                 continue
 
-            last_div_date = df_daily_divs.index[-1]
-            start_d = last_div_date.date()
-            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            start_d = df_daily_divs.index[0].date()
+            end_d = df_daily_divs.index[-1].date() + _dt.timedelta(days=1)
             df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
             self.assertTrue((df_intraday["Dividends"] != 0.0).any())
 
@@ -206,9 +205,8 @@ class TestPriceHistory(unittest.TestCase):
             if df_daily_divs.shape[0] == 0:
                 continue
 
-            last_div_date = df_daily_divs.index[-1]
-            start_d = last_div_date.date()
-            end_d = last_div_date.date() + _dt.timedelta(days=1)
+            start_d = df_daily_divs.index[0].date()
+            end_d = df_daily_divs.index[-1].date() + _dt.timedelta(days=1)
             df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
             self.assertTrue((df_intraday["Dividends"] != 0.0).any())
 
