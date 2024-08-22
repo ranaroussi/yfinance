@@ -211,7 +211,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
-    data.index = _pd.to_datetime(data.index)
+    data.index = _pd.to_datetime(data.index, utc=True)
     # switch names back to isins if applicable
     data.rename(columns=shared._ISINS, inplace=True)
 
