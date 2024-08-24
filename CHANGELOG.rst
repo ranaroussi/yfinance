@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.43
+------
+Fix price-repair bug introduced in 0.2.42 #2036
+
 0.2.42
 ------
 Features:
