@@ -368,48 +368,7 @@ class PriceHistory:
             # Must fix bad 'Adj Close' & dividends before 100x/split errors.
             # First make currency consistent. On some exchanges, dividends often in different currency
             # to prices, e.g. £ vs pence.
-            if currency in ["GBp", "ZAc", "ILA"]:
-                if currency == 'GBp':
-                    # UK £/pence
-                    currency = 'GBP'
-                    m = 0.01
-                elif currency == 'ZAc':
-                    # South Africa Rand/cents
-                    currency = 'ZAR'
-                    m = 0.01
-                elif currency == 'ILA':
-                    # Israel Shekels/Agora
-                    currency = 'ILS'
-                    m = 0.01
-
-                prices_in_subunits = True  # usually is true
-                if df.index[-1] > (pd.Timestamp.utcnow() - _datetime.timedelta(days=30)):
-                    try:
-                        ratio = self._history_metadata['regularMarketPrice'] / self._history_metadata['chartPreviousClose']
-                        if abs((ratio*m)-1) < 0.1:
-                            # within 10% of 100x
-                            prices_in_subunits = True
-                    except Exception:
-                        pass
-                if prices_in_subunits:
-                    for c in _PRICE_COLNAMES_:
-                        df[c] *= m
-                self._history_metadata["currency"] = currency
-
-                f_div = df['Dividends']!=0.0
-                if f_div.any():
-                    # But sometimes the dividend was in pence.
-                    # Heuristic is: if dividend yield is ridiculous high vs converted prices, then
-                    # assume dividend was also in pence and convert to GBP.
-                    # Threshold for "ridiculous" based on largest yield I've seen anywhere - 63.4%
-                    # If this simple heuritsic generates a false positive, then _fix_bad_div_adjust()
-                    # will detect and repair.
-                    divs = df[['Close','Dividends']].copy()
-                    divs['Close'] = divs['Close'].ffill().shift(1, fill_value=divs['Close'].iloc[0])
-                    divs = divs[f_div]
-                    div_pcts = (divs['Dividends'] / divs['Close']).to_numpy()
-                    if len(div_pcts) > 0 and np.average(div_pcts) > 1:
-                        df['Dividends'] *= m
+            df, currency = self._standardise_currency(df, currency)
 
             df = self._fix_bad_div_adjust(df, interval, currency)
 
@@ -932,6 +891,61 @@ class PriceHistory:
             # Not logging these reconstructions - that's job of calling function as it has context.
 
         return df_v2
+
+    def _standardise_currency(self, df, currency):
+        if currency not in ["GBp", "ZAc", "ILA"]:
+            return df, currency
+        currency2 = currency
+        if currency == 'GBp':
+            # UK £/pence
+            currency2 = 'GBP'
+            m = 0.01
+        elif currency == 'ZAc':
+            # South Africa Rand/cents
+            currency2 = 'ZAR'
+            m = 0.01
+        elif currency == 'ILA':
+            # Israel Shekels/Agora
+            currency2 = 'ILS'
+            m = 0.01
+
+        # Use latest row with actual volume, because volume=0 rows can be 0.01x the other rows.
+        # _fix_unit_switch() will ensure all rows are on same scale.
+        f_volume = df['Volume']>0
+        if not f_volume.any():
+            return df, currency
+        last_row = df.iloc[np.where(f_volume)[0][-1]]
+        prices_in_subunits = True  # usually is true
+        if last_row.name > (pd.Timestamp.utcnow() - _datetime.timedelta(days=30)):
+            try:
+                ratio = self._history_metadata['regularMarketPrice'] / last_row['Close']
+                if abs((ratio*m)-1) < 0.1:
+                    # within 10% of 100x
+                    prices_in_subunits = False
+            except Exception:
+                # Should never happen but just-in-case
+                pass
+        if prices_in_subunits:
+            for c in _PRICE_COLNAMES_:
+                df[c] *= m
+        self._history_metadata["currency"] = currency
+
+        f_div = df['Dividends']!=0.0
+        if f_div.any():
+            # But sometimes the dividend was in pence.
+            # Heuristic is: if dividend yield is ridiculous high vs converted prices, then
+            # assume dividend was also in pence and convert to GBP.
+            # Threshold for "ridiculous" based on largest yield I've seen anywhere - 63.4%
+            # If this simple heuristic generates a false positive, then _fix_bad_div_adjust()
+            # will detect and repair.
+            divs = df[['Close','Dividends']].copy()
+            divs['Close'] = divs['Close'].ffill().shift(1, fill_value=divs['Close'].iloc[0])
+            divs = divs[f_div]
+            div_pcts = (divs['Dividends'] / divs['Close']).to_numpy()
+            if len(div_pcts) > 0 and np.average(div_pcts) > 1:
+                df['Dividends'] *= m
+
+        return df, currency2
 
     @utils.log_indent_decorator
     def _fix_unit_mixups(self, df, interval, tz_exchange, prepost):
