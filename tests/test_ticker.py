@@ -41,14 +41,17 @@ ticker_attributes = (
     ("balance_sheet", pd.DataFrame),
     ("quarterly_income_stmt", pd.DataFrame),
     ("income_stmt", pd.DataFrame),
-    ("analyst_price_target", pd.DataFrame),
-    ("revenue_forecasts", pd.DataFrame),
+    ("analyst_price_targets", dict),
+    ("earnings_estimate", pd.DataFrame),
+    ("revenue_estimate", pd.DataFrame),
+    ("earnings_history", pd.DataFrame),
+    ("eps_trend", pd.DataFrame),
+    ("eps_revisions", pd.DataFrame),
+    ("growth_estimates", pd.DataFrame),
     ("sustainability", pd.DataFrame),
     ("options", tuple),
     ("news", Any),
-    ("earnings_trend", pd.DataFrame),
     ("earnings_dates", pd.DataFrame),
-    ("earnings_forecasts", pd.DataFrame),
 )
 
 def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name, expected_type):
@@ -715,9 +718,11 @@ class TestTickerAnalysts(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
+        self.ticker_no_analysts = yf.Ticker("^GSPC", session=self.session)
 
     def tearDown(self):
         self.ticker = None
+        self.ticker_no_analysts = None
 
     def test_recommendations(self):
         data = self.ticker.recommendations
@@ -748,23 +753,102 @@ class TestTickerAnalysts(unittest.TestCase):
         data_cached = self.ticker.upgrades_downgrades
         self.assertIs(data, data_cached, "data not cached")
 
-    # Below will fail because not ported to Yahoo API
+    def test_analyst_price_targets(self):
+        data = self.ticker.analyst_price_targets
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    # def test_analyst_price_target(self):
-    #     data = self.ticker.analyst_price_target
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+        keys = {'current', 'low', 'high', 'mean', 'median'}
+        self.assertEqual(data.keys(), keys, "data has wrong keys")
 
-    #     data_cached = self.ticker.analyst_price_target
-    #     self.assertIs(data, data_cached, "data not cached")
+        data_cached = self.ticker.analyst_price_targets
+        self.assertIs(data, data_cached, "data not cached")
 
-    # def test_revenue_forecasts(self):
-    #     data = self.ticker.revenue_forecasts
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+    def test_earnings_estimate(self):
+        data = self.ticker.earnings_estimate
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
-    #     data_cached = self.ticker.revenue_forecasts
-    #     self.assertIs(data, data_cached, "data not cached")
+        columns = ['numberOfAnalysts', 'avg', 'low', 'high', 'yearAgoEps', 'growth']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.earnings_estimate
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_revenue_estimate(self):
+        data = self.ticker.revenue_estimate
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['numberOfAnalysts', 'avg', 'low', 'high', 'yearAgoRevenue', 'growth']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.revenue_estimate
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_earnings_history(self):
+        data = self.ticker.earnings_history
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['epsEstimate', 'epsActual', 'epsDifference', 'surprisePercent']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+        self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
+
+        data_cached = self.ticker.earnings_history
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_eps_trend(self):
+        data = self.ticker.eps_trend
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['current', '7daysAgo', '30daysAgo', '60daysAgo', '90daysAgo']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.eps_trend
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_growth_estimates(self):
+        data = self.ticker.growth_estimates
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['stock', 'industry', 'sector', 'index']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y', '+5y', '-5y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.growth_estimates
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_no_analysts(self):
+        attributes = [
+            'recommendations',
+            'upgrades_downgrades',
+            'earnings_estimate',
+            'revenue_estimate',
+            'earnings_history',
+            'eps_trend',
+            'growth_estimates',
+        ]
+
+        for attribute in attributes:
+            try:
+                data = getattr(self.ticker_no_analysts, attribute)
+                self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+                self.assertTrue(data.empty, "data is not empty")
+            except Exception as e:
+                self.fail(f"Excpetion raised for attribute '{attribute}': {e}")
 
 
 
