@@ -871,6 +871,7 @@ class Test30MinResamplePreposts(unittest.TestCase):
     def test_resample_without_prepost(self):
         self.ticker.history(period='1d', interval='30m', prepost=False)
 
+
 class TestTickerInfo(unittest.TestCase):
     session = None
 
