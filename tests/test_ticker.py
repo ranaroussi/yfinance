@@ -850,7 +850,26 @@ class TestTickerAnalysts(unittest.TestCase):
             except Exception as e:
                 self.fail(f"Excpetion raised for attribute '{attribute}': {e}")
 
+class Test30MinResamplePreposts(unittest.TestCase):
+    session = None
 
+    @classmethod
+    def setUpClass(cls):
+        cls.session = session_gbl
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def setUp(self):
+        self.ticker = yf.Ticker("0001.HK", session=self.session)
+
+    def test_resample_with_prepost(self):
+        self.ticker.history(period='1d', interval='30m', prepost=True)
+
+    def test_resample_without_prepost(self):
+        self.ticker.history(period='1d', interval='30m', prepost=False)
 
 class TestTickerInfo(unittest.TestCase):
     session = None
