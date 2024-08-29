@@ -12,7 +12,7 @@ import pandas as pd
 
 from .context import yfinance as yf
 from .context import session_gbl
-from yfinance.exceptions import YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError
+from yfinance.exceptions import YFChartError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError
 
 
 import unittest
@@ -870,6 +870,7 @@ class Test30MinResamplePreposts(unittest.TestCase):
 
     def test_resample_without_prepost(self):
         self.ticker.history(period='1d', interval='30m', prepost=False)
+
 
 class TestTickerInfo(unittest.TestCase):
     session = None
