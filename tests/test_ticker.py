@@ -12,7 +12,7 @@ import pandas as pd
 
 from .context import yfinance as yf
 from .context import session_gbl
-from yfinance.exceptions import YFChartError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError
+from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError, YFDataException
 
 
 import unittest
@@ -142,14 +142,14 @@ class TestTicker(unittest.TestCase):
         # META call option, 2024 April 26th @ strike of 180000
         tkr = 'META240426C00180000'
         dat = yf.Ticker(tkr, session=self.session)
-        with self.assertRaises(YFChartError):
+        with self.assertRaises(YFPricesMissingError):
             dat.history(period="5d", interval="1m", raise_errors=True)
 
     def test_ticker_missing(self):
         tkr = 'ATVI'
         dat = yf.Ticker(tkr, session=self.session)
         # A missing ticker can trigger either a niche error or the generalized error
-        with self.assertRaises((YFTickerMissingError, YFTzMissingError, YFChartError)):
+        with self.assertRaises((YFTickerMissingError, YFTzMissingError, YFPricesMissingError)):
             dat.history(period="3mo", interval="1d", raise_errors=True)
 
     def test_goodTicker(self):
@@ -997,7 +997,84 @@ class TestTickerInfo(unittest.TestCase):
     #                     else:
     #                         raise
 
+class TestTickerFundsData(unittest.TestCase):
+    session = None
 
+    @classmethod
+    def setUpClass(cls):
+        cls.session = session_gbl
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def setUp(self):
+        self.test_tickers = [yf.Ticker("SPY", session=self.session),    # equity etf
+                            yf.Ticker("JNK", session=self.session),     # bonds etf
+                            yf.Ticker("VTSAX", session=self.session)]   # mutual fund
+
+    def tearDown(self):
+        self.ticker = None
+
+    def test_fetch_and_parse(self):
+        try:
+            for ticker in self.test_tickers:
+                ticker.funds_data._fetch_and_parse()
+
+        except Exception as e:
+            self.fail(f"_fetch_and_parse raised an exception unexpectedly: {e}")
+
+        with self.assertRaises(YFDataException):
+            ticker = yf.Ticker("AAPL", session=self.session) # stock, not funds
+            ticker.funds_data._fetch_and_parse()
+            self.fail("_fetch_and_parse should have failed when calling for non-funds data")
+
+    def test_description(self):
+        for ticker in self.test_tickers:
+            description = ticker.funds_data.description
+            self.assertIsInstance(description, str)
+            self.assertTrue(len(description) > 0)
+
+    def test_fund_overview(self):
+        for ticker in self.test_tickers:
+            fund_overview = ticker.funds_data.fund_overview
+            self.assertIsInstance(fund_overview, dict)
+
+    def test_fund_operations(self):
+        for ticker in self.test_tickers:
+            fund_operations = ticker.funds_data.fund_operations
+            self.assertIsInstance(fund_operations, pd.DataFrame)
+
+    def test_asset_classes(self):
+        for ticker in self.test_tickers:
+            asset_classes = ticker.funds_data.asset_classes
+            self.assertIsInstance(asset_classes, dict)
+
+    def test_top_holdings(self):
+        for ticker in self.test_tickers:
+            top_holdings = ticker.funds_data.top_holdings
+            self.assertIsInstance(top_holdings, pd.DataFrame)
+
+    def test_equity_holdings(self):
+        for ticker in self.test_tickers:
+            equity_holdings = ticker.funds_data.equity_holdings
+            self.assertIsInstance(equity_holdings, pd.DataFrame)
+
+    def test_bond_holdings(self):
+        for ticker in self.test_tickers:
+            bond_holdings = ticker.funds_data.bond_holdings
+            self.assertIsInstance(bond_holdings, pd.DataFrame)
+
+    def test_bond_ratings(self):
+        for ticker in self.test_tickers:
+            bond_ratings = ticker.funds_data.bond_ratings
+            self.assertIsInstance(bond_ratings, dict)
+
+    def test_sector_weightings(self):
+        for ticker in self.test_tickers:
+            sector_weightings = ticker.funds_data.sector_weightings
+            self.assertIsInstance(sector_weightings, dict)
 
 def suite():
     suite = unittest.TestSuite()
@@ -1007,6 +1084,7 @@ def suite():
     suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
     suite.addTest(TestTickerInfo('Test info & fast_info'))
+    suite.addTest(TestTickerFundsData('Test Funds Data'))
     return suite
 
 
