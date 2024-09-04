@@ -154,10 +154,14 @@ class _TzCache:
             else:
                 raise
 
-        # Verify that the database file actually exists.
-        # Maybe peewee silently failed to create file and 
-        # fellback to in-memory database:
-        if not _os.path.exists(db.database):
+        # # Verify that the database file actually exists.
+        # # Maybe peewee silently failed to create file and 
+        # # fellback to in-memory database:
+        # if not _os.path.exists(db.database):
+        #     self.initialised = 0  # failure
+        #     return
+        # Verify that the table was actually created
+        if not db.table_exists('_kv'):
             self.initialised = 0  # failure
             return
 
