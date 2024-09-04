@@ -36,6 +36,7 @@ from .exceptions import YFEarningsDateMissing
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
+from .scrapers.holdings import Holdings
 from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 
@@ -68,6 +69,7 @@ class TickerBase:
         self._price_history = None  # lazy-load
         self._analysis = Analysis(self._data, self.ticker)
         self._holders = Holders(self._data, self.ticker)
+        self._holdings = Holdings(self._data, self.ticker)
         self._quote = Quote(self._data, self.ticker)
         self._fundamentals = Fundamentals(self._data, self.ticker)
 
@@ -197,6 +199,13 @@ class TickerBase:
             if as_dict:
                 return data.to_dict()
             return data
+
+    def get_major_holdings(self, proxy=None, as_dict=False):
+        self._holdings.proxy = proxy
+        data = self._holdings.major
+        if as_dict:
+            return data.to_dict()
+        return data
 
     def get_insider_purchases(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
