@@ -153,6 +153,14 @@ class _TzCache:
                 db.create_tables([_KV])
             else:
                 raise
+
+        # Verify that the database file actually exists.
+        # Maybe peewee silently failed to create file and 
+        # fellback to in-memory database:
+        if not _os.path.exists(db.database):
+            self.initialised = 0  # failure
+            return
+
         self.initialised = 1  # success
 
     def lookup(self, key):
