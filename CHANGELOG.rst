@@ -1,6 +1,24 @@
 Change Log
 ===========
 
+0.2.43
+------
+Fix price-repair bug introduced in 0.2.42 #2036
+
+0.2.42
+------
+Features:
+- fetch SEC filings #2009
+- fetch analysis #2023 @Fidasek009
+- price repair extended to dividends & adjust #2031
+Fixes:
+- fix error on empty options chain #1995 @stevenbischoff
+- use dict.get() to safely access key in Holders #2013 @ericpien
+- fix datetime conversion with mixed timezones when ignore_tz is False #2016 @mreiche
+- handle faulty response object when getting news. #2021 @ericpien
+Maintenance:
+- prices: improve exceptions and logging #2000
+
 0.2.41
 ------
 Improvements:
