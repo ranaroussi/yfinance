@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 from collections import namedtuple as _namedtuple
+from .scrapers.funds import FundsData
 
 import pandas as _pd
 
@@ -297,3 +298,7 @@ class Ticker(TickerBase):
     @property
     def history_metadata(self) -> dict:
         return self.get_history_metadata()
+
+    @property
+    def funds_data(self) -> FundsData:
+        return self.get_funds_data()
