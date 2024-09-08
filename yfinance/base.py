@@ -38,6 +38,7 @@ from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
+from .scrapers.funds import FundsData
 
 from .const import _BASE_URL_, _ROOT_URL_
 
@@ -70,6 +71,7 @@ class TickerBase:
         self._holders = Holders(self._data, self.ticker)
         self._quote = Quote(self._data, self.ticker)
         self._fundamentals = Fundamentals(self._data, self.ticker)
+        self._funds_data = None
 
         self._fast_info = None
 
@@ -647,3 +649,9 @@ class TickerBase:
 
     def get_history_metadata(self, proxy=None) -> dict:
         return self._lazy_load_price_history().get_history_metadata(proxy)
+
+    def get_funds_data(self, proxy=None) -> Optional[FundsData]:
+        if not self._funds_data:
+            self._funds_data = FundsData(self._data, self.ticker)
+        
+        return self._funds_data

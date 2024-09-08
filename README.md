@@ -156,6 +156,31 @@ opt = msft.option_chain('YYYY-MM-DD')
 # data available via: opt.calls, opt.puts
 ```
 
+For tickers that are ETFs/Mutual Funds, `Ticker.funds_data` provides access to fund related data. 
+
+Funds' Top Holdings and other data with category average is returned as `pd.DataFrame`.
+
+```python
+import yfinance as yf
+spy = yf.Ticker('SPY')
+data = spy.funds_data
+
+# show fund description
+data.description
+
+# show operational information
+data.fund_overview
+data.fund_operations
+
+# show holdings related information
+data.asset_classes
+data.top_holdings
+data.equity_holdings
+data.bond_holdings
+data.bond_ratings
+data.sector_weightings
+```
+
 If you want to use a proxy server for downloading data, use:
 
 ```python
