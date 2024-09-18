@@ -223,6 +223,55 @@ data = yf.download("SPY AAPL", period="1mo")
 
 #### `yf.download()` and `Ticker.history()` have many options for configuring fetching and processing. [Review the Wiki](https://github.com/ranaroussi/yfinance/wiki) for more options and detail.
 
+### Sector and Industry
+
+The `Sector` and `Industry` modules allow you to access the US market information.
+
+To initialize, use the relevant sector or industry key as below. (Complete mapping of the keys is available in `const.py`.)
+
+```python
+import yfinance as yf
+
+tech = yf.Sector('technology')
+software = yf.Industry('software-infrastructure')
+
+# Common information
+tech.key
+tech.name
+tech.symbol
+tech.ticker
+tech.overview
+tech.top_companies
+tech.research_reports
+
+# Sector information
+tech.top_etfs
+tech.top_mutual_funds
+tech.industries
+
+# Industry information
+software.sector_key
+software.sector_name
+software.top_performing_companies
+software.top_growth_companies
+```
+
+The modules can be chained with Ticker as below.
+```python
+import yfinance as yf
+
+# Ticker to Sector and Industry
+msft = yf.Ticker('MSFT')
+tech = yf.Sector(msft.info.get('sectorKey'))
+software = yf.Industry(msft.info.get('industryKey'))
+
+# Sector and Industry to Ticker
+tech_ticker = tech.ticker
+tech_ticker.info
+software_ticker = software.ticker
+software_ticker.history()
+```
+
 ### Logging
 
 `yfinance` now uses the `logging` module to handle messages, default behaviour is only print errors. If debugging, use `yf.enable_debug_mode()` to switch logging to debug with custom formatting.
