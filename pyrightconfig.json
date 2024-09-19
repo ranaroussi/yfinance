@@ -11,4 +11,5 @@
     "reportOptionalSubscript": "warning",
     "reportOptionalIterable": "warning",
     "reportCallIssue": "warning",
+    "reportUnhashable": "warning"
   }
