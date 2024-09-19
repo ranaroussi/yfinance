@@ -24,4 +24,4 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Pyright
-      run: pyright .
+      run: pyright . --level error
