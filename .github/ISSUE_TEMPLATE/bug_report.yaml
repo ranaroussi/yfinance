@@ -63,7 +63,7 @@ body:
     id: bad-data-proof
     attributes:
       label: "Bad data proof"
-      description: "If you think `yfinance` returning bad data, provide your proof here."
+      description: "If `yfinance` returning bad data, show proof here. Best is screenshot of finance.yahoo.com"
     validations:
       required: false
 
