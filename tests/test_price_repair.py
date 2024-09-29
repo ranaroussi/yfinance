@@ -35,7 +35,6 @@ class TestPriceRepairAssumptions(unittest.TestCase):
                     continue
                 for j in range(i, len(periods)):
                     period = periods[j]
-                    print(f"- interval={interval} period={period}")
 
                     df_truth = dat.history(interval=interval, period=period)
                     # df_1d = dat.history(interval='1d', period=period)
@@ -115,7 +114,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertIsInstance(reconstructed, _pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
-    # pass
     def test_reconstruct_2m(self):
         # 2m repair requires 1m data.
         # Yahoo restricts 1m fetches to 7 days max within last 30 days.
@@ -135,7 +133,6 @@ class TestPriceRepair(unittest.TestCase):
             start_dt = end_dt - td_60d
             dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
 
-    # pass
     def test_repair_100x_random_weekly(self):
         # Setup:
         tkr = "PNL.L"
@@ -190,7 +187,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_100x_random_weekly_preSplit(self):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
@@ -252,7 +248,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_100x_random_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -301,7 +296,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_100x_block_daily(self):
         # Some 100x errors are not sporadic.
         # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
@@ -361,7 +355,6 @@ class TestPriceRepair(unittest.TestCase):
                 self.assertTrue("Repaired?" in df_repaired.columns)
                 self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -393,7 +386,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
-    # pass
     def test_repair_zeroes_daily_adjClose(self):
         # Test that 'Adj Close' is reconstructed correctly,
         # particularly when a dividend occurred within 1 day.
@@ -431,7 +423,6 @@ class TestPriceRepair(unittest.TestCase):
                 self.assertTrue("Repaired?" in df_slice_bad_repaired.columns)
                 self.assertFalse(df_slice_bad_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
         dat = yf.Ticker(tkr, session=self.session)
@@ -467,7 +458,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
-    # pass
     def test_repair_bad_stock_splits(self):
         # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing

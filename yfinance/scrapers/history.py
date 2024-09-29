@@ -2379,6 +2379,8 @@ class PriceHistory:
             f_neg = _1d_change_x < 0.0
             f_div = (df2['Dividends']>0).to_numpy()
             f_div_before = np.roll(f_div, 1)
+            if f_down.ndim == 2:
+                f_div_before = f_div_before[:, np.newaxis].repeat(f_down.shape[1], axis=1)
             f_down = f_down & ~(f_neg + f_div_before)
         f_up = _1d_change_x > threshold
         f_up_ndims = len(f_up.shape)
@@ -2388,12 +2390,24 @@ class PriceHistory:
             for i in np.where(f_up_shifts)[0]:
                 v = df2['Volume'].iloc[i]
                 vol_change_pct = 0 if v == 0 else df2['Volume'].iloc[i-1] / v
-                if multiday:
-                    v = df2['Volume'].iloc[i+1]
-                    if v > 0:
-                        vol_change_pct = max(vol_change_pct, df2['Volume'].iloc[i] / v)
+                if multiday and (i+1 < len(df2)):
+                    next_v = df2['Volume'].iloc[i+1]
+                    if next_v > 0:
+                        vol_change_pct = max(vol_change_pct, df2['Volume'].iloc[i] / next_v)
                 if vol_change_pct > 5:
-                    # big volume change +500% = false positive
+                    # big volume change +500%
+                    # Could be false-positive, but need some more checks
+                    lookback = max(0, i-10)
+                    lookahead = min(len(df2), i+10)
+                    if (df2['Stock Splits'].iloc[lookback:lookahead]!=0.0).any():
+                        # There's a stock split near the volume spike, so 
+                        # assume false positive
+                        continue
+                    avg_vol_after = df2['Volume'].iloc[lookback:i-1].mean()
+                    if not np.isnan(avg_vol_after) and v/avg_vol_after < 2.0:
+                        # volume spike is actually a step-change, so 
+                        # probably missing stock split
+                        continue
                     if f_up_ndims == 1:
                         f_up[i] = False
                     else:
