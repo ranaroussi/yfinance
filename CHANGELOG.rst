@@ -1,6 +1,14 @@
 Change Log
 ===========
 
+0.2.44
+------
+Features:
+- fetch funds #2041
+- fetch sector & industry #2058
+Fixes:
+- improve dividend repair #2062
+
 0.2.43
 ------
 Fix price-repair bug introduced in 0.2.42 #2036
