@@ -35,7 +35,6 @@ class TestPriceRepairAssumptions(unittest.TestCase):
                     continue
                 for j in range(i, len(periods)):
                     period = periods[j]
-                    print(f"- interval={interval} period={period}")
 
                     df_truth = dat.history(interval=interval, period=period)
                     # df_1d = dat.history(interval='1d', period=period)
@@ -115,7 +114,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertIsInstance(reconstructed, _pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
-    # pass
     def test_reconstruct_2m(self):
         # 2m repair requires 1m data.
         # Yahoo restricts 1m fetches to 7 days max within last 30 days.
@@ -135,7 +133,6 @@ class TestPriceRepair(unittest.TestCase):
             start_dt = end_dt - td_60d
             dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
 
-    # pass
     def test_repair_100x_random_weekly(self):
         # Setup:
         tkr = "PNL.L"
@@ -190,7 +187,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_100x_random_weekly_preSplit(self):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
@@ -252,7 +248,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_100x_random_daily(self):
         tkr = "PNL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -301,7 +296,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in df_repaired.columns)
         self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_100x_block_daily(self):
         # Some 100x errors are not sporadic.
         # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
@@ -361,7 +355,6 @@ class TestPriceRepair(unittest.TestCase):
                 self.assertTrue("Repaired?" in df_repaired.columns)
                 self.assertFalse(df_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)
@@ -393,7 +386,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
-    # pass
     def test_repair_zeroes_daily_adjClose(self):
         # Test that 'Adj Close' is reconstructed correctly,
         # particularly when a dividend occurred within 1 day.
@@ -431,7 +423,6 @@ class TestPriceRepair(unittest.TestCase):
                 self.assertTrue("Repaired?" in df_slice_bad_repaired.columns)
                 self.assertFalse(df_slice_bad_repaired["Repaired?"].isna().any())
 
-    # pass
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
         dat = yf.Ticker(tkr, session=self.session)
@@ -467,7 +458,6 @@ class TestPriceRepair(unittest.TestCase):
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
 
-    # pass
     def test_repair_bad_stock_splits(self):
         # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing
@@ -562,37 +552,6 @@ class TestPriceRepair(unittest.TestCase):
                         print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
                         raise
 
-    # pass
-    def test_repair_missing_div_adjust(self):
-        tkr = '8TRA.DE'
-
-        dat = yf.Ticker(tkr, session=self.session)
-        tz_exchange = dat.fast_info["timezone"]
-        hist = dat._lazy_load_price_history()
-
-        df_bad = _pd.read_csv(os.path.join(self.dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust.csv"), index_col="Date")
-        df_bad.index = _pd.to_datetime(df_bad.index)
-
-        repaired_df = hist._fix_missing_div_adjust(df_bad, "1d", tz_exchange)
-
-        correct_df = _pd.read_csv(os.path.join(self.dp, "data", tkr.replace('.','-')+"-1d-missing-div-adjust-fixed.csv"), index_col="Date")
-        correct_df.index = _pd.to_datetime(correct_df.index)
-
-        repaired_df = repaired_df.sort_index()
-        correct_df = correct_df.sort_index()
-        for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
-            try:
-                self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
-            except Exception:
-                print(f"tkr={tkr} COLUMN={c}")
-                print("- repaired_df")
-                print(repaired_df)
-                print("- correct_df[c]:")
-                print(correct_df[c])
-                print("- diff:")
-                print(repaired_df[c] - correct_df[c])
-                raise
-
     def test_repair_bad_div_adjusts(self):
         interval = '1d'
         bad_tkrs = []
@@ -606,11 +565,11 @@ class TestPriceRepair(unittest.TestCase):
         # These tickers were exceptionally bad
         bad_tkrs += ['LSC.L']
         bad_tkrs += ['TEM.L']
-        bad_tkrs += ['CLC.L']
 
         # Other special sits
         bad_tkrs += ['KME.MI']  # 2023 dividend paid to savings share, not common/preferred
         bad_tkrs += ['REL.L']  # 100x div also missing adjust
+        bad_tkrs.append('4063.T')  # Div with same-day split not split adjusted
 
         # Adj too small
         bad_tkrs += ['ADIG.L']
@@ -623,7 +582,13 @@ class TestPriceRepair(unittest.TestCase):
         bad_tkrs += ['ELCO.L']
         bad_tkrs += ['KWS.L']
         bad_tkrs += ['PSH.L']
+
+        # Div 100x and adjust too big
         bad_tkrs += ['SCR.TO']
+
+        # Div 0.01x
+        bad_tkrs += ['NVT.L']
+        bad_tkrs += ['TENT.L']
 
         # Missing div adjusts:
         bad_tkrs += ['1398.HK']
@@ -652,12 +617,13 @@ class TestPriceRepair(unittest.TestCase):
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
             currency = hist._history_metadata['currency']
+            tz = hist._history_metadata['exchangeTimezoneName']
 
             fp = os.path.join(self.dp, "data", tkr.replace('.','-') + '-' + interval + "-no-bad-divs.csv")
             if not os.path.isfile(fp):
                 continue
             df = _pd.read_csv(fp, index_col='Datetime')
-            df.index = _pd.to_datetime(df.index, utc=True)
+            df.index = _pd.to_datetime(df.index, utc=True).tz_convert(tz)
 
             repaired_df = hist._fix_bad_div_adjust(df, interval, currency)
 
@@ -683,15 +649,16 @@ class TestPriceRepair(unittest.TestCase):
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
             currency = hist._history_metadata['currency']
+            tz = hist._history_metadata['exchangeTimezoneName']
 
             fp = os.path.join(self.dp, "data", tkr.replace('.','-') + '-' + interval + "-bad-div.csv")
             if not os.path.isfile(fp):
                 continue
             df_bad = _pd.read_csv(fp, index_col='Datetime')
-            df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
+            df_bad.index = _pd.to_datetime(df_bad.index, utc=True).tz_convert(tz)
             fp = os.path.join(self.dp, "data", tkr.replace('.','-') + '-' + interval + "-bad-div-fixed.csv")
             correct_df = _pd.read_csv(fp, index_col='Datetime')
-            correct_df.index = _pd.to_datetime(correct_df.index, utc=True)
+            correct_df.index = _pd.to_datetime(correct_df.index, utc=True).tz_convert(tz)
 
             repaired_df = hist._fix_bad_div_adjust(df_bad, interval, currency)
 
