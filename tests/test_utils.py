@@ -14,7 +14,7 @@ from unittest import TestSuite
 import pandas as pd
 # import numpy as np
 
-from .context import yfinance as yf
+from tests.context import yfinance as yf
 
 import unittest
 # import requests_cache

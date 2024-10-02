@@ -1,5 +1,5 @@
-from .context import yfinance as yf
-from .context import session_gbl
+from tests.context import yfinance as yf
+from tests.context import session_gbl
 
 import unittest
 

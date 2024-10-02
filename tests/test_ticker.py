@@ -10,8 +10,8 @@ Specific test class:
 """
 import pandas as pd
 
-from .context import yfinance as yf
-from .context import session_gbl
+from tests.context import yfinance as yf
+from tests.context import session_gbl
 from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError, YFDataException
 
 
