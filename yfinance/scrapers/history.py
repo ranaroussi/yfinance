@@ -145,7 +145,7 @@ class PriceHistory:
         params["interval"] = interval.lower()
         params["includePrePost"] = prepost
 
-        # 1) fix weired bug with Yahoo! - returning 60m for 30m bars
+        # 1) fix weird bug with Yahoo! - returning 60m for 30m bars
         if params["interval"] == "30m":
             params["interval"] = "15m"
 
@@ -255,7 +255,7 @@ class PriceHistory:
                 quotes = quotes.iloc[0:quotes.shape[0] - 1]
         logger.debug(f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}')
 
-        # 2) fix weired bug with Yahoo! - returning 60m for 30m bars
+        # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
             quotes2 = quotes.resample('30min')
@@ -682,7 +682,7 @@ class PriceHistory:
             if min_dt is not None:
                 fetch_start = max(min_dt.date(), fetch_start)
             logger.debug(f"Fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}", extra=log_extras)
-            # Temp disable erors printing
+            # Temp disable errors printing
             logger = utils.get_yf_logger()
             if hasattr(logger, 'level'):
                 # YF's custom indented logger doesn't expose level
@@ -1578,7 +1578,7 @@ class PriceHistory:
                     divergence = min(abs(ratio1-1.0), abs(ratio2-1.0))
                     if abs(div_dt-prev_div.name) <= phantom_proximity_threshold and not prev_div['phantom'] and divergence < 0.01:
                         if prev_div.name in dts_to_check:
-                            # Both this and previous are anomolous, so mark smallest drop as phantom
+                            # Both this and previous are anomalous, so mark smallest drop as phantom
                             drop = div['drop']
                             drop_prev = prev_div['drop']
                             if drop > 1.5*drop_prev:
@@ -1594,7 +1594,7 @@ class PriceHistory:
                     divergence = min(abs(ratio1-1.0), abs(ratio2-1.0))
                     if abs(div_dt-next_div.name) <= phantom_proximity_threshold and divergence < 0.01:
                         if next_div.name in dts_to_check:
-                            # Both this and previous are anomolous, so mark smallest drop as phantom
+                            # Both this and previous are anomalous, so mark smallest drop as phantom
                             drop = div['drop']
                             drop_next = next_div['drop']
                             if drop > 1.5*drop_next:
