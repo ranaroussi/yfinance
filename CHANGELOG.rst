@@ -359,7 +359,7 @@ Jumping to 0.2 for this big update. 0.1.* will continue to receive bug-fixes
 - Fix timezone handling
 - Fix handling of missing data
 - Clean&format earnings_dates table
-- Add ``.get_earnings_dates()`` to retreive earnings calendar
+- Add ``.get_earnings_dates()`` to retrieve earnings calendar
 - Added ``.get_earnings_history()`` to fetch earnings data
 
 0.1.70
@@ -671,7 +671,7 @@ Jumping to 0.2 for this big update. 0.1.* will continue to receive bug-fixes
 - Removed 5 second wait for every failed fetch
 - Reduced TTL for Yahoo!'s cookie
 - Keeps track of failed downloads and tries to re-download all failed downloads one more time before giving up
-- Added progress bar (can be turned off useing ``progress=False``)
+- Added progress bar (can be turned off using ``progress=False``)
 
 0.0.7
 -------
