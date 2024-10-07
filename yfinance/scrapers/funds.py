@@ -14,7 +14,7 @@ Supports ETF and Mutual Funds Data
 Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings
 
 Notes: 
-- fundPerformance module is not implemented as better data is queriable using history
+- fundPerformance module is not implemented as better data is queryable using history
 '''
 class FundsData:
     def __init__(self, data: YfData, symbol: str, proxy=None):

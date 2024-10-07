@@ -848,7 +848,7 @@ class TestTickerAnalysts(unittest.TestCase):
                 self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
                 self.assertTrue(data.empty, "data is not empty")
             except Exception as e:
-                self.fail(f"Excpetion raised for attribute '{attribute}': {e}")
+                self.fail(f"Exception raised for attribute '{attribute}': {e}")
 
 
 
