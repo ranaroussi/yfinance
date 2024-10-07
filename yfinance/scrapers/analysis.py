@@ -132,7 +132,7 @@ class Analysis:
 
             for key in data_dict.keys():
                 data_dict[key].append(item.get(key, {}).get('raw', None))
-        
+
         datetime_index = pd.to_datetime(quarters, format='%Y-%m-%d')
         self._earnings_history = pd.DataFrame(data_dict, index=datetime_index)
         return self._earnings_history
@@ -220,9 +220,10 @@ class Analysis:
         sector_trend = trends['sectorTrend']['estimates'] or dummy_trend
         index_trend = trends['indexTrend']['estimates'] or dummy_trend
 
-        for item in self._earnings_trend:
-            period = item['period']
-            data_dict[period].append(item.get('growth', {}).get('raw', None))
+        if self._earnings_trend:
+            for item in self._earnings_trend:
+                period = item['period']
+                data_dict[period].append(item.get('growth', {}).get('raw', None))
 
         for item in industry_trend:
             period = item['period']
