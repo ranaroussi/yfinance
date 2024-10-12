@@ -253,7 +253,13 @@ class PriceHistory:
             endDt = pd.to_datetime(end, unit='s')
             if quotes.index[quotes.shape[0] - 1] >= endDt:
                 quotes = quotes.iloc[0:quotes.shape[0] - 1]
-        logger.debug(f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}')
+        if quotes.empty:
+            msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
+        elif len(quotes) == 1:
+            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} only'
+        else:
+            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
+        logger.debug(msg)
 
         # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
@@ -290,7 +296,13 @@ class PriceHistory:
                 self._history_metadata_formatted = True
                 tps = self._history_metadata["tradingPeriods"]
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
-        logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
+        if quotes.empty:
+            msg = f'{self.ticker}: OHLC after cleaning: EMPTY'
+        elif len(quotes) == 1:
+            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} only'
+        else:
+            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}'
+        logger.debug(msg)
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
@@ -353,7 +365,13 @@ class PriceHistory:
                 df.loc[df["Capital Gains"].isna(), "Capital Gains"] = 0
             else:
                 df["Capital Gains"] = 0.0
-        logger.debug(f'{self.ticker}: OHLC after combining events: {quotes.index[0]} -> {quotes.index[-1]}')
+        if df.empty:
+            msg = f'{self.ticker}: OHLC after combining events: EMPTY'
+        elif len(df) == 1:
+            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} only'
+        else:
+            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} -> {df.index[-1]}'
+        logger.debug(msg)
 
         df = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, repair=repair, currency=currency)
 
@@ -425,7 +443,13 @@ class PriceHistory:
         if interval != interval_user:
             df = self._resample(df, interval, interval_user, period_user)
 
-        logger.debug(f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}')
+        if df.empty:
+            msg = f'{self.ticker}: yfinance returning OHLC: EMPTY'
+        elif len(df) == 1:
+            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} only'
+        else:
+            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
+        logger.debug(msg)
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
