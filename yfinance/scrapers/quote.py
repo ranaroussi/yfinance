@@ -61,6 +61,7 @@ class FastInfo:
 
         self._10d_avg_vol = None
         self._3mo_avg_vol = None
+        self._company_officers = None
 
         # attrs = utils.attributes(self)
         # self.keys = attrs.keys()
@@ -72,6 +73,7 @@ class FastInfo:
         _properties += ["last_volume"]
         _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
         _properties += ["year_high", "year_low", "year_change"]
+        _properties += ["company_officers"] 
 
         # Because released before fixing key case, need to officially support
         # camel-case but also secretly support snake-case
@@ -454,6 +456,19 @@ class FastInfo:
             self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
             self._year_change = float(self._year_change)
         return self._year_change
+
+    
+    def _fetch_company_officers(self):
+        if self._company_officers is None:
+            try:
+                self._company_officers = self._tkr.info['companyOfficers']
+            except Exception:
+                self._company_officers = []
+        return self._company_officers
+
+    @property
+    def company_officers(self):
+        return self._fetch_company_officers()
 
     @property
     def market_cap(self):
