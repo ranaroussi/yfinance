@@ -276,82 +276,12 @@ software_ticker.history()
 The `Screener` module allows you to screen the market based on specified queries.
 
 #### Query Construction
-To create a query, you can use the `EquityQuery` class to construct your filters step by step. The queries are flexible, supporting various operators like `GT` (greater than), `LT` (less than), `BTWN` (between), `EQ` (equals), and logical operators `AND` and `OR` for combining multiple conditions.
-
-A map of key/values that can go into `eq`'s operands is available via `valid_eq_map` property and the full set of items that can be accessed via `valid_fields` property.
-
-```Python
-import yfinance as yf
-
-# Example query to filter stocks
-gt = yf.EquityQuery('gt', ['eodprice', 3])
-lt = yf.EquityQuery('lt', ['avgdailyvol3m', 99999999999])
-btwn = yf.EquityQuery('btwn', ['intradaymarketcap', 0, 100000000])
-eq = yf.EquityQuery('eq', ['sector', 'Technology'])
-
-# Combine queries using AND/OR
-qt = yf.EquityQuery('and', [gt, lt])
-qf = yf.EquityQuery('or', [qt, btwn, eq])
-
-# checking available fields
-print(qf.valid_eq_map)
-print(qf.valid_fields)
-```
-
-In the above example:
-
-- `gt`: Filters for stocks where the end-of-day price is greater than 3.
-- `lt`: Filters for stocks where the average daily volume over the last 3 months is less than a very large number.
-- `btwn`: Filters for stocks where the intraday market cap is between 0 and 100 million.
-- `eq`: Filters for stocks in the Technology sector.
+To create a query, you can use the `EquityQuery` class to construct your filters step by step. The queries support operators: `GT` (greater than), `LT` (less than), `BTWN` (between), `EQ` (equals), and logical operators `AND` and `OR` for combining multiple conditions.
 
 #### Screener
 The `Screener` class is used to execute the queries and return the filtered results. You can set a custom body for the screener or use predefined configurations.
 
-The full list of predefined_bodies can be found via `predefined_bodies` property, or on https://finance.yahoo.com/screener/: 
-
-```Python
-import yfinance as yf
-
-# Create a screener instance
-screener = yf.Screener()
-
-# Set the default body using a custom query
-screener.set_default_body(qf)
-
-# Set predefined body
-screener.set_predefined_body('day_gainers')
-
-# Set the fully custom body 
-# The keys below are required fields for the request body
-screener.set_body({
-    "offset": 0,
-    "size": 100,
-    "sortField": "ticker",
-    "sortType": "desc",
-    "quoteType": "equity",
-    "query": qf.to_dict(),
-    "userId": "",
-    "userIdType": "guid"
-})
-
-# Patch parts of the body
-screener.patch_body({"offset": 100})
-
-# view the current body of the screener
-screener.body
-
-# view the available predefined screens
-screener.predefined_bodies
-
-# Fetch and display the result json
-result = screener.response
-print(results)
-
-# save the queried symbols
-symbols = [quote['symbol'] for quote in result['quotes']]
-```
-
+<!-- TODO: link to Github Pages for more including list of predefined bodies, supported fields, operands, and sample code -->
 
 ### Logging
 
