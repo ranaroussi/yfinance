@@ -271,6 +271,17 @@ software_ticker = software.ticker
 software_ticker.history()
 ```
 
+### Market Screener
+The `Screener` module allows you to screen the market based on specified queries.
+
+#### Query Construction
+To create a query, you can use the `EquityQuery` class to construct your filters step by step. The queries support operators: `GT` (greater than), `LT` (less than), `BTWN` (between), `EQ` (equals), and logical operators `AND` and `OR` for combining multiple conditions.
+
+#### Screener
+The `Screener` class is used to execute the queries and return the filtered results. You can set a custom body for the screener or use predefined configurations.
+
+<!-- TODO: link to Github Pages for more including list of predefined bodies, supported fields, operands, and sample code -->
+
 ### Logging
 
 `yfinance` now uses the `logging` module to handle messages, default behaviour is only print errors. If debugging, use `yf.enable_debug_mode()` to switch logging to debug with custom formatting.

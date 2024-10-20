@@ -3,6 +3,7 @@ import dateutil as _dateutil
 import logging
 import numpy as np
 import pandas as pd
+from math import isclose
 import time as _time
 import bisect
 
@@ -253,7 +254,13 @@ class PriceHistory:
             endDt = pd.to_datetime(end, unit='s')
             if quotes.index[quotes.shape[0] - 1] >= endDt:
                 quotes = quotes.iloc[0:quotes.shape[0] - 1]
-        logger.debug(f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}')
+        if quotes.empty:
+            msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
+        elif len(quotes) == 1:
+            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} only'
+        else:
+            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
+        logger.debug(msg)
 
         # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
@@ -290,7 +297,13 @@ class PriceHistory:
                 self._history_metadata_formatted = True
                 tps = self._history_metadata["tradingPeriods"]
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
-        logger.debug(f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}')
+        if quotes.empty:
+            msg = f'{self.ticker}: OHLC after cleaning: EMPTY'
+        elif len(quotes) == 1:
+            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} only'
+        else:
+            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}'
+        logger.debug(msg)
 
         # actions
         dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
@@ -353,7 +366,13 @@ class PriceHistory:
                 df.loc[df["Capital Gains"].isna(), "Capital Gains"] = 0
             else:
                 df["Capital Gains"] = 0.0
-        logger.debug(f'{self.ticker}: OHLC after combining events: {quotes.index[0]} -> {quotes.index[-1]}')
+        if df.empty:
+            msg = f'{self.ticker}: OHLC after combining events: EMPTY'
+        elif len(df) == 1:
+            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} only'
+        else:
+            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} -> {df.index[-1]}'
+        logger.debug(msg)
 
         df = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, repair=repair, currency=currency)
 
@@ -425,7 +444,13 @@ class PriceHistory:
         if interval != interval_user:
             df = self._resample(df, interval, interval_user, period_user)
 
-        logger.debug(f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}')
+        if df.empty:
+            msg = f'{self.ticker}: yfinance returning OHLC: EMPTY'
+        elif len(df) == 1:
+            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} only'
+        else:
+            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
+        logger.debug(msg)
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
@@ -1352,9 +1377,26 @@ class PriceHistory:
             # div_too_big_improvement_threshold = 1
             div_too_big_improvement_threshold = 2
 
-            drop_c2l = df2['Close'].iloc[div_idx-1] - df2['Low'].iloc[div_idx]
-            # drop_c2c = df2['Close'].iloc[div_idx-1] - df2['Close'].iloc[div_idx]
-            # drop = drop_c2c
+            if isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*100, rel_tol = 0.025):
+                # Price has jumped ~100x on ex-div day, need to fix immediately.
+                drop_c2l = df2['Close'].iloc[div_idx-1]*100 - df2['Low'].iloc[div_idx]
+                div_pct = div / (df2['Close'].iloc[div_idx-1]*100)
+                true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
+                present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
+                if not isclose(present_adj, true_adjust, rel_tol = 0.025):
+                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
+                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
+            elif isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*0.01, rel_tol = 0.025):
+                # Price has dropped ~100x on ex-div day, need to fix immediately.
+                drop_c2l = df2['Close'].iloc[div_idx-1]*0.01 - df2['Low'].iloc[div_idx]
+                div_pct = div / (df2['Close'].iloc[div_idx-1]*0.01)
+                true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
+                present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
+                if not isclose(present_adj, true_adjust, rel_tol = 0.025):
+                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
+                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
+            else:
+                drop_c2l = df2['Close'].iloc[div_idx-1] - df2['Low'].iloc[div_idx]
             drop = drop_c2l
             if div_idx < len(df2)-1:
                 # # In low-volume scenarios, the price drop is day after not today.
@@ -1364,8 +1406,10 @@ class PriceHistory:
                 # elif df2['Volume'].iloc[div_idx]==0:
                 #     if drop == 0.0:
                 #         drop = np.max(df2['Close'].iloc[div_idx-1:div_idx+1].to_numpy() - df2['Low'].iloc[div_idx:div_idx+2].to_numpy())
+                #
                 # Hmm, can I always look ahead 1 day? Catch: increases FP rate of div-too-small for tiny divs.
-                drops = df2['Close'].iloc[div_idx-1:div_idx+1].to_numpy() - df2['Low'].iloc[div_idx:div_idx+2].to_numpy()
+                # drops = df2['Close'].iloc[div_idx-1:div_idx+1].to_numpy() - df2['Low'].iloc[div_idx:div_idx+2].to_numpy()
+                drops = np.array([drop, df2['Close'].iloc[div_idx] - df2['Low'].iloc[div_idx+1]])
                 drop_2Dmax = np.max(drops)
             else:
                 drops = np.array([drop])
@@ -1704,21 +1748,27 @@ class PriceHistory:
                 adjDeltas = x['Adj Low'].iloc[1:].to_numpy() - x['Adj Close'].iloc[:-1].to_numpy()
                 adjDeltas = np.append([0.0], adjDeltas)
                 x['adjDelta'] = adjDeltas
+                for i in np.where(x['Dividends']>0)[0]:
+                    x.loc[x.index[i], 'adjDelta'] += x['Dividends'].iloc[i]*x['Adj'].iloc[i]
                 deltas = x[['delta', 'adjDelta']]
-                if div_pct > 0.15 and div_pct < 1.0:  # avoid analysing impossibly-big dividends here
+                if div_pct > 0.05 and div_pct < 1.0:
                     adjDiv = div * x['Adj'].iloc[0]
                     f = deltas['adjDelta'] > (adjDiv*0.6)
                     if f.any():
-                        for idx in np.where(f)[0]:
-                            adjDelta_max_drop_idx = idx
-                            adjDelta_max_drop = deltas['adjDelta'].iloc[idx]
-                            if adjDelta_max_drop > 1.001*deltas['delta'].iloc[adjDelta_max_drop_idx]:
+                        indices = np.where(f)[0]
+                        for idx in indices:
+                            adjDelta_drop = deltas['adjDelta'].iloc[idx]
+                            if adjDelta_drop > 1.001*deltas['delta'].iloc[idx]:
                                 # Adjusted price has risen by more than unadjusted, should not happen.
                                 # See if Adjusted price later falls by a similar amount. This would mean
                                 # dividend has been applied too early.
-                                ratios = (-1*deltas['adjDelta'])/adjDelta_max_drop
+                                ratios = (-1*deltas['adjDelta'])/adjDelta_drop
                                 f_near1_or_above = ratios>=0.8
-                                if f_near1_or_above.any():
+                                # Update: only check for wrong date if no coincident split.
+                                # Because if a split, more likely the div is missing split
+                                split = df2['Stock Splits'].loc[dt]
+                                pre_split = div_status_df['div_pre_split'].loc[dt]
+                                if (split==0.0 or (not pre_split)) and f_near1_or_above.any():
                                     near_indices = np.where(f_near1_or_above)[0]
                                     if len(near_indices) > 1:
                                         penalties = np.zeros(len(near_indices))
@@ -1736,7 +1786,7 @@ class PriceHistory:
                                     div_date_wrong = True
                                     div_true_date = ratios.index[reversal_idx]
                                     break
-                                elif adjDelta_max_drop > 0.39*adjDiv:
+                                elif adjDelta_drop > 0.39*adjDiv:
                                     # Still true that applied adjustment exceeds price action, 
                                     # just not clear what solution is (if any).
                                     div_adj_exceeds_prices = True
@@ -1752,6 +1802,27 @@ class PriceHistory:
             div_status['adj_exceeds_prices'] = div_adj_exceeds_prices
             div_status['div_date_wrong'] = div_date_wrong
             div_status['div_true_date'] = div_true_date
+
+            if div_adj_exceeds_prices:
+                split = df2['Stock Splits'].loc[dt]
+                if split != 0.0:
+                    # Check again if div missing split. Use looser tolerance
+                    # as we know the adjustment seems wrong.
+                    div_postSplit = div / split
+                    if div_postSplit > div:
+                        # Use volatility-adjusted drop
+                        typical_volatility = div_status_df['vol'].loc[dt]
+                        drop = div_status_df['drop'].loc[dt]
+                        _drop = drop - typical_volatility
+                    else:
+                        drop_2Dmax = div_status_df['drop_2Dmax'].loc[dt]
+                        _drop = drop_2Dmax
+                    if _drop > 0:
+                        diff = abs(div-_drop)
+                        diff_postSplit = abs(div_postSplit-_drop)
+                        if diff_postSplit <= (diff*1.1):
+                            # possibilities.append({'state':'div-pre-split', 'diff':diff_postSplit})
+                            div_status_df.loc[dt, 'div_pre_split'] = True
 
             for k,v in div_status.items():
                 if k not in div_status_df:
@@ -1828,7 +1899,7 @@ class PriceHistory:
                     if 'div_date_wrong' in cluster.columns and (cluster[c] == cluster['div_date_wrong']).all():
                         continue
 
-                    if 'adj_exceeds_prices' in cluster.columns and (cluster[c] == cluster['adj_exceeds_prices']).all():
+                    if 'adj_exceeds_prices' in cluster.columns and (cluster[c] == (cluster[c] & cluster['adj_exceeds_prices'])).all():
                         # More likely that true-positive. Maybe the div never happened
                         continue
 
@@ -1852,6 +1923,11 @@ class PriceHistory:
 
                     if pct_fail >= true_threshold:
                         div_status_df.loc[fc, c] = True
+                        if 'div_date_wrong' in div_status_df.columns:
+                            # reset this as well
+                            div_status_df.loc[fc, 'div_date_wrong'] = False
+                            div_status_df.loc[fc, 'div_true_date'] = pd.NaT
+                            cluster = div_status_df[fc].sort_index()
                         continue
                     elif pct_fail <= fals_threshold:
                         div_status_df.loc[fc, c] = False
@@ -1936,6 +2012,11 @@ class PriceHistory:
                         # redundant information
                         div_too_big = False
                         cluster.loc[dt, 'div_too_big'] = False
+                        n_failed_checks -= 1
+                    if div_exceeds_adj:
+                        # false-positive
+                        div_exceeds_adj = False
+                        cluster.loc[dt, 'div_exceeds_adj'] = False
                         n_failed_checks -= 1
 
                 if div_pre_split:

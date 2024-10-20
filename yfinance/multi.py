@@ -200,10 +200,6 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
                 shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
 
-    if len(tickers) == 1:
-        ticker = tickers[0]
-        return shared._DFS[ticker]
-
     try:
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
