@@ -98,7 +98,7 @@ class Screener:
             self._response = response['finance']['result'][0]
         except Exception as e:
             logger = utils.get_yf_logger()
-            logger.error(f"Failed to get screener data for '{self._body.get('query', "query not set")}' reason: {e}")
+            logger.error(f"Failed to get screener data for '{self._body.get('query', 'query not set')}' reason: {e}")
             logger.debug("Got response: ")
             logger.debug("-------------")
             logger.debug(f" {response}")
