@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.46
+------
+Fix regression in 0.2.45 #2094
+
 0.2.45
 ------
 Features:
