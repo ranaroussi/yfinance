@@ -607,9 +607,10 @@ class Quote:
         )
         # Most keys that appear in multiple dicts have same value. Except 'maxAge' because
         # Yahoo not consistent with days vs seconds. Fix it here:
-        for k in query1_info:
-            if "maxAge" in query1_info[k] and query1_info[k]["maxAge"] == 1:
-                query1_info[k]["maxAge"] = 86400
+        if query1_info:
+            for k in query1_info:
+                if "maxAge" in query1_info[k] and query1_info[k]["maxAge"] == 1:
+                    query1_info[k]["maxAge"] = 86400
         query1_info = {
             k1: v1
             for k, v in query1_info.items()
