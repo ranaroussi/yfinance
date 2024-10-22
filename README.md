@@ -375,6 +375,6 @@ details on your rights to use the actual data downloaded.
 
 ### P.S.
 
-Please drop me an note with any feedback you have.
+Please drop me a note with any feedback you have.
 
 **Ran Aroussi**
