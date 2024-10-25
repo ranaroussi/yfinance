@@ -215,6 +215,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
 
+    if len(tickers) == 1:
+        data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
+
     return data
 
 
