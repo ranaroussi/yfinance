@@ -199,7 +199,7 @@ def get_all_by_isin(isin, proxy=None, session=None):
             'ticker': {
                 'symbol': ticker['symbol'],
                 'shortname': ticker['shortname'],
-                'longname': ticker['longname'],
+                'longname': ticker.get('longname',''),
                 'type': ticker['quoteType'],
                 'exchange': ticker['exchDisp'],
             },
