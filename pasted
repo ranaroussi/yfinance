@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Start the VNC server
+tightvncserver :1
+
+# Start the WebSocket proxy
+websockify --web /usr/share/novnc/ 6080 localhost:5901
