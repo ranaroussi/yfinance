@@ -7,3 +7,12 @@ tightvncserver :1
 websockify --web /usr/share/novnc/ 6080 localhost:5901
 
 usr/bin/websockify --web /usr/share/novnc 6080 localhost:5901 &
+
+ps aux | grep websockify
+
+sudo killall websockify
+
+
+or sudo killall [general process name]
+
+ps aux | grep [general process name]
