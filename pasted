@@ -5,3 +5,5 @@ tightvncserver :1
 
 # Start the WebSocket proxy
 websockify --web /usr/share/novnc/ 6080 localhost:5901
+
+usr/bin/websockify --web /usr/share/novnc 6080 localhost:5901 &
