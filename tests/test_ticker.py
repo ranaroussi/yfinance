@@ -216,11 +216,24 @@ class TestTickerHistory(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
     def test_download(self):
+        tomorrow = pd.Timestamp.now().date() + pd.Timedelta(days=1)  # helps with caching
         for t in [False, True]:
             for i in [False, True]:
-                data = yf.download(self.symbols, threads=t, ignore_tz=i)
-                self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-                self.assertFalse(data.empty, "data is empty")
+                for m in [False, True]:
+                    for n in [1, 'all']:
+                        symbols = self.symbols[0] if n == 1 else self.symbols
+                        data = yf.download(symbols, end=tomorrow, session=self.session, 
+                                           threads=t, ignore_tz=i, multi_level_index=m)
+                        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+                        self.assertFalse(data.empty, "data is empty")
+                        if i:
+                            self.assertIsNone(data.index.tz)
+                        else:
+                            self.assertIsNotNone(data.index.tz)
+                        if (not m) and n == 1:
+                            self.assertFalse(isinstance(data.columns, pd.MultiIndex))
+                        else:
+                            self.assertIsInstance(data.columns, pd.MultiIndex)
 
     def test_no_expensive_calls_introduced(self):
         """
