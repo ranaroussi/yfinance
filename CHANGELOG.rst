@@ -1,6 +1,23 @@
 Change Log
 ===========
 
+0.2.46
+------
+Fix regression in 0.2.45 #2094
+
+0.2.45
+------
+Features:
+- Screener #2066 @ericpien
+Fixes
+- Tickers keyerror #2068 @antoniouaa
+- IndexError in some history() debug messages #2087
+- improve dividend repair #2090
+Maintenance
+- fix unit tests contextual imports #2067
+- fix typos #2072 @algonell
+- add Pyright type checking #2059 @marco-carvalho
+
 0.2.44
 ------
 Features:
