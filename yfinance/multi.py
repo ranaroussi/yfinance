@@ -34,10 +34,11 @@ from . import shared
 
 
 @utils.log_indent_decorator
-def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
-             group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
-             progress=True, period="max", interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=10, session=None):
+def download(tickers, start=None, end=None, actions=False, threads=True,
+             ignore_tz=None, group_by='column', auto_adjust=False, back_adjust=False,
+             repair=False, keepna=False, progress=True, period="max", interval="1d",
+             prepost=False, proxy=None, rounding=False, timeout=10, session=None,
+             multi_level_index=True):
     """Download yahoo tickers
     :Parameters:
         tickers : str, list
@@ -85,6 +86,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             seconds. (Can also be a fraction of a second e.g. 0.01)
         session: None or Session
             Optional. Pass your own session object to be used for all requests
+        multi_level_index: bool
+            Optional. Always return a MultiIndex DataFrame? Default is False
     """
     logger = utils.get_yf_logger()
 
@@ -214,6 +217,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
+
+    if not multi_level_index and len(tickers) == 1:
+        data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
 
     return data
 
