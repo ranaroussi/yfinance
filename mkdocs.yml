@@ -1,12 +1,12 @@
-# site_name: My Docs
+site_name: My Docs
 
-# # mkdocs.yml
-# theme:
-#   name: "material"
+# mkdocs.yml
+theme:
+  name: "material"
 
-# plugins:
-# - search
-# - mkdocstrings
+plugins:
+- search
+- mkdocstrings
 
 markdown_extensions:
   - pymdownx.highlight
