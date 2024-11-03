@@ -87,7 +87,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         session: None or Session
             Optional. Pass your own session object to be used for all requests
         multi_level_index: bool
-            Optional. Always return a MultiIndex DataFrame? Default is False
+            Optional. Always return a MultiIndex DataFrame? Default is True
     """
     logger = utils.get_yf_logger()
 
