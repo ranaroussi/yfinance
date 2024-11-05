@@ -18,3 +18,10 @@ test.ipynb
 env/
 venv/
 ENV/
+
+# Documentation
+/doc/build/
+/doc/_build/
+/doc/source/reference/api
+!yfinance.css
+!/doc/source/development/assets/branches.png
