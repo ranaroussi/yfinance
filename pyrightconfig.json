@@ -9,7 +9,5 @@
     "reportReturnType": "warning",
     "reportAssignmentType": "warning",
     "reportOptionalSubscript": "warning",
-    "reportOptionalIterable": "warning",
     "reportCallIssue": "warning",
-    "reportUnhashable": "warning"
   }
