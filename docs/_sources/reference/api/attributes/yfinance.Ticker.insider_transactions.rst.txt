@@ -1,0 +1,6 @@
+yfinance.Ticker.insider\_transactions
+=====================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.insider_transactions

@@ -1,0 +1,6 @@
+yfinance.Tickers.news
+=====================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Tickers.news

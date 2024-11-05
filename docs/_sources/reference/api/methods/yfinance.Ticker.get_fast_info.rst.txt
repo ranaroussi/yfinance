@@ -1,0 +1,6 @@
+yfinance.Ticker.get\_fast\_info
+===============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_fast_info

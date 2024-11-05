@@ -1,0 +1,6 @@
+yfinance.Screener.body
+======================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Screener.body

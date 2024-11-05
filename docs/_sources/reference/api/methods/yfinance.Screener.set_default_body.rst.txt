@@ -1,0 +1,6 @@
+yfinance.Screener.set\_default\_body
+====================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Screener.set_default_body

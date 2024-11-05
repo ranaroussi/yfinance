@@ -1,0 +1,6 @@
+yfinance.Sector.symbol
+======================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Sector.symbol

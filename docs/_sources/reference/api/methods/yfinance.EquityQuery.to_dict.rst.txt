@@ -1,0 +1,6 @@
+yfinance.EquityQuery.to\_dict
+=============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: EquityQuery.to_dict

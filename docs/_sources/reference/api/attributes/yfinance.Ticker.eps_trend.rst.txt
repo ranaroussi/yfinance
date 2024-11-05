@@ -1,0 +1,6 @@
+yfinance.Ticker.eps\_trend
+==========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.eps_trend

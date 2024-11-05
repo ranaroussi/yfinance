@@ -1,0 +1,6 @@
+yfinance.Ticker.isin
+====================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.isin

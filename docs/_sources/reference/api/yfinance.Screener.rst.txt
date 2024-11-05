@@ -1,0 +1,35 @@
+﻿yfinance.Screener
+=================
+
+.. currentmodule:: yfinance
+
+.. autoclass:: Screener
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: attributes
+   
+      ~Screener.body
+      ~Screener.predefined_bodies
+      ~Screener.response
+   
+   
+
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: methods
+   
+      ~Screener.__init__
+      ~Screener.patch_body
+      ~Screener.set_body
+      ~Screener.set_default_body
+      ~Screener.set_predefined_body
+   
+   

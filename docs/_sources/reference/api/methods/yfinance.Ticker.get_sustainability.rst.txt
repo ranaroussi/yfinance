@@ -1,0 +1,6 @@
+yfinance.Ticker.get\_sustainability
+===================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_sustainability

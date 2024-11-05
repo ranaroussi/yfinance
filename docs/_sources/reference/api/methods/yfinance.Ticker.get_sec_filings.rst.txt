@@ -1,0 +1,6 @@
+yfinance.Ticker.get\_sec\_filings
+=================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_sec_filings

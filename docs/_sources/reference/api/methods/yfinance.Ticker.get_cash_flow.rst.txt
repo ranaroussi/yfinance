@@ -1,0 +1,6 @@
+yfinance.Ticker.get\_cash\_flow
+===============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_cash_flow

@@ -1,0 +1,6 @@
+yfinance.Ticker.incomestmt
+==========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.incomestmt
