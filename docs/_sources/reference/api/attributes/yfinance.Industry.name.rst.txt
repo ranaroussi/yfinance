@@ -1,0 +1,6 @@
+yfinance.Industry.name
+======================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Industry.name

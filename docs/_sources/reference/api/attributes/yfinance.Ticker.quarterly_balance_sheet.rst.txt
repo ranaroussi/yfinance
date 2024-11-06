@@ -1,0 +1,6 @@
+yfinance.Ticker.quarterly\_balance\_sheet
+=========================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.quarterly_balance_sheet

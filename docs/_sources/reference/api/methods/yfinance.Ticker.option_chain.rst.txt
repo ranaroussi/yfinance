@@ -1,0 +1,6 @@
+yfinance.Ticker.option\_chain
+=============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.option_chain

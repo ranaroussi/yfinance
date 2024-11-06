@@ -1,0 +1,6 @@
+﻿yfinance.enable\_debug\_mode
+============================
+
+.. currentmodule:: yfinance
+
+.. autofunction:: enable_debug_mode

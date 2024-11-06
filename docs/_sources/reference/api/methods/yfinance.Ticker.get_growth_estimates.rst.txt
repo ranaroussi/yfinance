@@ -1,0 +1,6 @@
+yfinance.Ticker.get\_growth\_estimates
+======================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_growth_estimates

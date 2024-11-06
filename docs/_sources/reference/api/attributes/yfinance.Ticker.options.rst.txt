@@ -1,0 +1,6 @@
+yfinance.Ticker.options
+=======================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.options

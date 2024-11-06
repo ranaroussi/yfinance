@@ -1,0 +1,6 @@
+﻿yfinance.set\_tz\_cache\_location
+=================================
+
+.. currentmodule:: yfinance
+
+.. autofunction:: set_tz_cache_location

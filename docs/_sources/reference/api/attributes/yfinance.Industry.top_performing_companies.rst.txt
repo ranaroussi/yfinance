@@ -1,0 +1,6 @@
+yfinance.Industry.top\_performing\_companies
+============================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Industry.top_performing_companies

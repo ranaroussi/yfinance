@@ -1,0 +1,6 @@
+yfinance.Tickers.\_\_init\_\_
+=============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Tickers.__init__

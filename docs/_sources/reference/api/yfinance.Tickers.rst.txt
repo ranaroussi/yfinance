@@ -1,0 +1,25 @@
+﻿yfinance.Tickers
+================
+
+.. currentmodule:: yfinance
+
+.. autoclass:: Tickers
+
+   
+   
+   
+
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: methods
+   
+      ~Tickers.__init__
+      ~Tickers.download
+      ~Tickers.history
+      ~Tickers.news
+   
+   

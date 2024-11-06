@@ -1,0 +1,6 @@
+yfinance.Ticker.quarterly\_earnings
+===================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.quarterly_earnings

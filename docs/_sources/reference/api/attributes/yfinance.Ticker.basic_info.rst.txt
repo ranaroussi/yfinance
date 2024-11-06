@@ -1,0 +1,6 @@
+yfinance.Ticker.basic\_info
+===========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.basic_info

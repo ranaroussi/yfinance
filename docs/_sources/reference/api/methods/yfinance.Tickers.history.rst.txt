@@ -1,0 +1,6 @@
+yfinance.Tickers.history
+========================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Tickers.history

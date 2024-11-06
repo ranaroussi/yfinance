@@ -1,0 +1,6 @@
+yfinance.Sector.\_\_init\_\_
+============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Sector.__init__

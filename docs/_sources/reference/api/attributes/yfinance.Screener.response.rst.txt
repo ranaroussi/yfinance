@@ -1,0 +1,6 @@
+yfinance.Screener.response
+==========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Screener.response

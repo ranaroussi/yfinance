@@ -1,0 +1,6 @@
+yfinance.Screener.\_\_init\_\_
+==============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Screener.__init__

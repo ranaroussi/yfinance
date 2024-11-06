@@ -1,0 +1,39 @@
+﻿yfinance.Industry
+=================
+
+.. currentmodule:: yfinance
+
+.. autoclass:: Industry
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: attributes
+   
+      ~Industry.key
+      ~Industry.name
+      ~Industry.overview
+      ~Industry.research_reports
+      ~Industry.sector_key
+      ~Industry.sector_name
+      ~Industry.symbol
+      ~Industry.ticker
+      ~Industry.top_companies
+      ~Industry.top_growth_companies
+      ~Industry.top_performing_companies
+   
+   
+
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: methods
+   
+      ~Industry.__init__
+   
+   

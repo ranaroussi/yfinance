@@ -1,0 +1,6 @@
+yfinance.Sector.top\_companies
+==============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Sector.top_companies

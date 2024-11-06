@@ -1,0 +1,6 @@
+yfinance.Ticker.mutualfund\_holders
+===================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.mutualfund_holders

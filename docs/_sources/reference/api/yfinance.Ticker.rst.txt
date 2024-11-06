@@ -1,0 +1,119 @@
+﻿yfinance.Ticker
+===============
+
+.. currentmodule:: yfinance
+
+.. autoclass:: Ticker
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: attributes
+   
+      ~Ticker.actions
+      ~Ticker.analyst_price_targets
+      ~Ticker.balance_sheet
+      ~Ticker.balancesheet
+      ~Ticker.basic_info
+      ~Ticker.calendar
+      ~Ticker.capital_gains
+      ~Ticker.cash_flow
+      ~Ticker.cashflow
+      ~Ticker.dividends
+      ~Ticker.earnings
+      ~Ticker.earnings_dates
+      ~Ticker.earnings_estimate
+      ~Ticker.earnings_history
+      ~Ticker.eps_revisions
+      ~Ticker.eps_trend
+      ~Ticker.fast_info
+      ~Ticker.financials
+      ~Ticker.funds_data
+      ~Ticker.growth_estimates
+      ~Ticker.history_metadata
+      ~Ticker.income_stmt
+      ~Ticker.incomestmt
+      ~Ticker.info
+      ~Ticker.insider_purchases
+      ~Ticker.insider_roster_holders
+      ~Ticker.insider_transactions
+      ~Ticker.institutional_holders
+      ~Ticker.isin
+      ~Ticker.major_holders
+      ~Ticker.mutualfund_holders
+      ~Ticker.news
+      ~Ticker.options
+      ~Ticker.quarterly_balance_sheet
+      ~Ticker.quarterly_balancesheet
+      ~Ticker.quarterly_cash_flow
+      ~Ticker.quarterly_cashflow
+      ~Ticker.quarterly_earnings
+      ~Ticker.quarterly_financials
+      ~Ticker.quarterly_income_stmt
+      ~Ticker.quarterly_incomestmt
+      ~Ticker.recommendations
+      ~Ticker.recommendations_summary
+      ~Ticker.revenue_estimate
+      ~Ticker.sec_filings
+      ~Ticker.shares
+      ~Ticker.splits
+      ~Ticker.sustainability
+      ~Ticker.upgrades_downgrades
+   
+   
+
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: methods
+   
+      ~Ticker.__init__
+      ~Ticker.get_actions
+      ~Ticker.get_analyst_price_targets
+      ~Ticker.get_balance_sheet
+      ~Ticker.get_balancesheet
+      ~Ticker.get_calendar
+      ~Ticker.get_capital_gains
+      ~Ticker.get_cash_flow
+      ~Ticker.get_cashflow
+      ~Ticker.get_dividends
+      ~Ticker.get_earnings
+      ~Ticker.get_earnings_dates
+      ~Ticker.get_earnings_estimate
+      ~Ticker.get_earnings_history
+      ~Ticker.get_eps_revisions
+      ~Ticker.get_eps_trend
+      ~Ticker.get_fast_info
+      ~Ticker.get_financials
+      ~Ticker.get_funds_data
+      ~Ticker.get_growth_estimates
+      ~Ticker.get_history_metadata
+      ~Ticker.get_income_stmt
+      ~Ticker.get_incomestmt
+      ~Ticker.get_info
+      ~Ticker.get_insider_purchases
+      ~Ticker.get_insider_roster_holders
+      ~Ticker.get_insider_transactions
+      ~Ticker.get_institutional_holders
+      ~Ticker.get_isin
+      ~Ticker.get_major_holders
+      ~Ticker.get_mutualfund_holders
+      ~Ticker.get_news
+      ~Ticker.get_recommendations
+      ~Ticker.get_recommendations_summary
+      ~Ticker.get_revenue_estimate
+      ~Ticker.get_sec_filings
+      ~Ticker.get_shares
+      ~Ticker.get_shares_full
+      ~Ticker.get_splits
+      ~Ticker.get_sustainability
+      ~Ticker.get_upgrades_downgrades
+      ~Ticker.history
+      ~Ticker.option_chain
+   
+   

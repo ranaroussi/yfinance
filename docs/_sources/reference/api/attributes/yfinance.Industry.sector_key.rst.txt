@@ -1,0 +1,6 @@
+yfinance.Industry.sector\_key
+=============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Industry.sector_key

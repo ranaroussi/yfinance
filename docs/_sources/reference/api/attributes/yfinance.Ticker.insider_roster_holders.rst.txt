@@ -1,0 +1,6 @@
+yfinance.Ticker.insider\_roster\_holders
+========================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.insider_roster_holders

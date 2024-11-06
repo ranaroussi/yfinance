@@ -1,0 +1,6 @@
+yfinance.Ticker.actions
+=======================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.actions

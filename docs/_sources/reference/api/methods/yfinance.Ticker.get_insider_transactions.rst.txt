@@ -1,0 +1,6 @@
+yfinance.Ticker.get\_insider\_transactions
+==========================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_insider_transactions

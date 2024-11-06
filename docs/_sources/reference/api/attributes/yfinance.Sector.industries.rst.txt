@@ -1,0 +1,6 @@
+yfinance.Sector.industries
+==========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Sector.industries
