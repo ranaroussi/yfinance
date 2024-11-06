@@ -9,15 +9,21 @@ from typing import Dict, Optional
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
 
-'''
-Supports ETF and Mutual Funds Data
-Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings
-
-Notes: 
-- fundPerformance module is not implemented as better data is queryable using history
-'''
 class FundsData:
+    """
+    ETF and Mutual Funds Data
+    Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings
+
+    Notes: 
+    - fundPerformance module is not implemented as better data is queryable using history
+    """
     def __init__(self, data: YfData, symbol: str, proxy=None):
+        """
+        Args:
+            data (YfData): The YfData object for fetching data.
+            symbol (str): The symbol of the fund.
+            proxy (optional): Proxy settings for fetching data.
+        """
         self._data = data
         self._symbol = symbol
         self.proxy = proxy
@@ -41,71 +47,143 @@ class FundsData:
         self._sector_weightings = None
 
     def quote_type(self) -> str:
+        """
+        Returns the quote type of the fund.
+
+        Returns:
+            str: The quote type.
+        """
         if self._quote_type is None:
             self._fetch_and_parse()
         return self._quote_type
     
     @property
     def description(self) -> str:
+        """
+        Returns the description of the fund.
+
+        Returns:
+            str: The description.
+        """
         if self._description is None:
             self._fetch_and_parse()
         return self._description
     
     @property
     def fund_overview(self) -> Dict[str, Optional[str]]:
+        """
+        Returns the fund overview.
+
+        Returns:
+            Dict[str, Optional[str]]: The fund overview.
+        """
         if self._fund_overview is None:
             self._fetch_and_parse()
         return self._fund_overview
 
     @property
     def fund_operations(self) -> pd.DataFrame:
+        """
+        Returns the fund operations.
+
+        Returns:
+            pd.DataFrame: The fund operations.
+        """
         if self._fund_operations is None:
             self._fetch_and_parse()
         return self._fund_operations
 
     @property
     def asset_classes(self) -> Dict[str, float]:
+        """
+        Returns the asset classes of the fund.
+
+        Returns:
+            Dict[str, float]: The asset classes.
+        """
         if self._asset_classes is None:
             self._fetch_and_parse()
         return self._asset_classes
 
     @property
     def top_holdings(self) -> pd.DataFrame:
+        """
+        Returns the top holdings of the fund.
+
+        Returns:
+            pd.DataFrame: The top holdings.
+        """
         if self._top_holdings is None:
             self._fetch_and_parse()
         return self._top_holdings
 
     @property
     def equity_holdings(self) -> pd.DataFrame:
+        """
+        Returns the equity holdings of the fund.
+
+        Returns:
+            pd.DataFrame: The equity holdings.
+        """
         if self._equity_holdings is None:
             self._fetch_and_parse()
         return self._equity_holdings
 
     @property
     def bond_holdings(self) -> pd.DataFrame:
+        """
+        Returns the bond holdings of the fund.
+
+        Returns:
+            pd.DataFrame: The bond holdings.
+        """
         if self._bond_holdings is None:
             self._fetch_and_parse()
         return self._bond_holdings
 
     @property
     def bond_ratings(self) -> Dict[str, float]:
+        """
+        Returns the bond ratings of the fund.
+
+        Returns:
+            Dict[str, float]: The bond ratings.
+        """
         if self._bond_ratings is None:
             self._fetch_and_parse()
         return self._bond_ratings
 
     @property
     def sector_weightings(self) -> Dict[str,float]:
+        """
+        Returns the sector weightings of the fund.
+
+        Returns:
+            Dict[str, float]: The sector weightings.
+        """
         if self._sector_weightings is None:
             self._fetch_and_parse()
         return self._sector_weightings
 
     def _fetch(self, proxy):
+        """
+        Fetches the raw JSON data from the API.
+
+        Args:
+            proxy: Proxy settings for fetching data.
+
+        Returns:
+            dict: The raw JSON data.
+        """
         modules = ','.join(["quoteType", "summaryProfile", "topHoldings", "fundProfile"])
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol, "formatted": "false"}
         result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_+self._symbol, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
         return result
 
     def _fetch_and_parse(self) -> None:
+        """
+        Fetches and parses the data from the API.
+        """
         result = self._fetch(self.proxy)
         try:
             data = result["quoteSummary"]["result"][0]
@@ -128,15 +206,37 @@ class FundsData:
 
     @staticmethod
     def _parse_raw_values(data, default=None):
+        """
+        Parses raw values from the data.
+
+        Args:
+            data: The data to parse.
+            default: The default value if data is not a dictionary.
+
+        Returns:
+            The parsed value or the default value.
+        """
         if not isinstance(data, dict):
             return data
         
         return data.get("raw", default)
 
     def _parse_description(self, data) -> None:
+        """
+        Parses the description from the data.
+
+        Args:
+            data: The data to parse.
+        """
         self._description = data.get("longBusinessSummary", "")
 
-    def _parse_top_holdings(self, data) -> None:  # done
+    def _parse_top_holdings(self, data) -> None:
+        """
+        Parses the top holdings from the data.
+
+        Args:
+            data: The data to parse.
+        """
         # asset classes
         self._asset_classes = {
             "cashPosition": self._parse_raw_values(data.get("cashPosition", None)),
@@ -207,6 +307,12 @@ class FundsData:
         self._sector_weightings = dict((key, d[key]) for d in data.get("sectorWeightings", []) for key in d)
         
     def _parse_fund_profile(self, data):
+        """
+        Parses the fund profile from the data.
+
+        Args:
+            data: The data to parse.
+        """
         self._fund_overview = {
             "categoryName": data.get("categoryName", None), 
             "family":       data.get("family", None), 

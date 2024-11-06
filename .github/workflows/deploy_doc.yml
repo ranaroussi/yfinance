@@ -1,0 +1,53 @@
+name: Build and Deploy Sphinx Docs
+
+on:
+  push:
+    branches:
+      - docs_markdown
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: "doc/_build/html"
+      DEPLOY_BRANCH: "docs_markdown"
+      DEPLOY_DIR: "docs"
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install Sphinx==8.0.2 pydata-sphinx-theme==0.15.4 Jinja2==3.1.4 sphinx-copybutton==0.5.2
+
+    - name: Build Sphinx documentation
+      run: |
+        sphinx-build -b html doc/source ${{ env.BUILD_DIR }} -v
+
+    - name: List generated HTML files
+      run: |
+        ls -l -R ${{ env.BUILD_DIR }}
+
+    - name: Publish to the Deploy Branch
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        git checkout ${{ env.DEPLOY_BRANCH }}
+
+        mkdir -p ${{ env.DEPLOY_DIR }}
+        rm -rf ${{ env.DEPLOY_DIR }}/*
+        cp -r ${{ env.BUILD_DIR }}/* ${{ env.DEPLOY_DIR }}/
+        touch ${{ env.DEPLOY_DIR }}/.nojekyll
+        
+        git add -f ${{ env.DEPLOY_DIR }}
+        git commit -m "Update documentation"
+        git push origin ${{ env.DEPLOY_BRANCH }}
