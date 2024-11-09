@@ -1,7 +1,8 @@
-******************************
-Smarter Scraping with Caching
-******************************
+Caching
+=======
 
+Smarter Scraping
+----------------
 
 Install the `nospam` package to cache API calls and reduce spam to Yahoo:
 
@@ -39,3 +40,20 @@ Combine `requests_cache` with rate-limiting to avoid triggering Yahoo's rate-lim
       bucket_class=MemoryQueueBucket,
       backend=SQLiteCache("yfinance.cache"),
    )
+
+
+Persistent Cache
+----------------
+
+To reduce Yahoo, yfinance store some data locally: timezones to localize dates, and cookie. Cache location is:
+
+- Windows = C:/Users/\<USER\>/AppData/Local/py-yfinance
+- Linux = /home/\<USER\>/.cache/py-yfinance
+- MacOS = /Users/\<USER\>/Library/Caches/py-yfinance
+
+You can direct cache to use a different location with :attr:`set_tz_cache_location <yfinance.set_tz_cache_location>`:
+
+.. code-block:: python
+
+    import yfinance as yf
+    yf.set_tz_cache_location("custom/cache/location")

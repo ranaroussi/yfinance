@@ -1,6 +1,6 @@
-******************************
-Managing Multi-Level Columns
-******************************
+************************
+Multi-Level Column Index
+************************
 
 The following answer on Stack Overflow is for `How to deal with
 multi-level column names downloaded with yfinance? <https://stackoverflow.com/questions/63107801>`_
