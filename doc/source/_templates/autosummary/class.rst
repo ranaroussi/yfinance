@@ -1,4 +1,6 @@
-{{ fullname | escape | underline}}
+:orphan:
+
+{{ objname | escape | underline }}
 
 .. currentmodule:: {{ module }}
 
@@ -7,24 +9,21 @@
    {% block attributes %}
    {% if attributes %}
    .. rubric:: Attributes
-
-   .. autosummary::
-      :toctree: attributes
+   
    {% for item in attributes %}
-      ~{{ name }}.{{ item }}
+   .. autoattribute:: {{ item }}
+      :noindex:
    {%- endfor %}
    {% endif %}
-   {% endblock %}
-
+   {% endblock attributes %}
 
    {% block methods %}
    {% if methods %}
    .. rubric:: Methods
 
-   .. autosummary::
-      :toctree: methods
    {% for item in methods %}
-      ~{{ name }}.{{ item }}
+   .. automethod:: {{ item }}
+      :noindex:
    {%- endfor %}
    {% endif %}
-   {% endblock %}
+   {% endblock methods %}

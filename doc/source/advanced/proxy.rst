@@ -1,6 +1,6 @@
-*********************
-Using a Proxy Server
-*********************
+************
+Proxy Server
+************
 
 You can download data via a proxy:
 

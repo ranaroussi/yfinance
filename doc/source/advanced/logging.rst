@@ -1,5 +1,5 @@
-Logging in yfinance
-===================
+Logging
+=======
 
 `yfinance` uses the `logging` module to handle messages. By default, only errors are logged.
 
