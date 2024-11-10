@@ -613,7 +613,7 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, repair=Fals
             # - exception is volume, *slightly* greater on final row (and matches website)
             if dt1.date() == dt2.date():
                 # Last two rows are on same day. Drop second-to-last row
-                quotes = quotes.drop(quotes.index[n - 2])
+                quotes = _pd.concat([quotes.iloc[:-2], quotes.iloc[-1:]])
         else:
             if interval == "1wk":
                 last_rows_same_interval = dt1.year == dt2.year and dt1.week == dt2.week
