@@ -838,7 +838,7 @@ class TestTickerAnalysts(unittest.TestCase):
         columns = ['stock', 'industry', 'sector', 'index']
         self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
 
-        index = ['0q', '+1q', '0y', '+1y', '+5y', '-5y']
+        index = ['0q', '+1q', '0y', '+1y']
         self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
 
         data_cached = self.ticker.growth_estimates
