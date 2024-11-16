@@ -1,6 +1,0 @@
-yfinance.Ticker.get\_calendar
-=============================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Ticker.get_calendar

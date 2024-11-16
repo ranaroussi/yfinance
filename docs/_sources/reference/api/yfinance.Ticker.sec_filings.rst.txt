@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.sec\_filings
+============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.sec_filings

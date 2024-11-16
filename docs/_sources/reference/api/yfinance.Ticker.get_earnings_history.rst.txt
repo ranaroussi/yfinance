@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_earnings\_history
+======================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_earnings_history

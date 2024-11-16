@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.cashflow
+========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.cashflow

@@ -1,6 +1,0 @@
-yfinance.Industry.overview
-==========================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Industry.overview

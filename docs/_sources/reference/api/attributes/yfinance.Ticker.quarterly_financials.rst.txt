@@ -1,6 +1,0 @@
-yfinance.Ticker.quarterly\_financials
-=====================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Ticker.quarterly_financials

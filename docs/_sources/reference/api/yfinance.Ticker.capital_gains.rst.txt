@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.capital\_gains
+==============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.capital_gains

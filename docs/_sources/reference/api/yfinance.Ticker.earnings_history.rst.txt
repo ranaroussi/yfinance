@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.earnings\_history
+=================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.earnings_history

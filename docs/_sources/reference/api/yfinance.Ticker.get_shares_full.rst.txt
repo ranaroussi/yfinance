@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_shares\_full
+=================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_shares_full

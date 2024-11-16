@@ -16,8 +16,8 @@ The `Ticker` module, allows you to access ticker data in a Pythonic way.
    Tickers
 
 
-Sample Code
-------------
+Ticker Sample Code
+------------------
 The `Ticker` module, allows you to access ticker data in a Pythonic way.
 
 .. literalinclude:: examples/ticker.py

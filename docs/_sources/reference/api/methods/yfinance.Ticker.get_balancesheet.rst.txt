@@ -1,6 +1,0 @@
-yfinance.Ticker.get\_balancesheet
-=================================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Ticker.get_balancesheet

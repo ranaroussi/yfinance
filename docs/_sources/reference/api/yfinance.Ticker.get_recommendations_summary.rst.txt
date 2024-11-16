@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_recommendations\_summary
+=============================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_recommendations_summary

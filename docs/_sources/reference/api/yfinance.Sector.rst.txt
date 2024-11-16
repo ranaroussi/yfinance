@@ -1,5 +1,7 @@
-﻿yfinance.Sector
-===============
+﻿:orphan:
+
+Sector
+======
 
 .. currentmodule:: yfinance
 
@@ -8,31 +10,37 @@
    
    
    .. rubric:: Attributes
-
-   .. autosummary::
-      :toctree: attributes
-   
-      ~Sector.industries
-      ~Sector.key
-      ~Sector.name
-      ~Sector.overview
-      ~Sector.research_reports
-      ~Sector.symbol
-      ~Sector.ticker
-      ~Sector.top_companies
-      ~Sector.top_etfs
-      ~Sector.top_mutual_funds
    
    
-
+   .. autoattribute:: industries
+      :noindex:
+   .. autoattribute:: key
+      :noindex:
+   .. autoattribute:: name
+      :noindex:
+   .. autoattribute:: overview
+      :noindex:
+   .. autoattribute:: research_reports
+      :noindex:
+   .. autoattribute:: symbol
+      :noindex:
+   .. autoattribute:: ticker
+      :noindex:
+   .. autoattribute:: top_companies
+      :noindex:
+   .. autoattribute:: top_etfs
+      :noindex:
+   .. autoattribute:: top_mutual_funds
+      :noindex:
+   
+   
 
    
    
    .. rubric:: Methods
 
-   .. autosummary::
-      :toctree: methods
    
-      ~Sector.__init__
+   .. automethod:: __init__
+      :noindex:
    
    

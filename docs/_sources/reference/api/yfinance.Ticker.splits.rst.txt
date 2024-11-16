@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.splits
+======================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.splits

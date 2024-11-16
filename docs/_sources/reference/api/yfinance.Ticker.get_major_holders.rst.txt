@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_major\_holders
+===================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_major_holders

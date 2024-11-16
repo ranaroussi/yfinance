@@ -1,6 +1,0 @@
-yfinance.Screener.patch\_body
-=============================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Screener.patch_body

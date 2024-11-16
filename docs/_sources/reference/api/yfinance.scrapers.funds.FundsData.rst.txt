@@ -1,0 +1,46 @@
+﻿:orphan:
+
+FundsData
+=========
+
+.. currentmodule:: yfinance.scrapers.funds
+
+.. autoclass:: FundsData
+
+   
+   
+   .. rubric:: Attributes
+   
+   
+   .. autoattribute:: asset_classes
+      :noindex:
+   .. autoattribute:: bond_holdings
+      :noindex:
+   .. autoattribute:: bond_ratings
+      :noindex:
+   .. autoattribute:: description
+      :noindex:
+   .. autoattribute:: equity_holdings
+      :noindex:
+   .. autoattribute:: fund_operations
+      :noindex:
+   .. autoattribute:: fund_overview
+      :noindex:
+   .. autoattribute:: sector_weightings
+      :noindex:
+   .. autoattribute:: top_holdings
+      :noindex:
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   
+   .. automethod:: __init__
+      :noindex:
+   .. automethod:: quote_type
+      :noindex:
+   
+   

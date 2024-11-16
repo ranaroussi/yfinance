@@ -1,6 +1,0 @@
-yfinance.Tickers.download
-=========================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Tickers.download

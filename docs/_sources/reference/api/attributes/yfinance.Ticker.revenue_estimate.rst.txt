@@ -1,6 +1,0 @@
-yfinance.Ticker.revenue\_estimate
-=================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Ticker.revenue_estimate

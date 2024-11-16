@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.balance\_sheet
+==============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.balance_sheet

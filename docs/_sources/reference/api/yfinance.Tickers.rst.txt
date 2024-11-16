@@ -1,5 +1,7 @@
-﻿yfinance.Tickers
-================
+﻿:orphan:
+
+Tickers
+=======
 
 .. currentmodule:: yfinance
 
@@ -9,17 +11,18 @@
    
    
 
-
    
    
    .. rubric:: Methods
 
-   .. autosummary::
-      :toctree: methods
    
-      ~Tickers.__init__
-      ~Tickers.download
-      ~Tickers.history
-      ~Tickers.news
+   .. automethod:: __init__
+      :noindex:
+   .. automethod:: download
+      :noindex:
+   .. automethod:: history
+      :noindex:
+   .. automethod:: news
+      :noindex:
    
    

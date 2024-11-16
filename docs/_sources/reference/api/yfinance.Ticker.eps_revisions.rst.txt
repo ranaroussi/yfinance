@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.eps\_revisions
+==============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.eps_revisions

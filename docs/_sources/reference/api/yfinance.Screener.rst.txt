@@ -1,5 +1,7 @@
-﻿yfinance.Screener
-=================
+﻿:orphan:
+
+Screener
+========
 
 .. currentmodule:: yfinance
 
@@ -8,28 +10,31 @@
    
    
    .. rubric:: Attributes
-
-   .. autosummary::
-      :toctree: attributes
-   
-      ~Screener.body
-      ~Screener.predefined_bodies
-      ~Screener.response
    
    
-
+   .. autoattribute:: body
+      :noindex:
+   .. autoattribute:: predefined_bodies
+      :noindex:
+   .. autoattribute:: response
+      :noindex:
+   
+   
 
    
    
    .. rubric:: Methods
 
-   .. autosummary::
-      :toctree: methods
    
-      ~Screener.__init__
-      ~Screener.patch_body
-      ~Screener.set_body
-      ~Screener.set_default_body
-      ~Screener.set_predefined_body
+   .. automethod:: __init__
+      :noindex:
+   .. automethod:: patch_body
+      :noindex:
+   .. automethod:: set_body
+      :noindex:
+   .. automethod:: set_default_body
+      :noindex:
+   .. automethod:: set_predefined_body
+      :noindex:
    
    

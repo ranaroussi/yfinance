@@ -1,6 +1,0 @@
-yfinance.Ticker.get\_mutualfund\_holders
-========================================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Ticker.get_mutualfund_holders

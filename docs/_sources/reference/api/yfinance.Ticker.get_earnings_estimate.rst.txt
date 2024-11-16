@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_earnings\_estimate
+=======================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_earnings_estimate

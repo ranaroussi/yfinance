@@ -1,6 +1,0 @@
-yfinance.Sector.top\_etfs
-=========================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Sector.top_etfs

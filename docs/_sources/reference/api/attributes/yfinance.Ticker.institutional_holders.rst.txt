@@ -1,6 +1,0 @@
-yfinance.Ticker.institutional\_holders
-======================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Ticker.institutional_holders

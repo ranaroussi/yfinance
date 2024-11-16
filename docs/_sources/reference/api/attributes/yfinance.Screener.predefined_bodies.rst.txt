@@ -1,6 +1,0 @@
-yfinance.Screener.predefined\_bodies
-====================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Screener.predefined_bodies

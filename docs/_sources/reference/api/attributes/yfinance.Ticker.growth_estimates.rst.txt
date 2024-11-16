@@ -1,6 +1,0 @@
-yfinance.Ticker.growth\_estimates
-=================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Ticker.growth_estimates

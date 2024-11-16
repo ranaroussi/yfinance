@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_history\_metadata
+======================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_history_metadata

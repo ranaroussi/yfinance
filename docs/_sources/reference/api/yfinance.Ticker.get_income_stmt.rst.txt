@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_income\_stmt
+=================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_income_stmt

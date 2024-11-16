@@ -1,6 +1,0 @@
-yfinance.Ticker.get\_funds\_data
-================================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Ticker.get_funds_data

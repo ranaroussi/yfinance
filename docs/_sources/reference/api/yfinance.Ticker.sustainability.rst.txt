@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.sustainability
+==============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.sustainability

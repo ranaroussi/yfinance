@@ -1,8 +1,8 @@
 yfinance documentation
-==============================================
+======================
 
 Download Market Data from Yahoo! Finance's API
-------------------------------------------------
+----------------------------------------------
 
 .. admonition:: IMPORTANT LEGAL DISCLAIMER
 
@@ -19,12 +19,56 @@ Download Market Data from Yahoo! Finance's API
    for details on your rights to use the actual data downloaded.
    Remember - the Yahoo! finance API is intended for personal use only.
 
+Install
+-------
+
+.. code-block:: bash
+
+    $ pip install yfinance
+
+Quick start
+-----------
+
+Showing a small sample of yfinance API, the full API is much bigger and covered in :doc:`reference/index`.
+
+.. code-block:: python
+
+   import yfinance as yf
+   dat = yf.Ticker("MSFT")
+
+
+One ticker symbol
+
+.. code-block:: python
+
+   dat = yf.Ticker("MSFT")
+   dat.info
+   dat.calendar
+   dat.analyst_price_targets
+   dat.quarterly_income_stmt
+   dat.history(period='1mo')
+   dat.option_chain(dat.options[0]).calls
+
+Multiple ticker symbols
+
+.. code-block:: python
+
+   tickers = yf.Tickers('MSFT AAPL GOOG')
+   tickers.tickers['MSFT'].info
+   yf.download(['MSFT', 'AAPL', 'GOOG'], period='1mo')
+
+Funds
+
+.. code-block:: python
+
+   spy = yf.Ticker('SPY').funds_data
+   spy.description
+   spy.top_holdings
+
 .. toctree::
-   :maxdepth: 3
-   :hidden:
+   :maxdepth: 1
    :titlesonly:
 
-   getting_started/index
-   user_guide/index
+   advanced/index
    reference/index
    development/index

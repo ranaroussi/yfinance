@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_insider\_roster\_holders
+=============================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_insider_roster_holders

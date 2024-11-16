@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_capital\_gains
+===================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_capital_gains

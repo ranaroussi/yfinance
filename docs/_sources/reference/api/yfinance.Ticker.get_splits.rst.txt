@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_splits
+===========================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_splits

@@ -1,6 +1,0 @@
-yfinance.Industry.symbol
-========================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Industry.symbol

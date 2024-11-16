@@ -1,6 +1,0 @@
-yfinance.Industry.research\_reports
-===================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Industry.research_reports

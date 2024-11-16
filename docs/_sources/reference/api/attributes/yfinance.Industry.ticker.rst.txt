@@ -1,6 +1,0 @@
-yfinance.Industry.ticker
-========================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Industry.ticker

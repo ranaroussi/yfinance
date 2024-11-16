@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_balance\_sheet
+===================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_balance_sheet

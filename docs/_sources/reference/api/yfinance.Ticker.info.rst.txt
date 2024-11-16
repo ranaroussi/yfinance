@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.info
+====================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.info

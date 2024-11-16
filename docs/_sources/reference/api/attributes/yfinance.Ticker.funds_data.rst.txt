@@ -1,6 +1,0 @@
-yfinance.Ticker.funds\_data
-===========================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Ticker.funds_data

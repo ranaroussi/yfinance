@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.analyst\_price\_targets
+=======================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.analyst_price_targets

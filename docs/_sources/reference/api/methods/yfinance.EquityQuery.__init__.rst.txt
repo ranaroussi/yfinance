@@ -1,6 +1,0 @@
-yfinance.EquityQuery.\_\_init\_\_
-=================================
-
-.. currentmodule:: yfinance
-
-.. automethod:: EquityQuery.__init__

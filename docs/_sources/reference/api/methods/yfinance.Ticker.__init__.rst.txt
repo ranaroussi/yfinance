@@ -1,6 +1,0 @@
-yfinance.Ticker.\_\_init\_\_
-============================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Ticker.__init__

@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.recommendations\_summary
+========================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.recommendations_summary

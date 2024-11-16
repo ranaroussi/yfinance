@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.upgrades\_downgrades
+====================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.upgrades_downgrades

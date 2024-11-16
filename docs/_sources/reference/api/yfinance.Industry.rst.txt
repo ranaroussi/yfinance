@@ -1,5 +1,7 @@
-﻿yfinance.Industry
-=================
+﻿:orphan:
+
+Industry
+========
 
 .. currentmodule:: yfinance
 
@@ -8,32 +10,39 @@
    
    
    .. rubric:: Attributes
-
-   .. autosummary::
-      :toctree: attributes
-   
-      ~Industry.key
-      ~Industry.name
-      ~Industry.overview
-      ~Industry.research_reports
-      ~Industry.sector_key
-      ~Industry.sector_name
-      ~Industry.symbol
-      ~Industry.ticker
-      ~Industry.top_companies
-      ~Industry.top_growth_companies
-      ~Industry.top_performing_companies
    
    
-
+   .. autoattribute:: key
+      :noindex:
+   .. autoattribute:: name
+      :noindex:
+   .. autoattribute:: overview
+      :noindex:
+   .. autoattribute:: research_reports
+      :noindex:
+   .. autoattribute:: sector_key
+      :noindex:
+   .. autoattribute:: sector_name
+      :noindex:
+   .. autoattribute:: symbol
+      :noindex:
+   .. autoattribute:: ticker
+      :noindex:
+   .. autoattribute:: top_companies
+      :noindex:
+   .. autoattribute:: top_growth_companies
+      :noindex:
+   .. autoattribute:: top_performing_companies
+      :noindex:
+   
+   
 
    
    
    .. rubric:: Methods
 
-   .. autosummary::
-      :toctree: methods
    
-      ~Industry.__init__
+   .. automethod:: __init__
+      :noindex:
    
    

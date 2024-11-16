@@ -1,5 +1,7 @@
-﻿yfinance.EquityQuery
-====================
+﻿:orphan:
+
+EquityQuery
+===========
 
 .. currentmodule:: yfinance
 
@@ -8,24 +10,23 @@
    
    
    .. rubric:: Attributes
-
-   .. autosummary::
-      :toctree: attributes
-   
-      ~EquityQuery.valid_eq_operand_map
-      ~EquityQuery.valid_operand_fields
    
    
-
+   .. autoattribute:: valid_eq_operand_map
+      :noindex:
+   .. autoattribute:: valid_operand_fields
+      :noindex:
+   
+   
 
    
    
    .. rubric:: Methods
 
-   .. autosummary::
-      :toctree: methods
    
-      ~EquityQuery.__init__
-      ~EquityQuery.to_dict
+   .. automethod:: __init__
+      :noindex:
+   .. automethod:: to_dict
+      :noindex:
    
    

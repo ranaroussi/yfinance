@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_isin
+=========================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_isin

@@ -1,6 +1,0 @@
-yfinance.Ticker.get\_earnings
-=============================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Ticker.get_earnings

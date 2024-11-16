@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.news
+====================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.news

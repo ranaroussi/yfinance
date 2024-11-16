@@ -1,6 +1,0 @@
-yfinance.Ticker.history\_metadata
-=================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Ticker.history_metadata

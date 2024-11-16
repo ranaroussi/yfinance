@@ -1,6 +1,0 @@
-yfinance.Sector.top\_mutual\_funds
-==================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Sector.top_mutual_funds

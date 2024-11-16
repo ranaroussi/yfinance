@@ -1,6 +1,0 @@
-yfinance.Industry.top\_companies
-================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Industry.top_companies

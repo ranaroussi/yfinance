@@ -1,6 +1,0 @@
-yfinance.EquityQuery.valid\_operand\_fields
-===========================================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: EquityQuery.valid_operand_fields

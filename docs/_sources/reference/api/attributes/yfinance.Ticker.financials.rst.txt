@@ -1,6 +1,0 @@
-yfinance.Ticker.financials
-==========================
-
-.. currentmodule:: yfinance
-
-.. autoproperty:: Ticker.financials

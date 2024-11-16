@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_upgrades\_downgrades
+=========================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_upgrades_downgrades

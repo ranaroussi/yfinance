@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_actions
+============================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_actions

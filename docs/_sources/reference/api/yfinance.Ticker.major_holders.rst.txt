@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.major\_holders
+==============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.major_holders

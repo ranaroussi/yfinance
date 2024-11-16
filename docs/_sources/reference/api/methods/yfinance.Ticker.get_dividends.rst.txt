@@ -1,6 +1,0 @@
-yfinance.Ticker.get\_dividends
-==============================
-
-.. currentmodule:: yfinance
-
-.. automethod:: Ticker.get_dividends

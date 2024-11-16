@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.earnings\_dates
+===============================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.earnings_dates

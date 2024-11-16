@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.calendar
+========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.calendar

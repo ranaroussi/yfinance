@@ -45,7 +45,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Getting Started" href="getting_started/index.html" />
+    <link rel="next" title="Advanced" href="advanced/index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -136,15 +136,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started/index.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide/index.html">
-    User Guide
+  <a class="nav-link nav-internal" href="advanced/index.html">
+    Advanced
   </a>
 </li>
 
@@ -265,15 +258,8 @@ document.write(`
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started/index.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide/index.html">
-    User Guide
+  <a class="nav-link nav-internal" href="advanced/index.html">
+    Advanced
   </a>
 </li>
 
@@ -373,7 +359,48 @@ and (<a class="reference external" href="https://policies.yahoo.com/us/en/yahoo/
 for details on your rights to use the actual data downloaded.
 Remember - the Yahoo! finance API is intended for personal use only.</p>
 </div>
+</section>
+<section id="install">
+<h2>Install<a class="headerlink" href="#install" title="Link to this heading">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>yfinance
+</pre></div>
+</div>
+</section>
+<section id="quick-start">
+<h2>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<p>Showing a small sample of yfinance API, the full API is much bigger and covered in <a class="reference internal" href="reference/index.html"><span class="doc">API Reference</span></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">yfinance</span> <span class="k">as</span> <span class="nn">yf</span>
+<span class="n">dat</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">&quot;MSFT&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>One ticker symbol</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dat</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">&quot;MSFT&quot;</span><span class="p">)</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">info</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">calendar</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">analyst_price_targets</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">quarterly_income_stmt</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s1">&#39;1mo&#39;</span><span class="p">)</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">option_chain</span><span class="p">(</span><span class="n">dat</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">calls</span>
+</pre></div>
+</div>
+<p>Multiple ticker symbols</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tickers</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Tickers</span><span class="p">(</span><span class="s1">&#39;MSFT AAPL GOOG&#39;</span><span class="p">)</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;MSFT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">download</span><span class="p">([</span><span class="s1">&#39;MSFT&#39;</span><span class="p">,</span> <span class="s1">&#39;AAPL&#39;</span><span class="p">,</span> <span class="s1">&#39;GOOG&#39;</span><span class="p">],</span> <span class="n">period</span><span class="o">=</span><span class="s1">&#39;1mo&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Funds</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">spy</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s1">&#39;SPY&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">funds_data</span>
+<span class="n">spy</span><span class="o">.</span><span class="n">description</span>
+<span class="n">spy</span><span class="o">.</span><span class="n">top_holdings</span>
+</pre></div>
+</div>
 <div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="advanced/index.html">Advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/index.html">Development</a></li>
+</ul>
 </div>
 </section>
 </section>
@@ -389,11 +416,11 @@ Remember - the Yahoo! finance API is intended for personal use only.</p>
                   
 <div class="prev-next-area">
     <a class="right-next"
-       href="getting_started/index.html"
+       href="advanced/index.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Getting Started</p>
+        <p class="prev-next-title">Advanced</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -416,6 +443,8 @@ Remember - the Yahoo! finance API is intended for personal use only.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#download-market-data-from-yahoo-finance-s-api">Download Market Data from Yahoo! Finance’s API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#install">Install</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick start</a></li>
 </ul>
   </nav></div>
 

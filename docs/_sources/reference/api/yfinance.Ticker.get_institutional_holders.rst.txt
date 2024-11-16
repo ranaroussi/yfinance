@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.get\_institutional\_holders
+===========================================
+
+.. currentmodule:: yfinance
+
+.. automethod:: Ticker.get_institutional_holders

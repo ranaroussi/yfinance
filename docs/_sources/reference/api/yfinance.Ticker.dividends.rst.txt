@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.dividends
+=========================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.dividends

@@ -1,6 +1,6 @@
-=======================
+=============
 API Reference
-=======================
+=============
 
 Overview
 --------
@@ -27,7 +27,13 @@ The following are the publicly available classes, and functions exposed by the `
    :maxdepth: 1
    :hidden:
 
-   
+
    yfinance.ticker_tickers
+   yfinance.stock
+   yfinance.financials
+   yfinance.analysis
    yfinance.sector_industry
    yfinance.functions
+
+   yfinance.funds_data
+   yfinance.price_history
