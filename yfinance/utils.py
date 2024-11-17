@@ -932,3 +932,64 @@ class ProgressBar:
     def __str__(self):
         return str(self.prog_bar)
 
+def dynamic_docstring(placeholders: dict):
+    """
+    A decorator to dynamically update the docstring of a function or method.
+    
+    Args:
+        placeholders (dict): A dictionary where keys are placeholder names and values are the strings to insert.
+    """
+    def decorator(func):
+        if func.__doc__:
+            docstring = func.__doc__
+            # Replace each placeholder with its corresponding value
+            for key, value in placeholders.items():
+                docstring = docstring.replace(f"{{{key}}}", value)
+            func.__doc__ = docstring
+        return func
+    return decorator
+
+def _generate_table_configurations() -> str:
+    import textwrap
+    table = textwrap.dedent("""
+    .. list-table:: Permitted Keys/Values
+       :widths: 25 75
+       :header-rows: 1
+
+       * - Key
+         - Values
+    """)
+
+    return table
+
+def generate_list_table_from_dict(data: dict, bullets: bool=True) -> str:
+    """
+    Generate a list-table for the docstring showing permitted keys/values.
+    """
+    table = _generate_table_configurations()
+    for key, values in data.items():
+        value_str = ', '.join(sorted(values))
+        table += f"   * - {key}\n"
+        if bullets:
+            table += "     -\n"
+            for value in sorted(values):
+                table += f"       - {value}\n"
+        else:
+            table += f"     - {value_str}\n"
+    return table
+
+def generate_list_table_from_dict_of_dict(data: dict, bullets: bool=True) -> str:
+    """
+    Generate a list-table for the docstring showing permitted keys/values.
+    """
+    table = _generate_table_configurations()
+    for key, values in data.items():
+        value_str = values
+        table += f"   * - {key}\n"
+        if bullets:
+            table += "     -\n"
+            for value in sorted(values):
+                table += f"       - {value}\n"
+        else:
+            table += f"     - {value_str}\n"
+    return table
