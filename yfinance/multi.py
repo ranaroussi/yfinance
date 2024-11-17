@@ -42,38 +42,54 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
-
-    Args:
-        tickers (str or list): List of tickers to download.
-        period (str): Time period to download.
-            Valid periods are: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'.
-            Either use `period` or specify `start` and `end`.
-        interval (str): Data interval.
-            Valid intervals are: '1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo'.
-            Intraday data is limited to the last 60 days.
-        start (str): Start date (YYYY-MM-DD) or _datetime, inclusive.
-            Default is 99 years ago.
-            Example: For `start="2020-01-01"`, the first data point will be "2020-01-01".
-        end (str): End date (YYYY-MM-DD) or _datetime, exclusive.
-            Default is the current date.
-            Example: For `end="2023-01-01"`, the last data point will be "2022-12-31".
-        group_by (str): Group data by 'ticker' or 'column'. Default is 'column'.
-        prepost (bool): Include pre and post market data in results? Default is False.
-        auto_adjust (bool): Automatically adjust all OHLC data? Default is False.
-        repair (bool): Detect and repair currency unit mixups (e.g., 100x errors)? Default is False.
-        keepna (bool): Keep rows with NaN values returned by Yahoo? Default is False.
-        actions (bool): Download dividend and stock split data? Default is False.
-        threads (bool or int): Number of threads for mass downloading. Default is True (automatically determines the number of threads).
-        ignore_tz (bool): Ignore timezones when combining data across timezones?
-            Default depends on the interval. For intraday intervals, the default is False. For daily and above, the default is True.
-        proxy (str, optional): URL of the proxy server. Default is None.
-        rounding (bool, optional): Round values to two decimal places? Default is False.
-        timeout (None or float, optional): Maximum time to wait for a response, in seconds. Can be a fraction of a second (e.g., 0.01). Default is None.
-        session (None or Session, optional): Pass a custom session object for all requests. Default is None.
-        multi_level_index (bool): Optional. Always return a MultiIndex DataFrame? Default is False
-
-    Returns:
-        pd.DataFrame or None
+    :Parameters:
+        tickers : str, list
+            List of tickers to download
+        period : str
+            Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+            Either Use period parameter or use start and end
+        interval : str
+            Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+            Intraday data cannot extend last 60 days
+        start: str
+            Download start date string (YYYY-MM-DD) or _datetime, inclusive.
+            Default is 99 years ago
+            E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
+        end: str
+            Download end date string (YYYY-MM-DD) or _datetime, exclusive.
+            Default is now
+            E.g. for end="2023-01-01", the last data point will be on "2022-12-31"
+        group_by : str
+            Group by 'ticker' or 'column' (default)
+        prepost : bool
+            Include Pre and Post market data in results?
+            Default is False
+        auto_adjust: bool
+            Adjust all OHLC automatically? Default is False
+        repair: bool
+            Detect currency unit 100x mixups and attempt repair
+            Default is False
+        keepna: bool
+            Keep NaN rows returned by Yahoo?
+            Default is False
+        actions: bool
+            Download dividend + stock splits data. Default is False
+        threads: bool / int
+            How many threads to use for mass downloading. Default is True
+        ignore_tz: bool
+            When combining from different timezones, ignore that part of datetime.
+            Default depends on interval. Intraday = False. Day+ = True.
+        proxy: str
+            Optional. Proxy server URL scheme. Default is None
+        rounding: bool
+            Optional. Round values to 2 decimal places?
+        timeout: None or float
+            If not None stops waiting for a response after given number of
+            seconds. (Can also be a fraction of a second e.g. 0.01)
+        session: None or Session
+            Optional. Pass your own session object to be used for all requests
+        multi_level_index: bool
+            Optional. Always return a MultiIndex DataFrame? Default is True
     """
     logger = utils.get_yf_logger()
 
