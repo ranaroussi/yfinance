@@ -427,119 +427,108 @@ EQUITY_SCREENER_EQ_MAP = {
     }
 }
 EQUITY_SCREENER_FIELDS = {
-    # EQ Fields
-    "region",
-    "sector",
-    "peer_group",
-    "exchanges",
-
-    # price
-    "eodprice",
-    "intradaypricechange",
-    "lastclosemarketcap.lasttwelvemonths",
-    "percentchange",
-    "lastclose52weekhigh.lasttwelvemonths",
-    "fiftytwowkpercentchange",
-    "intradayprice",
-    "lastclose52weeklow.lasttwelvemonths",
-    "intradaymarketcap",
-
-    # trading
-    "beta",
-    "avgdailyvol3m",
-    "pctheldinsider",
-    "pctheldinst",
-    "dayvolume",
-    "eodvolume",
-
-    # short interest
-    "short_percentage_of_shares_outstanding.value",
-    "short_interest.value",
-    "short_percentage_of_float.value",
-    "days_to_cover_short.value",
-    "short_interest_percentage_change.value",
-
-    # valuation
-    "bookvalueshare.lasttwelvemonths",
-    "lastclosemarketcaptotalrevenue.lasttwelvemonths",
-    "lastclosetevtotalrevenue.lasttwelvemonths",
-    "pricebookratio.quarterly",
-    "peratio.lasttwelvemonths",
-    "lastclosepricetangiblebookvalue.lasttwelvemonths",
-    "lastclosepriceearnings.lasttwelvemonths",
-    "pegratio_5y",
-
-    # profitability
-    "consecutive_years_of_dividend_growth_count",
-    "returnonassets.lasttwelvemonths",
-    "returnonequity.lasttwelvemonths",
-    "forward_dividend_per_share",
-    "forward_dividend_yield",
-    "returnontotalcapital.lasttwelvemonths",
-
-    # leverage
-    "lastclosetevebit.lasttwelvemonths",
-    "netdebtebitda.lasttwelvemonths",
-    "totaldebtequity.lasttwelvemonths",
-    "ltdebtequity.lasttwelvemonths",
-    "ebitinterestexpense.lasttwelvemonths",
-    "ebitdainterestexpense.lasttwelvemonths",
-    "lastclosetevebitda.lasttwelvemonths",
-    "totaldebtebitda.lasttwelvemonths",
-
-    # liquidity
-    "quickratio.lasttwelvemonths",
-    "altmanzscoreusingtheaveragestockinformationforaperiod.lasttwelvemonths",
-    "currentratio.lasttwelvemonths",
-    "operatingcashflowtocurrentliabilities.lasttwelvemonths",
-
-    # income statement
-    "totalrevenues.lasttwelvemonths",
-    "netincomemargin.lasttwelvemonths",
-    "grossprofit.lasttwelvemonths",
-    "ebitda1yrgrowth.lasttwelvemonths",
-    "dilutedepscontinuingoperations.lasttwelvemonths",
-    "quarterlyrevenuegrowth.quarterly",
-    "epsgrowth.lasttwelvemonths",
-    "netincomeis.lasttwelvemonths",
-    "ebitda.lasttwelvemonths",
-    "dilutedeps1yrgrowth.lasttwelvemonths",
-    "totalrevenues1yrgrowth.lasttwelvemonths",
-    "operatingincome.lasttwelvemonths",
-    "netincome1yrgrowth.lasttwelvemonths",
-    "grossprofitmargin.lasttwelvemonths",
-    "ebitdamargin.lasttwelvemonths",
-    "ebit.lasttwelvemonths",
-    "basicepscontinuingoperations.lasttwelvemonths",
-    "netepsbasic.lasttwelvemonths"
-    "netepsdiluted.lasttwelvemonths",
-
-    # balance sheet
-    "totalassets.lasttwelvemonths",
-    "totalcommonsharesoutstanding.lasttwelvemonths",
-    "totaldebt.lasttwelvemonths",
-    "totalequity.lasttwelvemonths",
-    "totalcurrentassets.lasttwelvemonths",
-    "totalcashandshortterminvestments.lasttwelvemonths",
-    "totalcommonequity.lasttwelvemonths",
-    "totalcurrentliabilities.lasttwelvemonths",
-    "totalsharesoutstanding",
-
-    # cash flow
-    "forward_dividend_yield",
-    "leveredfreecashflow.lasttwelvemonths",
-    "capitalexpenditure.lasttwelvemonths",
-    "cashfromoperations.lasttwelvemonths",
-    "leveredfreecashflow1yrgrowth.lasttwelvemonths",
-    "unleveredfreecashflow.lasttwelvemonths",
-    "cashfromoperations1yrgrowth.lasttwelvemonths",
-
-    # ESG
-    "esg_score",
-    "environmental_score",
-    "governance_score",
-    "social_score",
-    "highest_controversy"
+    "eq_fields": {
+        "region",
+        "sector",
+        "peer_group",
+        "exchanges"}, 
+    "price":{
+        "eodprice",
+        "intradaypricechange",
+        "lastclosemarketcap.lasttwelvemonths",
+        "percentchange",
+        "lastclose52weekhigh.lasttwelvemonths",
+        "fiftytwowkpercentchange",
+        "intradayprice",
+        "lastclose52weeklow.lasttwelvemonths",
+        "intradaymarketcap"},
+    "trading":{
+        "beta",
+        "avgdailyvol3m",
+        "pctheldinsider",
+        "pctheldinst",
+        "dayvolume",
+        "eodvolume"},
+    "short_interest":{
+        "short_percentage_of_shares_outstanding.value",
+        "short_interest.value",
+        "short_percentage_of_float.value",
+        "days_to_cover_short.value",
+        "short_interest_percentage_change.value"},
+    "valuation":{
+        "bookvalueshare.lasttwelvemonths",
+        "lastclosemarketcaptotalrevenue.lasttwelvemonths",
+        "lastclosetevtotalrevenue.lasttwelvemonths",
+        "pricebookratio.quarterly",
+        "peratio.lasttwelvemonths",
+        "lastclosepricetangiblebookvalue.lasttwelvemonths",
+        "lastclosepriceearnings.lasttwelvemonths",
+        "pegratio_5y"},
+    "profitability":{
+        "consecutive_years_of_dividend_growth_count",
+        "returnonassets.lasttwelvemonths",
+        "returnonequity.lasttwelvemonths",
+        "forward_dividend_per_share",
+        "forward_dividend_yield",
+        "returnontotalcapital.lasttwelvemonths"},
+    "leverage":{
+        "lastclosetevebit.lasttwelvemonths",
+        "netdebtebitda.lasttwelvemonths",
+        "totaldebtequity.lasttwelvemonths",
+        "ltdebtequity.lasttwelvemonths",
+        "ebitinterestexpense.lasttwelvemonths",
+        "ebitdainterestexpense.lasttwelvemonths",
+        "lastclosetevebitda.lasttwelvemonths",
+        "totaldebtebitda.lasttwelvemonths"},
+    "liquidity":{
+        "quickratio.lasttwelvemonths",
+        "altmanzscoreusingtheaveragestockinformationforaperiod.lasttwelvemonths",
+        "currentratio.lasttwelvemonths",
+        "operatingcashflowtocurrentliabilities.lasttwelvemonths"},
+    "income_statement":{
+        "totalrevenues.lasttwelvemonths",
+        "netincomemargin.lasttwelvemonths",
+        "grossprofit.lasttwelvemonths",
+        "ebitda1yrgrowth.lasttwelvemonths",
+        "dilutedepscontinuingoperations.lasttwelvemonths",
+        "quarterlyrevenuegrowth.quarterly",
+        "epsgrowth.lasttwelvemonths",
+        "netincomeis.lasttwelvemonths",
+        "ebitda.lasttwelvemonths",
+        "dilutedeps1yrgrowth.lasttwelvemonths",
+        "totalrevenues1yrgrowth.lasttwelvemonths",
+        "operatingincome.lasttwelvemonths",
+        "netincome1yrgrowth.lasttwelvemonths",
+        "grossprofitmargin.lasttwelvemonths",
+        "ebitdamargin.lasttwelvemonths",
+        "ebit.lasttwelvemonths",
+        "basicepscontinuingoperations.lasttwelvemonths",
+        "netepsbasic.lasttwelvemonths"
+        "netepsdiluted.lasttwelvemonths"},
+    "balance_sheet":{
+        "totalassets.lasttwelvemonths",
+        "totalcommonsharesoutstanding.lasttwelvemonths",
+        "totaldebt.lasttwelvemonths",
+        "totalequity.lasttwelvemonths",
+        "totalcurrentassets.lasttwelvemonths",
+        "totalcashandshortterminvestments.lasttwelvemonths",
+        "totalcommonequity.lasttwelvemonths",
+        "totalcurrentliabilities.lasttwelvemonths",
+        "totalsharesoutstanding"},
+    "cash_flow":{
+        "forward_dividend_yield",
+        "leveredfreecashflow.lasttwelvemonths",
+        "capitalexpenditure.lasttwelvemonths",
+        "cashfromoperations.lasttwelvemonths",
+        "leveredfreecashflow1yrgrowth.lasttwelvemonths",
+        "unleveredfreecashflow.lasttwelvemonths",
+        "cashfromoperations1yrgrowth.lasttwelvemonths"},
+    "esg":{
+        "esg_score",
+        "environmental_score",
+        "governance_score",
+        "social_score",
+        "highest_controversy"}
 }
 
 PREDEFINED_SCREENER_BODY_MAP = {

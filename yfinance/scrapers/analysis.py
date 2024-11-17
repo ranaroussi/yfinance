@@ -205,13 +205,18 @@ class Analysis:
             self._growth_estimates = pd.DataFrame()
             return self._growth_estimates
 
+        # LTG is not defined in yahoo finance front-end as at 2024-11-14.
+        # But its addition is breaking the retrieval of growth estimates.
+        # Also, support for 5 year seem to have dropped.
+        # TODO: Revisit this change and consider permanently removing these keys.
         data_dict = {
             '0q': [],
             '+1q': [],
             '0y': [],
             '+1y': [],
-            '+5y': [],
-            '-5y': []
+            # 'LTG': [],
+            # '+5y': [],
+            # '-5y': []
         }
 
         # make sure no column is empty
@@ -222,19 +227,23 @@ class Analysis:
 
         for item in self._earnings_trend:
             period = item['period']
-            data_dict[period].append(item.get('growth', {}).get('raw', None))
+            if period in data_dict:
+                data_dict[period].append(item.get('growth', {}).get('raw', None))
 
         for item in industry_trend:
             period = item['period']
-            data_dict[period].append(item.get('growth', None))
+            if period in data_dict:
+                data_dict[period].append(item.get('growth', None))
 
         for item in sector_trend:
             period = item['period']
-            data_dict[period].append(item.get('growth', None))
+            if period in data_dict:
+                data_dict[period].append(item.get('growth', None))
 
         for item in index_trend:
             period = item['period']
-            data_dict[period].append(item.get('growth', None))
+            if period in data_dict:
+                data_dict[period].append(item.get('growth', None))
 
         cols = ['stock', 'industry', 'sector', 'index']
         self._growth_estimates = pd.DataFrame(data_dict, index=cols).T

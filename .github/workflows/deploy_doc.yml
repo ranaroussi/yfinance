@@ -1,0 +1,43 @@
+name: Build and Deploy Sphinx Docs
+
+on:
+  push:
+    branches:
+      - dev-documented
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install Sphinx==8.0.2 pydata-sphinx-theme==0.15.4 Jinja2==3.1.4 sphinx-copybutton==0.5.2
+
+    - name: Build Sphinx documentation
+      run: |
+        sphinx-build -b html doc/source doc/_build/html -v
+
+    - name: List generated HTML files
+      run: |
+        ls -l -R doc/_build/html
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: documentation
+        publish_dir: doc/_build/html
+        destination_dir: docs
+        enable_jekyll: false
