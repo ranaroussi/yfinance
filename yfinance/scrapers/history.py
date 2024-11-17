@@ -953,7 +953,7 @@ class PriceHistory:
         if prices_in_subunits:
             for c in _PRICE_COLNAMES_:
                 df[c] *= m
-        self._history_metadata["currency"] = currency
+        self._history_metadata["currency"] = currency2
 
         f_div = df['Dividends']!=0.0
         if f_div.any():

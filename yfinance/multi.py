@@ -24,6 +24,7 @@ from __future__ import print_function
 import logging
 import time as _time
 import traceback
+from typing import Union
 
 import multitasking as _multitasking
 import pandas as _pd
@@ -38,8 +39,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=False, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",
              prepost=False, proxy=None, rounding=False, timeout=10, session=None,
-             multi_level_index=True):
-    """Download yahoo tickers
+             multi_level_index=True) -> Union[_pd.DataFrame, None]:
+    """
+    Download yahoo tickers
     :Parameters:
         tickers : str, list
             List of tickers to download
@@ -210,7 +212,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
-    data.index = _pd.to_datetime(data.index, utc=True)
+    data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
     # switch names back to isins if applicable
     data.rename(columns=shared._ISINS, inplace=True)
 
