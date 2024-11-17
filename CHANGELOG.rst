@@ -1,6 +1,14 @@
 Change Log
 ===========
 
+0.2.49
+------
+Fix prices-clean rarely discarding good data #2122
+
+0.2.47 and 0.2.48
+-----------------
+Add yf.download(multi_level_index)
+
 0.2.46
 ------
 Fix regression in 0.2.45 #2094
