@@ -560,12 +560,15 @@ class TickerBase:
     def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
-        :param limit: max amount of upcoming and recent earnings dates to return.
-                      Default value 12 should return next 4 quarters and last 8 quarters.
-                      Increase if more history is needed.
-
-        :param proxy: requests proxy to use.
-        :return: pandas dataframe
+        
+        Args:
+            limit (int): max amount of upcoming and recent earnings dates to return.
+                Default value 12 should return next 4 quarters and last 8 quarters.
+                Increase if more history is needed.
+            proxy: requests proxy to use.
+        
+        Returns:
+            pd.DataFrame
         """
         if self._earnings_dates and limit in self._earnings_dates:
             return self._earnings_dates[limit]
