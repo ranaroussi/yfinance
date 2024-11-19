@@ -1426,7 +1426,7 @@ class PriceHistory:
                 typical_volatility = np.nan
             else:
                 diffs = df2['Close'].iloc[start:end-1].to_numpy() - df2['Low'].iloc[start+1:end].to_numpy()
-                typical_volatility = np.median(np.abs(diffs))
+                typical_volatility = np.mean(np.abs(diffs))
 
             possibilities = []
             if (drops==0.0).all() and df2['Volume'].iloc[div_idx]==0:
@@ -1681,10 +1681,6 @@ class PriceHistory:
                         div_status_df.loc[phantom_div_dt, c] = False
         checks.append('phantom')
 
-        if not div_status_df[checks].any().any():
-            # Perfect
-            return df
-
         # Remove phantoms early
         if 'phantom' in div_status_df.columns:
             f_phantom = div_status_df['phantom']
@@ -1708,6 +1704,29 @@ class PriceHistory:
             div_status_df = div_status_df.drop('phantom', axis=1)
             if 'phantom' in checks:
                 checks.remove('phantom')
+
+        if not div_status_df[checks].any().any():
+            # Maybe failed to detect a too-small div. If div is ~0.01x of previous and next, then
+            # treat as a 0.01x error
+            if len(div_status_df) > 1:
+                for i in range(0, len(div_status_df)):
+                    r_pre, r_post = None, None
+                    if i > 0:
+                        r_pre = div_status_df['%'].iloc[i-1] / div_status_df['%'].iloc[i]
+                    if i < (len(div_status_df)-1):
+                        r_post = div_status_df['%'].iloc[i+1] / div_status_df['%'].iloc[i]
+                    r_pre = r_pre or r_post
+                    r_post = r_post or r_pre
+                    if abs(r_pre-currency_divide)<20 and abs(r_post-currency_divide)<20:
+                        div_dt = div_status_df.index[i]
+                        div_status_df.loc[div_dt, 'div_too_small'] = True
+
+        if not div_status_df[checks].any().any():
+            # Perfect
+            if df_modified:
+                return df2
+            else:
+                return df
 
         # Check if the present div-adjustment contradicts price action
         for i in range(len(div_status_df)):
@@ -1789,7 +1808,8 @@ class PriceHistory:
                                 elif adjDelta_drop > 0.39*adjDiv:
                                     # Still true that applied adjustment exceeds price action, 
                                     # just not clear what solution is (if any).
-                                    div_adj_exceeds_prices = True
+                                    if (x['Adj']<1.0).any():
+                                        div_adj_exceeds_prices = True
                                     break
 
             # Can prune the space:
@@ -1843,22 +1863,6 @@ class PriceHistory:
 
         checks += ['adj_exceeds_prices', 'div_date_wrong']
 
-        if not div_status_df[checks].any().any():
-            # Maybe failed to detect a too-small div. If div is ~0.01x of previous and next, then
-            # treat as a 0.01x error
-            if len(div_status_df) > 1:
-                for i in range(0, len(div_status_df)):
-                    r_pre, r_post = None, None
-                    if i > 0:
-                        r_pre = div_status_df['%'].iloc[i-1] / div_status_df['%'].iloc[i]
-                    if i < (len(div_status_df)-1):
-                        r_post = div_status_df['%'].iloc[i+1] / div_status_df['%'].iloc[i]
-                    r_pre = r_pre or r_post
-                    r_post = r_post or r_pre
-                    if abs(r_pre-currency_divide)<20 and abs(r_post-currency_divide)<20:
-                        div_dt = div_status_df.index[i]
-                        div_status_df.loc[div_dt, 'div_too_small'] = True
-
         for c in checks:
             if not div_status_df[c].any():
                 div_status_df = div_status_df.drop(c, axis=1)
@@ -1887,11 +1891,16 @@ class PriceHistory:
                 div_pcts['avg yr yield'] = div_pcts['%'] / div_pcts['period']
 
             for c in checks:
+                if not cluster[c].to_numpy().any():
+                    cluster = cluster.drop(c, axis=1)
+            cluster_checks = [c for c in checks if c in cluster.columns]
+
+            for c in cluster_checks:
                 f_fail = cluster[c].to_numpy()
                 n_fail = np.sum(f_fail)
                 if n_fail in [0, n]:
                     continue
-                pct_fail = np.sum(f_fail) / n
+                pct_fail = n_fail / n
                 if c == 'div_too_big':
                     true_threshold = 1.0
                     fals_threshold = 0.2
@@ -1900,7 +1909,16 @@ class PriceHistory:
                         continue
 
                     if 'adj_exceeds_prices' in cluster.columns and (cluster[c] == (cluster[c] & cluster['adj_exceeds_prices'])).all():
-                        # More likely that true-positive. Maybe the div never happened
+                        # Treat div_too_big=False as false positives IFF adj_exceeds_prices=true AND 
+                        # true ratio above (lowered) threshold.
+                        true_threshold = 0.5
+                        f_adj_exceeds_prices = cluster['adj_exceeds_prices'].to_numpy()
+                        n = np.sum(f_adj_exceeds_prices)
+                        n_fail = np.sum(f_fail[f_adj_exceeds_prices])
+                        pct_fail = n_fail / n
+                        if pct_fail > true_threshold:
+                            f = fc & div_status_df['adj_exceeds_prices'].to_numpy()
+                            div_status_df.loc[f, c] = True
                         continue
 
                     if 'div_exceeds_adj' in cluster.columns and cluster['div_exceeds_adj'].all():
