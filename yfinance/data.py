@@ -330,6 +330,14 @@ class YfData(metaclass=SingletonMeta):
 
     @utils.log_indent_decorator
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
+    
+    @utils.log_indent_decorator
+    def post(self, url, body, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, proxy=proxy, timeout=timeout)
+    
+    @utils.log_indent_decorator
+    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None, timeout=30):
         # Important: treat input arguments as immutable.
 
         if len(url) > 200:
@@ -363,7 +371,11 @@ class YfData(metaclass=SingletonMeta):
             'timeout': timeout,
             'headers': user_agent_headers or self.user_agent_headers
         }
-        response = self._session.get(**request_args)
+
+        if body:
+            request_args['json'] = body
+            
+        response = request_method(**request_args)
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
             # Retry with other cookie strategy
@@ -375,7 +387,7 @@ class YfData(metaclass=SingletonMeta):
             request_args['params']['crumb'] = crumb
             if strategy == 'basic':
                 request_args['cookies'] = {cookie.name: cookie.value}
-            response = self._session.get(**request_args)
+            response = request_method(**request_args)
             utils.get_yf_logger().debug(f'response code={response.status_code}')
 
         return response
