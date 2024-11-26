@@ -8,17 +8,13 @@ Specific test class:
    python -m unittest tests.ticker.TestTicker
 
 """
-import pandas as pd
-
-from tests.context import yfinance as yf
-from tests.context import session_gbl
-from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError, YFDataException
-
 
 import unittest
-import requests_cache
 from typing import Union, Any, get_args, _GenericAlias
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+import pandas as pd
+import requests_cache
 
 ticker_attributes = (
     ("major_holders", pd.DataFrame),
@@ -305,6 +301,7 @@ class TestTickerEarnings(unittest.TestCase):
         data = self.ticker.earnings_dates
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
+        self.assertEqual(data.index.tz.zone, "America/New_York")
 
     def test_earnings_dates_with_limit(self):
         # use ticker with lots of historic earnings
@@ -314,6 +311,7 @@ class TestTickerEarnings(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
         self.assertEqual(len(data), limit, "Wrong number or rows")
+        self.assertEqual(data.index[0].tz.zone, "America/New_York")
 
         data_cached = ticker.get_earnings_dates(limit=limit)
         self.assertIs(data, data_cached, "data not cached")
@@ -338,6 +336,15 @@ class TestTickerEarnings(unittest.TestCase):
 
     #     data_cached = self.ticker.earnings_trend
     #     self.assertIs(data, data_cached, "data not cached")
+
+    def test_ticker_has_tz(self):
+        test_data = {"AMZN": "America/New_York", "LHA.DE": "Europe/Berlin", "6758.T": "Asia/Tokyo"}
+        for symbol, tz in test_data.items():
+            with self.subTest(f"{symbol}-{tz}"):
+                ticker = yf.Ticker(symbol)
+                data = ticker.get_earnings_dates(limit=1)
+                self.assertIsNotNone(data.index.tz)
+                self.assertEqual(data.index.tz.zone, tz)
 
 
 class TestTickerHolders(unittest.TestCase):
