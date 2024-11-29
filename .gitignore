@@ -10,6 +10,7 @@ build/
 *.html
 *.css
 *.png
+test.ipynb
 
 # Environments
 .env
@@ -17,3 +18,10 @@ build/
 env/
 venv/
 ENV/
+
+# Documentation
+/doc/build/
+/doc/_build/
+/doc/source/reference/api
+!yfinance.css
+!/doc/source/development/assets/branches.png

@@ -32,11 +32,13 @@ import requests
 
 from . import utils, cache
 from .data import YfData
+from .exceptions import YFEarningsDateMissing
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
+from .scrapers.funds import FundsData
 
 from .const import _BASE_URL_, _ROOT_URL_
 
@@ -69,6 +71,7 @@ class TickerBase:
         self._holders = Holders(self._data, self.ticker)
         self._quote = Quote(self._data, self.ticker)
         self._fundamentals = Fundamentals(self._data, self.ticker)
+        self._funds_data = None
 
         self._fast_info = None
 
@@ -170,6 +173,10 @@ class TickerBase:
         self._quote.proxy = proxy or self.proxy
         return self._quote.calendar
 
+    def get_sec_filings(self, proxy=None) -> dict:
+        self._quote.proxy = proxy or self.proxy
+        return self._quote.sec_filings
+
     def get_major_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.major
@@ -192,7 +199,7 @@ class TickerBase:
             if as_dict:
                 return data.to_dict()
             return data
-    
+
     def get_insider_purchases(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_purchases
@@ -229,7 +236,7 @@ class TickerBase:
 
     @property
     def basic_info(self):
-        warnings.warn("'Ticker.basic_info' is renamed to 'Ticker.fast_info', hopefully purpose is clearer", DeprecationWarning)
+        warnings.warn("'Ticker.basic_info' is deprecated and will be removed in future, Switch to 'Ticker.fast_info'", DeprecationWarning)
         return self.fast_info
 
     def get_sustainability(self, proxy=None, as_dict=False):
@@ -239,40 +246,67 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_analyst_price_target(self, proxy=None, as_dict=False):
+    def get_analyst_price_targets(self, proxy=None) -> dict:
+        """
+        Keys:   current  low  high  mean  median
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.analyst_price_target
-        if as_dict:
-            return data.to_dict()
+        data = self._analysis.analyst_price_targets
         return data
 
-    def get_rev_forecast(self, proxy=None, as_dict=False):
+    def get_earnings_estimate(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.rev_est
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.earnings_estimate
+        return data.to_dict() if as_dict else data
 
-    def get_earnings_forecast(self, proxy=None, as_dict=False):
+    def get_revenue_estimate(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.eps_est
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.revenue_estimate
+        return data.to_dict() if as_dict else data
 
-    def get_trend_details(self, proxy=None, as_dict=False):
+    def get_earnings_history(self, proxy=None, as_dict=False):
+        """
+        Index:      pd.DatetimeIndex
+        Columns:    epsEstimate  epsActual  epsDifference  surprisePercent
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.analyst_trend_details
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.earnings_history
+        return data.to_dict() if as_dict else data
 
-    def get_earnings_trend(self, proxy=None, as_dict=False):
+    def get_eps_trend(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo
+        """
         self._analysis.proxy = proxy or self.proxy
-        data = self._analysis.earnings_trend
-        if as_dict:
-            return data.to_dict()
-        return data
+        data = self._analysis.eps_trend
+        return data.to_dict() if as_dict else data
+
+    def get_eps_revisions(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y
+        Columns:    upLast7days  upLast30days  downLast7days  downLast30days
+        """
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.eps_revisions
+        return data.to_dict() if as_dict else data
+
+    def get_growth_estimates(self, proxy=None, as_dict=False):
+        """
+        Index:      0q  +1q  0y  +1y +5y -5y
+        Columns:    stock  industry  sector  index
+        """
+        self._analysis.proxy = proxy or self.proxy
+        data = self._analysis.growth_estimates
+        return data.to_dict() if as_dict else data
 
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
         """
@@ -288,6 +322,8 @@ class TickerBase:
                 Default is None
         """
         self._fundamentals.proxy = proxy or self.proxy
+        if self._fundamentals.earnings is None:
+            return None
         data = self._fundamentals.earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
@@ -505,11 +541,16 @@ class TickerBase:
         # Getting data from json
         url = f"{_BASE_URL_}/v1/finance/search?q={self.ticker}"
         data = self._data.cache_get(url=url, proxy=proxy)
-        if "Will be right back" in data.text:
+        if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
-        data = data.json()
+        try:
+            data = data.json()
+        except (_json.JSONDecodeError): 
+            logger = utils.get_yf_logger()
+            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+            data = {}
 
         # parse news
         self._news = data.get("news", [])
@@ -519,12 +560,15 @@ class TickerBase:
     def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
-        :param limit: max amount of upcoming and recent earnings dates to return.
-                      Default value 12 should return next 4 quarters and last 8 quarters.
-                      Increase if more history is needed.
-
-        :param proxy: requests proxy to use.
-        :return: pandas dataframe
+        
+        Args:
+            limit (int): max amount of upcoming and recent earnings dates to return.
+                Default value 12 should return next 4 quarters and last 8 quarters.
+                Increase if more history is needed.
+            proxy: requests proxy to use.
+        
+        Returns:
+            pd.DataFrame
         """
         if self._earnings_dates and limit in self._earnings_dates:
             return self._earnings_dates[limit]
@@ -567,7 +611,8 @@ class TickerBase:
                 page_size = min(limit - len(dates), page_size)
 
         if dates is None or dates.shape[0] == 0:
-            err_msg = "No earnings dates found, symbol may be delisted"
+            _exception = YFEarningsDateMissing(self.ticker)
+            err_msg = str(_exception)
             logger.error(f'{self.ticker}: {err_msg}')
             return None
         dates = dates.reset_index(drop=True)
@@ -607,3 +652,9 @@ class TickerBase:
 
     def get_history_metadata(self, proxy=None) -> dict:
         return self._lazy_load_price_history().get_history_metadata(proxy)
+
+    def get_funds_data(self, proxy=None) -> Optional[FundsData]:
+        if not self._funds_data:
+            self._funds_data = FundsData(self._data, self.ticker)
+        
+        return self._funds_data

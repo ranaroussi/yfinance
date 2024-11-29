@@ -10,9 +10,9 @@ Specific test class:
 """
 import pandas as pd
 
-from .context import yfinance as yf
-from .context import session_gbl
-from yfinance.exceptions import YFNotImplementedError
+from tests.context import yfinance as yf
+from tests.context import session_gbl
+from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError, YFDataException
 
 
 import unittest
@@ -35,22 +35,23 @@ ticker_attributes = (
     ("recommendations", Union[pd.DataFrame, dict]),
     ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("upgrades_downgrades", Union[pd.DataFrame, dict]),
-    ("earnings", pd.DataFrame),
-    ("quarterly_earnings", pd.DataFrame),
     ("quarterly_cashflow", pd.DataFrame),
     ("cashflow", pd.DataFrame),
     ("quarterly_balance_sheet", pd.DataFrame),
     ("balance_sheet", pd.DataFrame),
     ("quarterly_income_stmt", pd.DataFrame),
     ("income_stmt", pd.DataFrame),
-    ("analyst_price_target", pd.DataFrame),
-    ("revenue_forecasts", pd.DataFrame),
+    ("analyst_price_targets", dict),
+    ("earnings_estimate", pd.DataFrame),
+    ("revenue_estimate", pd.DataFrame),
+    ("earnings_history", pd.DataFrame),
+    ("eps_trend", pd.DataFrame),
+    ("eps_revisions", pd.DataFrame),
+    ("growth_estimates", pd.DataFrame),
     ("sustainability", pd.DataFrame),
     ("options", tuple),
     ("news", Any),
-    ("earnings_trend", pd.DataFrame),
     ("earnings_dates", pd.DataFrame),
-    ("earnings_forecasts", pd.DataFrame),
 )
 
 def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name, expected_type):
@@ -100,13 +101,13 @@ class TestTicker(unittest.TestCase):
         tkr = "DJI"  # typo of "^DJI"
         dat = yf.Ticker(tkr, session=self.session)
 
-        dat.history(period="1wk")
+        dat.history(period="5d")
         dat.history(start="2022-01-01")
         dat.history(start="2022-01-01", end="2022-03-01")
-        yf.download([tkr], period="1wk", threads=False, ignore_tz=False)
-        yf.download([tkr], period="1wk", threads=True, ignore_tz=False)
-        yf.download([tkr], period="1wk", threads=False, ignore_tz=True)
-        yf.download([tkr], period="1wk", threads=True, ignore_tz=True)
+        yf.download([tkr], period="5d", threads=False, ignore_tz=False)
+        yf.download([tkr], period="5d", threads=True, ignore_tz=False)
+        yf.download([tkr], period="5d", threads=False, ignore_tz=True)
+        yf.download([tkr], period="5d", threads=True, ignore_tz=True)
 
         for k in dat.fast_info:
             dat.fast_info[k]
@@ -114,9 +115,6 @@ class TestTicker(unittest.TestCase):
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)
 
-        with self.assertRaises(YFNotImplementedError):
-            assert isinstance(dat.earnings, pd.Series)
-            assert dat.earnings.empty
         assert isinstance(dat.dividends, pd.Series)
         assert dat.dividends.empty
         assert isinstance(dat.splits, pd.Series)
@@ -129,6 +127,30 @@ class TestTicker(unittest.TestCase):
         assert isinstance(dat.actions, pd.DataFrame)
         assert dat.actions.empty
 
+    def test_invalid_period(self):
+        tkr = 'VALE'
+        dat = yf.Ticker(tkr, session=self.session)
+        with self.assertRaises(YFInvalidPeriodError):
+            dat.history(period="2wks", interval="1d", raise_errors=True)
+        with self.assertRaises(YFInvalidPeriodError):
+            dat.history(period="2mo", interval="1d", raise_errors=True)
+
+
+    def test_prices_missing(self):
+        # this test will need to be updated every time someone wants to run a test
+        # hard to find a ticker that matches this error other than options
+        # META call option, 2024 April 26th @ strike of 180000
+        tkr = 'META240426C00180000'
+        dat = yf.Ticker(tkr, session=self.session)
+        with self.assertRaises(YFPricesMissingError):
+            dat.history(period="5d", interval="1m", raise_errors=True)
+
+    def test_ticker_missing(self):
+        tkr = 'ATVI'
+        dat = yf.Ticker(tkr, session=self.session)
+        # A missing ticker can trigger either a niche error or the generalized error
+        with self.assertRaises((YFTickerMissingError, YFTzMissingError, YFPricesMissingError)):
+            dat.history(period="3mo", interval="1d", raise_errors=True)
 
     def test_goodTicker(self):
         # that yfinance works when full api is called on same instance of ticker
@@ -138,32 +160,32 @@ class TestTicker(unittest.TestCase):
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
 
-            dat.history(period="1wk")
+            dat.history(period="5d")
             dat.history(start="2022-01-01")
             dat.history(start="2022-01-01", end="2022-03-01")
-            yf.download([tkr], period="1wk", threads=False, ignore_tz=False)
-            yf.download([tkr], period="1wk", threads=True, ignore_tz=False)
-            yf.download([tkr], period="1wk", threads=False, ignore_tz=True)
-            yf.download([tkr], period="1wk", threads=True, ignore_tz=True)
+            yf.download([tkr], period="5d", threads=False, ignore_tz=False)
+            yf.download([tkr], period="5d", threads=True, ignore_tz=False)
+            yf.download([tkr], period="5d", threads=False, ignore_tz=True)
+            yf.download([tkr], period="5d", threads=True, ignore_tz=True)
 
             for k in dat.fast_info:
                 dat.fast_info[k]
 
             for attribute_name, attribute_type in ticker_attributes:
-                assert_attribute_type(self, dat, attribute_name, attribute_type) 
-            
+                assert_attribute_type(self, dat, attribute_name, attribute_type)
+
     def test_goodTicker_withProxy(self):
         tkr = "IBM"
         dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
 
         dat._fetch_ticker_tz(proxy=None, timeout=5)
         dat._get_ticker_tz(proxy=None, timeout=5)
-        dat.history(period="1wk")
+        dat.history(period="5d")
 
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)
 
-        
+
 class TestTickerHistory(unittest.TestCase):
     session = None
 
@@ -194,11 +216,24 @@ class TestTickerHistory(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
     def test_download(self):
+        tomorrow = pd.Timestamp.now().date() + pd.Timedelta(days=1)  # helps with caching
         for t in [False, True]:
             for i in [False, True]:
-                data = yf.download(self.symbols, threads=t, ignore_tz=i)
-                self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-                self.assertFalse(data.empty, "data is empty")
+                for m in [False, True]:
+                    for n in [1, 'all']:
+                        symbols = self.symbols[0] if n == 1 else self.symbols
+                        data = yf.download(symbols, end=tomorrow, session=self.session, 
+                                           threads=t, ignore_tz=i, multi_level_index=m)
+                        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+                        self.assertFalse(data.empty, "data is empty")
+                        if i:
+                            self.assertIsNone(data.index.tz)
+                        else:
+                            self.assertIsNotNone(data.index.tz)
+                        if (not m) and n == 1:
+                            self.assertFalse(isinstance(data.columns, pd.MultiIndex))
+                        else:
+                            self.assertIsInstance(data.columns, pd.MultiIndex)
 
     def test_no_expensive_calls_introduced(self):
         """
@@ -285,22 +320,6 @@ class TestTickerEarnings(unittest.TestCase):
 
     # Below will fail because not ported to Yahoo API
 
-    # def test_earnings(self):
-    #     data = self.ticker.earnings
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.earnings
-    #     self.assertIs(data, data_cached, "data not cached")
-
-    # def test_quarterly_earnings(self):
-    #     data = self.ticker.quarterly_earnings
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
-
-    #     data_cached = self.ticker.quarterly_earnings
-    #     self.assertIs(data, data_cached, "data not cached")
-
     # def test_earnings_forecasts(self):
     #     data = self.ticker.earnings_forecasts
     #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
@@ -370,7 +389,7 @@ class TestTickerHolders(unittest.TestCase):
 
         data_cached = self.ticker.insider_transactions
         self.assertIs(data, data_cached, "data not cached")
-    
+
     def test_insider_purchases(self):
         data = self.ticker.insider_purchases
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
@@ -402,9 +421,9 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
-        
-        # For ticker 'BSE.AX' (and others), Yahoo not returning 
-        # full quarterly financials (usually cash-flow) with all entries, 
+
+        # For ticker 'BSE.AX' (and others), Yahoo not returning
+        # full quarterly financials (usually cash-flow) with all entries,
         # instead returns a smaller version in different data store.
         self.ticker_old_fmt = yf.Ticker("BSE.AX", session=self.session)
 
@@ -683,15 +702,14 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.calendar
         self.assertIs(data, data_cached, "data not cached")
 
-    # Below will fail because not ported to Yahoo API
 
-    # def test_sustainability(self):
-    #     data = self.ticker.sustainability
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+    def test_sustainability(self):
+        data = self.ticker.sustainability
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
-    #     data_cached = self.ticker.sustainability
-    #     self.assertIs(data, data_cached, "data not cached")
+        data_cached = self.ticker.sustainability
+        self.assertIs(data, data_cached, "data not cached")
 
     # def test_shares(self):
     #     data = self.ticker.shares
@@ -713,9 +731,11 @@ class TestTickerAnalysts(unittest.TestCase):
 
     def setUp(self):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
-        
+        self.ticker_no_analysts = yf.Ticker("^GSPC", session=self.session)
+
     def tearDown(self):
         self.ticker = None
+        self.ticker_no_analysts = None
 
     def test_recommendations(self):
         data = self.ticker.recommendations
@@ -746,23 +766,102 @@ class TestTickerAnalysts(unittest.TestCase):
         data_cached = self.ticker.upgrades_downgrades
         self.assertIs(data, data_cached, "data not cached")
 
-    # Below will fail because not ported to Yahoo API
+    def test_analyst_price_targets(self):
+        data = self.ticker.analyst_price_targets
+        self.assertIsInstance(data, dict, "data has wrong type")
 
-    # def test_analyst_price_target(self):
-    #     data = self.ticker.analyst_price_target
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+        keys = {'current', 'low', 'high', 'mean', 'median'}
+        self.assertEqual(data.keys(), keys, "data has wrong keys")
 
-    #     data_cached = self.ticker.analyst_price_target
-    #     self.assertIs(data, data_cached, "data not cached")
+        data_cached = self.ticker.analyst_price_targets
+        self.assertIs(data, data_cached, "data not cached")
 
-    # def test_revenue_forecasts(self):
-    #     data = self.ticker.revenue_forecasts
-    #     self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-    #     self.assertFalse(data.empty, "data is empty")
+    def test_earnings_estimate(self):
+        data = self.ticker.earnings_estimate
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
 
-    #     data_cached = self.ticker.revenue_forecasts
-    #     self.assertIs(data, data_cached, "data not cached")
+        columns = ['numberOfAnalysts', 'avg', 'low', 'high', 'yearAgoEps', 'growth']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.earnings_estimate
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_revenue_estimate(self):
+        data = self.ticker.revenue_estimate
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['numberOfAnalysts', 'avg', 'low', 'high', 'yearAgoRevenue', 'growth']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.revenue_estimate
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_earnings_history(self):
+        data = self.ticker.earnings_history
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['epsEstimate', 'epsActual', 'epsDifference', 'surprisePercent']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+        self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
+
+        data_cached = self.ticker.earnings_history
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_eps_trend(self):
+        data = self.ticker.eps_trend
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['current', '7daysAgo', '30daysAgo', '60daysAgo', '90daysAgo']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.eps_trend
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_growth_estimates(self):
+        data = self.ticker.growth_estimates
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
+        columns = ['stock', 'industry', 'sector', 'index']
+        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+
+        index = ['0q', '+1q', '0y', '+1y']
+        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+
+        data_cached = self.ticker.growth_estimates
+        self.assertIs(data, data_cached, "data not cached")
+
+    def test_no_analysts(self):
+        attributes = [
+            'recommendations',
+            'upgrades_downgrades',
+            'earnings_estimate',
+            'revenue_estimate',
+            'earnings_history',
+            'eps_trend',
+            'growth_estimates',
+        ]
+
+        for attribute in attributes:
+            try:
+                data = getattr(self.ticker_no_analysts, attribute)
+                self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+                self.assertTrue(data.empty, "data is not empty")
+            except Exception as e:
+                self.fail(f"Exception raised for attribute '{attribute}': {e}")
 
 
 
@@ -813,7 +912,6 @@ class TestTickerInfo(unittest.TestCase):
         # This one should have a trailing PEG ratio
         data2 = self.tickers[2].info
         self.assertIsInstance(data2['trailingPegRatio'], float)
-        pass
 
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()
@@ -851,7 +949,7 @@ class TestTickerInfo(unittest.TestCase):
     #             key_rename_map[yf.utils.snake_case_2_camelCase(k)] = key_rename_map[k]
 
     #     # Note: share count items in info[] are bad. Sometimes the float > outstanding!
-    #     # So often fast_info["shares"] does not match. 
+    #     # So often fast_info["shares"] does not match.
     #     # Why isn't fast_info["shares"] wrong? Because using it to calculate market cap always correct.
     #     bad_keys = {"shares"}
 
@@ -912,7 +1010,84 @@ class TestTickerInfo(unittest.TestCase):
     #                     else:
     #                         raise
 
+class TestTickerFundsData(unittest.TestCase):
+    session = None
 
+    @classmethod
+    def setUpClass(cls):
+        cls.session = session_gbl
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.session is not None:
+            cls.session.close()
+
+    def setUp(self):
+        self.test_tickers = [yf.Ticker("SPY", session=self.session),    # equity etf
+                            yf.Ticker("JNK", session=self.session),     # bonds etf
+                            yf.Ticker("VTSAX", session=self.session)]   # mutual fund
+
+    def tearDown(self):
+        self.ticker = None
+
+    def test_fetch_and_parse(self):
+        try:
+            for ticker in self.test_tickers:
+                ticker.funds_data._fetch_and_parse()
+
+        except Exception as e:
+            self.fail(f"_fetch_and_parse raised an exception unexpectedly: {e}")
+
+        with self.assertRaises(YFDataException):
+            ticker = yf.Ticker("AAPL", session=self.session) # stock, not funds
+            ticker.funds_data._fetch_and_parse()
+            self.fail("_fetch_and_parse should have failed when calling for non-funds data")
+
+    def test_description(self):
+        for ticker in self.test_tickers:
+            description = ticker.funds_data.description
+            self.assertIsInstance(description, str)
+            self.assertTrue(len(description) > 0)
+
+    def test_fund_overview(self):
+        for ticker in self.test_tickers:
+            fund_overview = ticker.funds_data.fund_overview
+            self.assertIsInstance(fund_overview, dict)
+
+    def test_fund_operations(self):
+        for ticker in self.test_tickers:
+            fund_operations = ticker.funds_data.fund_operations
+            self.assertIsInstance(fund_operations, pd.DataFrame)
+
+    def test_asset_classes(self):
+        for ticker in self.test_tickers:
+            asset_classes = ticker.funds_data.asset_classes
+            self.assertIsInstance(asset_classes, dict)
+
+    def test_top_holdings(self):
+        for ticker in self.test_tickers:
+            top_holdings = ticker.funds_data.top_holdings
+            self.assertIsInstance(top_holdings, pd.DataFrame)
+
+    def test_equity_holdings(self):
+        for ticker in self.test_tickers:
+            equity_holdings = ticker.funds_data.equity_holdings
+            self.assertIsInstance(equity_holdings, pd.DataFrame)
+
+    def test_bond_holdings(self):
+        for ticker in self.test_tickers:
+            bond_holdings = ticker.funds_data.bond_holdings
+            self.assertIsInstance(bond_holdings, pd.DataFrame)
+
+    def test_bond_ratings(self):
+        for ticker in self.test_tickers:
+            bond_ratings = ticker.funds_data.bond_ratings
+            self.assertIsInstance(bond_ratings, dict)
+
+    def test_sector_weightings(self):
+        for ticker in self.test_tickers:
+            sector_weightings = ticker.funds_data.sector_weightings
+            self.assertIsInstance(sector_weightings, dict)
 
 def suite():
     suite = unittest.TestSuite()
@@ -922,6 +1097,7 @@ def suite():
     suite.addTest(TestTickerHistory('Test Ticker history'))
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
     suite.addTest(TestTickerInfo('Test info & fast_info'))
+    suite.addTest(TestTickerFundsData('Test Funds Data'))
     return suite
 
 

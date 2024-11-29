@@ -1,7 +1,5 @@
 import datetime
 import json
-import warnings
-from collections.abc import MutableMapping
 
 import numpy as _np
 import pandas as pd
@@ -10,7 +8,7 @@ import requests
 from yfinance import utils
 from yfinance.data import YfData
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_
-from yfinance.exceptions import YFNotImplementedError, YFinanceDataException, YFinanceException
+from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -23,57 +21,6 @@ info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_
 
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
-
-
-class InfoDictWrapper(MutableMapping):
-    """ Simple wrapper around info dict, intercepting 'gets' to
-    print how-to-migrate messages for specific keys. Requires
-    override dict API"""
-
-    def __init__(self, info):
-        self.info = info
-
-    def keys(self):
-        return self.info.keys()
-
-    def __str__(self):
-        return self.info.__str__()
-
-    def __repr__(self):
-        return self.info.__repr__()
-
-    def __contains__(self, k):
-        return k in self.info.keys()
-
-    def __getitem__(self, k):
-        if k in info_retired_keys_price:
-            warnings.warn(f"Price data removed from info (key='{k}'). Use Ticker.fast_info or history() instead", DeprecationWarning)
-            return None
-        elif k in info_retired_keys_exchange:
-            warnings.warn(f"Exchange data removed from info (key='{k}'). Use Ticker.fast_info or Ticker.get_history_metadata() instead", DeprecationWarning)
-            return None
-        elif k in info_retired_keys_marketCap:
-            warnings.warn(f"Market cap removed from info (key='{k}'). Use Ticker.fast_info instead", DeprecationWarning)
-            return None
-        elif k in info_retired_keys_symbol:
-            warnings.warn(f"Symbol removed from info (key='{k}'). You know this already", DeprecationWarning)
-            return None
-        return self.info[self._keytransform(k)]
-
-    def __setitem__(self, k, value):
-        self.info[self._keytransform(k)] = value
-
-    def __delitem__(self, k):
-        del self.info[self._keytransform(k)]
-
-    def __iter__(self):
-        return iter(self.info)
-
-    def __len__(self):
-        return len(self.info)
-
-    def _keytransform(self, k):
-        return k
 
 
 class FastInfo:
@@ -181,7 +128,7 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="380d", auto_adjust=False, keepna=True, proxy=self.proxy)
+            self._prices_1y = self._tkr.history(period="1y", auto_adjust=False, keepna=True, proxy=self.proxy)
             self._md = self._tkr.get_history_metadata(proxy=self.proxy)
             try:
                 ctp = self._md["currentTradingPeriod"]
@@ -207,12 +154,12 @@ class FastInfo:
 
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
-            self._prices_1wk_1h_prepost = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=True, proxy=self.proxy)
+            self._prices_1wk_1h_prepost = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=True, proxy=self.proxy)
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
-            self._prices_1wk_1h_reg = self._tkr.history(period="1wk", interval="1h", auto_adjust=False, prepost=False, proxy=self.proxy)
+            self._prices_1wk_1h_reg = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=False, proxy=self.proxy)
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -549,6 +496,7 @@ class Quote:
         self._recommendations = None
         self._upgrades_downgrades = None
         self._calendar = None
+        self._sec_filings = None
 
         self._already_scraped = False
         self._already_fetched = False
@@ -565,7 +513,15 @@ class Quote:
     @property
     def sustainability(self) -> pd.DataFrame:
         if self._sustainability is None:
-            raise YFNotImplementedError('sustainability')
+            result = self._fetch(self.proxy, modules=['esgScores'])
+            if result is None:
+                self._sustainability = pd.DataFrame()
+            else:
+                try:
+                    data = result["quoteSummary"]["result"][0]
+                except (KeyError, IndexError):
+                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                self._sustainability = pd.DataFrame(data)
         return self._sustainability
 
     @property
@@ -578,7 +534,7 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
                 except (KeyError, IndexError):
-                    raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
                 self._recommendations = pd.DataFrame(data)
         return self._recommendations
 
@@ -592,14 +548,14 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
                     if len(data) == 0:
-                        raise YFinanceDataException(f"No upgrade/downgrade history found for {self._symbol}")
+                        raise YFDataException(f"No upgrade/downgrade history found for {self._symbol}")
                     df = pd.DataFrame(data)
                     df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
                     df.set_index('GradeDate', inplace=True)
                     df.index = pd.to_datetime(df.index, unit='s')
                     self._upgrades_downgrades = df
                 except (KeyError, IndexError):
-                    raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
         return self._upgrades_downgrades
 
     @property
@@ -608,17 +564,24 @@ class Quote:
             self._fetch_calendar()
         return self._calendar
 
+    @property
+    def sec_filings(self) -> dict:
+        if self._sec_filings is None:
+            f = self._fetch_sec_filings()
+            self._sec_filings = {} if f is None else f
+        return self._sec_filings
+
     @staticmethod
     def valid_modules():
         return quote_summary_valid_modules
 
     def _fetch(self, proxy, modules: list):
         if not isinstance(modules, list):
-            raise YFinanceException("Should provide a list of modules, see available modules using `valid_modules`")
+            raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
         modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
         if len(modules) == 0:
-            raise YFinanceException("No valid modules provided, see available modules using `valid_modules`")
+            raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
@@ -721,7 +684,7 @@ class Quote:
             json_data = json.loads(json_str)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:
-                raise YFinanceException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
+                raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
             for k in keys:
                 keydict = json_result["result"][0]
                 if k in keydict:
@@ -754,4 +717,36 @@ class Quote:
                 self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
                 self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
         except (KeyError, IndexError):
-            raise YFinanceDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+            raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+
+
+    def _fetch_sec_filings(self):
+        result = self._fetch(self.proxy, modules=['secFilings'])
+        if result is None:
+            return None
+
+        filings = result["quoteSummary"]["result"][0]["secFilings"]["filings"]
+
+        # Improve structure
+        for f in filings:
+            if 'exhibits' in f:
+                f['exhibits'] = {e['type']:e['url'] for e in f['exhibits']}
+            f['date'] = datetime.datetime.strptime(f['date'], '%Y-%m-%d').date()
+
+        # Experimental: convert to pandas
+        # for i in range(len(filings)):
+        #     f = filings[i]
+        #     if 'exhibits' in f:
+        #         for e in f['exhibits']:
+        #             f[e['type']] = e['url']
+        #         del f['exhibits']
+        #     filings[i] = f
+        # filings = pd.DataFrame(filings)
+        # for c in filings.columns:
+        #     if c.startswith('EX-'):
+        #         filings[c] = filings[c].astype(str)
+        #         filings.loc[filings[c]=='nan', c] = ''
+        # filings = filings.drop('epochDate', axis=1)
+        # filings = filings.set_index('date')
+
+        return filings

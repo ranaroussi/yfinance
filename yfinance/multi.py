@@ -24,6 +24,7 @@ from __future__ import print_function
 import logging
 import time as _time
 import traceback
+from typing import Union
 
 import multitasking as _multitasking
 import pandas as _pd
@@ -34,11 +35,13 @@ from . import shared
 
 
 @utils.log_indent_decorator
-def download(tickers, start=None, end=None, actions=False, threads=True, ignore_tz=None,
-             group_by='column', auto_adjust=False, back_adjust=False, repair=False, keepna=False,
-             progress=True, period="max", show_errors=None, interval="1d", prepost=False,
-             proxy=None, rounding=False, timeout=10, session=None):
-    """Download yahoo tickers
+def download(tickers, start=None, end=None, actions=False, threads=True,
+             ignore_tz=None, group_by='column', auto_adjust=False, back_adjust=False,
+             repair=False, keepna=False, progress=True, period="max", interval="1d",
+             prepost=False, proxy=None, rounding=False, timeout=10, session=None,
+             multi_level_index=True) -> Union[_pd.DataFrame, None]:
+    """
+    Download yahoo tickers
     :Parameters:
         tickers : str, list
             List of tickers to download
@@ -80,24 +83,15 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             Optional. Proxy server URL scheme. Default is None
         rounding: bool
             Optional. Round values to 2 decimal places?
-        show_errors: bool
-            Optional. Doesn't print errors if False
-            DEPRECATED, will be removed in future version
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
         session: None or Session
             Optional. Pass your own session object to be used for all requests
+        multi_level_index: bool
+            Optional. Always return a MultiIndex DataFrame? Default is True
     """
     logger = utils.get_yf_logger()
-
-    if show_errors is not None:
-        if show_errors:
-            utils.print_once(f"yfinance: download(show_errors={show_errors}) argument is deprecated and will be removed in future version. Do this instead: logging.getLogger('yfinance').setLevel(logging.ERROR)")
-            logger.setLevel(logging.ERROR)
-        else:
-            utils.print_once(f"yfinance: download(show_errors={show_errors}) argument is deprecated and will be removed in future version. Do this instead to suppress error messages: logging.getLogger('yfinance').setLevel(logging.CRITICAL)")
-            logger.setLevel(logging.CRITICAL)
 
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
@@ -211,10 +205,6 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
             if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
                 shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
 
-    if len(tickers) == 1:
-        ticker = tickers[0]
-        return shared._DFS[ticker]
-
     try:
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
@@ -222,13 +212,16 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         _realign_dfs()
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
-    data.index = _pd.to_datetime(data.index)
+    data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
     # switch names back to isins if applicable
     data.rename(columns=shared._ISINS, inplace=True)
 
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
+
+    if not multi_level_index and len(tickers) == 1:
+        data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
 
     return data
 
