@@ -622,12 +622,12 @@ class TickerBase:
         dates = dates.drop(["Symbol", "Company"], axis=1)
 
         # Convert types
-        for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
+        for cn in ["EPS Estimate", "Reported EPS", "Surprise (%)"]:
             dates.loc[dates[cn] == '-', cn] = float("nan")
             dates[cn] = dates[cn].astype(float)
 
         # Convert % to range 0->1:
-        dates["Surprise(%)"] *= 0.01
+        dates["Surprise (%)"] *= 0.01
 
         # Parse earnings date string
         cn = "Earnings Date"
