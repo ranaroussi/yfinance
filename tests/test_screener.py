@@ -13,7 +13,7 @@ class TestScreener(unittest.TestCase):
         self.query = EquityQuery('gt',['eodprice',3])
 
     def test_set_default_body(self):
-        self.screener.set_default_body(self.query)
+        result = self.screener.set_default_body(self.query)
 
         self.assertEqual(self.screener.body['offset'], 0)
         self.assertEqual(self.screener.body['size'], 100)
@@ -23,11 +23,13 @@ class TestScreener(unittest.TestCase):
         self.assertEqual(self.screener.body['query'], self.query.to_dict())
         self.assertEqual(self.screener.body['userId'], '')
         self.assertEqual(self.screener.body['userIdType'], 'guid')
+        self.assertEqual(self.screener, result)
 
     def test_set_predefined_body(self):
         k = 'most_actives'
-        self.screener.set_predefined_body(k)
+        result = self.screener.set_predefined_body(k)
         self.assertEqual(self.screener.body, PREDEFINED_SCREENER_BODY_MAP[k])
+        self.assertEqual(self.screener, result)
 
     def test_set_predefined_body_invalid_key(self):
         with self.assertRaises(ValueError):
@@ -44,9 +46,10 @@ class TestScreener(unittest.TestCase):
             "userId": "",
             "userIdType": "guid"
         }
-        self.screener.set_body(body)
+        result = self.screener.set_body(body)
 
         self.assertEqual(self.screener.body, body)
+        self.assertEqual(self.screener, result)
 
     def test_set_body_missing_keys(self):
         body = {
@@ -87,10 +90,11 @@ class TestScreener(unittest.TestCase):
         }
         self.screener.set_body(initial_body)
         patch_values = {"size": 50}
-        self.screener.patch_body(patch_values)
+        result = self.screener.patch_body(patch_values)
 
         self.assertEqual(self.screener.body['size'], 50)
         self.assertEqual(self.screener.body['query'], self.query.to_dict())
+        self.assertEqual(self.screener, result)
 
     def test_patch_body_extra_keys(self):
         initial_body = {
@@ -107,6 +111,22 @@ class TestScreener(unittest.TestCase):
         patch_values = {"extraKey": "extraValue"}
         with self.assertRaises(ValueError):
             self.screener.patch_body(patch_values)
+
+    @patch('yfinance.screener.screener.YfData.post')
+    def test_set_large_size_in_body(self, mock_post):
+        body = {
+            "offset": 0,
+            "size": 251, # yahoo limits at 250
+            "sortField": "ticker",
+            "sortType": "desc",
+            "quoteType": "equity",
+            "query": self.query.to_dict(),
+            "userId": "",
+            "userIdType": "guid"
+        }
+
+        with self.assertRaises(ValueError):
+            self.screener.set_body(body).response            
 
     @patch('yfinance.screener.screener.YfData.post')
     def test_fetch(self, mock_post):
