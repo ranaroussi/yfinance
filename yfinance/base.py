@@ -41,7 +41,7 @@ from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
 from .const import _BASE_URL_, _ROOT_URL_
-
+from datetime import date
 
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=None):
@@ -557,7 +557,7 @@ class TickerBase:
         return self._news
 
     @utils.log_indent_decorator
-    def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
+    def get_earnings_dates(self, limit=12, proxy=None, add_cookies=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
         
@@ -566,6 +566,7 @@ class TickerBase:
                 Default value 12 should return next 4 quarters and last 8 quarters.
                 Increase if more history is needed.
             proxy: requests proxy to use.
+            add_cookies: additional cookies to use
         
         Returns:
             pd.DataFrame
@@ -579,7 +580,7 @@ class TickerBase:
         page_offset = 0
         dates = None
         while True:
-            url = f"{_ROOT_URL_}/calendar/earnings?symbol={self.ticker}&offset={page_offset}&size={page_size}"
+            url = f"{_ROOT_URL_}/calendar/earnings?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}" # Fixed
             data = self._data.cache_get(url=url, proxy=proxy).text
 
             if "Will be right back" in data:
@@ -621,15 +622,20 @@ class TickerBase:
         dates = dates.drop(["Symbol", "Company"], axis=1)
 
         # Convert types
-        for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
+        for cn in ["EPS Estimate", "Reported EPS", "Surprise (%)"]:
             dates.loc[dates[cn] == '-', cn] = float("nan")
             dates[cn] = dates[cn].astype(float)
 
         # Convert % to range 0->1:
-        dates["Surprise(%)"] *= 0.01
+        dates["Surprise (%)"] *= 0.01
 
         # Parse earnings date string
         cn = "Earnings Date"
+        dates[cn] = dates[cn].astype(str)                                      # Fixed          
+        # - remove "at"
+        dates[cn] = dates[cn].replace(' at', ',', regex=True)                  # Fixed
+        # - remove EDT/EST 
+        dates[cn] = dates[cn].replace(' E[DS]T', '', regex=True)               # Fixed
         # - remove AM/PM and timezone from date string
         tzinfo = dates[cn].str.extract('([AP]M[a-zA-Z]*)$')
         dates[cn] = dates[cn].replace(' [AP]M[a-zA-Z]*$', '', regex=True)
@@ -638,7 +644,7 @@ class TickerBase:
         tzinfo.columns = ["AM/PM", "TZ"]
         # - combine and parse
         dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
-        dates[cn] = pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
+        dates[cn] = pd.to_datetime(dates[cn], format="%B %d, %Y, %I %p")       # Fixed
         # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
         self._quote.proxy = proxy or self.proxy
         tz = self._get_ticker_tz(proxy=proxy, timeout=30)
