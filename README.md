@@ -36,12 +36,14 @@ Yahoo! finance API is intended for personal use only.**
 
 ## Main components
 
-- `Ticker`: single ticker data
-- `Tickers`: multiple tickers' data
-- `download`: download market data for multiple tickers
-- `Search`: quotes and news from search
-- `Sector` and `Industry`: sector and industry information
-- `EquityQuery` and `Screener`: build query to screen market
+-   `Ticker`: single ticker data
+-   `Tickers`: multiple tickers' data
+-   `download`: download market data for multiple tickers
+-   `MarketSummary`: market summary data
+-   `Search`: quotes and news from search
+
+-   `Sector` and `Industry`: sector and industry information
+-   `EquityQuery` and `Screener`: build query to screen market
 
 ## **NEW DOCUMENTATION WEBSITE**: [ranaroussi.github.io/yfinance](https://ranaroussi.github.io/yfinance/index.html)
 
@@ -49,7 +51,7 @@ Yahoo! finance API is intended for personal use only.**
 
 Install `yfinance` from PYPI using `pip`:
 
-``` {.sourceCode .bash}
+```{.sourceCode .bash}
 $ pip install yfinance
 ```
 
@@ -81,4 +83,3 @@ details on your rights to use the actual data downloaded.
 Please drop me a note with any feedback you have.
 
 **Ran Aroussi**
-
