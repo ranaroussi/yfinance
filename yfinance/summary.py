@@ -5,7 +5,7 @@ from . import utils
 from .const import _QUERY1_URL_
 from .data import YfData
 
-class MarketSummary:
+class Summary:
     def __init__(self, data) -> None:
         # Basic information
         self.name: 'str' = data.get("shortName")
@@ -49,7 +49,7 @@ class MarketSummary:
 
 
 
-class Summary:
+class MarketSummary:
     def __init__(self, market, region="US", session=None, proxy=None, timeout=30, raise_errors=True, refresh=3600):
         """
         market: The market area you want to get the summary for.
