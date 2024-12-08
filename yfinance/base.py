@@ -30,7 +30,7 @@ from urllib.parse import quote as urlencode
 import pandas as pd
 import requests
 
-from . import utils, cache
+from . import utils, cache, Search
 from .data import YfData
 from .exceptions import YFEarningsDateMissing
 from .scrapers.analysis import Analysis
@@ -538,22 +538,15 @@ class TickerBase:
         if self._news:
             return self._news
 
-        # Getting data from json
-        url = f"{_BASE_URL_}/v1/finance/search?q={self.ticker}"
-        data = self._data.cache_get(url=url, proxy=proxy)
-        if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
-        try:
-            data = data.json()
-        except (_json.JSONDecodeError): 
-            logger = utils.get_yf_logger()
-            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
-            data = {}
+        search = Search(
+            query=self.ticker,
+            news_count=10,
+            session=self.session,
+            proxy=proxy,
+            raise_errors=True
+        )
+        self._news = search.news
 
-        # parse news
-        self._news = data.get("news", [])
         return self._news
 
     @utils.log_indent_decorator
