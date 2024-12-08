@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Financials &#8212; yfinance</title>
+    <title>Search &amp; News &#8212; yfinance</title>
   
   
   
@@ -42,11 +42,11 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/yfinance.financials';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/yfinance.search';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="yfinance.Ticker.get_income_stmt" href="api/yfinance.Ticker.get_income_stmt.html" />
-    <link rel="prev" title="yfinance.Ticker.news" href="api/yfinance.Ticker.news.html" />
+    <link rel="next" title="Search" href="api/yfinance.Search.html" />
+    <link rel="prev" title="yfinance.Ticker.mutualfund_holders" href="api/yfinance.Ticker.mutualfund_holders.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -351,7 +351,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.news.html">yfinance.Ticker.news</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Financials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_balance_sheet.html">yfinance.Ticker.get_balance_sheet</a></li>
@@ -406,7 +406,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.mutualfund_holders.html">yfinance.Ticker.mutualfund_holders</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.search.html">Search &amp; News</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Search &amp; News</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Search.html">Search</a></li>
 </ul>
 </details></li>
@@ -468,7 +468,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Financials</li>
+    <li class="breadcrumb-item active" aria-current="page">Search &amp; News</li>
   </ul>
 </nav>
 </div>
@@ -485,52 +485,33 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="financials">
-<h1>Financials<a class="headerlink" href="#financials" title="Link to this heading">#</a></h1>
+  <section id="search-news">
+<h1>Search &amp; News<a class="headerlink" href="#search-news" title="Link to this heading">#</a></h1>
+<section id="class">
+<h2>Class<a class="headerlink" href="#class" title="Link to this heading">#</a></h2>
+<p>The <cite>Search</cite> module, allows you to access search data in a Pythonic way.</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_income_stmt.html#yfinance.Ticker.get_income_stmt" title="yfinance.Ticker.get_income_stmt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_income_stmt</span></code></a>([proxy, as_dict, pretty, freq])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.income_stmt.html#yfinance.Ticker.income_stmt" title="yfinance.Ticker.income_stmt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">income_stmt</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_balance_sheet.html#yfinance.Ticker.get_balance_sheet" title="yfinance.Ticker.get_balance_sheet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_balance_sheet</span></code></a>([proxy, as_dict, pretty, freq])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.balance_sheet.html#yfinance.Ticker.balance_sheet" title="yfinance.Ticker.balance_sheet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">balance_sheet</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_cashflow.html#yfinance.Ticker.get_cashflow" title="yfinance.Ticker.get_cashflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cashflow</span></code></a>([proxy, as_dict, pretty, freq])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.cashflow.html#yfinance.Ticker.cashflow" title="yfinance.Ticker.cashflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cashflow</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings.html#yfinance.Ticker.get_earnings" title="yfinance.Ticker.get_earnings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings</span></code></a>([proxy, as_dict, freq])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.earnings.html#yfinance.Ticker.earnings" title="yfinance.Ticker.earnings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">earnings</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.calendar.html#yfinance.Ticker.calendar" title="yfinance.Ticker.calendar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calendar</span></code></a></p></td>
-<td><p>Returns a dictionary of events, earnings, and dividends for the ticker</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_dates.html#yfinance.Ticker.get_earnings_dates" title="yfinance.Ticker.get_earnings_dates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_dates</span></code></a>([limit, proxy])</p></td>
-<td><p>Get earning dates (future and historic)</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.earnings_dates.html#yfinance.Ticker.earnings_dates" title="yfinance.Ticker.earnings_dates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">earnings_dates</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_sec_filings.html#yfinance.Ticker.get_sec_filings" title="yfinance.Ticker.get_sec_filings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sec_filings</span></code></a>([proxy])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.sec_filings.html#yfinance.Ticker.sec_filings" title="yfinance.Ticker.sec_filings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sec_filings</span></code></a></p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Search.html#yfinance.Search" title="yfinance.Search"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Search</span></code></a>(query[, max_results, news_count, ...])</p></td>
+<td><p>Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+</section>
+<section id="search-sample-code">
+<h2>Search Sample Code<a class="headerlink" href="#search-sample-code" title="Link to this heading">#</a></h2>
+<p>The <cite>Search</cite> module, allows you to access search data in a Pythonic way.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">yfinance</span> <span class="k">as</span> <span class="nn">yf</span>
+
+<span class="c1"># get list of quotes</span>
+<span class="n">quotes</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Search</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="n">max_results</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">quotes</span>
+
+<span class="c1"># get list of news</span>
+<span class="n">news</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Search</span><span class="p">(</span><span class="s2">&quot;Google&quot;</span><span class="p">,</span> <span class="n">news_count</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">news</span>
+</pre></div>
+</div>
+</section>
 </section>
 
 
@@ -544,20 +525,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="api/yfinance.Ticker.news.html"
+       href="api/yfinance.Ticker.mutualfund_holders.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">yfinance.Ticker.news</p>
+        <p class="prev-next-title">yfinance.Ticker.mutualfund_holders</p>
       </div>
     </a>
     <a class="right-next"
-       href="api/yfinance.Ticker.get_income_stmt.html"
+       href="api/yfinance.Search.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">yfinance.Ticker.get_income_stmt</p>
+        <p class="prev-next-title">Search</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -572,9 +553,22 @@ document.write(`
 
 
   <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#class">Class</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#search-sample-code">Search Sample Code</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/reference/yfinance.financials.rst.txt">
+    <a href="../_sources/reference/yfinance.search.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

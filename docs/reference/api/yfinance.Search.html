@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>yfinance.Ticker.news &#8212; yfinance</title>
+    <title>Search &#8212; yfinance</title>
   
   
   
@@ -42,11 +42,11 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.Ticker.news';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.Search';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Financials" href="../yfinance.financials.html" />
-    <link rel="prev" title="yfinance.Ticker.get_news" href="yfinance.Ticker.get_news.html" />
+    <link rel="next" title="Sector and Industry" href="../yfinance.sector_industry.html" />
+    <link rel="prev" title="Search &amp; News" href="../yfinance.search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -329,7 +329,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Tickers.html">Tickers</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.stock.html">Stock</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.stock.html">Stock</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_isin.html">yfinance.Ticker.get_isin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.isin.html">yfinance.Ticker.isin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.history.html">yfinance.Ticker.history</a></li>
@@ -348,7 +348,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_fast_info.html">yfinance.Ticker.get_fast_info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.fast_info.html">yfinance.Ticker.fast_info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_news.html">yfinance.Ticker.get_news</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">yfinance.Ticker.news</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.news.html">yfinance.Ticker.news</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -406,8 +406,8 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.mutualfund_holders.html">yfinance.Ticker.mutualfund_holders</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; News</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="yfinance.Search.html">Search</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; News</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Search</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -469,9 +469,9 @@ document.write(`
     <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
     
     
-    <li class="breadcrumb-item"><a href="../yfinance.stock.html" class="nav-link">Stock</a></li>
+    <li class="breadcrumb-item"><a href="../yfinance.search.html" class="nav-link">Search &amp; News</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">yfinance.Ticker.news</li>
+    <li class="breadcrumb-item active" aria-current="page">Search</li>
   </ul>
 </nav>
 </div>
@@ -488,12 +488,61 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="yfinance-ticker-news">
-<h1>yfinance.Ticker.news<a class="headerlink" href="#yfinance-ticker-news" title="Link to this heading">#</a></h1>
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.Ticker.news">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Ticker.</span></span><span class="sig-name descname"><span class="pre">news</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span></em><a class="headerlink" href="#yfinance.Ticker.news" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+  <section id="search">
+<h1>Search<a class="headerlink" href="#search" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="yfinance.Search">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">news_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_fuzzy_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Search" title="Link to this definition">#</a></dt>
+<dd><p>Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – The search query (ticker symbol or company name).</p></li>
+<li><p><strong>max_results</strong> – Maximum number of stock quotes to return (default 8).</p></li>
+<li><p><strong>news_count</strong> – Number of news articles to include (default 8).</p></li>
+<li><p><strong>enable_fuzzy_query</strong> – Enable fuzzy search for typos (default False).</p></li>
+<li><p><strong>session</strong> – Custom HTTP session for requests (default None).</p></li>
+<li><p><strong>proxy</strong> – Proxy settings for requests (default None).</p></li>
+<li><p><strong>timeout</strong> – Request timeout in seconds (default 30).</p></li>
+<li><p><strong>raise_errors</strong> – Raise exceptions on error (default True).</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Attributes</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">news</span></span></dt>
+<dd><p>Get the news from the search results.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">quotes</span></span></dt>
+<dd><p>Get the quotes from the search results.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">news_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_fuzzy_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – The search query (ticker symbol or company name).</p></li>
+<li><p><strong>max_results</strong> – Maximum number of stock quotes to return (default 8).</p></li>
+<li><p><strong>news_count</strong> – Number of news articles to include (default 8).</p></li>
+<li><p><strong>enable_fuzzy_query</strong> – Enable fuzzy search for typos (default False).</p></li>
+<li><p><strong>session</strong> – Custom HTTP session for requests (default None).</p></li>
+<li><p><strong>proxy</strong> – Proxy settings for requests (default None).</p></li>
+<li><p><strong>timeout</strong> – Request timeout in seconds (default 30).</p></li>
+<li><p><strong>raise_errors</strong> – Raise exceptions on error (default True).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
 
 </section>
 
@@ -508,20 +557,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="yfinance.Ticker.get_news.html"
+       href="../yfinance.search.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">yfinance.Ticker.get_news</p>
+        <p class="prev-next-title">Search &amp; News</p>
       </div>
     </a>
     <a class="right-next"
-       href="../yfinance.financials.html"
+       href="../yfinance.sector_industry.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Financials</p>
+        <p class="prev-next-title">Sector and Industry</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -543,14 +592,14 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Ticker.news"><code class="docutils literal notranslate"><span class="pre">Ticker.news</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Search"><code class="docutils literal notranslate"><span class="pre">Search</span></code></a></li>
 </ul>
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../../_sources/reference/api/yfinance.Ticker.news.rst.txt">
+    <a href="../../_sources/reference/api/yfinance.Search.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

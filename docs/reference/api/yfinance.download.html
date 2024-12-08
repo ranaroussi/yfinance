@@ -406,6 +406,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.mutualfund_holders.html">yfinance.Ticker.mutualfund_holders</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; News</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Search.html">Search</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Sector.html">Sector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Industry.html">Industry</a></li>
@@ -488,44 +492,60 @@ document.write(`
 <h1>yfinance.download<a class="headerlink" href="#yfinance-download" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="yfinance.download">
-<span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tickers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_tz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'column'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_adjust</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">back_adjust</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repair</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keepna</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1d'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepost</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rounding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_level_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#yfinance.download" title="Link to this definition">#</a></dt>
-<dd><p>Download yahoo tickers</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>tickers</strong> (<em>str</em><em> or </em><em>list</em>) – List of tickers to download.</p></li>
-<li><p><strong>period</strong> (<em>str</em>) – Time period to download.
-Valid periods are: ‘1d’, ‘5d’, ‘1mo’, ‘3mo’, ‘6mo’, ‘1y’, ‘2y’, ‘5y’, ‘10y’, ‘ytd’, ‘max’.
-Either use <cite>period</cite> or specify <cite>start</cite> and <cite>end</cite>.</p></li>
-<li><p><strong>interval</strong> (<em>str</em>) – Data interval.
-Valid intervals are: ‘1m’, ‘2m’, ‘5m’, ‘15m’, ‘30m’, ‘60m’, ‘90m’, ‘1h’, ‘1d’, ‘5d’, ‘1wk’, ‘1mo’, ‘3mo’.
-Intraday data is limited to the last 60 days.</p></li>
-<li><p><strong>start</strong> (<em>str</em>) – Start date (YYYY-MM-DD) or _datetime, inclusive.
-Default is 99 years ago.
-Example: For <cite>start=”2020-01-01”</cite>, the first data point will be “2020-01-01”.</p></li>
-<li><p><strong>end</strong> (<em>str</em>) – End date (YYYY-MM-DD) or _datetime, exclusive.
-Default is the current date.
-Example: For <cite>end=”2023-01-01”</cite>, the last data point will be “2022-12-31”.</p></li>
-<li><p><strong>group_by</strong> (<em>str</em>) – Group data by ‘ticker’ or ‘column’. Default is ‘column’.</p></li>
-<li><p><strong>prepost</strong> (<em>bool</em>) – Include pre and post market data in results? Default is False.</p></li>
-<li><p><strong>auto_adjust</strong> (<em>bool</em>) – Automatically adjust all OHLC data? Default is False.</p></li>
-<li><p><strong>repair</strong> (<em>bool</em>) – Detect and repair currency unit mixups (e.g., 100x errors)? Default is False.</p></li>
-<li><p><strong>keepna</strong> (<em>bool</em>) – Keep rows with NaN values returned by Yahoo? Default is False.</p></li>
-<li><p><strong>actions</strong> (<em>bool</em>) – Download dividend and stock split data? Default is False.</p></li>
-<li><p><strong>threads</strong> (<em>bool</em><em> or </em><em>int</em>) – Number of threads for mass downloading. Default is True (automatically determines the number of threads).</p></li>
-<li><p><strong>ignore_tz</strong> (<em>bool</em>) – Ignore timezones when combining data across timezones?
-Default depends on the interval. For intraday intervals, the default is False. For daily and above, the default is True.</p></li>
-<li><p><strong>proxy</strong> (<em>str</em><em>, </em><em>optional</em>) – URL of the proxy server. Default is None.</p></li>
-<li><p><strong>rounding</strong> (<em>bool</em><em>, </em><em>optional</em>) – Round values to two decimal places? Default is False.</p></li>
-<li><p><strong>timeout</strong> (<em>None</em><em> or </em><em>float</em><em>, </em><em>optional</em>) – Maximum time to wait for a response, in seconds. Can be a fraction of a second (e.g., 0.01). Default is None.</p></li>
-<li><p><strong>session</strong> (<em>None</em><em> or </em><em>Session</em><em>, </em><em>optional</em>) – Pass a custom session object for all requests. Default is None.</p></li>
-<li><p><strong>multi_level_index</strong> (<em>bool</em>) – Optional. Always return a MultiIndex DataFrame? Default is False</p></li>
-</ul>
+<span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tickers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_tz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'column'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_adjust</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">back_adjust</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repair</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keepna</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1d'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepost</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rounding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multi_level_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#yfinance.download" title="Link to this definition">#</a></dt>
+<dd><p>Download yahoo tickers
+:Parameters:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>tickers<span class="classifier">str, list</span></dt><dd><p>List of tickers to download</p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame or None</p>
+<dt>period<span class="classifier">str</span></dt><dd><p>Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+Either Use period parameter or use start and end</p>
+</dd>
+<dt>interval<span class="classifier">str</span></dt><dd><p>Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+Intraday data cannot extend last 60 days</p>
+</dd>
+<dt>start: str</dt><dd><p>Download start date string (YYYY-MM-DD) or _datetime, inclusive.
+Default is 99 years ago
+E.g. for start=”2020-01-01”, the first data point will be on “2020-01-01”</p>
+</dd>
+<dt>end: str</dt><dd><p>Download end date string (YYYY-MM-DD) or _datetime, exclusive.
+Default is now
+E.g. for end=”2023-01-01”, the last data point will be on “2022-12-31”</p>
+</dd>
+<dt>group_by<span class="classifier">str</span></dt><dd><p>Group by ‘ticker’ or ‘column’ (default)</p>
+</dd>
+<dt>prepost<span class="classifier">bool</span></dt><dd><p>Include Pre and Post market data in results?
+Default is False</p>
+</dd>
+<dt>auto_adjust: bool</dt><dd><p>Adjust all OHLC automatically? Default is True</p>
+</dd>
+<dt>repair: bool</dt><dd><p>Detect currency unit 100x mixups and attempt repair
+Default is False</p>
+</dd>
+<dt>keepna: bool</dt><dd><p>Keep NaN rows returned by Yahoo?
+Default is False</p>
+</dd>
+<dt>actions: bool</dt><dd><p>Download dividend + stock splits data. Default is False</p>
+</dd>
+<dt>threads: bool / int</dt><dd><p>How many threads to use for mass downloading. Default is True</p>
+</dd>
+<dt>ignore_tz: bool</dt><dd><p>When combining from different timezones, ignore that part of datetime.
+Default depends on interval. Intraday = False. Day+ = True.</p>
+</dd>
+<dt>proxy: str</dt><dd><p>Optional. Proxy server URL scheme. Default is None</p>
+</dd>
+<dt>rounding: bool</dt><dd><p>Optional. Round values to 2 decimal places?</p>
+</dd>
+<dt>timeout: None or float</dt><dd><p>If not None stops waiting for a response after given number of
+seconds. (Can also be a fraction of a second e.g. 0.01)</p>
+</dd>
+<dt>session: None or Session</dt><dd><p>Optional. Pass your own session object to be used for all requests</p>
+</dd>
+<dt>multi_level_index: bool</dt><dd><p>Optional. Always return a MultiIndex DataFrame? Default is True</p>
 </dd>
 </dl>
+</div></blockquote>
 </dd></dl>
 
 </section>
