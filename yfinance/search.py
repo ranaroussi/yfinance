@@ -51,8 +51,6 @@ class Search:
         self.timeout = timeout
         self.raise_errors = raise_errors
 
-        self._data = YfData(session=self.session)
-        self._logger = utils.get_yf_logger()
 
         self._response = self._fetch_results()
         self._quotes = self._response.get("quotes", [])
