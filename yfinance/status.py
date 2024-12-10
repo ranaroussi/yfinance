@@ -1,4 +1,4 @@
-import json as __json
+import json as _json
 
 from .const import _QUERY1_URL_
 from .data import YfData
