@@ -30,7 +30,7 @@ from urllib.parse import quote as urlencode
 import pandas as pd
 import requests
 
-from . import utils, cache, Search
+from . import utils, cache
 from .data import YfData
 from .exceptions import YFEarningsDateMissing
 from .scrapers.analysis import Analysis
@@ -534,19 +534,45 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
-    def get_news(self, proxy=None) -> list:
+    def get_news(self, count=10, tab="news", proxy=None) -> list:
+        """Allowed options for tab: "news", "all", "press releases"""
         if self._news:
             return self._news
 
-        search = Search(
-            query=self.ticker,
-            news_count=10,
-            session=self.session,
-            proxy=proxy,
-            raise_errors=True
-        )
-        self._news = search.news
+        logger = utils.get_yf_logger()
 
+        tab_queryrefs = {
+            "all": "newsAll",
+            "news": "latestNews",
+            "press releases": "pressRelease",
+        }
+
+        query_ref = tab_queryrefs.get(tab.lower())
+        if not query_ref:
+            raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
+
+        url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
+        payload = {
+            "serviceConfig": {
+                "snippetCount": count,
+                "s": [self.ticker]
+            }
+        }
+
+        data = self._data.post(url, body=payload, proxy=proxy)
+        if data is None or "Will be right back" in data.text:
+            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                               "Our engineers are working quickly to resolve "
+                               "the issue. Thank you for your patience.")
+        try:
+            data = data.json()
+        except _json.JSONDecodeError:
+            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+            data = {}
+
+        news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
+
+        self._news = [article for article in news if not article.get('ad', [])]
         return self._news
 
     @utils.log_indent_decorator
