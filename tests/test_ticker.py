@@ -339,6 +339,12 @@ class TestTickerEarnings(unittest.TestCase):
     #     data_cached = self.ticker.earnings_trend
     #     self.assertIs(data, data_cached, "data not cached")
 
+    def test_parse_earnings_dates(self):
+        dates = pd.Series(['October 26, 2025 at 8 PM EDT', 'July 27, 2025 at 8 PM EST'])
+        expected = pd.Series(pd.to_datetime(['2025-10-27 00:00:00', '2025-07-28 00:00:00'], utc=True))
+
+        result = yf.Ticker.parse_earnings_dates(dates)
+        pd.testing.assert_series_equal(result, expected)
 
 class TestTickerHolders(unittest.TestCase):
     session = None

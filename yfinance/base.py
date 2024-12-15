@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+from datetime import date
 from io import StringIO
 import json as _json
 import warnings
@@ -598,7 +599,7 @@ class TickerBase:
         page_offset = 0
         dates = None
         while True:
-            url = f"{_ROOT_URL_}/calendar/earnings?symbol={self.ticker}&offset={page_offset}&size={page_size}"
+            url = f"{_ROOT_URL_}/calendar/earnings?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
             data = self._data.cache_get(url=url, proxy=proxy).text
 
             if "Will be right back" in data:
@@ -640,32 +641,26 @@ class TickerBase:
         dates = dates.drop(["Symbol", "Company"], axis=1)
 
         # Convert types
-        for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
+        for cn in ["EPS Estimate", "Reported EPS", "Surprise (%)"]:
             dates.loc[dates[cn] == '-', cn] = float("nan")
             dates[cn] = dates[cn].astype(float)
 
         # Convert % to range 0->1:
-        dates["Surprise(%)"] *= 0.01
+        dates["Surprise (%)"] *= 0.01
 
         # Parse earnings date string
         cn = "Earnings Date"
-        # - remove AM/PM and timezone from date string
-        tzinfo = dates[cn].str.extract('([AP]M[a-zA-Z]*)$')
-        dates[cn] = dates[cn].replace(' [AP]M[a-zA-Z]*$', '', regex=True)
-        # - split AM/PM from timezone
-        tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
-        tzinfo.columns = ["AM/PM", "TZ"]
-        # - combine and parse
-        dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
-        dates[cn] = pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
-        # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
         self._quote.proxy = proxy or self.proxy
+        dates[cn] = TickerBase.parse_earnings_dates(dates[cn])
         tz = self._get_ticker_tz(proxy=proxy, timeout=30)
-        dates[cn] = dates[cn].dt.tz_localize(tz)
+        dates[cn] = dates[cn].dt.tz_convert(tz)
 
         dates = dates.set_index("Earnings Date")
 
         self._earnings_dates[limit] = dates
+
+        # Maintain backwards compatibility
+        dates = dates.rename(columns={"Surprise (%)": "Surprise(%)"})
 
         return dates
 
@@ -677,3 +672,14 @@ class TickerBase:
             self._funds_data = FundsData(self._data, self.ticker)
         
         return self._funds_data
+
+    @staticmethod
+    def parse_earnings_dates(dates: pd.Series) -> pd.Series:
+        dates = dates.str.replace(r' [A-Z]{3}$', '', regex=True)  # Remove the timezone (EDT, EST)
+        dates = dates.str.replace(r' at', ',', regex=True)        # Replace ` at` with `,`
+
+        dates = pd.to_datetime(dates, format="%B %d, %Y, %I %p")
+        dates = dates.apply(lambda row: row.tz_localize("US/Eastern", ambiguous=True))
+
+        dates = dates.dt.tz_convert("UTC")
+        return dates
