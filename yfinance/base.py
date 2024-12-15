@@ -21,9 +21,9 @@
 
 from __future__ import print_function
 
-from io import StringIO
 import json as _json
 import warnings
+from io import StringIO
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
@@ -31,16 +31,15 @@ import pandas as pd
 import requests
 
 from . import utils, cache
+from .const import _BASE_URL_, _ROOT_URL_
 from .data import YfData
 from .exceptions import YFEarningsDateMissing
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
+from .scrapers.funds import FundsData
+from .scrapers.history import PriceHistory
 from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
-from .scrapers.history import PriceHistory
-from .scrapers.funds import FundsData
-
-from .const import _BASE_URL_, _ROOT_URL_
 
 
 class TickerBase:
@@ -594,6 +593,15 @@ class TickerBase:
 
         logger = utils.get_yf_logger()
 
+        ticker_tz = ""
+
+        def get_ticker_tz():
+            nonlocal ticker_tz
+            if ticker_tz == "":
+                self._quote.proxy = proxy or self.proxy
+                ticker_tz = self._get_ticker_tz(proxy=proxy, timeout=30)
+            return ticker_tz
+
         page_size = min(limit, 100)  # YF caps at 100, don't go higher
         page_offset = 0
         dates = None
@@ -658,10 +666,48 @@ class TickerBase:
         # - combine and parse
         dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
         dates[cn] = pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
-        # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
+
+        # Try to remap all ambiguous timezone values:
+        tzinfo['TZ'] = tzinfo['TZ'].str.replace('BST', 'Europe/London')
+        tzinfo['TZ'] = tzinfo['TZ'].str.replace('GMT', 'Europe/London')
+        if '.' not in self.ticker:
+            tzinfo['TZ'] = tzinfo['TZ'].str.replace('EST', 'America/New_York')
+        elif self.ticker.endswith(".AX"):
+            tzinfo['TZ'] = tzinfo['TZ'].str.replace('EST', 'Australia/Sydney')
+        tzinfo['TZ'] = tzinfo['TZ'].str.replace('MST', 'America/Denver')
+        tzinfo['TZ'] = tzinfo['TZ'].str.replace('PST', 'America/Los_Angeles')
+        if'.' not in self.ticker:
+            tzinfo['TZ'] = tzinfo['TZ'].str.replace('CST', 'America/Chicago')
+        else:
+            # Revisit if Cuba get a stock exchange
+            tzinfo['TZ'] = tzinfo['TZ'].str.replace('CST', 'Asia/Shanghai')
+        if self.ticker.endswith('.TA'):
+            tzinfo['TZ'] = tzinfo['TZ'].str.replace('IST', 'Asia/Jerusalem')
+        elif self.ticker.endswith('.IR'):
+            tzinfo['TZ'] = tzinfo['TZ'].str.replace('IST', 'Europe/Dublin')
+        elif self.ticker.endswith('.NS'):
+            tzinfo['TZ'] = tzinfo['TZ'].str.replace('IST', 'Asia/Kolkata')
+
+        # But in case still ambiguity that pytz cannot parse, have a backup:
         self._quote.proxy = proxy or self.proxy
-        tz = self._get_ticker_tz(proxy=proxy, timeout=30)
-        dates[cn] = dates[cn].dt.tz_localize(tz)
+        tz_backup = self._get_ticker_tz(proxy=proxy, timeout=30)
+
+        if len(tzinfo['TZ'].unique())==1:
+            try:
+                dates[cn] = dates[cn].dt.tz_localize(tzinfo['TZ'].iloc[0])
+            except Exception:
+                dates[cn] = dates[cn].dt.tz_localize(tz_backup)
+        else:
+            dates2 = []
+            for i in range(len(dates)):
+                dt = dates[cn].iloc[i]
+                tz = tzinfo['TZ'].iloc[i]
+                try:
+                    dt = dt.tz_localize(tz)
+                except Exception:
+                    dt = dt.tz_localize(tz_backup)
+                dates2.append(dt)
+            dates[cn] = pd.to_datetime(dates2, utc=True).tz_convert(dates2[0].tzinfo)
 
         dates = dates.set_index("Earnings Date")
 
