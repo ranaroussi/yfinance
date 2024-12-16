@@ -22,6 +22,14 @@ class Status:
         self._data = YfData(session=self.session)
         self._logger = utils.get_yf_logger()
         self.next_req = 0
+        
+        self._raw_data = {}
+
+        self._close = None
+        self._open = None
+        self._time = None
+        self._tz = None
+        self._is_open = None 
 
         self._parse_data(True)
 
@@ -42,8 +50,7 @@ class Status:
         try:
             data = data.json()
             self._raw_data = data["finance"]["marketTimes"][0]["marketTime"][0]
-            type_change = self._raw_data["duration"][0]
-            self.next_req = time.time() + int(type_change["hrs"])*3600 + int(type_change["mins"])*60
+            self.next_req = dt.fromisoformat(self._raw_data["close"] if self._raw_data["status"] == "open" else self._raw_data["open"]).timestamp()
         except _json.JSONDecodeError:
             self._logger.error(f"{self.region}: Failed to retrieve market statusand recieved faulty data.")
             self._raw_data = {}
