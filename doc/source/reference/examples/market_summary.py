@@ -1,41 +1,43 @@
 import yfinance as yf
-europe = yf.MarketSummary("EUROPE")
-par = europe["^N100"]
-par.name
-par.region
-par.market
-par.quote_type
-par.type_display
-par.symbol
+
+EUROPE = yf.Summary("EUROPE")
+PARIS = EUROPE["^N100"]
+
+PARIS.name
+PARIS.region
+PARIS.market
+PARIS.quote_type
+PARIS.type_display
+PARIS.symbol
         
 # Market data
-par.price
-par.change
-par.change_percent
-par.previous_close
-par.market_time
-par.market_state
-par.price_hint
+PARIS.price
+PARIS.change
+PARIS.change_percent
+PARIS.previous_close
+PARIS.market_time
+PARIS.market_state
+PARIS.price_hint
         
 # Exchange information
-par.exchange
-par.full_exchange_name
-par.timezone
-par.timezone_short
-par.gmt_offset
-par.exchange_delay
+PARIS.exchange
+PARIS.full_exchange_name
+PARIS.timezone
+PARIS.timezone_short
+PARIS.gmt_offset
+PARIS.exchange_delay
         
 # Quote information
-par.quote_source
-par.source_interval
+PARIS.quote_source
+PARIS.source_interval
         
 # Trading properties
-par.triggerable
-par.tradeable
-par.crypto_tradeable
-par.has_pre_post_market
-par.first_trade_date
+PARIS.triggerable
+PARIS.tradeable
+PARIS.crypto_tradeable
+PARIS.has_pre_post_market
+PARIS.first_trade_date
         
 # Additional properties
-par.esg_populated
-par.price_alert_confidence
+PARIS.esg_populated
+PARIS.price_alert_confidence
