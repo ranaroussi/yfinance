@@ -30,6 +30,7 @@ from urllib.parse import quote as urlencode
 
 import pandas as pd
 import requests
+from bs4 import BeautifulSoup
 
 from . import utils, cache
 from .data import YfData
@@ -606,6 +607,12 @@ class TickerBase:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                    "Our engineers are working quickly to resolve "
                                    "the issue. Thank you for your patience.")
+
+            # Remove extra <tfoot> tag from HTML
+            soup = BeautifulSoup(data, "html.parser")
+            if soup.tfoot:
+                soup.tfoot.decompose()
+            data = str(soup)
 
             try:
                 data = pd.read_html(StringIO(data))[0]
