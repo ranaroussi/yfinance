@@ -30,7 +30,7 @@ from .domain.sector import Sector
 from .domain.industry import Industry
 from .screener.screener import Screener
 from .screener.screener_query import EquityQuery
-from .summary import MarketSummary
+from .summary import Summary
 
 __version__ = version.version
 __author__ = "Ran Aroussi"
@@ -38,5 +38,5 @@ __author__ = "Ran Aroussi"
 import warnings
 warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
 
-__all__ = ['download', 'MarketSummary', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector',
+__all__ = ['download', 'Summary', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector',
            'Industry', 'EquityQuery', 'Screener']

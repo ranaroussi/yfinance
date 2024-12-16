@@ -5,7 +5,7 @@ from . import utils
 from .const import _QUERY1_URL_
 from .data import YfData
 
-class Summary:
+class MarketSummary:
     def __init__(self, data) -> None:
         # Basic information
         self.name: 'str' = data.get("shortName")
@@ -49,7 +49,7 @@ class Summary:
 
 
 
-class MarketSummary:
+class Summary:
     def __init__(self, market, region="US", session=None, proxy=None, timeout=30, raise_errors=True, refresh=3600):
         """
         market: The market area you want to get the summary for.
@@ -74,7 +74,7 @@ class MarketSummary:
     def _request(self, formatted=False, fields=["shortName", "regularMarketPrice", "regularMarketChange", "regularMarketChangePercent"]):
         url = f"{_QUERY1_URL_}/v6/finance/quote/marketSummary"
         params = {
-            "fields": fields,
+            "fields": ",".join(fields),
             "formatted": formatted,
             "lang": "en-US",
             "market": self.market,
@@ -106,11 +106,11 @@ class MarketSummary:
         return self._last_request
     
     def _convert_data(self):
-        self._last_data = [Summary(data) for data in self._last_request["results"]]
+        self._last_data = [MarketSummary(data) for data in self._last_request["result"]]
 
-    def __getitem__(self, name: str) -> 'Summary':
+    def __getitem__(self, name: str) -> 'MarketSummary':
         self.refresh_data()
         for data in self._last_data:
-            if data.name == name:
+            if data.symbol == name:
                 return data
-        raise AttributeError(f"{name} not found")
+        raise AttributeError(f"{name} is not a symbol in {self.market}. Valid symbols are: {", ".join([data.symbol for data in self._last_data])}")
