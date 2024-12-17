@@ -39,7 +39,6 @@ from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
-from .const import _BASE_URL_
 
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -189,24 +188,27 @@ def is_isin(string):
 def get_all_by_isin(isin, proxy=None, session=None):
     if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
+
+    # Deferred this to prevent circular imports
+    from .search import Search
+
     session = session or _requests
-    url = f"{_BASE_URL_}/v1/finance/search?q={isin}"
-    data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
-    try:
-        data = data.json()
-        ticker = data.get('quotes', [{}])[0]
-        return {
-            'ticker': {
-                'symbol': ticker['symbol'],
-                'shortname': ticker['shortname'],
-                'longname': ticker.get('longname',''),
-                'type': ticker['quoteType'],
-                'exchange': ticker['exchDisp'],
-            },
-            'news': data.get('news', [])
-        }
-    except Exception:
-        return {}
+    search = Search(query=isin, max_results=1, session=session, proxy=proxy)
+
+    # Extract the first quote and news
+    ticker = search.quotes[0] if search.quotes else {}
+    news = search.news
+
+    return {
+        'ticker': {
+            'symbol': ticker.get('symbol', ''),
+            'shortname': ticker.get('shortname', ''),
+            'longname': ticker.get('longname', ''),
+            'type': ticker.get('quoteType', ''),
+            'exchange': ticker.get('exchDisp', ''),
+        },
+        'news': news
+    }
 
 
 def get_ticker_by_isin(isin, proxy=None, session=None):
