@@ -76,42 +76,18 @@ class Status:
         self._is_open = True if self._raw_data["status"] == "open" else False
 
     @property
-    def raw_data(self):
+    def data(self):
         self._parse_data()
         return self._raw_data
-
-    @property
-    def id(self) -> 't.Optional[str]':
-        return self.raw_data.get("id", None)
-    
-    @property
-    def name(self) -> 'str':
-        return self.raw_data.get("name", None)
-    
-    @property
-    def status(self) -> 't.Literal["open", "closed", None]':
-        return self.raw_data.get("status", None)
-    
-    @property
-    def yf_market_id(self) -> 't.Optional[str]':
-        return self.raw_data.get("yfit_market_id", None)
-    
+   
     @property
     def close(self) -> 't.Optional[dt]':
         return self._close
     
     @property
-    def message(self) -> 't.Optional[str]':
-        return self.raw_data.get("message", None)
-
-    @property
     def open(self) -> 't.Optional[dt]':
         return self._open
-    
-    @property
-    def yf_status(self) -> 't.Optional[str]': # Move research needed for specific string literals
-        return self.raw_data.get("yfit_market_status", None)
-    
+       
     @property
     def request_time(self) -> 't.Optional[dt]':
         return self._time
