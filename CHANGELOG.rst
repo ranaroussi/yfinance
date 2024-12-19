@@ -1,6 +1,15 @@
 Change Log
 ===========
 
+0.2.51
+------
+Fixes:
+- earnings_dates #2169
+Features:
+- Screener tweaks #2168
+- Search #2160
+- get_news() expose count #2173
+
 0.2.50
 ------
 Fixes:
