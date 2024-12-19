@@ -535,26 +535,45 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
-    def get_news(self, proxy=None) -> list:
+    def get_news(self, count=10, tab="news", proxy=None) -> list:
+        """Allowed options for tab: "news", "all", "press releases"""
         if self._news:
             return self._news
 
-        # Getting data from json
-        url = f"{_BASE_URL_}/v1/finance/search?q={self.ticker}"
-        data = self._data.cache_get(url=url, proxy=proxy)
+        logger = utils.get_yf_logger()
+
+        tab_queryrefs = {
+            "all": "newsAll",
+            "news": "latestNews",
+            "press releases": "pressRelease",
+        }
+
+        query_ref = tab_queryrefs.get(tab.lower())
+        if not query_ref:
+            raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
+
+        url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
+        payload = {
+            "serviceConfig": {
+                "snippetCount": count,
+                "s": [self.ticker]
+            }
+        }
+
+        data = self._data.post(url, body=payload, proxy=proxy)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
                                "the issue. Thank you for your patience.")
         try:
             data = data.json()
-        except (_json.JSONDecodeError): 
-            logger = utils.get_yf_logger()
+        except _json.JSONDecodeError:
             logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
             data = {}
 
-        # parse news
-        self._news = data.get("news", [])
+        news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
+
+        self._news = [article for article in news if not article.get('ad', [])]
         return self._news
 
     @utils.log_indent_decorator
