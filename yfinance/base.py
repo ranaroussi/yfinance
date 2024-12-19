@@ -29,6 +29,7 @@ from urllib.parse import quote as urlencode
 
 import pandas as pd
 import requests
+from datetime import date
 
 from . import utils, cache
 from .data import YfData
@@ -579,7 +580,7 @@ class TickerBase:
         page_offset = 0
         dates = None
         while True:
-            url = f"{_ROOT_URL_}/calendar/earnings?symbol={self.ticker}&offset={page_offset}&size={page_size}"
+            url = f"{_ROOT_URL_}/calendar/earnings?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
             data = self._data.cache_get(url=url, proxy=proxy).text
 
             if "Will be right back" in data:
@@ -620,31 +621,40 @@ class TickerBase:
         # Drop redundant columns
         dates = dates.drop(["Symbol", "Company"], axis=1)
 
+        # Compatibility
+        dates = dates.rename(columns={'Surprise (%)': 'Surprise(%)'})
+
+        # Drop empty rows
+        for i in range(len(dates)-1, -1, -1):
+            if dates.iloc[i].isna().all():
+                dates = dates.drop(i)
+
         # Convert types
         for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
             dates.loc[dates[cn] == '-', cn] = float("nan")
             dates[cn] = dates[cn].astype(float)
 
-        # Convert % to range 0->1:
-        dates["Surprise(%)"] *= 0.01
-
         # Parse earnings date string
         cn = "Earnings Date"
-        # - remove AM/PM and timezone from date string
-        tzinfo = dates[cn].str.extract('([AP]M[a-zA-Z]*)$')
-        dates[cn] = dates[cn].replace(' [AP]M[a-zA-Z]*$', '', regex=True)
-        # - split AM/PM from timezone
-        tzinfo = tzinfo[0].str.extract('([AP]M)([a-zA-Z]*)', expand=True)
-        tzinfo.columns = ["AM/PM", "TZ"]
-        # - combine and parse
-        dates[cn] = dates[cn] + ' ' + tzinfo["AM/PM"]
-        dates[cn] = pd.to_datetime(dates[cn], format="%b %d, %Y, %I %p")
-        # - instead of attempting decoding of ambiguous timezone abbreviation, just use 'info':
-        self._quote.proxy = proxy or self.proxy
-        tz = self._get_ticker_tz(proxy=proxy, timeout=30)
-        dates[cn] = dates[cn].dt.tz_localize(tz)
+        try:
+            dates_backup = dates.copy()
+            # - extract timezone because Yahoo stopped returning in UTC
+            tzy = dates[cn].str.split(' ').str.get(-1)
+            tzy[tzy.isin(['EDT', 'EST'])] = 'US/Eastern'
+            # - tidy date string
+            dates[cn] = dates[cn].str.split(' ').str[:-1].str.join(' ')
+            dates[cn] = dates[cn].replace(' at', ',', regex=True)
+            # - parse
+            dates[cn] = pd.to_datetime(dates[cn], format="%B %d, %Y, %I %p")
+            # - convert to exchange timezone
+            self._quote.proxy = proxy or self.proxy
+            tz = self._get_ticker_tz(proxy=proxy, timeout=30)
+            dates[cn] = [dates[cn].iloc[i].tz_localize(tzy.iloc[i], ambiguous=True).tz_convert(tz) for i in range(len(dates))]
 
-        dates = dates.set_index("Earnings Date")
+            dates = dates.set_index("Earnings Date")
+        except Exception as e:
+            utils.get_yf_logger().info(f"{self.ticker}: Problem parsing earnings_dates: {str(e)}")
+            dates = dates_backup
 
         self._earnings_dates[limit] = dates
 
