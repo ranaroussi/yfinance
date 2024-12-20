@@ -4,12 +4,11 @@ from ..const import _QUERY1_URL_
 # from .domain import Domain
 
 class Market():
-    def __init__(self, market:'str', session=None, proxy=None, timeout=30, raise_errors=True):
+    def __init__(self, market:'str', session=None, proxy=None, timeout=30):
         self.market = market
         self.session = session
         self.proxy = proxy
         self.timeout = timeout
-        self.raise_errors = raise_errors
 
         self._data = YfData(session=self.session)
         self._logger = utils.get_yf_logger()
