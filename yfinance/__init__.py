@@ -28,6 +28,7 @@ from .utils import enable_debug_mode
 from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
+from .domain.market import Market
 from .screener.screener import Screener
 from .screener.screener_query import EquityQuery
 
@@ -38,4 +39,4 @@ import warnings
 warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
 
 __all__ = ['download', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector',
-           'Industry', 'EquityQuery', 'Screener']
+           'Industry', 'EquityQuery', 'Screener', 'Market']
