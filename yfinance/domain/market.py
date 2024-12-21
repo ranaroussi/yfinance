@@ -73,7 +73,7 @@ class Market():
             "fields": ",".join(fields),
             "formatted": False,
             "lang": "en-US",
-            "region": self.market
+            "market": self.market
         }
         self._summary = self._fetch_json(url, params)
         try:
