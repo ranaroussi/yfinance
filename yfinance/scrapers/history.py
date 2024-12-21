@@ -31,7 +31,7 @@ class PriceHistory:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=10,
-                raise_errors=False) -> pd.DataFrame:
+                raise_errors=True) -> pd.DataFrame:
         """
         :Parameters:
             period : str
