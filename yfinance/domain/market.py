@@ -3,6 +3,8 @@ from ..data import utils
 from ..const import _QUERY1_URL_
 # from .domain import Domain
 
+import pandas as pd
+
 class Market():
     def __init__(self, market:'str', session=None, proxy=None, timeout=30):
         self.market = market
@@ -42,9 +44,22 @@ class Market():
         }
         self._status = self._fetch_json(url, params)
         try:
+            # Unpack
             self._status = self._status['finance']['marketTimes'][0]['marketTime'][0]
+            self._status['timezone'] = self._status['timezone'][0]
+            del self._status['time']  # redundant
         except:
             pass
+        try:
+            # Localise
+            tz = self._status['timezone']['$text']
+            open2 = pd.Timestamp(self._status['open']).tz_convert(tz)
+            close2 = pd.Timestamp(self._status['close']).tz_convert(tz)
+            self._status['open'] = open2
+            self._status['close'] = close2
+        except:
+            pass
+
         return self._status
 
     @property
