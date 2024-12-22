@@ -9,7 +9,7 @@ import bisect
 
 from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
-from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError
+from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
 
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None, proxy=None):
@@ -184,6 +184,9 @@ class PriceHistory:
                                    "the issue. Thank you for your patience.")
 
             data = data.json()
+        # Special case for rate limits
+        except YFRateLimitError:
+            raise
         except Exception:
             if raise_errors:
                 raise
