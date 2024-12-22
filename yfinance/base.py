@@ -78,7 +78,7 @@ class TickerBase:
 
     @utils.log_indent_decorator
     def history(self, *args, **kwargs) -> pd.DataFrame:
-        return self._lazy_load_price_history().history(*args, **kwargs)
+        return self._lazy_load_price_history().history(*args, **kwargs, session=self.session, proxy=self.proxy)
 
     # ------------------------
 
