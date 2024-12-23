@@ -1,4 +1,5 @@
-from typing import Dict
+from _collections_abc import dict_keys
+from typing import Literal, TypedDict
 
 from yfinance import utils
 from yfinance.data import YfData
@@ -7,6 +8,9 @@ from .screener_query import Query
 from ..utils import dynamic_docstring, generate_list_table_from_dict_of_dict
 
 _SCREENER_URL_ = f"{_BASE_URL_}/v1/finance/screener"
+
+_REQUIRED_BODY_TYPE_ = TypedDict("_REQUIRED_BODY_TYPE_", {'offset': int, 'size': int, 'sortField': str, 'sortType': str, 'quoteType': str, 'query': dict, 'userId': str, 'userIdType': str})
+_BODY_TYPE_ = TypedDict("_BODY_TYPE_", {'offset': int, 'size': int, 'sortField': str, 'sortType': str, 'quoteType': str, 'query': dict, 'userId': str, 'userIdType': str}, total=False)
 
 class Screener:
     """
@@ -30,18 +34,18 @@ class Screener:
         self.session = session
 
         self._data: YfData = YfData(session=session)
-        self._body: Dict = {}
-        self._response: Dict = {}
+        self._body: '_REQUIRED_BODY_TYPE_' = {} # type: ignore # Type is invalid till body is set
+        self._response: 'dict' = {}
         self._body_updated = False
         self._accepted_body_keys = {"offset","size","sortField","sortType","quoteType","query","userId","userIdType"}
         self._predefined_bodies = PREDEFINED_SCREENER_BODY_MAP.keys()
 
     @property
-    def body(self) -> Dict:
+    def body(self) -> '_REQUIRED_BODY_TYPE_':
         return self._body
     
     @property
-    def response(self) -> Dict:
+    def response(self) -> 'dict':
         """
         Fetch screen result
 
@@ -60,14 +64,14 @@ class Screener:
     
     @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_of_dict(PREDEFINED_SCREENER_BODY_MAP,bullets=False)})
     @property
-    def predefined_bodies(self) -> Dict:
+    def predefined_bodies(self) -> 'dict_keys':
         """
         Predefined Screeners
         {predefined_screeners}
         """
         return self._predefined_bodies
 
-    def set_default_body(self, query: Query, offset: int = 0, size: int = 100, sortField: str = "ticker", sortType: str = "desc", quoteType: str = "equity", userId: str = "", userIdType: str = "guid") -> 'Screener':
+    def set_default_body(self, query: 'Query', offset: 'int' = 0, size: 'int' = 100, sortField: 'str' = "ticker", sortType: 'str' = "desc", quoteType: 'str' = "equity", userId: 'str' = "", userIdType: 'str' = "guid") -> 'Screener':
         """
         Set the default body using a custom query.
 
@@ -104,7 +108,7 @@ class Screener:
         }
         return self
 
-    def set_predefined_body(self, predefined_key: str) -> 'Screener':
+    def set_predefined_body(self, predefined_key: 'Literal["aggressive_small_caps", "day_gainers", "day_losers", "growth_technology_stocks", "most_actives", "most_shorted_stocks", "small_cap_gainers", "undervalued_growth_stocks", "undervalued_large_caps", "conservative_foreign_funds", "high_yield_bond", "portfolio_anchors", "solid_large_growth_funds", "solid_midcap_growth_funds", "top_mutual_funds"]') -> 'Screener':
         """
         Set a predefined body
 
@@ -134,12 +138,12 @@ class Screener:
         self._body = body
         return self
 
-    def set_body(self, body: Dict) -> 'Screener':
+    def set_body(self, body: '_REQUIRED_BODY_TYPE_') -> 'Screener':
         """
         Set the fully custom body using dictionary input
 
         Args: 
-            body (Dict): full query body
+            body (dict): full query body
 
         Returns:
             Screener: self
@@ -171,7 +175,7 @@ class Screener:
         self._body = body
         return self
 
-    def patch_body(self, values: Dict) -> 'Screener':
+    def patch_body(self, values: '_BODY_TYPE_') -> 'Screener':
         """
         Patch parts of the body using dictionary input
 
@@ -203,7 +207,7 @@ class Screener:
         if self._body["size"] > 250:
             raise ValueError("Yahoo limits query size to 250. Please decrease the size of the query.")
 
-    def _fetch(self) -> Dict:
+    def _fetch(self) -> 'dict':
         params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
         response = self._data.post(_SCREENER_URL_, body=self.body, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
         response.raise_for_status()
