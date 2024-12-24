@@ -78,7 +78,7 @@ class PriceHistory:
 
         interval_user = interval
         period_user = period
-        if repair and interval in ['5d', '1wk', '1mo', '3mo']:
+        if repair and interval in ["5d", "1wk", "1mo", "3mo"]:
             # Yahoo's way of adjusting mutiday intervals is fundamentally broken.
             # Have to fetch 1d, adjust, then resample.
             if interval == '5d':
@@ -105,6 +105,11 @@ class PriceHistory:
                 period_user = period
                 period = None
             interval = '1d'
+        else:
+            end = utils._parse_user_dt(end, self.tz)
+            start = _datetime.date.fromordinal(end)
+            start -= utils._interval_to_timedelta(period)
+            start -= _datetime.timedelta(days=4)
 
         start_user = start
         end_user = end
