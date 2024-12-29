@@ -33,7 +33,7 @@ from datetime import date
 
 from . import utils, cache
 from .data import YfData
-from .exceptions import YFEarningsDateMissing
+from .exceptions import YFEarningsDateMissing, YFRateLimitError
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
@@ -125,6 +125,9 @@ class TickerBase:
         try:
             data = self._data.cache_get(url=url, params=params, proxy=proxy, timeout=timeout)
             data = data.json()
+        except YFRateLimitError:
+            # Must propagate this
+            raise
         except Exception as e:
             logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
             return None
