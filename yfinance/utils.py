@@ -429,22 +429,14 @@ def _parse_user_dt(dt, exchange_tz):
 
 
 def _interval_to_timedelta(interval):
-    if interval == "1mo":
-        return relativedelta(months=1)
-    elif interval == "3mo":
-        return relativedelta(months=3)
-    elif interval == "6mo":
-        return relativedelta(months=6)
-    elif interval == "1y":
-        return relativedelta(years=1)
-    elif interval == "2y":
-        return relativedelta(years=2)
-    elif interval == "5y":
-        return relativedelta(years=5)
-    elif interval == "10y":
-        return relativedelta(years=10)
-    elif interval == "1wk":
-        return _pd.Timedelta(days=7)
+    if interval[-1] == "d":
+        return relativedelta(days=int(interval[:-1]))
+    elif interval[-2:] == "wk": 
+        return relativedelta(weeks=int(interval[:-2]))
+    elif interval[-2:] == "mo":
+        return relativedelta(months=int(interval[:-2]))
+    elif interval[-1] == "y":
+        return relativedelta(years=int(interval[:-1]))
     else:
         return _pd.Timedelta(interval)
 
