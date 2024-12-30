@@ -1,14 +1,19 @@
-from typing import Dict
+from typing import TypedDict, Union
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import _BASE_URL_, PREDEFINED_SCREENER_BODY_MAP
+from yfinance.const import _BASE_URL_, PREDEFINED_SCREENERS, PREDEFINED_SCREENERS_TYPE
 from .screener_query import Query
-from ..utils import dynamic_docstring, generate_list_table_from_dict_of_dict
 
 _SCREENER_URL_ = f"{_BASE_URL_}/v1/finance/screener"
+_PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
+
+_REQUIRED_BODY_TYPE_ = TypedDict("_REQUIRED_BODY_TYPE_", {'offset': int, 'size': int, 'sortField': str, 'sortType': str, 'quoteType': str, 'query': dict, 'userId': str, 'userIdType': str})
+_BODY_TYPE_ = TypedDict("_BODY_TYPE_", {'offset': int, 'size': int, 'sortField': str, 'sortType': str, 'quoteType': str, 'query': dict, 'userId': str, 'userIdType': str}, total=False)
+_EMPTY_DICT_ = TypedDict("_EMPTY_DICT_", {}, total=False)
 
 class Screener:
+    PREDEFINED_SCREENERS = PREDEFINED_SCREENERS
     """
     The `Screener` class is used to execute the queries and return the filtered results.
 
@@ -30,18 +35,18 @@ class Screener:
         self.session = session
 
         self._data: YfData = YfData(session=session)
-        self._body: Dict = {}
-        self._response: Dict = {}
+        self._body: 'Union[_REQUIRED_BODY_TYPE_, _EMPTY_DICT_]' = {}
+        self._response: 'dict' = {}
         self._body_updated = False
         self._accepted_body_keys = {"offset","size","sortField","sortType","quoteType","query","userId","userIdType"}
-        self._predefined_bodies = PREDEFINED_SCREENER_BODY_MAP.keys()
+        self.predefined = False
 
     @property
-    def body(self) -> Dict:
+    def body(self) -> 'Union[_REQUIRED_BODY_TYPE_, _EMPTY_DICT_]':
         return self._body
     
     @property
-    def response(self) -> Dict:
+    def response(self) -> 'dict':
         """
         Fetch screen result
 
@@ -58,16 +63,7 @@ class Screener:
         self._body_updated = False
         return self._response
     
-    @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_of_dict(PREDEFINED_SCREENER_BODY_MAP,bullets=False)})
-    @property
-    def predefined_bodies(self) -> Dict:
-        """
-        Predefined Screeners
-        {predefined_screeners}
-        """
-        return self._predefined_bodies
-
-    def set_default_body(self, query: Query, offset: int = 0, size: int = 100, sortField: str = "ticker", sortType: str = "desc", quoteType: str = "equity", userId: str = "", userIdType: str = "guid") -> 'Screener':
+    def set_default_body(self, query: 'Query', offset: 'int' = 0, size: 'int' = 100, sortField: 'str' = "ticker", sortType: 'str' = "desc", quoteType: 'str' = "equity", userId: 'str' = "", userIdType: 'str' = "guid") -> 'Screener':
         """
         Set the default body using a custom query.
 
@@ -103,8 +99,8 @@ class Screener:
             "userIdType": userIdType
         }
         return self
-
-    def set_predefined_body(self, predefined_key: str) -> 'Screener':
+    @classmethod
+    def set_predefined_body(cls, predefined_key: 'PREDEFINED_SCREENERS_TYPE') -> 'Screener':
         """
         Set a predefined body
 
@@ -126,20 +122,17 @@ class Screener:
             :attr:`Screener.predefined_bodies <yfinance.Screener.predefined_bodies>`
                 supported predefined screens
         """
-        body = PREDEFINED_SCREENER_BODY_MAP.get(predefined_key, None)
-        if not body:
-            raise ValueError(f'Invalid key {predefined_key} provided for predefined screener')
-        
+        self = cls()
         self._body_updated = True
-        self._body = body
+        self.predefined = predefined_key
         return self
 
-    def set_body(self, body: Dict) -> 'Screener':
+    def set_body(self, body: '_REQUIRED_BODY_TYPE_') -> 'Screener':
         """
         Set the fully custom body using dictionary input
 
         Args: 
-            body (Dict): full query body
+            body (dict): full query body
 
         Returns:
             Screener: self
@@ -169,9 +162,10 @@ class Screener:
 
         self._body_updated = True
         self._body = body
+        self.predefined = False
         return self
 
-    def patch_body(self, values: Dict) -> 'Screener':
+    def patch_body(self, values: '_BODY_TYPE_') -> 'Screener':
         """
         Patch parts of the body using dictionary input
 
@@ -194,6 +188,7 @@ class Screener:
         self._body_updated = True
         for k in values:
             self._body[k] = values[k]
+        self.predefined = False
         return self
 
     def _validate_body(self) -> None:
@@ -203,18 +198,38 @@ class Screener:
         if self._body["size"] > 250:
             raise ValueError("Yahoo limits query size to 250. Please decrease the size of the query.")
 
-    def _fetch(self) -> Dict:
+    def _fetch(self) -> 'dict':
         params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
         response = self._data.post(_SCREENER_URL_, body=self.body, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
         response.raise_for_status()
         return response.json()
     
+    def _fetch_predefined(self) -> 'dict':
+        params_dict = {
+            "count": 25,
+            "formatted": True,
+            "scrIds": self.predefined,
+            "sortField": "",
+            "sortType": None,
+            "start": 0,
+            "useRecordsResponse": False,
+            "fields": ["ticker", "symbol", "longName", "sparkline", "shortName", "regularMarketPrice", "regularMarketChange", "regularMarketChangePercent", "regularMarketVolume", "averageDailyVolume3Month", "marketCap", "trailingPE", "regularMarketOpen"],
+            "lang": "en-US", 
+            "region": "US"
+        }
+        response = self._data.get(_PREDEFINED_URL_, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
+        response.raise_for_status()
+        return response.json()
+    
     def _fetch_and_parse(self) -> None:
         response = None
-        self._validate_body()
-        
+
         try:
-            response = self._fetch()
+            if self.predefined != False:
+                response = self._fetch_predefined()
+            else:
+                self._validate_body()
+                response = self._fetch()
             self._response = response['finance']['result'][0]
         except Exception as e:
             logger = utils.get_yf_logger()
@@ -223,3 +238,10 @@ class Screener:
             logger.debug("-------------")
             logger.debug(f" {response}")
             logger.debug("-------------")
+
+    @property
+    def quotes(self) -> 'list[dict]':
+        if self.predefined:
+            return self.response.get("quotes", [])
+        
+        return self.response.get("records", [])
