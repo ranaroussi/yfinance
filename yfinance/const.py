@@ -1,3 +1,5 @@
+from typing import Literal
+
 _QUERY1_URL_ = 'https://query1.finance.yahoo.com'
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _ROOT_URL_ = 'https://finance.yahoo.com'
@@ -531,20 +533,40 @@ EQUITY_SCREENER_FIELDS = {
         "highest_controversy"}
 }
 
-PREDEFINED_SCREENER_BODY_MAP = {
-    'aggressive_small_caps': {"offset":0,"size":25,"sortField":"eodvolume","sortType":"desc","quoteType":"equity","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NMS"]},{"operator":"eq","operands":["exchange","NYQ"]}]},{"operator":"or","operands":[{"operator":"LT","operands":["epsgrowth.lasttwelvemonths",15]}]}]},"userId":"","userIdType":"guid"},
-    'day_gainers': {"offset":0,"size":25,"sortField":"percentchange","sortType":"DESC","quoteType":"EQUITY","query":{"operator":"AND","operands":[{"operator":"gt","operands":["percentchange",3]},{"operator":"eq","operands":["region","us"]},{"operator":"or","operands":[{"operator":"BTWN","operands":["intradaymarketcap",2000000000,10000000000]},{"operator":"BTWN","operands":["intradaymarketcap",10000000000,100000000000]},{"operator":"GT","operands":["intradaymarketcap",100000000000]}]},{"operator":"gte","operands":["intradayprice",5]},{"operator":"gt","operands":["dayvolume",15000]}]},"userId":"","userIdType":"guid"},
-    'day_losers': {"offset":0,"size":25,"sortField":"percentchange","sortType":"ASC","quoteType":"EQUITY","query":{"operator":"AND","operands":[{"operator":"lt","operands":["percentchange",-2.5]},{"operator":"eq","operands":["region","us"]},{"operator":"or","operands":[{"operator":"BTWN","operands":["intradaymarketcap",2000000000,10000000000]},{"operator":"BTWN","operands":["intradaymarketcap",10000000000,100000000000]},{"operator":"GT","operands":["intradaymarketcap",100000000000]}]},{"operator":"gte","operands":["intradayprice",5]},{"operator":"gt","operands":["dayvolume",20000]}]},"userId":"","userIdType":"guid"},
-    'growth_technology_stocks': {"offset":0,"size":25,"sortField":"eodvolume","sortType":"desc","quoteType":"equity","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"BTWN","operands":["quarterlyrevenuegrowth.quarterly",50,100]},{"operator":"GT","operands":["quarterlyrevenuegrowth.quarterly",100]},{"operator":"BTWN","operands":["quarterlyrevenuegrowth.quarterly",25,50]}]},{"operator":"or","operands":[{"operator":"BTWN","operands":["epsgrowth.lasttwelvemonths",25,50]},{"operator":"BTWN","operands":["epsgrowth.lasttwelvemonths",50,100]},{"operator":"GT","operands":["epsgrowth.lasttwelvemonths",100]}]},{"operator":"eq","operands":["sector","Technology"]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NMS"]},{"operator":"eq","operands":["exchange","NYQ"]}]}]},"userId":"","userIdType":"guid"},
-    'most_actives': {"offset":0,"size":25,"sortField":"dayvolume","sortType":"DESC","quoteType":"EQUITY","query":{"operator":"AND","operands":[{"operator":"eq","operands":["region","us"]},{"operator":"or","operands":[{"operator":"BTWN","operands":["intradaymarketcap",10000000000,100000000000]},{"operator":"GT","operands":["intradaymarketcap",100000000000]},{"operator":"BTWN","operands":["intradaymarketcap",2000000000,10000000000]}]},{"operator":"gt","operands":["dayvolume",5000000]}]},"userId":"","userIdType":"guid"},
-    'most_shorted_stocks': {"size":25,"offset":0,"sortField":"short_percentage_of_shares_outstanding.value","sortType":"DESC","quoteType":"EQUITY","topOperator":"AND","query":{"operator":"AND","operands":[{"operator":"or","operands":[{"operator":"EQ","operands":["region","us"]}]},{"operator":"gt","operands":["intradayprice",1]},{"operator":"gt","operands":["avgdailyvol3m",200000]}]},"userId":"","userIdType":"guid"},
-    'small_cap_gainers': {"offset":0,"size":25,"sortField":"eodvolume","sortType":"desc","quoteType":"equity","query":{"operator":"and","operands":[{"operator":"lt","operands":["intradaymarketcap",2000000000]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NMS"]},{"operator":"eq","operands":["exchange","NYQ"]}]}]},"userId":"","userIdType":"guid"},
-    'undervalued_growth_stocks': {"offset":0,"size":25,"sortType":"DESC","sortField":"eodvolume","quoteType":"EQUITY","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"BTWN","operands":["peratio.lasttwelvemonths",0,20]}]},{"operator":"or","operands":[{"operator":"LT","operands":["pegratio_5y",1]}]},{"operator":"or","operands":[{"operator":"BTWN","operands":["epsgrowth.lasttwelvemonths",25,50]},{"operator":"BTWN","operands":["epsgrowth.lasttwelvemonths",50,100]},{"operator":"GT","operands":["epsgrowth.lasttwelvemonths",100]}]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NMS"]},{"operator":"eq","operands":["exchange","NYQ"]}]}]},"userId":"","userIdType":"guid"},
-    'undervalued_large_caps': {"offset":0,"size":25,"sortField":"eodvolume","sortType":"desc","quoteType":"equity","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"BTWN","operands":["peratio.lasttwelvemonths",0,20]}]},{"operator":"lt","operands":["pegratio_5y",1]},{"operator":"btwn","operands":["intradaymarketcap",10000000000,100000000000]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NMS"]},{"operator":"eq","operands":["exchange","NYQ"]}]}]},"userId":"","userIdType":"guid"},
-    'conservative_foreign_funds': {"offset":0,"size":25,"sortType":"DESC","sortField":"fundnetassets","quoteType":"MUTUALFUND","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"EQ","operands":["categoryname","Foreign Large Value"]},{"operator":"EQ","operands":["categoryname","Foreign Large Blend"]},{"operator":"EQ","operands":["categoryname","Foreign Large Growth"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Growth"]},{"operator":"EQ","operands":["categoryname","Foreign Large Blend"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Blend"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Value"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Blend"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Value"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Blend"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Value"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Blend"]},{"operator":"EQ","operands":["categoryname","Foreign Small/Mid Value"]}]},{"operator":"or","operands":[{"operator":"EQ","operands":["performanceratingoverall",4]},{"operator":"EQ","operands":["performanceratingoverall",5]}]},{"operator":"lt","operands":["initialinvestment",100001]},{"operator":"lt","operands":["annualreturnnavy1categoryrank",50]},{"operator":"or","operands":[{"operator":"EQ","operands":["riskratingoverall",1]},{"operator":"EQ","operands":["riskratingoverall",3]},{"operator":"EQ","operands":["riskratingoverall",2]}]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NAS"]}]}]},"userId":"","userIdType":"guid"},
-    'high_yield_bond': {"offset":0,"size":25,"sortType":"DESC","sortField":"fundnetassets","quoteType":"MUTUALFUND","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"EQ","operands":["performanceratingoverall",4]},{"operator":"EQ","operands":["performanceratingoverall",5]}]},{"operator":"lt","operands":["initialinvestment",100001]},{"operator":"lt","operands":["annualreturnnavy1categoryrank",50]},{"operator":"or","operands":[{"operator":"EQ","operands":["riskratingoverall",1]},{"operator":"EQ","operands":["riskratingoverall",3]},{"operator":"EQ","operands":["riskratingoverall",2]}]},{"operator":"or","operands":[{"operator":"EQ","operands":["categoryname","High Yield Bond"]}]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NAS"]}]}]},"userId":"","userIdType":"guid"},
-    'portfolio_anchors': {"offset":0,"size":25,"sortType":"DESC","sortField":"fundnetassets","quoteType":"MUTUALFUND","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"EQ","operands":["categoryname","Large Blend"]}]},{"operator":"or","operands":[{"operator":"EQ","operands":["performanceratingoverall",4]},{"operator":"EQ","operands":["performanceratingoverall",5]}]},{"operator":"lt","operands":["initialinvestment",100001]},{"operator":"lt","operands":["annualreturnnavy1categoryrank",50]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NAS"]}]}]},"userId":"","userIdType":"guid"},
-    'solid_large_growth_funds': {"offset":0,"size":25,"sortType":"DESC","sortField":"fundnetassets","quoteType":"MUTUALFUND","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"EQ","operands":["categoryname","Large Growth"]}]},{"operator":"or","operands":[{"operator":"EQ","operands":["performanceratingoverall",5]},{"operator":"EQ","operands":["performanceratingoverall",4]}]},{"operator":"lt","operands":["initialinvestment",100001]},{"operator":"lt","operands":["annualreturnnavy1categoryrank",50]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NAS"]}]}]},"userId":"","userIdType":"guid"},
-    'solid_midcap_growth_funds': {"offset":0,"size":25,"sortType":"DESC","sortField":"fundnetassets","quoteType":"MUTUALFUND","query":{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"EQ","operands":["categoryname","Mid-Cap Growth"]}]},{"operator":"or","operands":[{"operator":"EQ","operands":["performanceratingoverall",5]},{"operator":"EQ","operands":["performanceratingoverall",4]}]},{"operator":"lt","operands":["initialinvestment",100001]},{"operator":"lt","operands":["annualreturnnavy1categoryrank",50]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NAS"]}]}]},"userId":"","userIdType":"guid"},
-    'top_mutual_funds': {"offset":0,"size":25,"sortType":"DESC","sortField":"percentchange","quoteType":"MUTUALFUND","query":{"operator":"and","operands":[{"operator":"gt","operands":["intradayprice",15]},{"operator":"or","operands":[{"operator":"EQ","operands":["performanceratingoverall",5]},{"operator":"EQ","operands":["performanceratingoverall",4]}]},{"operator":"gt","operands":["initialinvestment",1000]},{"operator":"or","operands":[{"operator":"eq","operands":["exchange","NAS"]}]}]},"userId":"","userIdType":"guid"}
-}
+PREDEFINED_SCREENERS_TYPE = Literal[
+    "aggressive_small_caps",
+    "day_gainers",
+    "fifty_two_wk_gainers",
+    "day_losers",
+    "growth_technology_stocks",
+    "most_actives",
+    "most_shorted_stocks",
+    "small_cap_gainers",
+    "undervalued_growth_stocks",
+    "undervalued_large_caps",
+    "conservative_foreign_funds",
+    "high_yield_bond",
+    "portfolio_anchors",
+    "solid_large_growth_funds",
+    "solid_midcap_growth_funds",
+    "top_mutual_funds"
+]
+
+PREDEFINED_SCREENERS:'list[PREDEFINED_SCREENERS_TYPE]' = [
+    "aggressive_small_caps",
+    "day_gainers",
+    "fifty_two_wk_gainers",
+    "day_losers",
+    "growth_technology_stocks",
+    "most_actives",
+    "most_shorted_stocks",
+    "small_cap_gainers",
+    "undervalued_growth_stocks",
+    "undervalued_large_caps",
+    "conservative_foreign_funds",
+    "high_yield_bond",
+    "portfolio_anchors",
+    "solid_large_growth_funds",
+    "solid_midcap_growth_funds",
+    "top_mutual_funds"
+]
