@@ -13,13 +13,14 @@ _BODY_TYPE_ = TypedDict("_BODY_TYPE_", {'offset': int, 'size': int, 'sortField':
 _EMPTY_DICT_ = TypedDict("_EMPTY_DICT_", {}, total=False)
 
 class Screener:
-    PREDEFINED_SCREENERS = PREDEFINED_SCREENERS
     """
     The `Screener` class is used to execute the queries and return the filtered results.
 
     The Screener class provides methods to set and manipulate the body of a screener request,
     fetch and parse the screener results, and access predefined screener bodies.
     """
+    PREDEFINED_SCREENERS = PREDEFINED_SCREENERS
+
     def __init__(self, session=None, proxy=None):
         """
         Args:
