@@ -40,15 +40,15 @@ class Analysis:
             self._analyst_price_targets = {}
             return self._analyst_price_targets
 
-        keys = [
-            ('currentPrice', 'current'),
-            ('targetLowPrice', 'low'),
-            ('targetHighPrice', 'high'),
-            ('targetMeanPrice', 'mean'),
-            ('targetMedianPrice', 'median'),
-        ]
+        result = {}
+        for key, value in data.items():
+            if key.startswith('target'):
+                new_key = key.replace('target', '').lower().replace('price', '').strip()
+                result[new_key] = value
+            elif key == 'currentPrice':
+                result['current'] = value
 
-        self._analyst_price_targets = {newKey: data.get(oldKey, None) for oldKey, newKey in keys}
+        self._analyst_price_targets = result
         return self._analyst_price_targets
 
     @property
@@ -59,24 +59,16 @@ class Analysis:
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
 
-        data_dict = {
-            'numberOfAnalysts': [],
-            'avg': [],
-            'low': [],
-            'high': [],
-            'yearAgoEps': [],
-            'growth': []
-        }
-        periods = []
-
+        data = []
         for item in self._earnings_trend[:4]:
-            periods.append(item['period'])
-            earnings_estimate = item.get('earningsEstimate', {})
+            row = {'period': item['period']}
+            for k, v in item['earningsEstimate'].items():
+                if not isinstance(v, dict) or len(v) == 0:
+                    continue
+                row[k] = v['raw']
+            data.append(row)
 
-            for key in data_dict.keys():
-                data_dict[key].append(earnings_estimate.get(key, {}).get('raw', None))
-
-        self._earnings_estimate = pd.DataFrame(data_dict, index=periods)
+        self._earnings_estimate = pd.DataFrame(data).set_index('period')
         return self._earnings_estimate
 
     @property
@@ -87,24 +79,16 @@ class Analysis:
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
 
-        data_dict = {
-            'numberOfAnalysts': [],
-            'avg': [],
-            'low': [],
-            'high': [],
-            'yearAgoRevenue': [],
-            'growth': []
-        }
-        periods = []
-
+        data = []
         for item in self._earnings_trend[:4]:
-            periods.append(item['period'])
-            revenue_estimate = item.get('revenueEstimate', {})
+            row = {'period': item['period']}
+            for k, v in item['revenueEstimate'].items():
+                if not isinstance(v, dict) or len(v) == 0:
+                    continue
+                row[k] = v['raw']
+            data.append(row)
 
-            for key in data_dict.keys():
-                data_dict[key].append(revenue_estimate.get(key, {}).get('raw', None))
-
-        self._revenue_estimate = pd.DataFrame(data_dict, index=periods)
+        self._revenue_estimate = pd.DataFrame(data).set_index('period')
         return self._revenue_estimate
 
     @property
@@ -119,22 +103,23 @@ class Analysis:
             self._earnings_history = pd.DataFrame()
             return self._earnings_history
 
-        data_dict = {
-            'epsEstimate': [],
-            'epsActual': [],
-            'epsDifference': [],
-            'surprisePercent': []
-        }
-        quarters = []
-
+        rows = []
         for item in data:
-            quarters.append(item.get('quarter', {}).get('fmt', None))
+            row = {'quarter': item.get('quarter', {}).get('fmt', None)}
+            for k, v in item.items():
+                if k == 'quarter':
+                    continue
+                if not isinstance(v, dict) or len(v) == 0:
+                    continue
+                row[k] = v.get('raw', None)
+            rows.append(row)
 
-            for key in data_dict.keys():
-                data_dict[key].append(item.get(key, {}).get('raw', None))
-        
-        datetime_index = pd.to_datetime(quarters, format='%Y-%m-%d')
-        self._earnings_history = pd.DataFrame(data_dict, index=datetime_index)
+        df = pd.DataFrame(rows)
+        if 'quarter' in df.columns:
+            df['quarter'] = pd.to_datetime(df['quarter'], format='%Y-%m-%d')
+            df.set_index('quarter', inplace=True)
+
+        self._earnings_history = df
         return self._earnings_history
 
     @property
@@ -145,23 +130,16 @@ class Analysis:
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
 
-        data_dict = {
-            'current': [],
-            '7daysAgo': [],
-            '30daysAgo': [],
-            '60daysAgo': [],
-            '90daysAgo': []
-        }
-        periods = []
-
+        data = []
         for item in self._earnings_trend[:4]:
-            periods.append(item['period'])
-            eps_trend = item.get('epsTrend', {})
+            row = {'period': item['period']}
+            for k, v in item['epsTrend'].items():
+                if not isinstance(v, dict) or len(v) == 0:
+                    continue
+                row[k] = v['raw']
+            data.append(row)
 
-            for key in data_dict.keys():
-                data_dict[key].append(eps_trend.get(key, {}).get('raw', None))
-
-        self._eps_trend = pd.DataFrame(data_dict, index=periods)
+        self._eps_trend = pd.DataFrame(data).set_index('period')
         return self._eps_trend
 
     @property
@@ -172,22 +150,16 @@ class Analysis:
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
 
-        data_dict = {
-            'upLast7days': [],
-            'upLast30days': [],
-            'downLast7days': [],
-            'downLast30days': []
-        }
-        periods = []
-
+        data = []
         for item in self._earnings_trend[:4]:
-            periods.append(item['period'])
-            eps_revisions = item.get('epsRevisions', {})
+            row = {'period': item['period']}
+            for k, v in item['epsRevisions'].items():
+                if not isinstance(v, dict) or len(v) == 0:
+                    continue
+                row[k] = v['raw']
+            data.append(row)
 
-            for key in data_dict.keys():
-                data_dict[key].append(eps_revisions.get(key, {}).get('raw', None))
-
-        self._eps_revisions = pd.DataFrame(data_dict, index=periods)
+        self._eps_revisions = pd.DataFrame(data).set_index('period')
         return self._eps_revisions
 
     @property
@@ -205,48 +177,24 @@ class Analysis:
             self._growth_estimates = pd.DataFrame()
             return self._growth_estimates
 
-        # LTG is not defined in yahoo finance front-end as at 2024-11-14.
-        # But its addition is breaking the retrieval of growth estimates.
-        # Also, support for 5 year seem to have dropped.
-        # TODO: Revisit this change and consider permanently removing these keys.
-        data_dict = {
-            '0q': [],
-            '+1q': [],
-            '0y': [],
-            '+1y': [],
-            # 'LTG': [],
-            # '+5y': [],
-            # '-5y': []
-        }
-
-        # make sure no column is empty
-        dummy_trend = [{'period': key, 'growth': None} for key in data_dict.keys()]
-        industry_trend = trends['industryTrend']['estimates'] or dummy_trend
-        sector_trend = trends['sectorTrend']['estimates'] or dummy_trend
-        index_trend = trends['indexTrend']['estimates'] or dummy_trend
-
+        data = []
         for item in self._earnings_trend:
             period = item['period']
-            if period in data_dict:
-                data_dict[period].append(item.get('growth', {}).get('raw', None))
+            row = {'period': period, 'stockTrend': item.get('growth', {}).get('raw', None)}
+            data.append(row)
 
-        for item in industry_trend:
-            period = item['period']
-            if period in data_dict:
-                data_dict[period].append(item.get('growth', None))
+        for trend_name, trend_info in trends.items():
+            if trend_info.get('estimates'):
+                for estimate in trend_info['estimates']:
+                    period = estimate['period']
+                    existing_row = next((row for row in data if row['period'] == period), None)
+                    if existing_row:
+                        existing_row[trend_name] = estimate.get('growth')
+                    else:
+                        row = {'period': period, trend_name: estimate.get('growth')}
+                        data.append(row)
 
-        for item in sector_trend:
-            period = item['period']
-            if period in data_dict:
-                data_dict[period].append(item.get('growth', None))
-
-        for item in index_trend:
-            period = item['period']
-            if period in data_dict:
-                data_dict[period].append(item.get('growth', None))
-
-        cols = ['stock', 'industry', 'sector', 'index']
-        self._growth_estimates = pd.DataFrame(data_dict, index=cols).T
+        self._growth_estimates = pd.DataFrame(data).set_index('period').dropna(how='all')
         return self._growth_estimates
 
     # modified version from quote.py
