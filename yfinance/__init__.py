@@ -19,6 +19,7 @@
 # limitations under the License.
 #
 
+from .config import Current as Config
 from . import version
 from .search import Search
 from .ticker import Ticker
@@ -39,4 +40,4 @@ import warnings
 warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
 
 __all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector',
-           'Industry', 'EquityQuery', 'Screener']
+           'Industry', 'EquityQuery', 'Screener', 'Config']
