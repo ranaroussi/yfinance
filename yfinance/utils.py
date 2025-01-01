@@ -29,7 +29,7 @@ import threading
 from functools import lru_cache, wraps
 from inspect import getmembers
 from types import FunctionType
-from typing import List, Optional
+from typing import List, Optional, TypeVar, Any
 
 import numpy as _np
 import pandas as _pd
@@ -39,6 +39,8 @@ from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
+
+T = TypeVar('T')
 
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -995,3 +997,12 @@ def generate_list_table_from_dict_of_dict(data: dict, bullets: bool=True) -> str
         else:
             table += f"     - {value_str}\n"
     return table
+
+def pop(l:'list[T]', index:'int'=-1, default:'Any'=None) -> 'Any':
+    print(f"POP: {l=} {index=} {default=}")
+    try:
+        return l.pop(index)
+    except IndexError as e:
+        if default != None:
+            return default
+        raise e

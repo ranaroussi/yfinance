@@ -1,136 +1,234 @@
-from typing import TypedDict, Union
-
-from yfinance import utils
+import logging
+from typing_extensions import TypedDict
+from yfinance.const import _BASE_URL_, PREDEFINED_SCREENERS
 from yfinance.data import YfData
-from yfinance.const import _BASE_URL_, PREDEFINED_SCREENERS, PREDEFINED_SCREENERS_TYPE
-from .screener_query import Query
+from yfinance import utils
+from .query import Query
+
+from typing import Any, TypedDict
 
 _SCREENER_URL_ = f"{_BASE_URL_}/v1/finance/screener"
 _PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
 
-_REQUIRED_BODY_TYPE_ = TypedDict("_REQUIRED_BODY_TYPE_", {'offset': int, 'size': int, 'sortField': str, 'sortType': str, 'quoteType': str, 'query': dict, 'userId': str, 'userIdType': str})
-_BODY_TYPE_ = TypedDict("_BODY_TYPE_", {'offset': int, 'size': int, 'sortField': str, 'sortType': str, 'quoteType': str, 'query': dict, 'userId': str, 'userIdType': str}, total=False)
+_REQUIRED_BODY_TYPE_ = TypedDict("_REQUIRED_BODY_TYPE_", {"offset": int, "size": int, "sortField": str, "sortType": str, "quoteType": str, "userId": str, "userIdType": str})
+_BODY_TYPE_ = TypedDict("_BODY_TYPE_", {"offset": int, "size": int, "sortField": str, "sortType": str, "quoteType": str, "query": dict, "userId": str, "userIdType": str}, total=False)
 _EMPTY_DICT_ = TypedDict("_EMPTY_DICT_", {}, total=False)
 
-class Screener:
-    """
-    The `Screener` class is used to execute the queries and return the filtered results.
-
-    The Screener class provides methods to set and manipulate the body of a screener request,
-    fetch and parse the screener results, and access predefined screener bodies.
-    """
-    PREDEFINED_SCREENERS = PREDEFINED_SCREENERS
-
-    def __init__(self, session=None, proxy=None):
-        """
-        Args:
-            session (requests.Session, optional): A requests session object to be used for making HTTP requests. Defaults to None.
-            proxy (str, optional): A proxy URL to be used for making HTTP requests. Defaults to None.
-        
-        .. seealso::
-
-            :attr:`Screener.predefined_bodies <yfinance.Screener.predefined_bodies>`
-                supported predefined screens
-        """
+class PredefinedScreener:
+    def __init__(self, key:'str', count:'int'=25, session=None, proxy=None, timeout=30):
+        self.key = key
+        self._data = YfData(session=session)
         self.proxy = proxy
-        self.session = session
+        self.fields = ["ticker", "symbol", "longName", "sparkline", "shortName", "regularMarketPrice", "regularMarketChange", "regularMarketChangePercent", "regularMarketVolume", "averageDailyVolume3Month", "marketCap", "trailingPE", "regularMarketOpen"]
+        self.timeout = timeout
+        self._response = None
+        self.count = count
+        self.logger = logging.getLogger("yfinance")
 
-        self._data: YfData = YfData(session=session)
-        self._body: 'Union[_REQUIRED_BODY_TYPE_, _EMPTY_DICT_]' = {}
-        self._response: 'dict' = {}
-        self._body_updated = False
-        self._accepted_body_keys = {"offset","size","sortField","sortType","quoteType","query","userId","userIdType"}
-        self.predefined = False
+    def _fetch(self):
+        params_dict = {
+            "count": self.count,
+            "formatted": True,
+            "scrIds": self.key,
+            "sortField": "",
+            "sortType": None,
+            "start": 0,
+            "useRecordsResponse": False,
+            "fields": self.fields,
+            "lang": "en-US", 
+            "region": "US"
+        }
+        self._response = self._data.get(url=_PREDEFINED_URL_, params=params_dict, proxy=self.proxy)
+        self._response.raise_for_status()
+        self._response = self._response.json()["finance"]["result"][0]
+        return self._response
 
+    def set_fields(self, fields: 'list[str]'):
+        """
+        Set the fields to include in the screener.
+        
+        Args:
+            fields: The fields to include.
+        
+        Returns:
+            The Screener object.
+        """
+        if not isinstance(fields, list):
+            raise TypeError("Fields must be a list of strings")
+        elif len(fields) == 0:
+            raise ValueError("Fields must be a list of strings")
+        elif not isinstance(fields[0], str):
+            raise TypeError("Fields must be a list of strings")
+        
+        self.fields = fields
+        return self
+    
+    def set_config(self, proxy=None, session=None, timeout=None):
+        """
+        Set the proxy, session, and timeout for the screener.
+        
+        Args:
+            proxy: The proxy to use.
+            session: The session to use.
+            timeout: The timeout to use.
+        
+        Returns:
+            The Screener object.
+        """
+        if proxy is not None:
+            self.proxy = proxy
+
+        if session is not None:
+            self.session = session
+            self._data = YfData(session=self.session)
+        
+        if timeout is not None:
+            self.timeout = timeout
+            
+        return self
+    
     @property
-    def body(self) -> 'Union[_REQUIRED_BODY_TYPE_, _EMPTY_DICT_]':
-        return self._body
+    def quotes(self) -> 'list[dict]':
+        """
+        Get the quotes from the screener.
+        
+        Returns:
+            The quotes from the screener.
+        """
+        return self.response.get("quotes", [])
     
     @property
     def response(self) -> 'dict':
         """
-        Fetch screen result
-
-        Example:
-
-            .. code-block:: python
-
-                result = screener.response
-                symbols = [quote['symbol'] for quote in result['quotes']]
-        """
-        if self._body_updated or self._response is None:
-            self._fetch_and_parse()
+        Get the response from the screener.
         
-        self._body_updated = False
+        Returns:
+            The response from the screener.
+        """
+        if self._response is None:
+            self._fetch()
         return self._response
     
-    def set_default_body(self, query: 'Query', offset: 'int' = 0, size: 'int' = 100, sortField: 'str' = "ticker", sortType: 'str' = "desc", quoteType: 'str' = "equity", userId: 'str' = "", userIdType: 'str' = "guid") -> 'Screener':
-        """
-        Set the default body using a custom query.
 
+
+
+class Screener:
+    """
+    The `Screener` class allows you to screen stocks based on various criteria using either custom queries or predefined screens.
+
+    The screener supports two main ways of filtering:
+    1. Custom queries using the `EquityQuery` class to filter based on specific criteria
+    2. Predefined screens for common stock screening strategies
+
+    Args:
+        query (Query): The query to use for screening. Must be an instance of `EquityQuery`.
+        session (Optional[Session]): The requests Session object to use for making HTTP requests.
+        proxy (Optional[str]): The proxy URL to use for requests.
+
+    Example:
+        Screen for technology stocks with price > $50 using custom query:
+
+        .. code-block:: python
+
+            import yfinance as yf
+            
+            # Create query for tech stocks over $50
+            tech = yf.EquityQuery('eq', ['sector', 'Technology']) 
+            price = yf.EquityQuery('gt', ['eodprice', 50])
+            query = yf.EquityQuery('and', [tech, price])
+
+            # Create and run screener
+            screener = yf.Screener(query)
+            results = screener.quotes
+
+        Use a predefined screener:
+
+        .. code-block:: python
+
+            # Use predefined "day_gainers" screen
+            screener = yf.Screener.predefined_body("day_gainers")
+            gainers = screener.quotes
+    """
+
+    PREDEFINED_SCREENERS = PREDEFINED_SCREENERS
+    ACCEPTED_BODY_KEYS = {"offset","size","sortField","sortType","quoteType","query","userId","userIdType"}
+
+
+    def __init__(self, query:'Query'=None, sort_field:'str'="ticker", session=None, proxy=None):
+        self._query = query
+        self.session = session
+        self.proxy = proxy
+        self._data = YfData(session=self.session)
+        self._logger = logging.getLogger("yfinance")
+        self._response = None
+        self.body = {"offset": 0, "size": 25, "sortField": sort_field, "sortType": "desc", "quoteType": "equity", "userId": "", "userIdType": "guid"}
+  
+
+    def set_query(self, data: 'dict', session=None, proxy=None) -> 'Screener':
+        """
+        Create the query from a dictionary representation.
+        
         Args:
-            query (Query): The Query object to set as the body.
-            offset (Optional[int]): The offset for the results. Defaults to 0.
-            size (Optional[int]): The number of results to return. Defaults to 100. Maximum is 250 as set by Yahoo.
-            sortField (Optional[str]): The field to sort the results by. Defaults to "ticker".
-            sortType (Optional[str]): The type of sorting (e.g., "asc" or "desc"). Defaults to "desc".
-            quoteType (Optional[str]): The type of quote (e.g., "equity"). Defaults to "equity".
-            userId (Optional[str]): The user ID. Defaults to an empty string.
-            userIdType (Optional[str]): The type of user ID (e.g., "guid"). Defaults to "guid".
-        
+            data (dict): The dictionary representation of the query
+            
         Returns:
-            Screener: self
-
-        Example:
-
-            .. code-block:: python
-
-                screener.set_default_body(qf)
+            Screener: A new Screener instance with the specified parameters
+            
+        Raises:
+            Exception: If the dictionary does not contain a valid query
         """
-        self._body_updated = True
-
-        self._body = {
-            "offset": offset,
-            "size": size,
-            "sortField": sortField,
-            "sortType": sortType,
-            "quoteType": quoteType,
-            "query": query.to_dict(),
-            "userId": userId,
-            "userIdType": userIdType
-        }
+        self.query = Query.from_dict(data)
         return self
+    
     @classmethod
-    def set_predefined_body(cls, predefined_key: 'PREDEFINED_SCREENERS_TYPE') -> 'Screener':
+    def from_dict(cls, data: 'dict', session=None, proxy=None) -> 'Screener':
         """
-        Set a predefined body
-
-        Args: 
-            predefined_key (str): key to one of predefined screens 
-
-        Returns:
-            Screener: self
-
-        Example:
-
-            .. code-block:: python
-
-                screener.set_predefined_body('day_gainers')
+        Create the query from a dictionary representation.
         
-                
-        .. seealso::
-
-            :attr:`Screener.predefined_bodies <yfinance.Screener.predefined_bodies>`
-                supported predefined screens
+        Args:
+            data (dict): The dictionary representation of the query
+            
+        Returns:
+            Screener: A new Screener instance with the specified parameters
+            
+        Raises:
+            Exception: If the dictionary does not contain a valid query
         """
-        self = cls()
-        self._body_updated = True
-        self.predefined = predefined_key
+        self = cls(Query.from_dict(data), session=session, proxy=proxy)
         return self
 
+    
+    @property
+    def query(self) -> 'Query':
+        """
+        Get the query from the screener.
+        
+        Returns:
+            Query: The query from the screener.
+        """
+        return self._query
+    
+    @query.setter
+    def query(self, value: 'Query'):
+        """
+        Set the query.
+        
+        Args:
+            value (Query): The query to set.
+            
+        Returns:
+            Screener: The screener instance for method chaining.
+        """
+        self._query = value
+        return self
+    
     def set_body(self, body: '_REQUIRED_BODY_TYPE_') -> 'Screener':
         """
         Set the fully custom body using dictionary input
+
+        .. warning::
+            Do not use this method to set query
+            Query will be set automatically from `Screener.query`
 
         Args: 
             body (dict): full query body
@@ -148,101 +246,94 @@ class Screener:
                     "sortField": "ticker",
                     "sortType": "desc",
                     "quoteType": "equity",
-                    "query": qf.to_dict(),
                     "userId": "",
                     "userIdType": "guid"
                 })
         """
-        missing_keys = [key for key in self._accepted_body_keys if key not in body]
+        missing_keys = [key for key in Screener.ACCEPTED_BODY_KEYS if key not in body]
         if missing_keys:
             raise ValueError(f"Missing required keys in body: {missing_keys}")
 
-        extra_keys = [key for key in body if key not in self._accepted_body_keys]
+        extra_keys = [key for key in body if key not in Screener.ACCEPTED_BODY_KEYS]
         if extra_keys:
             raise ValueError(f"Body contains extra keys: {extra_keys}")
+
+        if "query" in body.keys():
+            raise ValueError("Query must not be set here: set query")
 
         self._body_updated = True
         self._body = body
-        self.predefined = False
         return self
 
-    def patch_body(self, values: '_BODY_TYPE_') -> 'Screener':
+    
+    def patch_body(self, offset: 'int' = 0, size: 'int' = 100, sortField: 'str' = "ticker", sortType: 'str' = "desc", quoteType: 'str' = "equity", userId: 'str' = "", userIdType: 'str' = "guid"):
         """
-        Patch parts of the body using dictionary input
-
-        Args: 
-            body (Dict): partial query body
-
+        Patch the body for the screener.
+        
+        Args:
+            query: The query to use.
+            offset: The offset to use.
+            size: The size to use.
+            sortField: The sortField to use.
+            sortType: The sortType to use.
+            quoteType: The quoteType to use.
+            userId: The userId to use.
+            userIdType: The userIdType to use.
+            
         Returns:
-            Screener: self
-
-        Example:
-
-            .. code-block:: python
-
-                screener.patch_body({"offset": 100})
+            Screener: A new Screener instance with the specified parameters
+            
+        Raises:
+            Exception: If the dictionary does not contain a valid query
         """
-        extra_keys = [key for key in values if key not in self._accepted_body_keys]
-        if extra_keys:
-            raise ValueError(f"Body contains extra keys: {extra_keys}")
-        
-        self._body_updated = True
-        for k in values:
-            self._body[k] = values[k]
-        self.predefined = False
-        return self
+        return
 
-    def _validate_body(self) -> None:
-        if not all(k in self._body for k in self._accepted_body_keys):
-            raise ValueError("Missing required keys in body")
-        
-        if self._body["size"] > 250:
-            raise ValueError("Yahoo limits query size to 250. Please decrease the size of the query.")
 
-    def _fetch(self) -> 'dict':
+
+    @staticmethod
+    def predefined(query: 'str', count:'int'=25, session=None, proxy=None, timeout=30) -> 'PredefinedScreener':
+        """
+        Set the predefined body for the screener.
+        
+        Args:
+            predefined_body: The predefined body to use.
+        
+        Returns:
+            The Screener object.
+        """
+        if query not in Screener.PREDEFINED_SCREENERS:
+            raise ValueError(f"Invalid predefined query: '{query}'. Valid queries are: {', '.join(Screener.PREDEFINED_SCREENERS)}")
+
+        return PredefinedScreener(query, count, session=session, proxy=proxy, timeout=timeout)
+    
+    def _fetch(self):
+        if self.body is None:
+            raise ValueError("No body set for screener")
+        
+        if self.query is None:
+            raise ValueError("No query set for screener")
+        
         params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
-        response = self._data.post(_SCREENER_URL_, body=self.body, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
-        response.raise_for_status()
-        return response.json()
-    
-    def _fetch_predefined(self) -> 'dict':
-        params_dict = {
-            "count": 25,
-            "formatted": True,
-            "scrIds": self.predefined,
-            "sortField": "",
-            "sortType": None,
-            "start": 0,
-            "useRecordsResponse": False,
-            "fields": ["ticker", "symbol", "longName", "sparkline", "shortName", "regularMarketPrice", "regularMarketChange", "regularMarketChangePercent", "regularMarketVolume", "averageDailyVolume3Month", "marketCap", "trailingPE", "regularMarketOpen"],
-            "lang": "en-US", 
-            "region": "US"
-        }
-        response = self._data.get(_PREDEFINED_URL_, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
-        response.raise_for_status()
-        return response.json()
-    
-    def _fetch_and_parse(self) -> None:
-        response = None
 
-        try:
-            if self.predefined != False:
-                response = self._fetch_predefined()
-            else:
-                self._validate_body()
-                response = self._fetch()
-            self._response = response['finance']['result'][0]
-        except Exception as e:
-            logger = utils.get_yf_logger()
-            logger.error(f"Failed to get screener data for '{self._body.get('query', 'query not set')}' reason: {e}")
-            logger.debug("Got response: ")
-            logger.debug("-------------")
-            logger.debug(f" {response}")
-            logger.debug("-------------")
+        body = self.body.copy() # Copying the body so that query is not added to the original
+        print("BODY", body)
+        body["query"] = self.query.to_dict()
+
+        response = self._data.post(_SCREENER_URL_, body=body, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
+        print(body["query"])
+        print(response.text)
+        response.raise_for_status()
+
+        self._response = response.json()
 
     @property
-    def quotes(self) -> 'list[dict]':
-        if self.predefined:
-            return self.response.get("quotes", [])
+    def response(self) -> 'dict[str, Any]':
+        """
+        Get the results from the screener.
         
-        return self.response.get("records", [])
+        Returns:
+            The results from the screener.
+        """
+        if self._response == None:
+            self._fetch()
+        return self._response
