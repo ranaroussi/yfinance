@@ -28,6 +28,50 @@ class Analysis:
         self._eps_revisions = None
         self._growth_estimates = None
 
+    def _get_periodic_df(self, key) -> pd.DataFrame:
+        if self._earnings_trend is None:
+            self._fetch_earnings_trend()
+
+        data = []
+        for item in self._earnings_trend[:4]:
+            row = {'period': item['period']}
+            for k, v in item[key].items():
+                if not isinstance(v, dict) or len(v) == 0:
+                    continue
+                row[k] = v['raw']
+            data.append(row)
+        if len(data) == 0:
+            return pd.DataFrame()
+        return pd.DataFrame(data).set_index('period')
+
+    @property
+    def earnings_estimate(self) -> pd.DataFrame:
+        if self._earnings_estimate is not None:
+            return self._earnings_estimate
+        self._earnings_estimate = self._get_periodic_df('earningsEstimate')
+        return self._earnings_estimate
+
+    @property
+    def revenue_estimate(self) -> pd.DataFrame:
+        if self._revenue_estimate is not None:
+            return self._revenue_estimate
+        self._revenue_estimate = self._get_periodic_df('revenueEstimate')
+        return self._revenue_estimate
+
+    @property
+    def eps_trend(self) -> pd.DataFrame:
+        if self._eps_trend is not None:
+            return self._eps_trend
+        self._eps_trend = self._get_periodic_df('epsTrend')
+        return self._eps_trend
+
+    @property
+    def eps_revisions(self) -> pd.DataFrame:
+        if self._eps_revisions is not None:
+            return self._eps_revisions
+        self._eps_revisions = self._get_periodic_df('epsRevisions')
+        return self._eps_revisions
+
     @property
     def analyst_price_targets(self) -> dict:
         if self._analyst_price_targets is not None:
@@ -52,46 +96,6 @@ class Analysis:
         return self._analyst_price_targets
 
     @property
-    def earnings_estimate(self) -> pd.DataFrame:
-        if self._earnings_estimate is not None:
-            return self._earnings_estimate
-
-        if self._earnings_trend is None:
-            self._fetch_earnings_trend()
-
-        data = []
-        for item in self._earnings_trend[:4]:
-            row = {'period': item['period']}
-            for k, v in item['earningsEstimate'].items():
-                if not isinstance(v, dict) or len(v) == 0:
-                    continue
-                row[k] = v['raw']
-            data.append(row)
-
-        self._earnings_estimate = pd.DataFrame(data).set_index('period')
-        return self._earnings_estimate
-
-    @property
-    def revenue_estimate(self) -> pd.DataFrame:
-        if self._revenue_estimate is not None:
-            return self._revenue_estimate
-
-        if self._earnings_trend is None:
-            self._fetch_earnings_trend()
-
-        data = []
-        for item in self._earnings_trend[:4]:
-            row = {'period': item['period']}
-            for k, v in item['revenueEstimate'].items():
-                if not isinstance(v, dict) or len(v) == 0:
-                    continue
-                row[k] = v['raw']
-            data.append(row)
-
-        self._revenue_estimate = pd.DataFrame(data).set_index('period')
-        return self._revenue_estimate
-
-    @property
     def earnings_history(self) -> pd.DataFrame:
         if self._earnings_history is not None:
             return self._earnings_history
@@ -113,6 +117,8 @@ class Analysis:
                     continue
                 row[k] = v.get('raw', None)
             rows.append(row)
+        if len(data) == 0:
+            return pd.DataFrame()
 
         df = pd.DataFrame(rows)
         if 'quarter' in df.columns:
@@ -121,46 +127,6 @@ class Analysis:
 
         self._earnings_history = df
         return self._earnings_history
-
-    @property
-    def eps_trend(self) -> pd.DataFrame:
-        if self._eps_trend is not None:
-            return self._eps_trend
-
-        if self._earnings_trend is None:
-            self._fetch_earnings_trend()
-
-        data = []
-        for item in self._earnings_trend[:4]:
-            row = {'period': item['period']}
-            for k, v in item['epsTrend'].items():
-                if not isinstance(v, dict) or len(v) == 0:
-                    continue
-                row[k] = v['raw']
-            data.append(row)
-
-        self._eps_trend = pd.DataFrame(data).set_index('period')
-        return self._eps_trend
-
-    @property
-    def eps_revisions(self) -> pd.DataFrame:
-        if self._eps_revisions is not None:
-            return self._eps_revisions
-
-        if self._earnings_trend is None:
-            self._fetch_earnings_trend()
-
-        data = []
-        for item in self._earnings_trend[:4]:
-            row = {'period': item['period']}
-            for k, v in item['epsRevisions'].items():
-                if not isinstance(v, dict) or len(v) == 0:
-                    continue
-                row[k] = v['raw']
-            data.append(row)
-
-        self._eps_revisions = pd.DataFrame(data).set_index('period')
-        return self._eps_revisions
 
     @property
     def growth_estimates(self) -> pd.DataFrame:
@@ -193,6 +159,8 @@ class Analysis:
                     else:
                         row = {'period': period, trend_name: estimate.get('growth')}
                         data.append(row)
+        if len(data) == 0:
+            return pd.DataFrame()
 
         self._growth_estimates = pd.DataFrame(data).set_index('period').dropna(how='all')
         return self._growth_estimates
