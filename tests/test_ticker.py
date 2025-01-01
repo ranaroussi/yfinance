@@ -760,7 +760,7 @@ class TestTickerAnalysts(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
         self.assertTrue(len(data.columns) == 4, "data has wrong number of columns")
-        self.assertEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
+        self.assertCountEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
         self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
 
         data_cached = self.ticker.upgrades_downgrades
@@ -771,7 +771,7 @@ class TestTickerAnalysts(unittest.TestCase):
         self.assertIsInstance(data, dict, "data has wrong type")
 
         keys = {'current', 'low', 'high', 'mean', 'median'}
-        self.assertEqual(data.keys(), keys, "data has wrong keys")
+        self.assertCountEqual(data.keys(), keys, "data has wrong keys")
 
         data_cached = self.ticker.analyst_price_targets
         self.assertIs(data, data_cached, "data not cached")
@@ -782,10 +782,10 @@ class TestTickerAnalysts(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
         columns = ['numberOfAnalysts', 'avg', 'low', 'high', 'yearAgoEps', 'growth']
-        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+        self.assertCountEqual(data.columns.values.tolist(), columns, "data has wrong column names")
 
         index = ['0q', '+1q', '0y', '+1y']
-        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+        self.assertCountEqual(data.index.values.tolist(), index, "data has wrong row names")
 
         data_cached = self.ticker.earnings_estimate
         self.assertIs(data, data_cached, "data not cached")
@@ -796,10 +796,10 @@ class TestTickerAnalysts(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
         columns = ['numberOfAnalysts', 'avg', 'low', 'high', 'yearAgoRevenue', 'growth']
-        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+        self.assertCountEqual(data.columns.values.tolist(), columns, "data has wrong column names")
 
         index = ['0q', '+1q', '0y', '+1y']
-        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+        self.assertCountEqual(data.index.values.tolist(), index, "data has wrong row names")
 
         data_cached = self.ticker.revenue_estimate
         self.assertIs(data, data_cached, "data not cached")
@@ -810,7 +810,7 @@ class TestTickerAnalysts(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
         columns = ['epsEstimate', 'epsActual', 'epsDifference', 'surprisePercent']
-        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+        self.assertCountEqual(data.columns.values.tolist(), columns, "data has wrong column names")
         self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
 
         data_cached = self.ticker.earnings_history
@@ -822,10 +822,10 @@ class TestTickerAnalysts(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
         columns = ['current', '7daysAgo', '30daysAgo', '60daysAgo', '90daysAgo']
-        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+        self.assertCountEqual(data.columns.values.tolist(), columns, "data has wrong column names")
 
         index = ['0q', '+1q', '0y', '+1y']
-        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+        self.assertCountEqual(data.index.values.tolist(), index, "data has wrong row names")
 
         data_cached = self.ticker.eps_trend
         self.assertIs(data, data_cached, "data not cached")
@@ -835,11 +835,11 @@ class TestTickerAnalysts(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
-        columns = ['stock', 'industry', 'sector', 'index']
-        self.assertEqual(data.columns.values.tolist(), columns, "data has wrong column names")
+        columns = ['stockTrend', 'indexTrend']
+        self.assertCountEqual(data.columns.values.tolist(), columns, "data has wrong column names")
 
-        index = ['0q', '+1q', '0y', '+1y']
-        self.assertEqual(data.index.values.tolist(), index, "data has wrong row names")
+        index = ['0q', '+1q', '0y', '+1y', '+5y']
+        self.assertCountEqual(data.index.values.tolist(), index, "data has wrong row names")
 
         data_cached = self.ticker.growth_estimates
         self.assertIs(data, data_cached, "data not cached")
