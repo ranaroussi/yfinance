@@ -11,7 +11,8 @@ from . import utils, cache
 import threading
 
 from .exceptions import YFRateLimitError
-
+from . import Config
+from .config import Config as _Config
 cache_maxsize = 64
 
 
@@ -61,7 +62,7 @@ class YfData(metaclass=SingletonMeta):
     user_agent_headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
-    def __init__(self, session=None):
+    def __init__(self, config:'_Config'=None):
         self._crumb = None
         self._cookie = None
 
@@ -72,7 +73,9 @@ class YfData(metaclass=SingletonMeta):
 
         self._cookie_lock = threading.Lock()
 
-        self._set_session(session or requests.Session())
+        self.config = config or _Config().from_dict(Config.config)
+
+        self._set_session(self.config.session or requests.Session())
 
     def _set_session(self, session):
         if session is None:
@@ -149,7 +152,9 @@ class YfData(metaclass=SingletonMeta):
         utils.get_yf_logger().debug('loaded persistent cookie')
         return cookie_dict['cookie']
 
-    def _get_cookie_basic(self, proxy=None, timeout=30):
+    def _get_cookie_basic(self, config:'_Config'=None):
+        config = config or self.config
+
         if self._cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
             return self._cookie
@@ -161,10 +166,10 @@ class YfData(metaclass=SingletonMeta):
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         response = self._session.get(
-            url='https://fc.yahoo.com',
+            url=config.url,
             headers=self.user_agent_headers,
-            proxies=proxy,
-            timeout=timeout,
+            proxies=config.proxy,
+            timeout=config.timeout,
             allow_redirects=True)
 
         if not response.cookies:
@@ -178,7 +183,9 @@ class YfData(metaclass=SingletonMeta):
         utils.get_yf_logger().debug(f"fetched basic cookie = {self._cookie}")
         return self._cookie
 
-    def _get_crumb_basic(self, proxy=None, timeout=30):
+    def _get_crumb_basic(self, config:'_Config'=None):
+        config = config or self.config
+
         if self._crumb is not None:
             utils.get_yf_logger().debug('reusing crumb')
             return self._crumb
@@ -192,8 +199,8 @@ class YfData(metaclass=SingletonMeta):
             'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
             'headers': self.user_agent_headers,
             'cookies': {cookie.name: cookie.value},
-            'proxies': proxy,
-            'timeout': timeout,
+            'proxies': config.proxy,
+            'timeout': config.timeout,
             'allow_redirects': True
         }
         if self._session_is_caching:
@@ -210,12 +217,14 @@ class YfData(metaclass=SingletonMeta):
         return self._crumb
 
     @utils.log_indent_decorator
-    def _get_cookie_and_crumb_basic(self, proxy, timeout):
-        cookie = self._get_cookie_basic(proxy, timeout)
-        crumb = self._get_crumb_basic(proxy, timeout)
+    def _get_cookie_and_crumb_basic(self, config:'_Config'=None):
+        config = config or self.config
+        cookie = self._get_cookie_basic(config)
+        crumb = self._get_crumb_basic(config)
         return cookie, crumb
 
-    def _get_cookie_csrf(self, proxy, timeout):
+    def _get_cookie_csrf(self, config:'_Config'=None):
+        config = config or self.config
         if self._cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
             return True
@@ -227,8 +236,8 @@ class YfData(metaclass=SingletonMeta):
 
         base_args = {
             'headers': self.user_agent_headers,
-            'proxies': proxy,
-            'timeout': timeout}
+            'proxies': config.proxy,
+            'timeout': config.timeout}
 
         get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
         if self._session_is_caching:
@@ -277,22 +286,23 @@ class YfData(metaclass=SingletonMeta):
         return True
 
     @utils.log_indent_decorator
-    def _get_crumb_csrf(self, proxy=None, timeout=30):
+    def _get_crumb_csrf(self, config:'_Config'=None):
+        config = config or self.config
         # Credit goes to @bot-unit #1729
 
         if self._crumb is not None:
             utils.get_yf_logger().debug('reusing crumb')
             return self._crumb
 
-        if not self._get_cookie_csrf(proxy, timeout):
+        if not self._get_cookie_csrf(config):
             # This cookie stored in session
             return None
 
         get_args = {
             'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
             'headers': self.user_agent_headers,
-            'proxies': proxy,
-            'timeout': timeout}
+            'proxies': config.proxy,
+            'timeout': config.timeout}
         if self._session_is_caching:
             get_args['expire_after'] = self._expire_after
             r = self._session.get(**get_args)
@@ -308,7 +318,8 @@ class YfData(metaclass=SingletonMeta):
         return self._crumb
 
     @utils.log_indent_decorator
-    def _get_cookie_and_crumb(self, proxy=None, timeout=30):
+    def _get_cookie_and_crumb(self, config:'_Config'=None):
+        config = config or self.config
         cookie, crumb, strategy = None, None, None
 
         utils.get_yf_logger().debug(f"cookie_mode = '{self._cookie_strategy}'")
@@ -319,10 +330,10 @@ class YfData(metaclass=SingletonMeta):
                 if crumb is None:
                     # Fail
                     self._set_cookie_strategy('basic', have_lock=True)
-                    cookie, crumb = self._get_cookie_and_crumb_basic(proxy, timeout)
+                    cookie, crumb = self._get_cookie_and_crumb_basic(config)
             else:
                 # Fallback strategy
-                cookie, crumb = self._get_cookie_and_crumb_basic(proxy, timeout)
+                cookie, crumb = self._get_cookie_and_crumb_basic(config)
                 if cookie is None or crumb is None:
                     # Fail
                     self._set_cookie_strategy('csrf', have_lock=True)
@@ -331,26 +342,32 @@ class YfData(metaclass=SingletonMeta):
         return cookie, crumb, strategy
 
     @utils.log_indent_decorator
-    def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
-        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
+    def get(self, url, user_agent_headers=None, params=None, config:'_Config'=None):
+        config = config or self.config
+        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, config=config)
     
     @utils.log_indent_decorator
-    def post(self, url, body, user_agent_headers=None, params=None, proxy=None, timeout=30):
-        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, proxy=proxy, timeout=timeout)
+    def post(self, url, body, user_agent_headers=None, params=None, config:'_Config'=None):
+        config = config or self.config
+        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, config=config)
     
     @utils.log_indent_decorator
-    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None, timeout=30):
+    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, config:'_Config'=None):
         # Important: treat input arguments as immutable.
+        config = config or self.config
 
         if len(url) > 200:
             utils.get_yf_logger().debug(f'url={url[:200]}...')
         else:
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
-        proxy = self._get_proxy(proxy)
+        proxy = self._get_proxy(config.proxy)
 
         if params is None:
-            params = {}
+            params = {"region": config.region, "lang": config.lang}
+        else:
+            params.update({"region": config.region, "lang": config.lang})
+
         if 'crumb' in params:
             raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
 
@@ -370,7 +387,7 @@ class YfData(metaclass=SingletonMeta):
             'params': {**params, **crumbs},
             'cookies': cookies,
             'proxies': proxy,
-            'timeout': timeout,
+            'timeout': config.timeout,
             'headers': user_agent_headers or self.user_agent_headers
         }
 
@@ -385,7 +402,7 @@ class YfData(metaclass=SingletonMeta):
                 self._set_cookie_strategy('csrf')
             else:
                 self._set_cookie_strategy('basic')
-            cookie, crumb, strategy = self._get_cookie_and_crumb(proxy, timeout)
+            cookie, crumb, strategy = self._get_cookie_and_crumb(config)
             request_args['params']['crumb'] = crumb
             if strategy == 'basic':
                 request_args['cookies'] = {cookie.name: cookie.value}
@@ -400,8 +417,9 @@ class YfData(metaclass=SingletonMeta):
 
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
-    def cache_get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
-        return self.get(url, user_agent_headers, params, proxy, timeout)
+    def cache_get(self, url, user_agent_headers=None, params=None, config:'_Config'=None):
+        config = config or self.config
+        return self.get(url, user_agent_headers, params, config)
 
     def _get_proxy(self, proxy):
         # setup proxy in requests format
@@ -411,8 +429,8 @@ class YfData(metaclass=SingletonMeta):
             proxy = {"https": proxy}
         return proxy
 
-    def get_raw_json(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+    def get_raw_json(self, url, user_agent_headers=None, params=None, config:'_Config'=None):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
-        response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
+        response = self.get(url, user_agent_headers=user_agent_headers, params=params, config=config)
         response.raise_for_status()
         return response.json()

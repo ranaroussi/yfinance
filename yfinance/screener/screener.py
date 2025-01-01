@@ -204,7 +204,7 @@ class Screener:
             raise ValueError("Yahoo limits query size to 250. Please decrease the size of the query.")
 
     def _fetch(self) -> Dict:
-        params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
+        params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false"}
         response = self._data.post(_SCREENER_URL_, body=self.body, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
         response.raise_for_status()
         return response.json()

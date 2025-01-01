@@ -31,7 +31,7 @@ import pandas as pd
 import requests
 from datetime import date
 
-from . import utils, cache
+from . import utils, cache, Config
 from .data import YfData
 from .exceptions import YFEarningsDateMissing, YFRateLimitError
 from .scrapers.analysis import Analysis
@@ -41,14 +41,15 @@ from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
+from .config import Config as _Config
+
 from .const import _BASE_URL_, _ROOT_URL_
 
 
 class TickerBase:
-    def __init__(self, ticker, session=None, proxy=None):
+    def __init__(self, ticker, config:'_Config'=None):
         self.ticker = ticker.upper()
-        self.proxy = proxy
-        self.session = session
+        self.config = config or Config.current
         self._tz = None
 
         self._isin = None
@@ -62,9 +63,9 @@ class TickerBase:
 
         # accept isin as ticker
         if utils.is_isin(self.ticker):
-            self.ticker = utils.get_ticker_by_isin(self.ticker, None, session)
+            self.ticker = utils.get_ticker_by_isin(self.ticker, self.config)
 
-        self._data: YfData = YfData(session=session)
+        self._data: YfData = YfData(self.config)
 
         # self._price_history = PriceHistory(self._data, self.ticker)
         self._price_history = None  # lazy-load
@@ -87,8 +88,8 @@ class TickerBase:
             self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy, timeout=10))
         return self._price_history
 
-    def _get_ticker_tz(self, proxy, timeout):
-        proxy = proxy or self.proxy
+    def _get_ticker_tz(self, config:'_Config'=None):
+        config = config or self.config
         if self._tz is not None:
             return self._tz
         c = cache.get_tz_cache()
@@ -100,7 +101,7 @@ class TickerBase:
             tz = None
 
         if tz is None:
-            tz = self._fetch_ticker_tz(proxy, timeout)
+            tz = self._fetch_ticker_tz(config)
 
             if utils.is_valid_timezone(tz):
                 # info fetch is relatively slow so cache timezone
@@ -112,9 +113,9 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, proxy, timeout):
+    def _fetch_ticker_tz(self, config:'_Config'=None):
         # Query Yahoo for fast price data just to get returned timezone
-        proxy = proxy or self.proxy
+        config = config or self.config
         logger = utils.get_yf_logger()
 
         params = {"range": "1d", "interval": "1d"}

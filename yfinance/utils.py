@@ -185,15 +185,14 @@ def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9])$", string))
 
 
-def get_all_by_isin(isin, proxy=None, session=None):
+def get_all_by_isin(isin, config):
     if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
 
     # Deferred this to prevent circular imports
     from .search import Search
 
-    session = session or _requests
-    search = Search(query=isin, max_results=1, session=session, proxy=proxy)
+    search = Search(query=isin, max_results=1, config=config)
 
     # Extract the first quote and news
     ticker = search.quotes[0] if search.quotes else {}
@@ -211,18 +210,18 @@ def get_all_by_isin(isin, proxy=None, session=None):
     }
 
 
-def get_ticker_by_isin(isin, proxy=None, session=None):
-    data = get_all_by_isin(isin, proxy, session)
+def get_ticker_by_isin(isin, config):
+    data = get_all_by_isin(isin, config)
     return data.get('ticker', {}).get('symbol', '')
 
 
-def get_info_by_isin(isin, proxy=None, session=None):
-    data = get_all_by_isin(isin, proxy, session)
+def get_info_by_isin(isin, config):
+    data = get_all_by_isin(isin, config)
     return data.get('ticker', {})
 
 
-def get_news_by_isin(isin, proxy=None, session=None):
-    data = get_all_by_isin(isin, proxy, session)
+def get_news_by_isin(isin, config):
+    data = get_all_by_isin(isin, config)
     return data.get('news', {})
 
 

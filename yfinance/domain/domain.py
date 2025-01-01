@@ -120,7 +120,7 @@ class Domain(ABC):
         Returns:
             Dict: The JSON response data from the request.
         """
-        params_dict = {"formatted": "true", "withReturns": "true", "lang": "en-US", "region": "US"}
+        params_dict = {"formatted": "true", "withReturns": "true"}
         result = self._data.get_raw_json(query_url, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
         return result
 
