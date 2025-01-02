@@ -105,11 +105,12 @@ class Search:
         try:
             data = data.json()
         except _json.JSONDecodeError:
-            self._logger.error(f"{self.query}: Failed to retrieve the news and received faulty response instead.")
+            self._logger.error(f"{self.query}: Failed to retrieve search results and received faulty response instead.")
             data = {}
 
         self._response = data
-        self._quotes = data.get("quotes", [])
+        # Filter quotes to only include symbols
+        self._quotes = [quote for quote in data.get("quotes", []) if "symbol" in quote]
         self._news = data.get("news", [])
         self._lists = data.get("lists", [])
         self._research = data.get("researchReports", [])
