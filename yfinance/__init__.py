@@ -28,6 +28,7 @@ from .utils import enable_debug_mode
 from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
+from . import screener
 
 __version__ = version.version
 __author__ = "Ran Aroussi"
