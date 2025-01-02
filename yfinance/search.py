@@ -27,7 +27,8 @@ from .data import YfData
 
 
 class Search:
-    def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
+    def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
+                 include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
                  session=None, proxy=None, timeout=30, raise_errors=True):
         """
         Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.
@@ -116,10 +117,10 @@ class Search:
         self._research = data.get("researchReports", [])
         self._nav = data.get("nav", [])
 
-        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research, "nav": self._nav}
+        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research,
+                     "nav": self._nav}
 
         return self
-
 
     @property
     def quotes(self) -> 'list':
@@ -130,27 +131,27 @@ class Search:
     def news(self) -> 'list':
         """Get the news from the search results."""
         return self._news
-    
+
     @property
     def lists(self) -> 'list':
         """Get the lists from the search results."""
         return self._lists
-    
+
     @property
     def research(self) -> 'list':
         """Get the research reports from the search results."""
         return self._research
-    
+
     @property
     def nav(self) -> 'list':
         """Get the navigation links from the search results."""
         return self._nav
-    
+
     @property
     def all(self) -> 'dict[str,list]':
         """Get all the results from the search results: filtered down version of response."""
         return self._all
-    
+
     @property
     def response(self) -> 'dict':
         """Get the raw response from the search results."""
