@@ -49,7 +49,7 @@ from .const import _BASE_URL_, _ROOT_URL_
 class TickerBase:
     def __init__(self, ticker, config:'_Config'=None):
         self.ticker = ticker.upper()
-        self.config = config or Config.current
+        self.config = config
         self._tz = None
 
         self._isin = None
@@ -85,7 +85,7 @@ class TickerBase:
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy, timeout=10))
+            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.config), self.config)
         return self._price_history
 
     def _get_ticker_tz(self, config:'_Config'=None):

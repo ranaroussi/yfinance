@@ -62,7 +62,7 @@ class Config:
         """
         self.session = session
         return self
-    
+        
     def set_proxy(self, proxy: 'str') -> 'Config':
         """
         Set the proxy for the yfinance package.
@@ -103,6 +103,7 @@ class Config:
         """
         self.timeout = timeout
         return self
+
 
 class CurrentConfig(Config):
     def set_new_config(self, config:'Config') -> 'CurrentConfig':

@@ -23,6 +23,8 @@ from __future__ import print_function
 
 from collections import namedtuple as _namedtuple
 from .scrapers.funds import FundsData
+from .config import Config as _Config
+from . import Config
 
 import pandas as _pd
 
@@ -30,9 +32,11 @@ from .base import TickerBase
 from .const import _BASE_URL_
 
 
+
 class Ticker(TickerBase):
-    def __init__(self, ticker, session=None, proxy=None):
-        super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
+    def __init__(self, ticker, config:'_Config'=None):
+        self.config = config or Config.current
+        super(Ticker, self).__init__(ticker, config=config)
         self._expirations = {}
         self._underlying  = {}
 
@@ -45,7 +49,7 @@ class Ticker(TickerBase):
         else:
             url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}?date={date}"
 
-        r = self._data.get(url=url, proxy=self.proxy).json()
+        r = self._data.get(url=url, config=self.config).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_pd.Timestamp(exp, unit='s').strftime('%Y-%m-%d')] = exp

@@ -7,17 +7,16 @@ from math import isclose
 import time as _time
 import bisect
 
-from yfinance import shared, utils
+from yfinance import shared, utils, Config
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
 from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
 
 class PriceHistory:
-    def __init__(self, data, ticker, tz, session=None, proxy=None):
+    def __init__(self, data, ticker, tz, config):
+        self.config = config or Config.current
         self._data = data
         self.ticker = ticker.upper()
         self.tz = tz
-        self.proxy = proxy
-        self.session = session
 
         self._history = None
         self._history_metadata = None
@@ -30,8 +29,8 @@ class PriceHistory:
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
-                proxy=None, rounding=False, timeout=10,
-                raise_errors=False) -> pd.DataFrame:
+                proxy=None, rounding=False,
+                raise_errors=False, config=None) -> pd.DataFrame:
         """
         :Parameters:
             period : str
@@ -74,7 +73,8 @@ class PriceHistory:
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
-        proxy = proxy or self.proxy
+        proxy = proxy or self.config.proxy
+        config = config or self.config
 
         interval_user = interval
         period_user = period
@@ -175,8 +175,7 @@ class PriceHistory:
             data = get_fn(
                 url=url,
                 params=params,
-                proxy=proxy,
-                timeout=timeout
+                config=config
             )
             if "Will be right back" in data.text or data is None:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"

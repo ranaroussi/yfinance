@@ -44,13 +44,14 @@ class SingletonMeta(type):
     _instances = {}
     _lock = threading.Lock()
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, config:'_Config'=None, *args, **kwargs):
+        config = config or Config.current
         with cls._lock:
             if cls not in cls._instances:
                 instance = super().__call__(*args, **kwargs)
                 cls._instances[cls] = instance
             else:
-                cls._instances[cls]._set_session(*args, **kwargs)
+                cls._instances[cls]._set_session(config.session)
             return cls._instances[cls]
 
 
@@ -73,8 +74,7 @@ class YfData(metaclass=SingletonMeta):
 
         self._cookie_lock = threading.Lock()
 
-        self.config = config or _Config().from_dict(Config.config)
-
+        self.config = config or Config.current
         self._set_session(self.config.session or requests.Session())
 
     def _set_session(self, session):
@@ -361,6 +361,7 @@ class YfData(metaclass=SingletonMeta):
         else:
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
+        utils.get_yf_logger().debug(f"{user_agent_headers=} {body=} {config=}, {request_method=}")
         proxy = self._get_proxy(config.proxy)
 
         if params is None:
@@ -393,7 +394,7 @@ class YfData(metaclass=SingletonMeta):
 
         if body:
             request_args['json'] = body
-            
+        
         response = request_method(**request_args)
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
