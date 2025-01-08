@@ -7,7 +7,7 @@ import requests
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import quote_summary_valid_modules, _BASE_URL_
+from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
 from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
@@ -590,33 +590,56 @@ class Quote:
             return None
         return result
 
+    def _fetch_additional_info(self, proxy):
+        params_dict = {"symbols": self._symbol, "formatted": "false"}
+        try:
+            result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?",
+                                             user_agent_headers=self._data.user_agent_headers,
+                                             params=params_dict, proxy=proxy)
+        except requests.exceptions.HTTPError as e:
+            utils.get_yf_logger().error(str(e))
+            return None
+        return result
+
     def _fetch_info(self, proxy):
         if self._already_fetched:
             return
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         result = self._fetch(proxy, modules=modules)
+        result.update(self._fetch_additional_info(proxy))
         if result is None:
             self._info = {}
             return
 
-        result["quoteSummary"]["result"][0]["symbol"] = self._symbol
-        query1_info = next(
-            (info for info in result.get("quoteSummary", {}).get("result", []) if info["symbol"] == self._symbol),
-            None,
-        )
-        # Most keys that appear in multiple dicts have same value. Except 'maxAge' because
-        # Yahoo not consistent with days vs seconds. Fix it here:
-        for k in query1_info:
-            if "maxAge" in query1_info[k] and query1_info[k]["maxAge"] == 1:
-                query1_info[k]["maxAge"] = 86400
-        query1_info = {
-            k1: v1
-            for k, v in query1_info.items()
-            if isinstance(v, dict)
-            for k1, v1 in v.items()
-            if v1
-        }
+        query1_info = {}
+        for quote in ["quoteSummary", "quoteResponse"]:
+            if quote in result:
+                result[quote]["result"][0]["symbol"] = self._symbol
+                query_info = next(
+                    (info for info in result.get(quote, {}).get("result", [])
+                     if info["symbol"] == self._symbol),
+                    None,
+                )
+                if query_info:
+                    query1_info.update(query_info)
+
+        # Normalize and flatten nested dictionaries while converting maxAge from days (1) to seconds (86400).
+        # This handles Yahoo Finance API inconsistency where maxAge is sometimes expressed in days instead of seconds.
+        processed_info = {}
+        for k, v in query1_info.items():
+
+            # Handle nested dictionary
+            if isinstance(v, dict):
+                for k1, v1 in v.items():
+                    if v1 is not None:
+                        processed_info[k1] = 86400 if k1 == "maxAge" and v1 == 1 else v1
+
+            elif v is not None:
+                processed_info[k] = v
+
+        query1_info = processed_info
+
         # recursively format but only because of 'companyOfficers'
 
         def _format(k, v):
@@ -631,9 +654,8 @@ class Quote:
             else:
                 v2 = v
             return v2
-        for k, v in query1_info.items():
-            query1_info[k] = _format(k, v)
-        self._info = query1_info
+
+        self._info = {k: _format(k, v) for k, v in query1_info.items()}
 
     def _fetch_complementary(self, proxy):
         if self._already_fetched_complementary:
