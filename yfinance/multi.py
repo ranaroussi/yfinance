@@ -35,10 +35,11 @@ from . import shared
 
 
 @utils.log_indent_decorator
+@utils.deprecated("session", "proxy", "timeout")
 def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",
-             prepost=False, proxy=None, rounding=False, timeout=10, session=None,
+             prepost=False, proxy=None, rounding=False, timeout=None, session=None,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers

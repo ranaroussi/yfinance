@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 from . import Ticker, multi
+from .utils import deprecated, log_indent_decorator
 
 
 # from collections import namedtuple as _namedtuple
@@ -32,6 +33,7 @@ class Tickers:
     def __repr__(self):
         return f"yfinance.Tickers object <{','.join(self.symbols)}>"
 
+    @deprecated("session")
     def __init__(self, tickers, session=None):
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
@@ -42,12 +44,14 @@ class Tickers:
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
 
+    @log_indent_decorator
+    @deprecated("proxy", "timeout")
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, repair=False,
                 proxy=None,
                 threads=True, group_by='column', progress=True,
-                timeout=10, **kwargs):
+                timeout=None, **kwargs):
 
         return self.download(
             period, interval,
@@ -57,12 +61,13 @@ class Tickers:
             threads, group_by, progress,
             timeout, **kwargs)
 
+    @deprecated("proxy", "timeout")
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, repair=False, 
                  proxy=None,
                  threads=True, group_by='column', progress=True,
-                 timeout=10, **kwargs):
+                 timeout=None, **kwargs):
 
         data = multi.download(self.symbols,
                               start=start, end=end,
