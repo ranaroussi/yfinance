@@ -24,12 +24,14 @@ import json as _json
 from . import utils
 from .const import _BASE_URL_
 from .data import YfData
+from .utils import deprecated
 
 
 class Search:
+    @deprecated("session", "proxy", "timeout")
     def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
                  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
-                 session=None, proxy=None, timeout=30, raise_errors=True):
+                 session=None, proxy=None, timeout=None, raise_errors=True):
         """
         Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.
 
