@@ -37,8 +37,13 @@ __version__ = version.version
 __author__ = "Ran Aroussi"
 
 import warnings
-warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
+warnings.filterwarnings("default", category=DeprecationWarning, module="^yfinance")
 
 __all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
 # screener stuff:
 __all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
+
+def set_config(proxy=None, timeout=None, lang=None, region=None, session=None, url=None):
+    from .data import YfData
+
+    YfData.set_config(proxy, timeout, lang, region, session, url)
