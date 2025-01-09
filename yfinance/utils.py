@@ -28,9 +28,10 @@ import re as _re
 import sys as _sys
 import threading
 from functools import lru_cache, wraps
-from inspect import getmembers
+from inspect import getmembers, signature
 from types import FunctionType
 from typing import List, Optional
+import warnings
 
 import numpy as _np
 import pandas as _pd
@@ -39,11 +40,88 @@ import requests as _requests
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
-from yfinance import const
+#from yfinance import const
 
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
+
+def deprecated(*params, message="", new=None, since=None, removed_in=None, **message_params):
+    """
+    Decorator to mark functions, methods or parameters as deprecated.
+    
+    Can be used in three ways:
+    1. Deprecate entire function/method:
+        @deprecated(message="Use new_func() instead", new=new_func)
+        def old_func(): ...
+        
+    2. Deprecate specific parameters:
+        @deprecated("old_param", old_param="Use new_param instead")
+        def func(old_param): ...
+        
+    3. Deprecate with version info:
+        @deprecated(message="...", since="0.1.0", removed_in="0.2.0")
+        def old_func(): ...
+
+    Args:
+        *params: Parameters to deprecate (for parameter deprecation)
+        message: Deprecation message (for function deprecation)
+        new: Replacement function (optional)
+        since: Version when deprecation was introduced (optional)
+        removed_in: Version when item will be removed (optional) 
+        **message_params: Parameters to deprecate with custom messages
+    """
+    def decorator(func):
+        # Get function signature info
+        sig = signature(func)
+        func_name = func.__qualname__
+        
+        # Build base warning message
+        def build_warning(base_msg, colour=True, indent=0):
+            msg_parts = [base_msg]
+            
+            if since:
+                msg_parts.append(f"Deprecated since version {since}")
+            if removed_in:
+                msg_parts.append(f"Will be removed in version {removed_in}")
+                
+            if new:
+                msg_parts.append(f"Use {new.__qualname__}() instead")
+                
+            msg = f"\n{" " * indent}".join(msg_parts)
+            if colour: msg = f"\033[33m{msg}\033[0m"
+            return msg
+
+        @wraps(func)  # Preserve original metadata
+        def wrapper(*args, **kwargs):
+            # Case 1: Entire function deprecated
+            if message:
+                warnings.warn(build_warning(message), category=DeprecationWarning, stacklevel=2)
+                if new:
+                    return new(*args, **kwargs)
+                return func(*args, **kwargs)
+            
+            # Case 2: Parameter deprecation
+            # Bind args/kwargs to parameter names
+            bound_args = sig.bind(*args, **kwargs)
+            param_vals = bound_args.arguments
+
+            # Check for deprecated parameters
+            message_params.update({param:f"Parameter '{param}' of {func_name} is deprecated" for param in params})
+            for param, msg in message_params.items():
+                if param in param_vals:
+                    warnings.warn(build_warning(msg), category=DeprecationWarning, stacklevel=2)
+            
+            return func(*args, **kwargs)
+
+        # Add deprecation info to function's docstring
+        if func.__doc__:
+            pass
+            # Not Implemented
+            # Add deprecation info to function's docstring for docs
+        
+        return wrapper
+    return decorator
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
