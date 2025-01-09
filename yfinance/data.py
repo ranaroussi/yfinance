@@ -60,7 +60,6 @@ class SingletonMeta(type):
         cls.lang = lang or "en-US"
         cls.region = region or "US"
         cls.session = session or requests.Session()
-        cls.url = url or "https://fc.yahoo.com"
 
 
 class YfData(metaclass=SingletonMeta):
@@ -364,7 +363,7 @@ class YfData(metaclass=SingletonMeta):
     @utils.log_indent_decorator
     def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None):
         # Important: treat input arguments as immutable.
-        url = f"{YfData.url}/{url}"
+        url = f"https://{url}"
 
         if len(url) > 200:
             utils.get_yf_logger().debug(f'url={url[:200]}...')
