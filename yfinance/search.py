@@ -28,7 +28,7 @@ from .utils import deprecated
 
 
 class Search:
-    @deprecated("session", "proxy", "timeout")
+    @deprecated("session", "proxy", "timeout", since="0.2.51")
     def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
                  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
                  session=None, proxy=None, timeout=None, raise_errors=True):

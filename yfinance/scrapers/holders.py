@@ -12,7 +12,7 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 class Holders:
     _SCRAPE_URL_ = f"{_BASE_URL_}/quote"
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol

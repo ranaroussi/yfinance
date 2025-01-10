@@ -22,6 +22,8 @@
 from __future__ import print_function
 
 from collections import namedtuple as _namedtuple
+
+from yfinance import utils
 from .scrapers.funds import FundsData
 
 import pandas as _pd
@@ -31,7 +33,7 @@ from .const import _BASE_URL_
 
 
 class Ticker(TickerBase):
-    @utils.deprecated("proxy", "session")
+    @utils.deprecated("proxy", "session", since="0.2.51")
     def __init__(self, ticker, session=None, proxy=None):
         super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}

@@ -44,7 +44,7 @@ from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
 
 
 class TickerBase:
-    @utils.deprecated("session", "proxy")
+    @utils.deprecated("session", "proxy", since="0.2.51")
     def __init__(self, ticker, session=None, proxy=None):
         self.ticker = ticker.upper()
         self.proxy = proxy
@@ -87,7 +87,7 @@ class TickerBase:
             self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy, timeout=10))
         return self._price_history
 
-    @utils.deprecated("proxy", "timeout")
+    @utils.deprecated("proxy", "timeout", since="0.2.51")
     def _get_ticker_tz(self, proxy, timeout):
         proxy = proxy or self.proxy
         if self._tz is not None:
@@ -113,7 +113,7 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    @utils.deprecated("proxy", "timeout")
+    @utils.deprecated("proxy", "timeout", since="0.2.51")
     def _fetch_ticker_tz(self, proxy, timeout):
         # Query Yahoo for fast price data just to get returned timezone
         proxy = proxy or self.proxy
@@ -149,7 +149,7 @@ class TickerBase:
                     logger.debug("-------------")
         return None
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_recommendations(self, proxy=None, as_dict=False):
         """
         Returns a DataFrame with the recommendations
@@ -161,11 +161,11 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_recommendations_summary(self, proxy=None, as_dict=False):
         return self.get_recommendations(proxy=proxy, as_dict=as_dict)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_upgrades_downgrades(self, proxy=None, as_dict=False):
         """
         Returns a DataFrame with the recommendations changes (upgrades/downgrades)
@@ -178,17 +178,17 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_calendar(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         return self._quote.calendar
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_sec_filings(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         return self._quote.sec_filings
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_major_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.major
@@ -196,7 +196,7 @@ class TickerBase:
             return data.to_dict()
         return data
     
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_institutional_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.institutional
@@ -205,7 +205,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_mutualfund_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.mutualfund
@@ -214,7 +214,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_insider_purchases(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_purchases
@@ -223,7 +223,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_insider_transactions(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_transactions
@@ -232,7 +232,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_insider_roster_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_roster
@@ -241,24 +241,24 @@ class TickerBase:
                 return data.to_dict()
             return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_info(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         data = self._quote.info
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_fast_info(self, proxy=None):
         if self._fast_info is None:
             self._fast_info = FastInfo(self, proxy=proxy)
         return self._fast_info
 
     @property
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def basic_info(self):
         return self.fast_info
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_sustainability(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy or self.proxy
         data = self._quote.sustainability
@@ -266,7 +266,7 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_analyst_price_targets(self, proxy=None) -> dict:
         """
         Keys:   current  low  high  mean  median
@@ -275,7 +275,7 @@ class TickerBase:
         data = self._analysis.analyst_price_targets
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_earnings_estimate(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -285,7 +285,7 @@ class TickerBase:
         data = self._analysis.earnings_estimate
         return data.to_dict() if as_dict else data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_revenue_estimate(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -295,7 +295,7 @@ class TickerBase:
         data = self._analysis.revenue_estimate
         return data.to_dict() if as_dict else data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_earnings_history(self, proxy=None, as_dict=False):
         """
         Index:      pd.DatetimeIndex
@@ -305,7 +305,7 @@ class TickerBase:
         data = self._analysis.earnings_history
         return data.to_dict() if as_dict else data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_eps_trend(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -315,7 +315,7 @@ class TickerBase:
         data = self._analysis.eps_trend
         return data.to_dict() if as_dict else data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_eps_revisions(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -325,7 +325,7 @@ class TickerBase:
         data = self._analysis.eps_revisions
         return data.to_dict() if as_dict else data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_growth_estimates(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y +5y -5y
@@ -335,7 +335,7 @@ class TickerBase:
         data = self._analysis.growth_estimates
         return data.to_dict() if as_dict else data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
         """
         :Parameters:
@@ -360,7 +360,7 @@ class TickerBase:
             return dict_data
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
@@ -388,15 +388,15 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_incomestmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(proxy, as_dict, pretty, freq)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_financials(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(proxy, as_dict, pretty, freq)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
@@ -424,11 +424,11 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(proxy, as_dict, pretty, freq)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
         """
         :Parameters:
@@ -456,27 +456,27 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(proxy, as_dict, pretty, freq)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_dividends(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_dividends(proxy)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_capital_gains(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_capital_gains(proxy)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_splits(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_splits(proxy)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_actions(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_actions(proxy)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_shares(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._fundamentals.proxy = proxy or self.proxy
         data = self._fundamentals.shares
@@ -485,7 +485,7 @@ class TickerBase:
         return data
 
     @utils.log_indent_decorator
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_shares_full(self, start=None, end=None, proxy=None):
         logger = utils.get_yf_logger()
 
@@ -538,7 +538,7 @@ class TickerBase:
         df = df.sort_index()
         return df
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_isin(self, proxy=None) -> Optional[str]:
         # *** experimental ***
         if self._isin is not None:
@@ -576,7 +576,7 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_news(self, count=10, tab="news", proxy=None) -> list:
         """Allowed options for tab: "news", "all", "press releases"""
         if self._news:
@@ -619,7 +619,7 @@ class TickerBase:
         return self._news
 
     @utils.log_indent_decorator
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
@@ -690,11 +690,11 @@ class TickerBase:
         self._earnings_dates[clamped_limit] = df
         return df
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_history_metadata(self, proxy=None) -> dict:
         return self._lazy_load_price_history().get_history_metadata(proxy)
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_funds_data(self, proxy=None) -> Optional[FundsData]:
         if not self._funds_data:
             self._funds_data = FundsData(self._data, self.ticker)

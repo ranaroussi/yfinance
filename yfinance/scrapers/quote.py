@@ -26,7 +26,7 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def __init__(self, tickerBaseObject, proxy=None):
         self._tkr = tickerBaseObject
         self.proxy = proxy
@@ -486,7 +486,7 @@ class FastInfo:
 
 class Quote:
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol

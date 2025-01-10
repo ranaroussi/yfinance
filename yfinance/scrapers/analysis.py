@@ -10,7 +10,7 @@ from yfinance.exceptions import YFException
 
 class Analysis:
 
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol

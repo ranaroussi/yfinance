@@ -35,7 +35,7 @@ from . import shared
 
 
 @utils.log_indent_decorator
-@utils.deprecated("session", "proxy", "timeout")
+@utils.deprecated("session", "proxy", "timeout", since="0.2.51")
 def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",

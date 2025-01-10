@@ -9,7 +9,7 @@ from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
 class Fundamentals:
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol
@@ -29,8 +29,8 @@ class Fundamentals:
         return self._financials
 
     @property
+    @utils.deprecated(message="'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", since="0.2.41")
     def earnings(self) -> dict:
-        warnings.warn("'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", DeprecationWarning)
         return None
 
     @property
@@ -101,7 +101,7 @@ class Financials:
         except Exception:
             pass
     
-    @utils.deprecated("proxy")
+    @utils.deprecated("proxy", since="0.2.51")
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly"}
         timescale = timescale_translation[timescale]
