@@ -31,6 +31,7 @@ from .const import _BASE_URL_
 
 
 class Ticker(TickerBase):
+    @utils.deprecated("proxy", "session")
     def __init__(self, ticker, session=None, proxy=None):
         super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}
