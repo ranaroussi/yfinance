@@ -443,6 +443,6 @@ class YfData(metaclass=SingletonMeta):
 
     def get_raw_json(self, url, user_agent_headers=None, params=None):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
-        response = self.get(url, user_agent_headers=user_agent_headers, params=params)
+        response = self.get(f"https://{url}", user_agent_headers=user_agent_headers, params=params)
         response.raise_for_status()
         return response.json()
