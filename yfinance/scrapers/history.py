@@ -12,6 +12,7 @@ from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
 from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
 
 class PriceHistory:
+    @utils.deprecated("proxy", "session")
     def __init__(self, data, ticker, tz, session=None, proxy=None):
         self._data = data
         self.ticker = ticker.upper()
@@ -27,10 +28,11 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
+    @utils.deprecated("proxy", "timeout")
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
-                proxy=None, rounding=False, timeout=10,
+                proxy=None, rounding=False, timeout=None,
                 raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
@@ -465,6 +467,7 @@ class PriceHistory:
             self._reconstruct_start_interval = None
         return df
 
+    @utils.deprecated("proxy")
     def get_history_metadata(self, proxy=None) -> dict:
         if self._history_metadata is None:
             # Request intraday data, because then Yahoo returns exchange schedule.
@@ -476,6 +479,7 @@ class PriceHistory:
 
         return self._history_metadata
 
+    @utils.deprecated("proxy")
     def get_dividends(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -484,6 +488,7 @@ class PriceHistory:
             return dividends[dividends != 0]
         return pd.Series()
 
+    @utils.deprecated("proxy")
     def get_capital_gains(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -492,6 +497,7 @@ class PriceHistory:
             return capital_gains[capital_gains != 0]
         return pd.Series()
 
+    @utils.deprecated("proxy")
     def get_splits(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -500,6 +506,7 @@ class PriceHistory:
             return splits[splits != 0]
         return pd.Series()
 
+    @utils.deprecated("proxy")
     def get_actions(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -511,6 +518,7 @@ class PriceHistory:
             return actions[actions != 0].dropna(how='all').fillna(0)
         return pd.Series()
 
+    @utils.deprecated("proxy")
     def _resample(self, df, df_interval, target_interval, period=None) -> pd.DataFrame:
         # resample
         if df_interval == target_interval:

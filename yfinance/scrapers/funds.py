@@ -17,6 +17,7 @@ class FundsData:
     Notes: 
     - fundPerformance module is not implemented as better data is queryable using history
     """
+    @utils.deprecated("proxy")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         """
         Args:
@@ -165,26 +166,23 @@ class FundsData:
             self._fetch_and_parse()
         return self._sector_weightings
 
-    def _fetch(self, proxy):
+    def _fetch(self):
         """
         Fetches the raw JSON data from the API.
-
-        Args:
-            proxy: Proxy settings for fetching data.
 
         Returns:
             dict: The raw JSON data.
         """
         modules = ','.join(["quoteType", "summaryProfile", "topHoldings", "fundProfile"])
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol, "formatted": "false"}
-        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_+self._symbol, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_+self._symbol, user_agent_headers=self._data.user_agent_headers, params=params_dict)
         return result
 
     def _fetch_and_parse(self) -> None:
         """
         Fetches and parses the data from the API.
         """
-        result = self._fetch(self.proxy)
+        result = self._fetch()
         try:
             data = result["quoteSummary"]["result"][0]
             # check quote type
