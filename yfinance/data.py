@@ -352,15 +352,15 @@ class YfData(metaclass=SingletonMeta):
         return cookie, crumb, strategy
 
     @utils.log_indent_decorator
-    def get(self, url, user_agent_headers=None, params=None):
-        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params)
+    def get(self, url, user_agent_headers=None, params=None, proxy=None):
+        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, proxy=proxy)
     
     @utils.log_indent_decorator
-    def post(self, url, body, user_agent_headers=None, params=None):
-        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params)
+    def post(self, url, body, user_agent_headers=None, params=None, proxy=None):
+        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, proxy=proxy)
     
     @utils.log_indent_decorator
-    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None):
+    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None):
         # Important: treat input arguments as immutable.
         url = f"https://{url}"
 
@@ -369,7 +369,7 @@ class YfData(metaclass=SingletonMeta):
         else:
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
-        proxy = self._get_proxy()
+        proxy = self._get_proxy(proxy)
 
         if params is None:
             params = {
@@ -430,14 +430,17 @@ class YfData(metaclass=SingletonMeta):
 
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
-    def cache_get(self, url, user_agent_headers=None, params=None):
-        return self.get(url, user_agent_headers, params)
+    def cache_get(self, url, user_agent_headers=None, params=None, proxy=None):
+        return self.get(url, user_agent_headers, params, proxy)
 
-    def _get_proxy(self):
+    def _get_proxy(self, proxy=None):
+        if proxy is None:
+            proxy = YfData.proxy
+
         # setup proxy in requests format
-        if YfData.proxy is not None:
-            if isinstance(YfData.proxy, (dict, frozendict)) and "https" in YfData.proxy:
-                proxy = YfData.proxy["https"]
+        if proxy is not None:
+            if isinstance(proxy, (dict, frozendict)) and "https" in proxy:
+                proxy = proxy["https"]
             proxy = {"https": proxy}
         return proxy
 
