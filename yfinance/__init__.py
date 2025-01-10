@@ -43,8 +43,9 @@ __all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mo
 # screener stuff:
 __all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
 
-def set_config(proxy=None, timeout=None, lang=None, region=None, session=None, url=None):
+def set_config(proxy=None, timeout=30, lang="en-US", region="US", session=None, url="finance.yahoo.com") -> 'dict':
     from .data import YfData
     from .const import _ROOT_URL_
     _ROOT_URL_ = url or _ROOT_URL_
     YfData.set_config(proxy, timeout, lang, region, session)
+    return {"proxy": proxy, "timeout": timeout, "lang": lang, "region": region, "session": session, "url": url}
