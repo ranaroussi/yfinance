@@ -9,3 +9,4 @@ Advanced
    proxy
    caching
    multi_level_columns
+   config
