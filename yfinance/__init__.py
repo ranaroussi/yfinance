@@ -38,13 +38,20 @@ __author__ = "Ran Aroussi"
 
 import warnings
 warnings.filterwarnings("default", category=DeprecationWarning, module="^yfinance")
+import typing as t
+if t.TYPE_CHECKING:
+    from typing import TypedDict
+    import requests
+    CONFIG = TypedDict("CONFIG", {"proxy": t.Optional[str], "timeout": int, "lang": str, "region": str, "session": requests.Session, "url": str})
 
 __all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
 # screener stuff:
 __all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
 
-def set_config(proxy=None, timeout=30, lang="en-US", region="US", session=None, url="finance.yahoo.com") -> 'dict':
+def set_config(proxy=None, timeout=30, lang="en-US", region="US", session=None, url="finance.yahoo.com") -> 'CONFIG':
     from .data import YfData
+    if session is None:
+        session = requests.Session()
     from .const import _ROOT_URL_
     _ROOT_URL_ = url or _ROOT_URL_
     YfData.set_config(proxy, timeout, lang, region, session)
