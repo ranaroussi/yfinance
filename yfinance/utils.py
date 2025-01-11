@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import datetime as _datetime
 import logging
+import re
 import re as _re
 import sys as _sys
 import threading
@@ -431,7 +432,7 @@ def _parse_user_dt(dt, exchange_tz):
 def _interval_to_timedelta(interval):
     if interval[-1] == "d":
         return relativedelta(days=int(interval[:-1]))
-    elif interval[-2:] == "wk": 
+    elif interval[-2:] == "wk":
         return relativedelta(weeks=int(interval[:-2]))
     elif interval[-2:] == "mo":
         return relativedelta(months=int(interval[:-2]))
@@ -439,6 +440,16 @@ def _interval_to_timedelta(interval):
         return relativedelta(years=int(interval[:-1]))
     else:
         return _pd.Timedelta(interval)
+
+
+def is_valid_period_format(period):
+    """Check if the provided period has a valid format."""
+    if period is None:
+        return False
+
+    # Regex pattern to match valid period formats like '1d', '2wk', '3mo', '1y'
+    valid_pattern = r"^[1-9]\d*(d|wk|mo|y)$"
+    return bool(re.match(valid_pattern, period))
 
 
 def auto_adjust(data):
