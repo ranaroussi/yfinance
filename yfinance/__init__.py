@@ -19,6 +19,7 @@
 # limitations under the License.
 #
 
+from typing import TYPE_CHECKING, TypedDict, Optional
 from . import version
 from .search import Search
 from .ticker import Ticker
@@ -38,11 +39,10 @@ __author__ = "Ran Aroussi"
 
 import warnings
 warnings.filterwarnings("default", category=DeprecationWarning, module="^yfinance")
-import typing as t
-if t.TYPE_CHECKING:
-    from typing import TypedDict
+
+if TYPE_CHECKING:
     import requests
-    CONFIG = TypedDict("CONFIG", {"proxy": t.Optional[str], "timeout": int, "lang": str, "region": str, "session": requests.Session, "url": str})
+    CONFIG = TypedDict("CONFIG", {"proxy": Optional[str], "timeout": int, "lang": str, "region": str, "session": requests.Session, "url": str})
 
 __all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
 # screener stuff:
