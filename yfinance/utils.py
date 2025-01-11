@@ -89,7 +89,8 @@ def deprecated(*params, message="", new=None, since=None, removed_in=None, **mes
                 msg_parts.append(f"Use {new.__qualname__}() instead")
                 
             msg = f"\n{" " * indent}".join(msg_parts)
-            if colour: msg = f"\033[33m{msg}\033[0m"
+            if colour:
+                msg = f"\033[33m{msg}\033[0m"
             return msg
 
         @wraps(func)  # Preserve original metadata

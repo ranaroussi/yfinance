@@ -22,7 +22,6 @@
 from __future__ import print_function
 
 import json as _json
-import warnings
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
