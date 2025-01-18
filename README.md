@@ -39,6 +39,7 @@ Yahoo! finance API is intended for personal use only.**
 - `Ticker`: single ticker data
 - `Tickers`: multiple tickers' data
 - `download`: download market data for multiple tickers
+- `WebSocket` and `AsyncWebSocket`: live streaming data
 - `Market`: get infomation about a market
 - `Search`: quotes and news from search
 - `Sector` and `Industry`: sector and industry information
