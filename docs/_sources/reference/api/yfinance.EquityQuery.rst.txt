@@ -12,9 +12,9 @@ EquityQuery
    .. rubric:: Attributes
    
    
-   .. autoattribute:: valid_eq_operand_map
+   .. autoattribute:: valid_fields
       :noindex:
-   .. autoattribute:: valid_operand_fields
+   .. autoattribute:: valid_values
       :noindex:
    
    

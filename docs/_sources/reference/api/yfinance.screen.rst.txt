@@ -1,0 +1,6 @@
+﻿yfinance.screen
+===============
+
+.. currentmodule:: yfinance
+
+.. autofunction:: screen

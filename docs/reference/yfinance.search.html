@@ -28,7 +28,7 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/yfinance.css?v=6f22274e" />
   
@@ -415,10 +415,14 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Industry.html">Industry</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.screener.html">Screener &amp; Query</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.EquityQuery.html">EquityQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.FundQuery.html">FundQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.screen.html">yfinance.screen</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.functions.html">Functions and Utilities</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.download.html">yfinance.download</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/yfinance.EquityQuery.html">EquityQuery</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Screener.html">Screener</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.enable_debug_mode.html">yfinance.enable_debug_mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.set_tz_cache_location.html">yfinance.set_tz_cache_location</a></li>
 </ul>
@@ -502,13 +506,16 @@ document.write(`
 <section id="search-sample-code">
 <h2>Search Sample Code<a class="headerlink" href="#search-sample-code" title="Link to this heading">#</a></h2>
 <p>The <cite>Search</cite> module, allows you to access search data in a Pythonic way.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">yfinance</span> <span class="k">as</span> <span class="nn">yf</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 
 <span class="c1"># get list of quotes</span>
 <span class="n">quotes</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Search</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="n">max_results</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">quotes</span>
 
 <span class="c1"># get list of news</span>
 <span class="n">news</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Search</span><span class="p">(</span><span class="s2">&quot;Google&quot;</span><span class="p">,</span> <span class="n">news_count</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">news</span>
+
+<span class="c1"># get list of related research</span>
+<span class="n">research</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Search</span><span class="p">(</span><span class="s2">&quot;apple&quot;</span><span class="p">,</span> <span class="n">include_research</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">research</span>
 </pre></div>
 </div>
 </section>

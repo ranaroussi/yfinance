@@ -28,7 +28,7 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/yfinance.css?v=6f22274e" />
   
@@ -415,10 +415,14 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Industry.html">Industry</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.screener.html">Screener &amp; Query</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.EquityQuery.html">EquityQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.FundQuery.html">FundQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.screen.html">yfinance.screen</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.functions.html">Functions and Utilities</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.download.html">yfinance.download</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/yfinance.EquityQuery.html">EquityQuery</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Screener.html">Screener</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.enable_debug_mode.html">yfinance.enable_debug_mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.set_tz_cache_location.html">yfinance.set_tz_cache_location</a></li>
 </ul>
@@ -554,8 +558,8 @@ document.write(`
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.fast_info.html#yfinance.Ticker.fast_info" title="yfinance.Ticker.fast_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fast_info</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_news.html#yfinance.Ticker.get_news" title="yfinance.Ticker.get_news"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_news</span></code></a>([proxy])</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_news.html#yfinance.Ticker.get_news" title="yfinance.Ticker.get_news"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_news</span></code></a>([count, tab, proxy])</p></td>
+<td><p>Allowed options for tab: &quot;news&quot;, &quot;all&quot;, &quot;press releases</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.news.html#yfinance.Ticker.news" title="yfinance.Ticker.news"><code class="xref py py-obj docutils literal notranslate"><span class="pre">news</span></code></a></p></td>
 <td><p></p></td>

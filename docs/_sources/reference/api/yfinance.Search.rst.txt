@@ -12,9 +12,19 @@ Search
    .. rubric:: Attributes
    
    
+   .. autoattribute:: all
+      :noindex:
+   .. autoattribute:: lists
+      :noindex:
+   .. autoattribute:: nav
+      :noindex:
    .. autoattribute:: news
       :noindex:
    .. autoattribute:: quotes
+      :noindex:
+   .. autoattribute:: research
+      :noindex:
+   .. autoattribute:: response
       :noindex:
    
    
@@ -25,6 +35,8 @@ Search
 
    
    .. automethod:: __init__
+      :noindex:
+   .. automethod:: search
       :noindex:
    
    

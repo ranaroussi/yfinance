@@ -1,0 +1,30 @@
+﻿:orphan:
+
+Market
+======
+
+.. currentmodule:: yfinance
+
+.. autoclass:: Market
+
+   
+   
+   .. rubric:: Attributes
+   
+   
+   .. autoattribute:: status
+      :noindex:
+   .. autoattribute:: summary
+      :noindex:
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   
+   .. automethod:: __init__
+      :noindex:
+   
+   

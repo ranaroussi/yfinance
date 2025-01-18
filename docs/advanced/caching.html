@@ -28,7 +28,7 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/yfinance.css?v=6f22274e" />
   
@@ -395,7 +395,7 @@ document.write(`
 </div>
 <p>To use a custom <cite>requests</cite> session, pass a <cite>session=</cite> argument to
 the Ticker constructor. This allows for caching calls to the API as well as a custom way to modify requests via  the <cite>User-agent</cite> header.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">requests_cache</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">requests_cache</span>
 <span class="n">session</span> <span class="o">=</span> <span class="n">requests_cache</span><span class="o">.</span><span class="n">CachedSession</span><span class="p">(</span><span class="s1">&#39;yfinance.cache&#39;</span><span class="p">)</span>
 <span class="n">session</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;User-agent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;my-program/1.0&#39;</span>
 <span class="n">ticker</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s1">&#39;MSFT&#39;</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
@@ -405,11 +405,11 @@ the Ticker constructor. This allows for caching calls to the API as well as a cu
 </pre></div>
 </div>
 <p>Combine <cite>requests_cache</cite> with rate-limiting to avoid triggering Yahoo’s rate-limiter/blocker that can corrupt data.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">requests</span> <span class="kn">import</span> <span class="n">Session</span>
-<span class="kn">from</span> <span class="nn">requests_cache</span> <span class="kn">import</span> <span class="n">CacheMixin</span><span class="p">,</span> <span class="n">SQLiteCache</span>
-<span class="kn">from</span> <span class="nn">requests_ratelimiter</span> <span class="kn">import</span> <span class="n">LimiterMixin</span><span class="p">,</span> <span class="n">MemoryQueueBucket</span>
-<span class="kn">from</span> <span class="nn">pyrate_limiter</span> <span class="kn">import</span> <span class="n">Duration</span><span class="p">,</span> <span class="n">RequestRate</span><span class="p">,</span> <span class="n">Limiter</span>
-<span class="k">class</span> <span class="nc">CachedLimiterSession</span><span class="p">(</span><span class="n">CacheMixin</span><span class="p">,</span> <span class="n">LimiterMixin</span><span class="p">,</span> <span class="n">Session</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">Session</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">requests_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheMixin</span><span class="p">,</span> <span class="n">SQLiteCache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">requests_ratelimiter</span><span class="w"> </span><span class="kn">import</span> <span class="n">LimiterMixin</span><span class="p">,</span> <span class="n">MemoryQueueBucket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pyrate_limiter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Duration</span><span class="p">,</span> <span class="n">RequestRate</span><span class="p">,</span> <span class="n">Limiter</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CachedLimiterSession</span><span class="p">(</span><span class="n">CacheMixin</span><span class="p">,</span> <span class="n">LimiterMixin</span><span class="p">,</span> <span class="n">Session</span><span class="p">):</span>
    <span class="k">pass</span>
 
 <span class="n">session</span> <span class="o">=</span> <span class="n">CachedLimiterSession</span><span class="p">(</span>
@@ -429,7 +429,7 @@ the Ticker constructor. This allows for caching calls to the API as well as a cu
 <li><p>MacOS = /Users/&lt;USER&gt;/Library/Caches/py-yfinance</p></li>
 </ul>
 <p>You can direct cache to use a different location with <a class="reference internal" href="../reference/api/yfinance.set_tz_cache_location.html#yfinance.set_tz_cache_location" title="yfinance.set_tz_cache_location"><code class="xref py py-attr docutils literal notranslate"><span class="pre">set_tz_cache_location</span></code></a>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">yfinance</span> <span class="k">as</span> <span class="nn">yf</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 <span class="n">yf</span><span class="o">.</span><span class="n">set_tz_cache_location</span><span class="p">(</span><span class="s2">&quot;custom/cache/location&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
