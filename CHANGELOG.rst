@@ -1,6 +1,24 @@
 Change Log
 ===========
 
+0.2.51
+------
+Fixes:
+- earnings_dates #2169
+Features:
+- Screener tweaks #2168
+- Search #2160
+- get_news() expose count #2173
+
+0.2.50
+------
+Fixes:
+- price repair #2111 #2139
+- download() appearance 2109
+- isin() error #2099
+- growth_estimates #2127
+Also new docs #2132
+
 0.2.49
 ------
 Fix prices-clean rarely discarding good data #2122

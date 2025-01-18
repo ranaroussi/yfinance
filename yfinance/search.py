@@ -27,7 +27,8 @@ from .data import YfData
 
 
 class Search:
-    def __init__(self, query, max_results=8, news_count=8, enable_fuzzy_query=False,
+    def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
+                 include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
                  session=None, proxy=None, timeout=30, raise_errors=True):
         """
         Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.
@@ -36,7 +37,13 @@ class Search:
             query: The search query (ticker symbol or company name).
             max_results: Maximum number of stock quotes to return (default 8).
             news_count: Number of news articles to include (default 8).
+            lists_count: Number of lists to include (default 8).
+            include_cb: Include the company breakdown (default True).
+            include_nav_links: Include the navigation links (default False).
+            include_research: Include the research reports (default False).
+            include_cultural_assets: Include the cultural assets (default False).
             enable_fuzzy_query: Enable fuzzy search for typos (default False).
+            recommended: Recommended number of results to return (default 8).
             session: Custom HTTP session for requests (default None).
             proxy: Proxy settings for requests (default None).
             timeout: Request timeout in seconds (default 30).
@@ -51,14 +58,28 @@ class Search:
         self.timeout = timeout
         self.raise_errors = raise_errors
 
+        self.lists_count = lists_count
+        self.include_cb = include_cb
+        self.nav_links = include_nav_links
+        self.enable_research = include_research
+        self.enable_cultural_assets = include_cultural_assets
+        self.recommended = recommended
+
         self._data = YfData(session=self.session)
         self._logger = utils.get_yf_logger()
 
-        self._response = self._fetch_results()
-        self._quotes = self._response.get("quotes", [])
-        self._news = self._response.get("news", [])
+        self._response = {}
+        self._all = {}
+        self._quotes = []
+        self._news = []
+        self._lists = []
+        self._research = []
+        self._nav = []
 
-    def _fetch_results(self):
+        self.search()
+
+    def search(self) -> 'Search':
+        """Search using the query parameters defined in the constructor."""
         url = f"{_BASE_URL_}/v1/finance/search"
         params = {
             "q": self.query,
@@ -66,7 +87,13 @@ class Search:
             "enableFuzzyQuery": self.enable_fuzzy_query,
             "newsCount": self.news_count,
             "quotesQueryId": "tss_match_phrase_query",
-            "newsQueryId": "news_cie_vespa"
+            "newsQueryId": "news_cie_vespa",
+            "listsCount": self.lists_count,
+            "enableCb": self.include_cb,
+            "enableNavLinks": self.nav_links,
+            "enableResearchReports": self.enable_research,
+            "enableCulturalAssets": self.enable_cultural_assets,
+            "recommendedCount": self.recommended
         }
 
         self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
@@ -79,17 +106,53 @@ class Search:
         try:
             data = data.json()
         except _json.JSONDecodeError:
-            self._logger.error(f"{self.query}: Failed to retrieve the news and received faulty response instead.")
+            self._logger.error(f"{self.query}: Failed to retrieve search results and received faulty response instead.")
             data = {}
 
-        return data
+        self._response = data
+        # Filter quotes to only include symbols
+        self._quotes = [quote for quote in data.get("quotes", []) if "symbol" in quote]
+        self._news = data.get("news", [])
+        self._lists = data.get("lists", [])
+        self._research = data.get("researchReports", [])
+        self._nav = data.get("nav", [])
+
+        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research,
+                     "nav": self._nav}
+
+        return self
 
     @property
-    def quotes(self):
+    def quotes(self) -> 'list':
         """Get the quotes from the search results."""
         return self._quotes
 
     @property
-    def news(self):
+    def news(self) -> 'list':
         """Get the news from the search results."""
         return self._news
+
+    @property
+    def lists(self) -> 'list':
+        """Get the lists from the search results."""
+        return self._lists
+
+    @property
+    def research(self) -> 'list':
+        """Get the research reports from the search results."""
+        return self._research
+
+    @property
+    def nav(self) -> 'list':
+        """Get the navigation links from the search results."""
+        return self._nav
+
+    @property
+    def all(self) -> 'dict[str,list]':
+        """Get all the results from the search results: filtered down version of response."""
+        return self._all
+
+    @property
+    def response(self) -> 'dict':
+        """Get the raw response from the search results."""
+        return self._response
