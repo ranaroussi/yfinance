@@ -6,3 +6,6 @@ tickers = yf.Tickers('msft aapl goog')
 tickers.tickers['MSFT'].info
 tickers.tickers['AAPL'].history(period="1mo")
 tickers.tickers['GOOG'].actions
+
+# websocket
+tickers.live()
