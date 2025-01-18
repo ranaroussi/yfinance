@@ -17,6 +17,8 @@ The following are the publicly available classes, and functions exposed by the `
 - :attr:`Tickers <yfinance.Tickers>`: Class for handling multiple tickers.
 - :attr:`download <yfinance.download>`: Function to download market data for multiple tickers.
 - :attr:`Search <yfinance.Search>`: Class for accessing search results.
+- :class:`WebSocket <yfinance.WebSocket>`: Class for synchronously streaming live market data.
+- :class:`AsyncWebSocket <yfinance.AsyncWebSocket>`: Class for asynchronously streaming live market data.
 - :attr:`Sector <yfinance.Sector>`: Domain class for accessing sector information.
 - :attr:`Industry <yfinance.Industry>`: Domain class for accessing industry information.
 - :attr:`Market <yfinance.Market>`: Class for accessing market status & summary.
@@ -37,6 +39,7 @@ The following are the publicly available classes, and functions exposed by the `
    yfinance.analysis
    yfinance.market
    yfinance.search
+   yfinance.websocket
    yfinance.sector_industry
    yfinance.screener
    yfinance.functions
