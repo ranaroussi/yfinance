@@ -10,6 +10,8 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
+from .exceptions import YFRateLimitError
+
 cache_maxsize = 64
 
 
@@ -389,6 +391,10 @@ class YfData(metaclass=SingletonMeta):
                 request_args['cookies'] = {cookie.name: cookie.value}
             response = request_method(**request_args)
             utils.get_yf_logger().debug(f'response code={response.status_code}')
+
+            # Raise exception if rate limited
+            if response.status_code == 429:
+                raise YFRateLimitError()
 
         return response
 
