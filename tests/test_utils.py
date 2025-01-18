@@ -21,6 +21,8 @@ import unittest
 import tempfile
 import os
 
+from yfinance.utils import is_valid_period_format
+
 
 class TestCache(unittest.TestCase):
     @classmethod
@@ -105,11 +107,32 @@ class TestPandas(unittest.TestCase):
             i += 1
 
 
+class TestUtils(unittest.TestCase):
+    def test_is_valid_period_format_valid(self):
+        self.assertTrue(is_valid_period_format("1d"))
+        self.assertTrue(is_valid_period_format("5wk"))
+        self.assertTrue(is_valid_period_format("12mo"))
+        self.assertTrue(is_valid_period_format("2y"))
+
+    def test_is_valid_period_format_invalid(self):
+        self.assertFalse(is_valid_period_format("1m"))    # Incorrect suffix
+        self.assertFalse(is_valid_period_format("2wks"))  # Incorrect suffix
+        self.assertFalse(is_valid_period_format("10"))    # Missing suffix
+        self.assertFalse(is_valid_period_format("abc"))   # Invalid string
+        self.assertFalse(is_valid_period_format(""))      # Empty string
+
+    def test_is_valid_period_format_edge_cases(self):
+        self.assertFalse(is_valid_period_format(None))    # None input
+        self.assertFalse(is_valid_period_format("0d"))    # Zero is invalid
+        self.assertTrue(is_valid_period_format("999mo"))  # Large number valid
+
+
 def suite():
     ts: TestSuite = unittest.TestSuite()
     ts.addTest(TestCache('Test cache'))
     ts.addTest(TestCacheNoPermission('Test cache no permission'))
     ts.addTest(TestPandas("Test pandas"))
+    ts.addTest(TestUtils("Test utils"))
     return ts
 
 
