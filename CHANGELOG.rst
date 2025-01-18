@@ -1,14 +1,28 @@
 Change Log
 ===========
 
+0.2.52
+------
+Features:
+- Improve Screener & docs #2207
+- Add Market summary & status #2175
+- Support custom period in Ticker.history() #2192
+- raise YfRateLimitError if rate limited #2108
+- add more options to Search #2191
+Fixes:
+- remove hardcoded keys in Analysis #2194
+- handle Yahoo changed Search response #2202
+Maintenance:
+- add optional dependencies to requirements.txt #2199
+
 0.2.51
 ------
-Fixes:
-- earnings_dates #2169
 Features:
 - Screener tweaks #2168
 - Search #2160
 - get_news() expose count #2173
+Fixes:
+- earnings_dates #2169
 
 0.2.50
 ------
