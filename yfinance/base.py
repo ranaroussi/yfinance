@@ -580,7 +580,7 @@ class TickerBase:
         return self._news
 
     @utils.log_indent_decorator
-    def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
+    def get_earnings_dates(self, limit=12, proxy=None, add_cookies=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
         
@@ -589,7 +589,8 @@ class TickerBase:
                 Default value 12 should return next 4 quarters and last 8 quarters.
                 Increase if more history is needed.
             proxy: requests proxy to use.
-        
+            add_cookies: additional cookies to use
+
         Returns:
             pd.DataFrame
         """
@@ -603,7 +604,7 @@ class TickerBase:
         dates = None
         while True:
             url = f"{_ROOT_URL_}/calendar/earnings?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
-            data = self._data.cache_get(url=url, proxy=proxy).text
+            data = self._data.cache_get(url=url, proxy=proxy, add_cookies=add_cookies).text
 
             if "Will be right back" in data:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
