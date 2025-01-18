@@ -44,4 +44,10 @@ class YFInvalidPeriodError(YFException):
         self.ticker = ticker
         self.invalid_period = invalid_period
         self.valid_ranges = valid_ranges
-        super().__init__(f"{self.ticker}: Period '{invalid_period}' is invalid, must be one of {valid_ranges}")
+        super().__init__(f"{self.ticker}: Period '{invalid_period}' is invalid, "
+                         f"must be of the format {valid_ranges}, etc.")
+
+
+class YFRateLimitError(YFException):
+    def __init__(self):
+        super().__init__("Too Many Requests. Rate limited. Try after a while.")
