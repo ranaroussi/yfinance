@@ -1,225 +1,180 @@
-from typing import Dict
+from .query import EquityQuery as EqyQy
+from .query import FundQuery as FndQy
+from .query import QueryBase, EquityQuery, FundQuery
 
-from yfinance import utils
+from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
-from yfinance.const import _BASE_URL_, PREDEFINED_SCREENER_BODY_MAP
-from .screener_query import Query
-from ..utils import dynamic_docstring, generate_list_table_from_dict_of_dict
+
+from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
+
+from typing import Union
+import requests
 
 _SCREENER_URL_ = f"{_BASE_URL_}/v1/finance/screener"
+_PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
 
-class Screener:
+PREDEFINED_SCREENER_BODY_DEFAULTS = {
+    "offset":0, "size":25, "userId":"","userIdType":"guid"
+}
+
+PREDEFINED_SCREENER_QUERIES = {
+    'aggressive_small_caps': {"sortField":"eodvolume", "sortType":"desc",
+                            "query": EqyQy('and', [EqyQy('is-in', ['exchange', 'NMS', 'NYQ']), EqyQy('lt', ["epsgrowth.lasttwelvemonths", 15])])},
+    'day_gainers': {"sortField":"percentchange", "sortType":"DESC",
+                    "query": EqyQy('and', [EqyQy('gt', ['percentchange', 3]), EqyQy('eq', ['region', 'us']), EqyQy('gte', ['intradaymarketcap', 2000000000]), EqyQy('gte', ['intradayprice', 5]), EqyQy('gt', ['dayvolume', 15000])])},
+    'day_losers': {"sortField":"percentchange", "sortType":"ASC",
+                    "query": EqyQy('and', [EqyQy('lt', ['percentchange', -2.5]), EqyQy('eq', ['region', 'us']), EqyQy('gte', ['intradaymarketcap', 2000000000]), EqyQy('gte', ['intradayprice', 5]), EqyQy('gt', ['dayvolume', 20000])])},
+    'growth_technology_stocks': {"sortField":"eodvolume", "sortType":"desc",
+                                "query": EqyQy('and', [EqyQy('gte', ['quarterlyrevenuegrowth.quarterly', 25]), EqyQy('gte', ['epsgrowth.lasttwelvemonths', 25]), EqyQy('eq', ['sector', 'Technology']), EqyQy('is-in', ['exchange', 'NMS', 'NYQ'])])},
+    'most_actives': {"sortField":"dayvolume", "sortType":"DESC",
+                    "query": EqyQy('and', [EqyQy('eq', ['region', 'us']), EqyQy('gte', ['intradaymarketcap', 2000000000]), EqyQy('gt', ['dayvolume', 5000000])])},
+    'most_shorted_stocks': {"size":25, "offset":0, "sortField":"short_percentage_of_shares_outstanding.value", "sortType":"DESC", 
+                            "query": EqyQy('and', [EqyQy('eq', ['region', 'us']), EqyQy('gt', ['intradayprice', 1]), EqyQy('gt', ['avgdailyvol3m', 200000])])},
+    'small_cap_gainers': {"sortField":"eodvolume", "sortType":"desc", 
+                        "query": EqyQy("and", [EqyQy("lt", ["intradaymarketcap",2000000000]), EqyQy("is-in", ["exchange", "NMS", "NYQ"])])},
+    'undervalued_growth_stocks': {"sortType":"DESC", "sortField":"eodvolume", 
+                                "query": EqyQy('and', [EqyQy('btwn', ['peratio.lasttwelvemonths', 0, 20]), EqyQy('lt', ['pegratio_5y', 1]), EqyQy('gte', ['epsgrowth.lasttwelvemonths', 25]), EqyQy('is-in', ['exchange', 'NMS', 'NYQ'])])},
+    'undervalued_large_caps': {"sortField":"eodvolume", "sortType":"desc", 
+                            "query": EqyQy('and', [EqyQy('btwn', ['peratio.lasttwelvemonths', 0, 20]), EqyQy('lt', ['pegratio_5y', 1]), EqyQy('btwn', ['intradaymarketcap', 10000000000, 100000000000]), EqyQy('is-in', ['exchange', 'NMS', 'NYQ'])])},
+    'conservative_foreign_funds': {"sortType":"DESC", "sortField":"fundnetassets",
+                                "query": FndQy('and', [FndQy('is-in', ['categoryname', 'Foreign Large Value', 'Foreign Large Blend', 'Foreign Large Growth', 'Foreign Small/Mid Growth', 'Foreign Small/Mid Blend', 'Foreign Small/Mid Value']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('is-in', ['riskratingoverall', 1, 2, 3]), FndQy('eq', ['exchange', 'NAS'])])},
+    'high_yield_bond': {"sortType":"DESC", "sortField":"fundnetassets",
+                        "query": FndQy('and', [FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('is-in', ['riskratingoverall', 1, 2, 3]), FndQy('eq', ['categoryname', 'High Yield Bond']), FndQy('eq', ['exchange', 'NAS'])])},
+    'portfolio_anchors': {"sortType":"DESC", "sortField":"fundnetassets",
+                        "query": FndQy('and', [FndQy('eq', ['categoryname', 'Large Blend']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('eq', ['exchange', 'NAS'])])},
+    'solid_large_growth_funds': {"sortType":"DESC", "sortField":"fundnetassets",
+                                "query": FndQy('and', [FndQy('eq', ['categoryname', 'Large Growth']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('eq', ['exchange', 'NAS'])])},
+    'solid_midcap_growth_funds': {"sortType":"DESC", "sortField":"fundnetassets",
+                                "query": FndQy('and', [FndQy('eq', ['categoryname', 'Mid-Cap Growth']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('eq', ['exchange', 'NAS'])])},
+    'top_mutual_funds': {"sortType":"DESC", "sortField":"percentchange",
+                        "query": FndQy('and', [FndQy('gt', ['intradayprice', 15]), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('gt', ['initialinvestment', 1000]), FndQy('eq', ['exchange', 'NAS'])])}
+}
+
+@dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title='Predefined queries (Dec-2024)')})
+def screen(query: Union[str, EquityQuery, FundQuery],
+            offset: int = None, 
+            size: int = None, 
+            sortField: str = None, 
+            sortAsc: bool = None,
+            userId: str = None, 
+            userIdType: str = None, 
+            session = None, proxy = None):
     """
-    The `Screener` class is used to execute the queries and return the filtered results.
+    Run a screen: predefined query, or custom query.
 
-    The Screener class provides methods to set and manipulate the body of a screener request,
-    fetch and parse the screener results, and access predefined screener bodies.
+    :Parameters:
+        * Defaults only apply if query = EquityQuery or FundQuery
+        query : str | Query:
+            The query to execute, either name of predefined or custom query.
+            For predefined list run yf.PREDEFINED_SCREENER_QUERIES.keys()
+        offset : int
+            The offset for the results. Default 0.
+        size : int
+            number of results to return. Default 100, maximum 250 (Yahoo)
+        sortField : str
+            field to sort by. Default "ticker"
+        sortAsc : bool
+            Sort ascending? Default False
+        userId : str
+            The user ID. Default empty.
+        userIdType : str
+            Type of user ID (e.g., "guid"). Default "guid".
+
+    Example: predefined query
+        .. code-block:: python
+
+            import yfinance as yf
+            response = yf.screen("aggressive_small_caps")
+
+    Example: custom query
+        .. code-block:: python
+
+            import yfinance as yf
+            from yfinance import EquityQuery
+            q = EquityQuery('and', [
+                   EquityQuery('gt', ['percentchange', 3]), 
+                   EquityQuery('eq', ['region', 'us'])
+            ])
+            response = yf.screen(q, sortField = 'percentchange', sortAsc = True)
+
+    To access predefineds query code
+        .. code-block:: python
+
+            import yfinance as yf
+            query = yf.PREDEFINED_SCREENER_QUERIES['aggressive_small_caps']
+
+    {predefined_screeners}
     """
-    def __init__(self, session=None, proxy=None):
-        """
-        Args:
-            session (requests.Session, optional): A requests session object to be used for making HTTP requests. Defaults to None.
-            proxy (str, optional): A proxy URL to be used for making HTTP requests. Defaults to None.
-        
-        .. seealso::
 
-            :attr:`Screener.predefined_bodies <yfinance.Screener.predefined_bodies>`
-                supported predefined screens
-        """
-        self.proxy = proxy
-        self.session = session
+    # Only use defaults when user NOT give a predefined, because
+    # Yahoo's predefined endpoint auto-applies defaults. Also,
+    # that endpoint might be ignoring these fields.
+    defaults = {
+        'offset': 0,
+        'size': 25,
+        'sortField': 'ticker',
+        'sortAsc': False,
+        'userId': "",
+        'userIdType': "guid"
+    }
 
-        self._data: YfData = YfData(session=session)
-        self._body: Dict = {}
-        self._response: Dict = {}
-        self._body_updated = False
-        self._accepted_body_keys = {"offset","size","sortField","sortType","quoteType","query","userId","userIdType"}
-        self._predefined_bodies = PREDEFINED_SCREENER_BODY_MAP.keys()
+    if size is not None and size > 250:
+        raise ValueError("Yahoo limits query size to 250, reduce size.")
 
-    @property
-    def body(self) -> Dict:
-        return self._body
-    
-    @property
-    def response(self) -> Dict:
-        """
-        Fetch screen result
+    fields = dict(locals())
+    for k in ['query', 'session', 'proxy']:
+        if k in fields:
+            del fields[k]
 
-        Example:
+    params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
 
-            .. code-block:: python
-
-                result = screener.response
-                symbols = [quote['symbol'] for quote in result['quotes']]
-        """
-        if self._body_updated or self._response is None:
-            self._fetch_and_parse()
-        
-        self._body_updated = False
-        return self._response
-    
-    @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_of_dict(PREDEFINED_SCREENER_BODY_MAP,bullets=False)})
-    @property
-    def predefined_bodies(self) -> Dict:
-        """
-        Predefined Screeners
-        {predefined_screeners}
-        """
-        return self._predefined_bodies
-
-    def set_default_body(self, query: Query, offset: int = 0, size: int = 100, sortField: str = "ticker", sortType: str = "desc", quoteType: str = "equity", userId: str = "", userIdType: str = "guid") -> 'Screener':
-        """
-        Set the default body using a custom query.
-
-        Args:
-            query (Query): The Query object to set as the body.
-            offset (Optional[int]): The offset for the results. Defaults to 0.
-            size (Optional[int]): The number of results to return. Defaults to 100. Maximum is 250 as set by Yahoo.
-            sortField (Optional[str]): The field to sort the results by. Defaults to "ticker".
-            sortType (Optional[str]): The type of sorting (e.g., "asc" or "desc"). Defaults to "desc".
-            quoteType (Optional[str]): The type of quote (e.g., "equity"). Defaults to "equity".
-            userId (Optional[str]): The user ID. Defaults to an empty string.
-            userIdType (Optional[str]): The type of user ID (e.g., "guid"). Defaults to "guid".
-        
-        Returns:
-            Screener: self
-
-        Example:
-
-            .. code-block:: python
-
-                screener.set_default_body(qf)
-        """
-        self._body_updated = True
-
-        self._body = {
-            "offset": offset,
-            "size": size,
-            "sortField": sortField,
-            "sortType": sortType,
-            "quoteType": quoteType,
-            "query": query.to_dict(),
-            "userId": userId,
-            "userIdType": userIdType
-        }
-        return self
-
-    def set_predefined_body(self, predefined_key: str) -> 'Screener':
-        """
-        Set a predefined body
-
-        Args: 
-            predefined_key (str): key to one of predefined screens 
-
-        Returns:
-            Screener: self
-
-        Example:
-
-            .. code-block:: python
-
-                screener.set_predefined_body('day_gainers')
-        
-                
-        .. seealso::
-
-            :attr:`Screener.predefined_bodies <yfinance.Screener.predefined_bodies>`
-                supported predefined screens
-        """
-        body = PREDEFINED_SCREENER_BODY_MAP.get(predefined_key, None)
-        if not body:
-            raise ValueError(f'Invalid key {predefined_key} provided for predefined screener')
-        
-        self._body_updated = True
-        self._body = body
-        return self
-
-    def set_body(self, body: Dict) -> 'Screener':
-        """
-        Set the fully custom body using dictionary input
-
-        Args: 
-            body (Dict): full query body
-
-        Returns:
-            Screener: self
-        
-        Example:
-
-            .. code-block:: python
-
-                screener.set_body({
-                    "offset": 0,
-                    "size": 100,
-                    "sortField": "ticker",
-                    "sortType": "desc",
-                    "quoteType": "equity",
-                    "query": qf.to_dict(),
-                    "userId": "",
-                    "userIdType": "guid"
-                })
-        """
-        missing_keys = [key for key in self._accepted_body_keys if key not in body]
-        if missing_keys:
-            raise ValueError(f"Missing required keys in body: {missing_keys}")
-
-        extra_keys = [key for key in body if key not in self._accepted_body_keys]
-        if extra_keys:
-            raise ValueError(f"Body contains extra keys: {extra_keys}")
-
-        self._body_updated = True
-        self._body = body
-        return self
-
-    def patch_body(self, values: Dict) -> 'Screener':
-        """
-        Patch parts of the body using dictionary input
-
-        Args: 
-            body (Dict): partial query body
-
-        Returns:
-            Screener: self
-
-        Example:
-
-            .. code-block:: python
-
-                screener.patch_body({"offset": 100})
-        """
-        extra_keys = [key for key in values if key not in self._accepted_body_keys]
-        if extra_keys:
-            raise ValueError(f"Body contains extra keys: {extra_keys}")
-        
-        self._body_updated = True
-        for k in values:
-            self._body[k] = values[k]
-        return self
-
-    def _validate_body(self) -> None:
-        if not all(k in self._body for k in self._accepted_body_keys):
-            raise ValueError("Missing required keys in body")
-        
-        if self._body["size"] > 250:
-            raise ValueError("Yahoo limits query size to 250. Please decrease the size of the query.")
-
-    def _fetch(self) -> Dict:
-        params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
-        response = self._data.post(_SCREENER_URL_, body=self.body, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
-        response.raise_for_status()
-        return response.json()
-    
-    def _fetch_and_parse(self) -> None:
-        response = None
-        self._validate_body()
-        
+    post_query = None
+    if isinstance(query, str):
+        # post_query = PREDEFINED_SCREENER_QUERIES[query]
+        # Switch to Yahoo's predefined endpoint
+        _data = YfData(session=session)
+        params_dict['scrIds'] = query
+        for k,v in fields.items():
+            if v is not None:
+                params_dict[k] = v
+        resp = _data.get(url=_PREDEFINED_URL_, params=params_dict, proxy=proxy)
         try:
-            response = self._fetch()
-            self._response = response['finance']['result'][0]
-        except Exception as e:
-            logger = utils.get_yf_logger()
-            logger.error(f"Failed to get screener data for '{self._body.get('query', 'query not set')}' reason: {e}")
-            logger.debug("Got response: ")
-            logger.debug("-------------")
-            logger.debug(f" {response}")
-            logger.debug("-------------")
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError:
+            if query not in PREDEFINED_SCREENER_QUERIES:
+                print(f"yfinance.screen: '{query}' is probably not a predefined query.")
+            raise
+        return resp.json()["finance"]["result"][0]
+
+    elif isinstance(query, QueryBase):
+        # Prepare other fields
+        for k in defaults:
+            if k not in fields or fields[k] is None:
+                fields[k] = defaults[k]
+        fields['sortType'] = 'ASC' if fields['sortAsc'] else 'DESC'
+        del fields['sortAsc']
+
+        post_query = fields
+        post_query['query'] = query
+
+    else:
+        raise ValueError(f'Query must be type str or QueryBase, not "{type(query)}"')
+
+    if query is None:
+        raise ValueError('No query provided')
+
+    if isinstance(post_query['query'], EqyQy):
+        post_query['quoteType'] = 'EQUITY'
+    elif isinstance(post_query['query'], FndQy):
+        post_query['quoteType'] = 'MUTUALFUND'
+    post_query['query'] = post_query['query'].to_dict()
+
+    # Fetch
+    _data = YfData(session=session)
+    response = _data.post(_SCREENER_URL_, 
+                            body=post_query, 
+                            user_agent_headers=_data.user_agent_headers, 
+                            params=params_dict, 
+                            proxy=proxy)
+    response.raise_for_status()
+    return response.json()['finance']['result'][0]
