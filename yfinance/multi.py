@@ -36,7 +36,7 @@ from . import shared
 
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True,
-             ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
+             ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",
              prepost=False, proxy=None, rounding=False, timeout=10, session=None,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
@@ -92,6 +92,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Always return a MultiIndex DataFrame? Default is True
     """
     logger = utils.get_yf_logger()
+
+    if auto_adjust is None:
+        # Warn users that default has changed to True
+        utils.print_once("YF.download() has changed argument auto_adjust default to True")
+        auto_adjust = True
 
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
