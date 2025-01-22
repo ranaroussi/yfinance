@@ -7,9 +7,17 @@
 """yfinance - market data downloader"""
 
 from setuptools import setup, find_packages
+from setuptools.command.install import install
 # from codecs import open
 import io
 from os import path
+
+MESSAGE = """
+NOTE: yfinance is not affiliated, endorsed, or vetted by Yahoo, Inc.
+
+You should refer to Yahoo!'s terms of use for details on your rights
+to use the actual data downloaded.
+"""
 
 # --- get version ---
 version = "unknown"
@@ -24,6 +32,21 @@ here = path.abspath(path.dirname(__file__))
 # Get the long description from the README file
 with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
+
+WARNINGS:'dict[str,str]' = {
+    "0.2.51":"TEST"
+}
+
+class CustomInstall(install):
+    def run(self):
+        print("Running install")
+        install.run(self)
+        if message := WARNINGS.get(version, None):
+            print(message)
+        print(MESSAGE)
+
+
+
 
 setup(
     name='yfinance',
@@ -63,7 +86,10 @@ setup(
                       'requests>=2.31', 'multitasking>=0.0.7',
                       'lxml>=4.9.1', 'platformdirs>=2.0.0', 'pytz>=2022.5',
                       'frozendict>=2.3.4', 'peewee>=3.16.2',
-                      'beautifulsoup4>=4.11.1', 'html5lib>=1.1'],
+                      ],
+    cmdclass={
+        "install": CustomInstall
+    },
     extras_require={
         'nospam': ['requests_cache>=1.0', 'requests_ratelimiter>=0.3.1'],
         'repair': ['scipy>=1.6.3'],
@@ -75,9 +101,3 @@ setup(
         ],
     },
 )
-
-print("""
-NOTE: yfinance is not affiliated, endorsed, or vetted by Yahoo, Inc.
-
-You should refer to Yahoo!'s terms of use for details on your rights
-to use the actual data downloaded.""")
