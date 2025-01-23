@@ -169,7 +169,7 @@ class Search:
     
 
     
-    def search_quotes(self) -> 'Search':
+    def search_quotes(self) -> 'list':
         """Search using the query parameters defined in the constructor, but only return the quotes."""
         self._logger.debug(f'{self.query}: Fields: [quotes]')
         data = self.cache.fetch(self.query, ["quotes"], session=self.session, proxy=self.proxy, timeout=self.timeout)
@@ -177,9 +177,9 @@ class Search:
         self._quotes = data.get("quotes", [])
         self._response = data
         self._all["quotes"] = self._quotes
-        return self
+        return self.quotes
 
-    def search_news(self) -> 'Search':
+    def search_news(self) -> 'list':
         """Search using the query parameters defined in the constructor, but only return the news."""
         self._logger.debug(f'{self.query}: Fields: [news]')
         data = self.cache.fetch(self.query, ["news"], session=self.session, proxy=self.proxy, timeout=self.timeout)
@@ -187,9 +187,9 @@ class Search:
         self._news = data.get("news", [])
         self._response = data
         self._all["news"] = self._news
-        return self
+        return self.news
     
-    def search_lists(self) -> 'Search':
+    def search_lists(self) -> 'list':
         """Search using the query parameters defined in the constructor, but only return the lists."""
         self._logger.debug(f'{self.query}: Fields: [lists]')
         data = self.cache.fetch(self.query, ["lists"], session=self.session, proxy=self.proxy, timeout=self.timeout)
@@ -197,9 +197,9 @@ class Search:
         self._lists = data.get("lists", [])
         self._response = data
         self._all["lists"] = self._lists
-        return self
+        return self.lists
     
-    def search_research(self) -> 'Search':
+    def search_research(self) -> 'list':
         """Search using the query parameters defined in the constructor, but only return the research reports."""
         self._logger.debug(f'{self.query}: Fields: [research]')
         data = self.cache.fetch(self.query, ["research"], session=self.session, proxy=self.proxy, timeout=self.timeout)
@@ -207,9 +207,9 @@ class Search:
         self._research = data.get("researchReports", [])
         self._response = data
         self._all["research"] = self._research
-        return self
+        return self.research
 
-    def search_nav(self) -> 'Search':
+    def search_nav(self) -> 'list':
         """Search using the query parameters defined in the constructor, but only return the navigation links."""
         self._logger.debug(f'{self.query}: Fields: [nav]')
         data = self.cache.fetch(self.query, ["nav"], session=self.session, proxy=self.proxy, timeout=self.timeout)
@@ -217,7 +217,7 @@ class Search:
         self._nav = data.get("nav", [])
         self._response = data
         self._all["nav"] = self._nav
-        return self
+        return self.nav
 
     @property
     def quotes(self) -> 'list':
