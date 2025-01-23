@@ -34,7 +34,6 @@ with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 WARNINGS:'dict[str,str]' = {
-    "0.2.51":"TEST"
 }
 
 class CustomInstall(install):
