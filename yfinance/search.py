@@ -130,7 +130,6 @@ class Search:
         self.enable_cultural_assets = include_cultural_assets
         self.recommended = recommended
 
-        self._data = YfData(session=self.session)
         self._logger = utils.get_yf_logger()
 
         self._response = {}
@@ -166,9 +165,9 @@ class Search:
         }
 
         return self
-    
 
-    
+
+
     def search_quotes(self) -> 'list':
         """Search using the query parameters defined in the constructor, but only return the quotes."""
         self._logger.debug(f'{self.query}: Fields: [quotes]')
