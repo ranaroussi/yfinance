@@ -12,13 +12,6 @@ from setuptools.command.install import install
 import io
 from os import path
 
-MESSAGE = """
-NOTE: yfinance is not affiliated, endorsed, or vetted by Yahoo, Inc.
-
-You should refer to Yahoo!'s terms of use for details on your rights
-to use the actual data downloaded.
-"""
-
 # --- get version ---
 version = "unknown"
 with open("yfinance/version.py") as f:
@@ -33,16 +26,14 @@ here = path.abspath(path.dirname(__file__))
 with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-WARNINGS:'dict[str,str]' = {
-}
+WARNINGS:'dict[str,str]' = {}
 
-class CustomInstall(install):
+class Install(install):
     def run(self):
-        print("Running install")
-        install.run(self)
         if message := WARNINGS.get(version, None):
             print(message)
-        print(MESSAGE)
+        install.run(self)
+
 
 
 
@@ -77,18 +68,19 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+
     ],
     platforms=['any'],
     keywords='pandas, yahoo finance, pandas datareader',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
-    install_requires=['pandas>=1.3.0', 'numpy>=1.16.5',
+    install_requires=['pandas[html]>=1.3.0', 'numpy>=1.16.5',
                       'requests>=2.31', 'multitasking>=0.0.7',
-                      'lxml>=4.9.1', 'platformdirs>=2.0.0', 'pytz>=2022.5',
+                      'platformdirs>=2.0.0', 'pytz>=2022.5',
                       'frozendict>=2.3.4', 'peewee>=3.16.2',
                       ],
-    cmdclass={
-        "install": CustomInstall
-    },
     extras_require={
         'nospam': ['requests_cache>=1.0', 'requests_ratelimiter>=0.3.1'],
         'repair': ['scipy>=1.6.3'],
