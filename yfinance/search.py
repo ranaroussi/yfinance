@@ -28,7 +28,7 @@ from .utils import deprecated
 
 
 class Search:
-    @deprecated("session", "proxy", "timeout", since="0.2.51")
+    @utils.deprecated(session="`session` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set using `yf.set_config", proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
                  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
                  session=None, proxy=None, timeout=None, raise_errors=True):
@@ -100,7 +100,7 @@ class Search:
 
         self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
 
-        data = self._data.cache_get(url=url, params=params, proxy=self.proxy, timeout=self.timeout)
+        data = self._data.get(url=url, params=params)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -119,8 +119,7 @@ class Search:
         self._research = data.get("researchReports", [])
         self._nav = data.get("nav", [])
 
-        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research,
-                     "nav": self._nav}
+        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research, "nav": self._nav}
 
         return self
 

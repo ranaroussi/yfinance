@@ -54,13 +54,6 @@ class SingletonMeta(type):
                 cls._instances[cls]._set_session(*args, **kwargs)
             return cls._instances[cls]
      
-    def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None):
-        cls.proxy = proxy
-        cls.timeout = timeout or 30
-        cls.lang = lang or "en-US"
-        cls.region = region or "US"
-        cls.session = session or requests.Session()
-
 class YfData(metaclass=SingletonMeta):
     """
     Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations.
@@ -70,7 +63,17 @@ class YfData(metaclass=SingletonMeta):
         'User-Agent': random.choice(USER_AGENTS)
     }
 
+    @classmethod
+    def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None):
+        cls.proxy = proxy
+        cls.timeout = timeout or 30
+        cls.lang = lang or "en-US"
+        cls.region = region or "US"
+        cls.session = session or requests.Session()
+
+
     def __init__(self, session=None):
+        YfData.set_config(session=session)
         self._crumb = None
         self._cookie = None
 
@@ -352,13 +355,13 @@ class YfData(metaclass=SingletonMeta):
         return cookie, crumb, strategy
 
     @utils.log_indent_decorator
-    def get(self, url, user_agent_headers=None, params=None, proxy=None):
-        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, proxy=proxy)
-    
+    def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=None):
+        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
+
     @utils.log_indent_decorator
     def post(self, url, body, user_agent_headers=None, params=None, proxy=None):
         return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, proxy=proxy)
-    
+
     @utils.log_indent_decorator
     def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None):
         # Important: treat input arguments as immutable.
@@ -427,11 +430,6 @@ class YfData(metaclass=SingletonMeta):
                 raise YFRateLimitError()
 
         return response
-
-    @lru_cache_freezeargs
-    @lru_cache(maxsize=cache_maxsize)
-    def cache_get(self, url, user_agent_headers=None, params=None, proxy=None):
-        return self.get(url, user_agent_headers, params, proxy)
 
     def _get_proxy(self, proxy=None):
         if proxy is None:

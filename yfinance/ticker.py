@@ -33,14 +33,14 @@ from .const import _BASE_URL_
 
 
 class Ticker(TickerBase):
-    @utils.deprecated("proxy", "session", since="0.2.51")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", session="`session` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, ticker, session=None, proxy=None):
         super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}
         self._underlying  = {}
 
     def __repr__(self):
-        return f'yfinance.Ticker object <{self.ticker}>'
+        return f'yfinance.Ticker object <>'
 
     def _download_options(self, date=None):
         if date is None:

@@ -26,7 +26,7 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
-    @utils.deprecated("proxy", since="0.2.51")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, tickerBaseObject, proxy=None):
         self._tkr = tickerBaseObject
         self.proxy = proxy
@@ -486,7 +486,7 @@ class FastInfo:
 
 class Quote:
 
-    @utils.deprecated("proxy", since="0.2.51")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol
@@ -692,7 +692,7 @@ class Quote:
             end = int(end.timestamp())
             url += f"&period1={start}&period2={end}"
 
-            json_str = self._data.cache_get(url=url, proxy=proxy).text
+            json_str = self._data.get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:

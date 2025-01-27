@@ -33,7 +33,7 @@ class Tickers:
     def __repr__(self):
         return f"yfinance.Tickers object <{','.join(self.symbols)}>"
 
-    @deprecated("session", since="0.2.51")
+    @deprecated(session="`session` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, tickers, session=None):
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
@@ -45,7 +45,7 @@ class Tickers:
         # )(*ticker_objects.values())
 
     @log_indent_decorator
-    @deprecated("proxy", "timeout", since="0.2.51")
+    @deprecated("proxy", "timeout", since="0.2.53")
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, repair=False,
@@ -61,7 +61,7 @@ class Tickers:
             threads, group_by, progress,
             timeout, **kwargs)
 
-    @deprecated("proxy", "timeout", since="0.2.51")
+    @deprecated("proxy", "timeout", since="0.2.53")
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, repair=False, 

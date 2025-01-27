@@ -32,6 +32,7 @@ from inspect import getmembers, signature
 from types import FunctionType
 from typing import List, Optional
 import warnings
+import typing as t
 
 import numpy as _np
 import pandas as _pd
@@ -45,8 +46,53 @@ from yfinance import const
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
+def nindex(string, substring):
+    """
+    Return the index of the first character that is not the substring.
+    
+    Args:
+        string (str): The string to search.
+        substring (str): The substring to search for.
 
-def deprecated(*params, message="", new=None, since=None, removed_in=None, **message_params):
+    Returns:
+        int: The index of the first character that is not the substring.
+
+    Raises:
+        ValueError: If the substring is not found in the string.
+    """
+    i = 0
+    assert len(substring) == 1, "substring must be a single character"
+    for c in string:
+        if c != substring:
+            return i
+        i += 1
+    raise ValueError("No substring found in string")
+
+def multi_index(string, *substrings):
+    """
+    Returns the index of the first occurrence of any of the substrings in the string.
+
+    Args:
+        string (str): The string to search.
+        substrings (str): The substrings to search for.
+
+    Returns:
+        int: The index of the first occurrence of any of the substrings in the string.
+
+    Raises:
+        ValueError: If no substrings are found in the string.
+    """
+    i = 0
+    text = ""
+    for c in string:
+        text += c
+        for substring in substrings:
+            if substring in text:
+                return i - len(substring)
+        i += 1
+    raise ValueError("No substrings found in string")
+
+def deprecated(*params, message="", new=None, since=None, **message_params):
     """
     Decorator to mark functions, methods or parameters as deprecated.
     
@@ -60,7 +106,7 @@ def deprecated(*params, message="", new=None, since=None, removed_in=None, **mes
         def func(old_param): ...
         
     3. Deprecate with version info:
-        @deprecated(message="...", since="0.1.0", removed_in="0.2.0")
+        @deprecated(message="...", since="0.1.0")
         def old_func(): ...
 
     Args:
@@ -71,58 +117,110 @@ def deprecated(*params, message="", new=None, since=None, removed_in=None, **mes
         removed_in: Version when item will be removed (optional) 
         **message_params: Parameters to deprecate with custom messages
     """
-    def decorator(func):
-        # Get function signature info
+    def decorator(func:'t.Callable'):
         sig = signature(func)
         func_name = func.__qualname__
-        
-        # Build base warning message
+
+        message_params.update({
+            param: f"Parameter `{param}` of {func_name} is deprecated" for param in params
+        })
+
+
         def build_warning(base_msg, colour=True, indent=0):
             msg_parts = [base_msg]
-            
             if since:
-                msg_parts.append(f"Deprecated since version {since}")
-            if removed_in:
-                msg_parts.append(f"Will be removed in version {removed_in}")
-                
+                msg_parts.append(f"Deprecated since version {since}")                
             if new:
                 msg_parts.append(f"Use {new.__qualname__}() instead")
-                
-            msg = f"\n{" " * indent}".join(msg_parts)
-            if colour:
-                msg = f"\033[33m{msg}\033[0m"
-            return msg
 
-        @wraps(func)  # Preserve original metadata
-        def wrapper(*args, **kwargs):
-            # Case 1: Entire function deprecated
-            if message:
-                warnings.warn(build_warning(message), category=DeprecationWarning, stacklevel=2)
+            msg = f"\n{' ' * indent}".join(msg_parts)
+            return f"\033[33m{msg}\033[0m" if colour else msg
+        
+        def build_doc(doc:'str', deprecate:'dict[str, str]'={}, since:'str'=None, function:'bool'=False):
+            new_doc = doc.splitlines()
+            params = list(deprecate.keys())
+            if function:
+                msg = [
+                    "..warning::",
+                    "    This function is deprecated"
+                ]
+                if since:
+                    msg.append(f"    Deprecated since version {since}")
                 if new:
-                    return new(*args, **kwargs)
-                return func(*args, **kwargs)
-            
-            # Case 2: Parameter deprecation
-            # Bind args/kwargs to parameter names
-            bound_args = sig.bind(*args, **kwargs)
-            param_vals = bound_args.arguments
+                    msg.append(f"    Use {new.__qualname__}() instead")
+                msg.append(message)
+                msg.append("")
+                new_doc.insert(0, "\n".join(msg))
+            indent = 0
+            if "Args" in doc:
+                loc = doc.find("Args")
+                indent = len(doc[::-1][loc:doc.find("\n", loc)][::-1])-1
+                try:
+                    for line_no, line in enumerate(doc[loc:].splitlines()[1:]):
+                        if (index := nindex(line, " ")) < indent:
+                            break
+                        
+                        end = multi_index(line[index:], ":", "(", " ")
+                        if (param := line[index:index+end].strip()) in deprecate.keys():
+                            params.remove(param)
+                            msg = [
+                                "..warning::"
+                                f"    {param} is deprecated"
+                            ]
+                            if since:
+                                msg.append(f"    Deprecated since version {since}")
+                            msg.append(f"    {deprecate[param]}")
+                            new_doc.insert(line_no+1, "\n".join(msg))
+                except Exception as e:
+                    pass
+            if params:
+                max_len = max(len(param) for param in params)+2
+                msg = [
+                    "..warning::",
+                    f"    The following parameters are deprecated"
+                ]
+                if since:
+                    msg.append(f"    Deprecated since version {since}")
+                msg += [
+                    (
+                        f"    {f"*{param}*".ljust(max_len)}"
+                        f"    {deprecate[param]}"
+                    )
+                    for param in params
+                ]
+                new_doc.insert(0, "\n".join(msg))
+                    
+            return "\n".join(new_doc)
 
-            # Check for deprecated parameters
-            message_params.update({param:f"Parameter '{param}' of {func_name} is deprecated" for param in params})
-            for param, msg in message_params.items():
-                if param in param_vals:
-                    warnings.warn(build_warning(msg), category=DeprecationWarning, stacklevel=2)
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            warnings_list = []
             
+            # Entire function deprecation
+            if message:
+                warnings.warn(build_warning(message), DeprecationWarning, stacklevel=2)
+                return new(*args, **kwargs) if new else func(*args, **kwargs)
+
+            # Parameter deprecation
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            
+            # Check deprecated parameters            
+            for param, msg in message_params.items():
+                # Skip if using default value
+                if (param in bound_args.arguments and 
+                    bound_args.arguments[param] is not sig.parameters[param].default):
+                    warnings_list.append(build_warning(msg))
+
+            if warnings_list:
+                warnings.warn("\n".join(warnings_list), DeprecationWarning, stacklevel=2)
+            print(f"Built doc:\n{func.__doc__}")
             return func(*args, **kwargs)
 
-        # Add deprecation info to function's docstring
-        if func.__doc__:
-            pass
-            # Not Implemented
-            # Add deprecation info to function's docstring for docs
-        
+        func.__doc__ = build_doc(func.__doc__ or "", message_params, function=bool(message))
         return wrapper
     return decorator
+
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):

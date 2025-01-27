@@ -17,7 +17,7 @@ class FundsData:
     Notes: 
     - fundPerformance module is not implemented as better data is queryable using history
     """
-    @utils.deprecated("proxy", since="0.2.51")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         """
         Args:

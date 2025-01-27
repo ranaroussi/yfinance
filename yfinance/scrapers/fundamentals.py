@@ -8,7 +8,7 @@ from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
 class Fundamentals:
-    @utils.deprecated("proxy", since="0.2.51")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol
@@ -100,7 +100,7 @@ class Financials:
         except Exception:
             pass
     
-    @utils.deprecated("proxy", since="0.2.51")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly"}
         timescale = timescale_translation[timescale]
@@ -114,7 +114,7 @@ class Financials:
         url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
         # Step 3: fetch and reshape data
-        json_str = self._data.cache_get(url=url, proxy=proxy).text
+        json_str = self._data.get(url=url, proxy=proxy).text
         json_data = json.loads(json_str)
         data_raw = json_data["timeseries"]["result"]
         # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
