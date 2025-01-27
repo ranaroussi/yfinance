@@ -4,6 +4,12 @@ yfinance documentation
 Download Market Data from Yahoo! Finance's API
 ----------------------------------------------
 
+.. warning::
+    
+   `session`, `proxy`, and `timeout` are deprecated.
+   Use `yfinance.set_config()` instead.
+   See :doc: `advanced/config` for more information.
+
 .. admonition:: IMPORTANT LEGAL DISCLAIMER
 
    **Yahoo!, Y!Finance, and Yahoo! finance are registered trademarks of Yahoo, Inc.**

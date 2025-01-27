@@ -12,7 +12,7 @@ import pandas as _pd
 class TestPriceHistory(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.session = session_gbl
+        cls.session = yf.set_config(session=session_gbl)["session"]
 
     @classmethod
     def tearDownClass(cls):
@@ -23,7 +23,7 @@ class TestPriceHistory(unittest.TestCase):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         intervals = ["1d", "1wk", "1mo"]
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
 
             for interval in intervals:
                 df = dat.history(period="5y", interval=interval)
@@ -64,7 +64,7 @@ class TestPriceHistory(unittest.TestCase):
     def test_duplicatingHourly(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
             dt_utc = _pd.Timestamp.utcnow()
@@ -84,7 +84,7 @@ class TestPriceHistory(unittest.TestCase):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         test_run = False
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
             dt_utc = _pd.Timestamp.utcnow()
@@ -110,7 +110,7 @@ class TestPriceHistory(unittest.TestCase):
         tkrs = ['MSFT', 'IWO', 'VFINX', '^GSPC', 'BTC-USD']
         test_run = False
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
             tz = dat._get_ticker_tz(proxy=None, timeout=None)
 
             dt = _tz.timezone(tz).localize(_dt.datetime.now())
@@ -136,7 +136,7 @@ class TestPriceHistory(unittest.TestCase):
         tkr = 'INTC'
         start_d = _dt.date(2022, 1, 1)
         end_d = _dt.date(2023, 1, 1)
-        df = yf.Ticker(tkr, session=self.session).history(interval='1d', start=start_d, end=end_d)
+        df = yf.Ticker(tkr).history(interval='1d', start=start_d, end=end_d)
         div = 1.0
         future_div_dt = df.index[-1] + _dt.timedelta(days=1)
         if future_div_dt.weekday() in [5, 6]:
@@ -173,14 +173,14 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             start_d = _dt.date.today() - _dt.timedelta(days=59)
             end_d = None
-            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1d", actions=True)
             df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
             if df_daily_divs.shape[0] == 0:
                 continue
 
             start_d = df_daily_divs.index[0].date()
             end_d = df_daily_divs.index[-1].date() + _dt.timedelta(days=1)
-            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            df_intraday = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="15m", actions=True)
             self.assertTrue((df_intraday["Dividends"] != 0.0).any())
 
             df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
@@ -200,14 +200,14 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tase_tkrs:
             start_d = _dt.date.today() - _dt.timedelta(days=59)
             end_d = None
-            df_daily = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df_daily = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1d", actions=True)
             df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
             if df_daily_divs.shape[0] == 0:
                 continue
 
             start_d = df_daily_divs.index[0].date()
             end_d = df_daily_divs.index[-1].date() + _dt.timedelta(days=1)
-            df_intraday = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="15m", actions=True)
+            df_intraday = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="15m", actions=True)
             self.assertTrue((df_intraday["Dividends"] != 0.0).any())
 
             df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
@@ -231,7 +231,7 @@ class TestPriceHistory(unittest.TestCase):
                                   _dt.date(2022, 2, 4)]}
 
         for tkr, dates in tkr_div_dates.items():
-            df = yf.Ticker(tkr, session=self.session).history(interval='1d', start=start_d, end=end_d)
+            df = yf.Ticker(tkr).history(interval='1d', start=start_d, end=end_d)
             df_divs = df[df['Dividends'] != 0].sort_index(ascending=False)
             try:
                 self.assertTrue((df_divs.index.date == dates).all())
@@ -265,8 +265,8 @@ class TestPriceHistory(unittest.TestCase):
         # Test that index same with and without events:
         tkrs = [tkr1, tkr2]
         for tkr in tkrs:
-            df1 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=True)
-            df2 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1d", actions=False)
+            df1 = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1d", actions=True)
+            df2 = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1d", actions=False)
             self.assertTrue(((df1["Dividends"] > 0) | (df1["Stock Splits"] > 0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
@@ -308,8 +308,8 @@ class TestPriceHistory(unittest.TestCase):
         # Test that index same with and without events:
         tkrs = [tkr1, tkr2]
         for tkr in tkrs:
-            df1 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1wk", actions=True)
-            df2 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1wk", actions=False)
+            df1 = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1wk", actions=True)
+            df2 = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1wk", actions=False)
             self.assertTrue(((df1["Dividends"] > 0) | (df1["Stock Splits"] > 0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
@@ -341,8 +341,8 @@ class TestPriceHistory(unittest.TestCase):
         # Test that index same with and without events:
         tkrs = [tkr1, tkr2]
         for tkr in tkrs:
-            df1 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1mo", actions=True)
-            df2 = yf.Ticker(tkr, session=self.session).history(start=start_d, end=end_d, interval="1mo", actions=False)
+            df1 = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1mo", actions=True)
+            df2 = yf.Ticker(tkr).history(start=start_d, end=end_d, interval="1mo", actions=False)
             self.assertTrue(((df1["Dividends"] > 0) | (df1["Stock Splits"] > 0)).any())
             try:
                 self.assertTrue(df1.index.equals(df2.index))
@@ -365,7 +365,7 @@ class TestPriceHistory(unittest.TestCase):
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
         try:
-            yf.Ticker("ESLT.TA", session=self.session).history(start="2002-10-06", end="2002-10-09", interval="1d")
+            yf.Ticker("ESLT.TA").history(start="2002-10-06", end="2002-10-09", interval="1d")
         except _tz.exceptions.AmbiguousTimeError:
             raise Exception("Ambiguous DST issue not resolved")
 
@@ -378,7 +378,7 @@ class TestPriceHistory(unittest.TestCase):
         # The correction is successful if no days are weekend, and weekly data begins Monday
 
         tkr = "AGRO3.SA"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         start = "2021-01-11"
         end = "2022-11-05"
 
@@ -403,7 +403,7 @@ class TestPriceHistory(unittest.TestCase):
         tkr = "AMZN"
         special_day = _dt.date(2024, 11, 29)
         time_early_close = _dt.time(13)
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
 
         # Run
         start_d = special_day - _dt.timedelta(days=7)
@@ -424,7 +424,7 @@ class TestPriceHistory(unittest.TestCase):
         # Setup
         tkr = "BHP.AX"
         # No early closes in 2023
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
 
         # Test no other afternoons (or mornings) were pruned
         start_d = _dt.date(2024, 1, 1)
@@ -446,7 +446,7 @@ class TestPriceHistory(unittest.TestCase):
     def test_aggregate_capital_gains(self):
         # Setup
         tkr = "FXAIX"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         start = "2017-12-31"
         end = "2019-12-31"
         interval = "3mo"

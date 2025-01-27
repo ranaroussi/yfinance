@@ -14,7 +14,8 @@ class TestPriceRepairAssumptions(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = session_gbl
+        config = yf.set_config(session=session_gbl)
+        cls.session = config["session"]
         cls.dp = os.path.dirname(__file__)
 
     @classmethod
@@ -24,7 +25,7 @@ class TestPriceRepairAssumptions(unittest.TestCase):
 
     def test_resampling(self):
         for tkr in ['GOOGL', 'GLEN.L', '2330.TW']:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
 
             intervals = ['1d', '1wk', '1mo', '3mo']
             periods = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd']#, 'max']
@@ -94,7 +95,8 @@ class TestPriceRepair(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = session_gbl
+        config = yf.set_config(session=session_gbl)
+        cls.session = config["session"]
         cls.dp = os.path.dirname(__file__)
 
     @classmethod
@@ -104,7 +106,7 @@ class TestPriceRepair(unittest.TestCase):
 
     def test_types(self):
         tkr = 'INTC'
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
 
         data = dat.history(period="3mo", interval="1d", prepost=True, repair=True)
         self.assertIsInstance(data, _pd.DataFrame, "data has wrong type")
@@ -128,7 +130,7 @@ class TestPriceRepair(unittest.TestCase):
         dt_now = dt_now.ceil("1h")
 
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
             end_dt = dt_now
             start_dt = end_dt - td_60d
             dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
@@ -136,7 +138,7 @@ class TestPriceRepair(unittest.TestCase):
     def test_repair_100x_random_weekly(self):
         # Setup:
         tkr = "PNL.L"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         tz_exchange = dat.fast_info["timezone"]
         hist = dat._lazy_load_price_history()
 
@@ -191,7 +193,7 @@ class TestPriceRepair(unittest.TestCase):
         # PNL.L has a stock-split in 2022. Sometimes requesting data before 2022 is not split-adjusted.
 
         tkr = "PNL.L"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         tz_exchange = dat.fast_info["timezone"]
         hist = dat._lazy_load_price_history()
 
@@ -250,7 +252,7 @@ class TestPriceRepair(unittest.TestCase):
 
     def test_repair_100x_random_daily(self):
         tkr = "PNL.L"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         tz_exchange = dat.fast_info["timezone"]
         hist = dat._lazy_load_price_history()
 
@@ -308,7 +310,7 @@ class TestPriceRepair(unittest.TestCase):
 
         for tkr in tkrs:
             for interval in intervals:
-                dat = yf.Ticker(tkr, session=self.session)
+                dat = yf.Ticker(tkr)
                 tz_exchange = dat.fast_info["timezone"]
                 hist = dat._lazy_load_price_history()
 
@@ -357,7 +359,7 @@ class TestPriceRepair(unittest.TestCase):
 
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         hist = dat._lazy_load_price_history()
         tz_exchange = dat.fast_info["timezone"]
 
@@ -405,7 +407,7 @@ class TestPriceRepair(unittest.TestCase):
                                                   _dt.datetime(2023, 2, 2)]))
         df = df.sort_index()
         df.index.name = "Date"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         tz_exchange = dat.fast_info["timezone"]
         df.index = df.index.tz_localize(tz_exchange)
         hist = dat._lazy_load_price_history()
@@ -425,7 +427,7 @@ class TestPriceRepair(unittest.TestCase):
 
     def test_repair_zeroes_hourly(self):
         tkr = "INTC"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         tz_exchange = dat.fast_info["timezone"]
         hist = dat._lazy_load_price_history()
 
@@ -467,7 +469,7 @@ class TestPriceRepair(unittest.TestCase):
         intervals = ['1d', '1wk', '1mo', '3mo']
         for tkr in good_tkrs:
             for interval in intervals:
-                dat = yf.Ticker(tkr, session=self.session)
+                dat = yf.Ticker(tkr)
                 tz_exchange = dat.fast_info["timezone"]
                 hist = dat._lazy_load_price_history()
 
@@ -491,7 +493,7 @@ class TestPriceRepair(unittest.TestCase):
         bad_tkrs = ['4063.T', 'ALPHA.PA', 'AV.L', 'CNE.L', 'MOB.ST', 'SPM.MI']
         bad_tkrs.append('LA.V')  # special case - stock split error is 3 years ago! why not fixed?
         for tkr in bad_tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
             tz_exchange = dat.fast_info["timezone"]
             hist = dat._lazy_load_price_history()
 
@@ -531,7 +533,7 @@ class TestPriceRepair(unittest.TestCase):
         intervals = ['1wk']
         for tkr in sketchy_tkrs:
             for interval in intervals:
-                dat = yf.Ticker(tkr, session=self.session)
+                dat = yf.Ticker(tkr)
                 tz_exchange = dat.fast_info["timezone"]
                 hist = dat._lazy_load_price_history()
 
@@ -612,7 +614,7 @@ class TestPriceRepair(unittest.TestCase):
 
         for tkr in false_positives:
             # Nothing should change
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
             currency = hist._history_metadata['currency']
@@ -644,7 +646,7 @@ class TestPriceRepair(unittest.TestCase):
                 raise
 
         for tkr in bad_tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
             currency = hist._history_metadata['currency']
