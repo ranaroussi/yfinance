@@ -19,6 +19,7 @@
 # limitations under the License.
 #
 
+from typing import TYPE_CHECKING, TypedDict, Optional
 from . import version
 from .search import Search
 from .ticker import Ticker
@@ -37,8 +38,21 @@ __version__ = version.version
 __author__ = "Ran Aroussi"
 
 import warnings
-warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
+warnings.filterwarnings("default", category=DeprecationWarning, module="^yfinance")
+
+if TYPE_CHECKING:
+    import requests
+    CONFIG = TypedDict("CONFIG", {"proxy": Optional[str], "timeout": int, "lang": str, "region": str, "session": requests.Session, "url": str})
 
 __all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
 # screener stuff:
 __all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
+
+def set_config(proxy=None, timeout=30, lang="en-US", region="US", session=None, url="finance.yahoo.com") -> 'CONFIG':
+    from .data import YfData
+    if session is None:
+        session = requests.Session()
+    from .const import _ROOT_URL_
+    _ROOT_URL_ = url or _ROOT_URL_
+    YfData.set_config(proxy, timeout, lang, region, session)
+    return {"proxy": proxy, "timeout": timeout, "lang": lang, "region": region, "session": session, "url": url}

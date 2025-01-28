@@ -23,7 +23,6 @@ from __future__ import print_function
 
 from io import StringIO
 import json as _json
-import warnings
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
@@ -87,6 +86,7 @@ class TickerBase:
             self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy, timeout=10))
         return self._price_history
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def _get_ticker_tz(self, proxy, timeout):
         proxy = proxy or self.proxy
         if self._tz is not None:
@@ -112,7 +112,8 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, proxy, timeout):
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
+    def _fetch_ticker_tz(self, proxy=None, timeout=None):
         # Query Yahoo for fast price data just to get returned timezone
         proxy = proxy or self.proxy
         logger = utils.get_yf_logger()
@@ -123,7 +124,7 @@ class TickerBase:
         url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
 
         try:
-            data = self._data.cache_get(url=url, params=params, proxy=proxy, timeout=timeout)
+            data = self._data.get(url=url, params=params, proxy=proxy, timeout=timeout)
             data = data.json()
         except YFRateLimitError:
             # Must propagate this
@@ -147,6 +148,7 @@ class TickerBase:
                     logger.debug("-------------")
         return None
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_recommendations(self, proxy=None, as_dict=False):
         """
         Returns a DataFrame with the recommendations
@@ -158,9 +160,11 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_recommendations_summary(self, proxy=None, as_dict=False):
         return self.get_recommendations(proxy=proxy, as_dict=as_dict)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_upgrades_downgrades(self, proxy=None, as_dict=False):
         """
         Returns a DataFrame with the recommendations changes (upgrades/downgrades)
@@ -173,21 +177,25 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_calendar(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         return self._quote.calendar
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_sec_filings(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         return self._quote.sec_filings
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_major_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.major
         if as_dict:
             return data.to_dict()
         return data
-
+    
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_institutional_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.institutional
@@ -196,6 +204,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_mutualfund_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.mutualfund
@@ -204,6 +213,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_insider_purchases(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_purchases
@@ -212,6 +222,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_insider_transactions(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_transactions
@@ -220,6 +231,7 @@ class TickerBase:
                 return data.to_dict()
             return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_insider_roster_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.insider_roster
@@ -228,21 +240,24 @@ class TickerBase:
                 return data.to_dict()
             return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_info(self, proxy=None) -> dict:
         self._quote.proxy = proxy or self.proxy
         data = self._quote.info
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_fast_info(self, proxy=None):
         if self._fast_info is None:
             self._fast_info = FastInfo(self, proxy=proxy)
         return self._fast_info
 
     @property
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def basic_info(self):
-        warnings.warn("'Ticker.basic_info' is deprecated and will be removed in future, Switch to 'Ticker.fast_info'", DeprecationWarning)
         return self.fast_info
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_sustainability(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy or self.proxy
         data = self._quote.sustainability
@@ -250,6 +265,7 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_analyst_price_targets(self, proxy=None) -> dict:
         """
         Keys:   current  low  high  mean  median
@@ -258,6 +274,7 @@ class TickerBase:
         data = self._analysis.analyst_price_targets
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_earnings_estimate(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -267,6 +284,7 @@ class TickerBase:
         data = self._analysis.earnings_estimate
         return data.to_dict() if as_dict else data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_revenue_estimate(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -276,6 +294,7 @@ class TickerBase:
         data = self._analysis.revenue_estimate
         return data.to_dict() if as_dict else data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_earnings_history(self, proxy=None, as_dict=False):
         """
         Index:      pd.DatetimeIndex
@@ -285,6 +304,7 @@ class TickerBase:
         data = self._analysis.earnings_history
         return data.to_dict() if as_dict else data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_eps_trend(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -294,6 +314,7 @@ class TickerBase:
         data = self._analysis.eps_trend
         return data.to_dict() if as_dict else data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_eps_revisions(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
@@ -303,6 +324,7 @@ class TickerBase:
         data = self._analysis.eps_revisions
         return data.to_dict() if as_dict else data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_growth_estimates(self, proxy=None, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y +5y -5y
@@ -312,6 +334,7 @@ class TickerBase:
         data = self._analysis.growth_estimates
         return data.to_dict() if as_dict else data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_earnings(self, proxy=None, as_dict=False, freq="yearly"):
         """
         :Parameters:
@@ -336,6 +359,7 @@ class TickerBase:
             return dict_data
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_income_stmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
@@ -363,12 +387,15 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_incomestmt(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(proxy, as_dict, pretty, freq)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_financials(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(proxy, as_dict, pretty, freq)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_balance_sheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
@@ -396,9 +423,11 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_balancesheet(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(proxy, as_dict, pretty, freq)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_cash_flow(self, proxy=None, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
         """
         :Parameters:
@@ -426,21 +455,27 @@ class TickerBase:
             return data.to_dict()
         return data
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(proxy, as_dict, pretty, freq)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_dividends(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_dividends(proxy)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_capital_gains(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_capital_gains(proxy)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_splits(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_splits(proxy)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_actions(self, proxy=None) -> pd.Series:
         return self._lazy_load_price_history().get_actions(proxy)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_shares(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._fundamentals.proxy = proxy or self.proxy
         data = self._fundamentals.shares
@@ -449,6 +484,7 @@ class TickerBase:
         return data
 
     @utils.log_indent_decorator
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_shares_full(self, start=None, end=None, proxy=None):
         logger = utils.get_yf_logger()
 
@@ -475,7 +511,7 @@ class TickerBase:
         ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self.ticker}?symbol={self.ticker}"
         shares_url = f"{ts_url_base}&period1={int(start.timestamp())}&period2={int(end.timestamp())}"
         try:
-            json_data = self._data.cache_get(url=shares_url, proxy=proxy)
+            json_data = self._data.get(url=shares_url, proxy=proxy)
             json_data = json_data.json()
         except (_json.JSONDecodeError, requests.exceptions.RequestException):
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
@@ -501,6 +537,7 @@ class TickerBase:
         df = df.sort_index()
         return df
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_isin(self, proxy=None) -> Optional[str]:
         # *** experimental ***
         if self._isin is not None:
@@ -522,7 +559,7 @@ class TickerBase:
             q = self._quote.info['shortName']
 
         url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
-        data = self._data.cache_get(url=url, proxy=proxy).text
+        data = self._data.get(url=url, proxy=proxy).text
 
         search_str = f'"{ticker}|'
         if search_str not in data:
@@ -538,6 +575,7 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_news(self, count=10, tab="news", proxy=None) -> list:
         """Allowed options for tab: "news", "all", "press releases"""
         if self._news:
@@ -580,6 +618,7 @@ class TickerBase:
         return self._news
 
     @utils.log_indent_decorator
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_earnings_dates(self, limit=12, proxy=None) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
@@ -603,7 +642,7 @@ class TickerBase:
         dates = None
         while True:
             url = f"{_ROOT_URL_}/calendar/earnings?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
-            data = self._data.cache_get(url=url, proxy=proxy).text
+            data = self._data.get(url=url, proxy=proxy).text
 
             if "Will be right back" in data:
                 raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
@@ -682,9 +721,11 @@ class TickerBase:
 
         return dates
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_history_metadata(self, proxy=None) -> dict:
         return self._lazy_load_price_history().get_history_metadata(proxy)
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_funds_data(self, proxy=None) -> Optional[FundsData]:
         if not self._funds_data:
             self._funds_data = FundsData(self._data, self.ticker)

@@ -7,7 +7,7 @@ import requests
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
+from yfinance.const import quote_summary_valid_modules, _BASE_URL_
 from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
@@ -26,6 +26,7 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, tickerBaseObject, proxy=None):
         self._tkr = tickerBaseObject
         self.proxy = proxy
@@ -485,6 +486,7 @@ class FastInfo:
 
 class Quote:
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol
@@ -505,15 +507,15 @@ class Quote:
     @property
     def info(self) -> dict:
         if self._info is None:
-            self._fetch_info(self.proxy)
-            self._fetch_complementary(self.proxy)
+            self._fetch_info()
+            self._fetch_complementary()
 
         return self._info
 
     @property
     def sustainability(self) -> pd.DataFrame:
         if self._sustainability is None:
-            result = self._fetch(self.proxy, modules=['esgScores'])
+            result = self._fetch(modules=['esgScores'])
             if result is None:
                 self._sustainability = pd.DataFrame()
             else:
@@ -527,7 +529,7 @@ class Quote:
     @property
     def recommendations(self) -> pd.DataFrame:
         if self._recommendations is None:
-            result = self._fetch(self.proxy, modules=['recommendationTrend'])
+            result = self._fetch(modules=['recommendationTrend'])
             if result is None:
                 self._recommendations = pd.DataFrame()
             else:
@@ -541,7 +543,7 @@ class Quote:
     @property
     def upgrades_downgrades(self) -> pd.DataFrame:
         if self._upgrades_downgrades is None:
-            result = self._fetch(self.proxy, modules=['upgradeDowngradeHistory'])
+            result = self._fetch(modules=['upgradeDowngradeHistory'])
             if result is None:
                 self._upgrades_downgrades = pd.DataFrame()
             else:
@@ -575,7 +577,7 @@ class Quote:
     def valid_modules():
         return quote_summary_valid_modules
 
-    def _fetch(self, proxy, modules: list):
+    def _fetch(self, modules: list):
         if not isinstance(modules, list):
             raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
@@ -584,30 +586,18 @@ class Quote:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
-            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict)
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
         return result
 
-    def _fetch_additional_info(self, proxy):
-        params_dict = {"symbols": self._symbol, "formatted": "false"}
-        try:
-            result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?",
-                                             user_agent_headers=self._data.user_agent_headers,
-                                             params=params_dict, proxy=proxy)
-        except requests.exceptions.HTTPError as e:
-            utils.get_yf_logger().error(str(e))
-            return None
-        return result
-
-    def _fetch_info(self, proxy):
+    def _fetch_info(self):
         if self._already_fetched:
             return
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
-        result = self._fetch(proxy, modules=modules)
-        result.update(self._fetch_additional_info(proxy))
+        result = self._fetch(modules=modules)
         if result is None:
             self._info = {}
             return
@@ -663,7 +653,7 @@ class Quote:
         self._already_fetched_complementary = True
 
         # self._scrape(proxy)  # decrypt broken
-        self._fetch_info(proxy)
+        self._fetch_info()
         if self._info is None:
             return
 
@@ -702,7 +692,7 @@ class Quote:
             end = int(end.timestamp())
             url += f"&period1={start}&period2={end}"
 
-            json_str = self._data.cache_get(url=url, proxy=proxy).text
+            json_str = self._data.get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:
@@ -716,7 +706,7 @@ class Quote:
 
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
-        result = self._fetch(self.proxy, modules=['calendarEvents'])
+        result = self._fetch(modules=['calendarEvents'])
         if result is None:
             self._calendar = {}
             return
@@ -743,7 +733,7 @@ class Quote:
 
 
     def _fetch_sec_filings(self):
-        result = self._fetch(self.proxy, modules=['secFilings'])
+        result = self._fetch(modules=['secFilings'])
         if result is None:
             return None
 
