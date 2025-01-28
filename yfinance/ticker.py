@@ -40,7 +40,7 @@ class Ticker(TickerBase):
         self._underlying  = {}
 
     def __repr__(self):
-        return f'yfinance.Ticker object <>'
+        return f'yfinance.Ticker object <{self.ticker}>'
 
     def _download_options(self, date=None):
         if date is None:
