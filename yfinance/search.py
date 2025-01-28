@@ -24,8 +24,6 @@ import json as _json
 from . import utils
 from .const import _BASE_URL_
 from .data import YfData
-from .utils import deprecated
-
 
 class Search:
     @utils.deprecated(session="`session` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set using `yf.set_config", proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
