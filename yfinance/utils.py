@@ -171,7 +171,7 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
                                 msg.append(f"    Deprecated since version {since}")
                             msg.append(f"    {deprecate[param]}")
                             new_doc.insert(line_no+1, "\n".join(msg))
-                except:
+                except Exception:
                     pass
             if params:
                 max_len = max(len(param) for param in params)+2
