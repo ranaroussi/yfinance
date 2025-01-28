@@ -7,7 +7,7 @@ import requests
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
+from yfinance.const import quote_summary_valid_modules, _BASE_URL_
 from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}

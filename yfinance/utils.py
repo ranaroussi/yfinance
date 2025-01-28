@@ -171,13 +171,13 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
                                 msg.append(f"    Deprecated since version {since}")
                             msg.append(f"    {deprecate[param]}")
                             new_doc.insert(line_no+1, "\n".join(msg))
-                except Exception as e:
+                except:
                     pass
             if params:
                 max_len = max(len(param) for param in params)+2
                 msg = [
                     "..warning::",
-                    f"    The following parameters are deprecated"
+                    "    The following parameters are deprecated"
                 ]
                 if since:
                     msg.append(f"    Deprecated since version {since}")

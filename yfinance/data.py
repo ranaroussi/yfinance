@@ -1,6 +1,4 @@
 import functools
-from functools import lru_cache
-
 import requests as requests
 from bs4 import BeautifulSoup
 import datetime
