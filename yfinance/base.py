@@ -21,15 +21,14 @@
 
 from __future__ import print_function
 
-from io import StringIO
 import json as _json
 import warnings
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
+import numpy as np
 import pandas as pd
 import requests
-from datetime import date
 
 from . import utils, cache
 from .data import YfData
@@ -41,7 +40,7 @@ from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
-from .const import _BASE_URL_, _ROOT_URL_
+from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
 
 
 class TickerBase:
@@ -593,94 +592,62 @@ class TickerBase:
         Returns:
             pd.DataFrame
         """
-        if self._earnings_dates and limit in self._earnings_dates:
-            return self._earnings_dates[limit]
-
         logger = utils.get_yf_logger()
+        clamped_limit = min(limit, 100)  # YF caps at 100, don't go higher
 
-        page_size = min(limit, 100)  # YF caps at 100, don't go higher
-        page_offset = 0
-        dates = None
-        while True:
-            url = f"{_ROOT_URL_}/calendar/earnings?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
-            data = self._data.cache_get(url=url, proxy=proxy).text
+        if self._earnings_dates and clamped_limit in self._earnings_dates:
+            return self._earnings_dates[clamped_limit]
 
-            if "Will be right back" in data:
-                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                                   "Our engineers are working quickly to resolve "
-                                   "the issue. Thank you for your patience.")
+        # Fetch data
+        url = f"{_QUERY1_URL_}/v1/finance/visualization"
+        params = {"lang": "en-US", "region": "US"}
+        body = {
+            "size": clamped_limit,
+            "query": {
+                "operator": "and",
+                "operands": [
+                    {"operator": "eq", "operands": ["ticker", self.ticker]},
+                    {"operator": "eq", "operands": ["eventtype", "2"]}
+                ]
+            },
+            "sortField": "startdatetime",
+            "sortType": "DESC",
+            "entityIdType": "earnings",
+            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct"]
+        }
+        response = self._data.post(url, params=params, body=body, proxy=proxy)
+        json_data = response.json()
 
-            try:
-                data = pd.read_html(StringIO(data))[0]
-            except ValueError:
-                if page_offset == 0:
-                    # Should not fail on first page
-                    if "Showing Earnings for:" in data:
-                        # Actually YF was successful, problem is company doesn't have earnings history
-                        dates = utils.empty_earnings_dates_df()
-                break
-            if dates is None:
-                dates = data
-            else:
-                dates = pd.concat([dates, data], axis=0)
+        # Extract data
+        columns = [row['label'] for row in json_data['finance']['result'][0]['documents'][0]['columns']]
+        rows = json_data['finance']['result'][0]['documents'][0]['rows']
+        df = pd.DataFrame(rows, columns=columns)
 
-            page_offset += page_size
-            # got less data then we asked for or already fetched all we requested, no need to fetch more pages
-            if len(data) < page_size or len(dates) >= limit:
-                dates = dates.iloc[:limit]
-                break
-            else:
-                # do not fetch more than needed next time
-                page_size = min(limit - len(dates), page_size)
-
-        if dates is None or dates.shape[0] == 0:
+        if df.empty:
             _exception = YFEarningsDateMissing(self.ticker)
             err_msg = str(_exception)
             logger.error(f'{self.ticker}: {err_msg}')
             return None
-        dates = dates.reset_index(drop=True)
 
-        # Drop redundant columns
-        dates = dates.drop(["Symbol", "Company"], axis=1)
-
-        # Compatibility
-        dates = dates.rename(columns={'Surprise (%)': 'Surprise(%)'})
-
-        # Drop empty rows
-        for i in range(len(dates)-1, -1, -1):
-            if dates.iloc[i].isna().all():
-                dates = dates.drop(i)
+        # Calculate earnings date
+        df['Earnings Date'] = pd.to_datetime(df['Event Start Date']).dt.normalize()
+        tz = self._get_ticker_tz(proxy=proxy, timeout=30)
+        if df['Earnings Date'].dt.tz is None:
+            df['Earnings Date'] = df['Earnings Date'].dt.tz_localize(tz)
+        else:
+            df['Earnings Date'] = df['Earnings Date'].dt.tz_convert(tz)
 
         # Convert types
-        for cn in ["EPS Estimate", "Reported EPS", "Surprise(%)"]:
-            dates.loc[dates[cn] == '-', cn] = float("nan")
-            dates[cn] = dates[cn].astype(float)
+        columns_to_update = ['Surprise (%)', 'EPS Estimate', 'Reported EPS']
+        df[columns_to_update] = df[columns_to_update].astype('float64').replace(0.0, np.nan)
 
-        # Parse earnings date string
-        cn = "Earnings Date"
-        try:
-            dates_backup = dates.copy()
-            # - extract timezone because Yahoo stopped returning in UTC
-            tzy = dates[cn].str.split(' ').str.get(-1)
-            tzy[tzy.isin(['EDT', 'EST'])] = 'US/Eastern'
-            # - tidy date string
-            dates[cn] = dates[cn].str.split(' ').str[:-1].str.join(' ')
-            dates[cn] = dates[cn].replace(' at', ',', regex=True)
-            # - parse
-            dates[cn] = pd.to_datetime(dates[cn], format="%B %d, %Y, %I %p")
-            # - convert to exchange timezone
-            self._quote.proxy = proxy or self.proxy
-            tz = self._get_ticker_tz(proxy=proxy, timeout=30)
-            dates[cn] = [dates[cn].iloc[i].tz_localize(tzy.iloc[i], ambiguous=True).tz_convert(tz) for i in range(len(dates))]
+        # Format the dataframe
+        df.drop(['Event Start Date', 'Timezone short name'], axis=1, inplace=True)
+        df.set_index('Earnings Date', inplace=True)
+        df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)  # Compatibility
 
-            dates = dates.set_index("Earnings Date")
-        except Exception as e:
-            utils.get_yf_logger().info(f"{self.ticker}: Problem parsing earnings_dates: {str(e)}")
-            dates = dates_backup
-
-        self._earnings_dates[limit] = dates
-
-        return dates
+        self._earnings_dates[clamped_limit] = df
+        return df
 
     def get_history_metadata(self, proxy=None) -> dict:
         return self._lazy_load_price_history().get_history_metadata(proxy)
