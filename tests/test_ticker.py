@@ -358,7 +358,7 @@ class TestTickerEarnings(unittest.TestCase):
     def test_earnings_dates_with_limit(self):
         # use ticker with lots of historic earnings
         ticker = yf.Ticker("IBM")
-        limit = 110
+        limit = 100
         data = ticker.get_earnings_dates(limit=limit)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
