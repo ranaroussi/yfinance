@@ -321,6 +321,19 @@ class QueryBase(ABC, Generic[OPERATOR, OPERAND]):
 
     def __str__(self) -> 'str':
         return self.__repr__()
+    
+    def screen(self, offset:'int'=None, size:'int'=None, sortField:'str'=None, sortAsc:'bool'=None, userId:'str'=None, userIdType:'str'=None, session=None, proxy=None):
+        return screen(
+            self,
+            offset=offset,
+            size=size,
+            sortField=sortField,
+            sortAsc=sortAsc,
+            userId=userId,
+            userIdType=userIdType,
+            session=session,
+            proxy=proxy
+        )
 
 
 class EquityQuery(QueryBase):
