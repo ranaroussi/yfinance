@@ -14,9 +14,8 @@ The `Market` class, allows you to access market data in a Pythonic way.
 
    Market
 
-Search Sample Code
+Market Sample Code
 ------------------
-The `Search` module, allows you to access search data in a Pythonic way.
 
 .. literalinclude:: examples/market.py
    :language: python
