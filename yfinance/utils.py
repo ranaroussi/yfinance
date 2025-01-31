@@ -494,7 +494,19 @@ def back_adjust(data):
     return df[[c for c in col_order if c in df.columns]]
 
 
-def parse_quotes(data):
+def parse_quotes(data: dict, keep_timestamps: bool =False) -> _pd.DataFrame:
+    """
+    Parse raw Yahoo JSON data and make a decent pandas DataFrame of it.
+    
+    :Paramters:
+        data: dict
+            Raw JSON data coming from Yahoo to be parsed
+        keep_timestamps: bool
+            If True, then keep original timestamps from Yahoo. Default is False.
+
+    :Returns:
+        _pd.DataFrame: DataFrame with the OHLC data
+    """
     timestamps = data["timestamp"]
     ohlc = data["indicators"]["quote"][0]
     volumes = ohlc["volume"]
@@ -507,16 +519,27 @@ def parse_quotes(data):
     if "adjclose" in data["indicators"]:
         adjclose = data["indicators"]["adjclose"][0]["adjclose"]
 
-    quotes = _pd.DataFrame({"Open": opens,
-                            "High": highs,
-                            "Low": lows,
-                            "Close": closes,
-                            "Adj Close": adjclose,
-                            "Volume": volumes})
+    if keep_timestamps:
+        quotes = _pd.DataFrame({"Open": opens,
+                                "High": highs,
+                                "Low": lows,
+                                "Close": closes,
+                                "Adj Close": adjclose,
+                                "Volume": volumes,
+                                "Timestamp": timestamps})
+        # make sure Timestamp is an integer
+        quotes["Timestamp"] = quotes["Timestamp"].astype(int)
+    else:
+        quotes = _pd.DataFrame({"Open": opens,
+                                "High": highs,
+                                "Low": lows,
+                                "Close": closes,
+                                "Adj Close": adjclose,
+                                "Volume": volumes})
 
     quotes.index = _pd.to_datetime(timestamps, unit="s")
-    quotes.sort_index(inplace=True)
-
+    # quotes.sort_index(inplace=True) violates python:S6734
+    quotes = quotes.sort_index()
     return quotes
 
 
