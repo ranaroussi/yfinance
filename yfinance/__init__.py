@@ -29,6 +29,7 @@ from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
 from .domain.market import Market
+from .data import Auth
 
 from .screener.query import EquityQuery, FundQuery
 from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
@@ -39,6 +40,6 @@ __author__ = "Ran Aroussi"
 import warnings
 warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
 
-__all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
+__all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry', 'Auth']
 # screener stuff:
 __all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']

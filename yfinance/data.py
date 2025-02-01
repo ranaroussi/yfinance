@@ -1,5 +1,6 @@
 import functools
 import random
+import json as _json
 from functools import lru_cache
 
 import requests as requests
@@ -78,6 +79,13 @@ class YfData(metaclass=SingletonMeta):
         self._set_session(session or requests.Session())
 
         utils.get_yf_logger().debug(f"Using User-Agent: {self.user_agent_headers['User-Agent']}")
+
+    def set_login_cookies(self, cookie_t, cookie_y):
+        with self._cookie_lock:
+            self._session.cookies.update({
+                "T": cookie_t,
+                "Y": cookie_y
+            })
 
     def _set_session(self, session):
         if session is None:
@@ -430,3 +438,70 @@ class YfData(metaclass=SingletonMeta):
         response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
         response.raise_for_status()
         return response.json()
+
+
+class Auth:
+    def __init__(self, session=None, proxy=None):
+        self._session = session
+        self._proxy = proxy
+        self._data = YfData(session)
+
+        self._user = None
+
+    def set_login_cookies(self, cookie_t: str, cookie_y: str) -> None:
+        """
+        Set the login cookies to indicate that the user is logged in.
+
+        How to Obtain the Cookies:
+            1. Open your browser (e.g., Chrome, Firefox).
+            2. Log in to Yahoo Finance (https://finance.yahoo.com).
+            3. Open the browser's Developer Tools:
+               Press `F12` or `Ctrl + Shift + I` (Windows/Linux) or `Cmd + Option + I` (Mac).
+            4. Go to the "Application" tab (Chrome) or "Storage" tab (Firefox).
+            5. In the "Cookies" section, select `https://finance.yahoo.com`.
+            6. Look for the cookies named `T` and `Y`.
+            7. Copy the values of these cookies and pass them to this function.
+
+        Args:
+            cookie_t (str): The value for the 'T' cookie.
+            cookie_y (str): The value for the 'Y' cookie.
+        """
+        self._data.set_login_cookies(cookie_t, cookie_y)
+
+    def check_login(self) -> bool:
+        """Check whether the user is logged in to Yahoo Finance."""
+        if self._user:
+            return True
+
+        try:
+            response = self._data.get("https://finance.yahoo.com/", proxy=self._proxy)
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            script_tag = soup.find('script', id='nimbus-benji-config')
+            if not script_tag:
+                return False
+
+            config_json = script_tag.string
+            config_data = _json.loads(config_json).get('i13n')
+
+            if "user" in config_data and "guid" in config_data["user"]:
+                self._user = config_data["user"]
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"Error confirming login: {e}")
+            return False
+
+    @property
+    def user(self) -> dict | None:
+        """
+        Get the logged-in user's details.
+
+        Returns:
+            dict | None: A dictionary containing the user's details if logged in, or None if not logged in.
+        """
+        if self._user is not None or self.check_login():
+            return self._user
+
+        return None

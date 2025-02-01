@@ -24,6 +24,7 @@ The following are the publicly available classes, and functions exposed by the `
 - :attr:`EquityQuery <yfinance.EquityQuery>`: Class to build equity query filters.
 - :attr:`FundQuery <yfinance.FundQuery>`: Class to build fund query filters.
 - :attr:`screen <yfinance.screen>`: Run equity/fund queries.
+- :attr:`Auth <yfinance.Auth>`: Class to login.
 - :attr:`enable_debug_mode <yfinance.enable_debug_mode>`: Function to enable debug mode for logging.
 - :attr:`set_tz_cache_location <yfinance.set_tz_cache_location>`: Function to set the timezone cache location.
 
@@ -41,6 +42,7 @@ The following are the publicly available classes, and functions exposed by the `
    yfinance.search
    yfinance.sector_industry
    yfinance.screener
+   yfinance.auth
    yfinance.functions
 
    yfinance.funds_data
