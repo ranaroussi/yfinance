@@ -111,7 +111,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     if ignore_tz is None:
         # Set default value depending on interval
-        if interval[1:] in ['m', 'h']:
+        if interval[-1] in ['m', 'h']:
             # Intraday
             ignore_tz = False
         else:
@@ -185,7 +185,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         errors = {}
         for ticker in shared._ERRORS:
             err = shared._ERRORS[ticker]
-            err = err.replace(f'{ticker}', '%ticker%')
+            err = err.replace(f'${ticker}: ', '')
             if err not in errors:
                 errors[err] = [ticker]
             else:
@@ -197,7 +197,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         tbs = {}
         for ticker in shared._TRACEBACKS:
             tb = shared._TRACEBACKS[ticker]
-            tb = tb.replace(f'{ticker}', '%ticker%')
+            tb = tb.replace(f'${ticker}: ', '')
             if tb not in tbs:
                 tbs[tb] = [ticker]
             else:
