@@ -214,7 +214,6 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
 
             if warnings_list:
                 warnings.warn("\n".join(warnings_list), DeprecationWarning, stacklevel=2)
-            print(f"Built doc:\n{func.__doc__}")
             return func(*args, **kwargs)
 
         func.__doc__ = build_doc(func.__doc__ or "", message_params, function=bool(message))
