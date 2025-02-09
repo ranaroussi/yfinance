@@ -12,7 +12,6 @@ from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
 from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
 
 class PriceHistory:
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", session="`session` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, data, ticker, tz, session=None, proxy=None):
         self._data = data
         self.ticker = ticker.upper()
@@ -28,12 +27,12 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
-    @utils.deprecated(timeout="`timeout` is deprecated. Please set using `yf.set_config", proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
-    def history(self, period="1mo", interval="1d",
+    def history(
+        self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=None, rounding=False, timeout=None,
-                raise_errors=False) -> pd.DataFrame:
+                raise_errors=False) -> 'pd.DataFrame':
         """
         :Parameters:
             period : str

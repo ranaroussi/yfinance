@@ -43,6 +43,7 @@ from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
 
 
 class TickerBase:
+    ticker = None # set so __repr__ works for deprecation in __init__
     def __init__(self, ticker, session=None, proxy=None):
         self.ticker = ticker.upper()
         self.proxy = proxy
@@ -74,9 +75,41 @@ class TickerBase:
 
         self._fast_info = None
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     @utils.log_indent_decorator
-    def history(self, *args, **kwargs) -> pd.DataFrame:
-        return self._lazy_load_price_history().history(*args, **kwargs)
+    def history(
+            self,
+            period:'str'="1mo",
+            interval:'str'="1d",
+            start:'Optional[str]'=None,
+            end:'Optional[str]'=None,
+            prepost:'bool'=False,
+            actions:'bool'=True,
+            auto_adjust:'bool'=True,
+            back_adjust:'bool'=False,
+            repair:'bool'=False,
+            keepna:'bool'=False,
+            proxy:'Optional[str]'=None,
+            rounding:'bool'=False,
+            timeout:'Optional[int]'=None,
+            raise_errors:'bool'=False
+        ) -> 'pd.DataFrame':
+        return self._lazy_load_price_history().history(
+            period=period,
+            interval=interval,
+            start=start,
+            end=end,
+            prepost=prepost,
+            actions=actions,
+            auto_adjust=auto_adjust,
+            back_adjust=back_adjust,
+            repair=repair,
+            keepna=keepna,
+            proxy=proxy,
+            rounding=rounding,
+            timeout=timeout,
+            raise_errors=raise_errors
+        )
 
     # ------------------------
 

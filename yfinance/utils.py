@@ -49,7 +49,7 @@ user_agent_headers = {
 def nindex(string, substring):
     """
     Return the index of the first character that is not the substring.
-    
+
     Args:
         string (str): The string to search.
         substring (str): The substring to search for.
@@ -95,16 +95,16 @@ def multi_index(string, *substrings):
 def deprecated(*params, message="", new=None, since=None, **message_params):
     """
     Decorator to mark functions, methods or parameters as deprecated.
-    
+
     Can be used in three ways:
     1. Deprecate entire function/method:
         @deprecated(message="Use new_func() instead", new=new_func)
         def old_func(): ...
-        
+
     2. Deprecate specific parameters:
         @deprecated("old_param", old_param="Use new_param instead")
         def func(old_param): ...
-        
+
     3. Deprecate with version info:
         @deprecated(message="...", since="0.1.0")
         def old_func(): ...
@@ -126,16 +126,16 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
         })
 
 
-        def build_warning(base_msg, colour=True, indent=0):
+        def build_warning(base_msg, colour=True, indent=0, include_since=True):
             msg_parts = [base_msg]
-            if since:
-                msg_parts.append(f"Deprecated since version {since}")                
+            if since and include_since:
+                msg_parts.append(f"Deprecated since version \033[1m{since}\033[20m")
             if new:
-                msg_parts.append(f"Use {new.__qualname__}() instead")
+                msg_parts.append(f"Use \033[1m{new.__qualname__}()\033[20m instead")
 
             msg = f"\n{' ' * indent}".join(msg_parts)
             return f"\033[33m{msg}\033[0m" if colour else msg
-        
+
         def build_doc(doc:'str', deprecate:'dict[str, str]'={}, since:'str'=None, function:'bool'=False):
             new_doc = doc.splitlines()
             params = list(deprecate.keys())
@@ -145,9 +145,9 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
                     "    This function is deprecated"
                 ]
                 if since:
-                    msg.append(f"    Deprecated since version {since}")
+                    msg.append(f"    Deprecated since version \033[1m{since}\033[20m")
                 if new:
-                    msg.append(f"    Use {new.__qualname__}() instead")
+                    msg.append(f"    Use \033[1m{new.__qualname__}()\033[20m instead")
                 msg.append(message)
                 msg.append("")
                 new_doc.insert(0, "\n".join(msg))
@@ -159,7 +159,7 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
                     for line_no, line in enumerate(doc[loc:].splitlines()[1:]):
                         if (index := nindex(line, " ")) < indent:
                             break
-                        
+
                         end = multi_index(line[index:], ":", "(", " ")
                         if (param := line[index:index+end].strip()) in deprecate.keys():
                             params.remove(param)
@@ -189,32 +189,29 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
                     for param in params
                 ]
                 new_doc.insert(0, "\n".join(msg))
-                    
+
             return "\n".join(new_doc)
 
         @wraps(func)
         def wrapper(*args, **kwargs):
             warnings_list = []
-            
+
             # Entire function deprecation
             if message:
-                warnings.warn(build_warning(message), DeprecationWarning, stacklevel=2)
-                return new(*args, **kwargs) if new else func(*args, **kwargs)
+                warnings_list.append(build_warning(message))
 
-            # Parameter deprecation
             bound_args = sig.bind(*args, **kwargs)
-            bound_args.apply_defaults()
-            
-            # Check deprecated parameters            
-            for param, msg in message_params.items():
-                # Skip if using default value
-                if (param in bound_args.arguments and 
-                    bound_args.arguments[param] is not sig.parameters[param].default):
-                    warnings_list.append(build_warning(msg))
+            for param in bound_args.arguments:
+                if param in message_params:
+                    warnings_list.append(build_warning(message_params[param], include_since=False))
+
+            if warnings_list and since:
+                warnings_list.append(f"\033[1mDeprecated since version {since}\033[0m")
 
             if warnings_list:
-                warnings.warn("\n".join(warnings_list), DeprecationWarning, stacklevel=2)
-            return func(*args, **kwargs)
+                warnings.warn(f"\n{"\n".join(warnings_list)}", DeprecationWarning, stacklevel=2)
+
+            return new(*args, **kwargs) if new else func(*args, **kwargs)
 
         func.__doc__ = build_doc(func.__doc__ or "", message_params, function=bool(message))
         return wrapper
