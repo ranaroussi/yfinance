@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Market Summary &#8212; yfinance</title>
+    <title>Market &#8212; yfinance</title>
   
   
   
@@ -45,8 +45,8 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/yfinance.market';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Search &amp; News" href="yfinance.search.html" />
-    <link rel="prev" title="yfinance.Ticker.mutualfund_holders" href="api/yfinance.Ticker.mutualfund_holders.html" />
+    <link rel="next" title="Market" href="api/yfinance.Market.html" />
+    <link rel="prev" title="yfinance.Ticker.news" href="api/yfinance.Ticker.news.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -351,6 +351,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.news.html">yfinance.Ticker.news</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Market</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Market.html">Market</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
@@ -406,7 +410,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.mutualfund_holders.html">yfinance.Ticker.mutualfund_holders</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Market Summary</a></li>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Market</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Market.html">Market</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.search.html">Search &amp; News</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Search.html">Search</a></li>
 </ul>
@@ -473,7 +480,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Market Summary</li>
+    <li class="breadcrumb-item active" aria-current="page">Market</li>
   </ul>
 </nav>
 </div>
@@ -490,28 +497,50 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="market-summary">
-<h1>Market Summary<a class="headerlink" href="#market-summary" title="Link to this heading">#</a></h1>
+  <section id="market">
+<h1>Market<a class="headerlink" href="#market" title="Link to this heading">#</a></h1>
 <section id="class">
 <h2>Class<a class="headerlink" href="#class" title="Link to this heading">#</a></h2>
-<p>The <cite>Market</cite> class, allows you to access market data in a Pythonic way.
-.. autosummary:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">:</span><span class="n">toctree</span><span class="p">:</span> <span class="n">api</span><span class="o">/</span>
-<span class="n">Market</span>
-</pre></div>
+<p>The <cite>Market</cite> class, allows you to access market data in a Pythonic way.</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Market.html#yfinance.Market" title="yfinance.Market"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Market</span></code></a>(market[, session, proxy, timeout])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </section>
 <section id="market-sample-code">
 <h2>Market Sample Code<a class="headerlink" href="#market-sample-code" title="Link to this heading">#</a></h2>
-<p>The <cite>Market</cite> class, allows you to access market summary data in a Pythonic way.
-.. literalinclude:: examples/market.py</p>
-<blockquote>
-<div><dl class="field-list simple">
-<dt class="field-odd">language<span class="colon">:</span></dt>
-<dd class="field-odd"><p>python</p>
-</dd>
-</dl>
-</div></blockquote>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+
+<span class="n">EUROPE</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Market</span><span class="p">(</span><span class="s2">&quot;EUROPE&quot;</span><span class="p">)</span>
+
+<span class="n">status</span> <span class="o">=</span> <span class="n">EUROPE</span><span class="o">.</span><span class="n">status</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="n">EUROPE</span><span class="o">.</span><span class="n">summary</span>
+</pre></div>
+</div>
+</section>
+<section id="markets">
+<h2>Markets<a class="headerlink" href="#markets" title="Link to this heading">#</a></h2>
+<p>There are 8 different markets available in Yahoo Finance.</p>
+<ul class="simple">
+<li><p>US</p></li>
+<li><p>GB</p></li>
+</ul>
+<p></p>
+<ul class="simple">
+<li><p>ASIA</p></li>
+<li><p>EUROPE</p></li>
+</ul>
+<p></p>
+<ul class="simple">
+<li><p>RATES</p></li>
+<li><p>COMMODITIES</p></li>
+<li><p>CURRENCIES</p></li>
+<li><p>CRYPTOCURRENCIES</p></li>
+</ul>
 </section>
 </section>
 
@@ -526,20 +555,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="api/yfinance.Ticker.mutualfund_holders.html"
+       href="api/yfinance.Ticker.news.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">yfinance.Ticker.mutualfund_holders</p>
+        <p class="prev-next-title">yfinance.Ticker.news</p>
       </div>
     </a>
     <a class="right-next"
-       href="yfinance.search.html"
+       href="api/yfinance.Market.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Search &amp; News</p>
+        <p class="prev-next-title">Market</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -563,6 +592,7 @@ document.write(`
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#class">Class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#market-sample-code">Market Sample Code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#markets">Markets</a></li>
 </ul>
   </nav></div>
 
