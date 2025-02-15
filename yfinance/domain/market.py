@@ -5,7 +5,7 @@ from ..data import utils
 from ..const import _QUERY1_URL_
 import json as _json
 
-class Market():
+class Market:
     def __init__(self, market:'str',  session=None, proxy=None, timeout=30):
         self.market = market
         self.session = session
@@ -52,7 +52,7 @@ class Market():
         status_params = {
             "formatted": True,
             "key": "finance",
-            "lang": "en-GB",
+            "lang": "en-US",
             "market": self.market
         }
 
@@ -73,11 +73,11 @@ class Market():
             self._status['timezone'] = self._status['timezone'][0]
             del self._status['time']  # redundant
             try:
-                self._status.update(
-                    open  = dt.datetime.fromisoformat(self._status["open"]),
-                    close = dt.datetime.fromisoformat(self._status["close"]),
-                    tz = dt.timezone(self._status["timezone"]["gmtoffset"], self._status["timezone"]["short"])
-                )
+                self._status.update({
+                    "open": dt.datetime.fromisoformat(self._status["open"]),
+                    "close": dt.datetime.fromisoformat(self._status["close"]),
+                    "tz": dt.timezone(dt.timedelta(hours=int(self._status["timezone"]["gmtoffset"]))/1000, self._status["timezone"]["short"])
+                })
             except Exception as e:
                 self._logger.error(f"{self.market}: Failed to update market status")
                 self._logger.debug(f"{type(e)}: {e}")
