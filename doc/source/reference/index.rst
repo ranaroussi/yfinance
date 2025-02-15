@@ -15,6 +15,7 @@ The following are the publicly available classes, and functions exposed by the `
 
 - :attr:`Ticker <yfinance.Ticker>`: Class for accessing single ticker data.
 - :attr:`Tickers <yfinance.Tickers>`: Class for handling multiple tickers.
+- :attr:`Market <yfinance.Market>`: Class for accessing market summary.
 - :attr:`download <yfinance.download>`: Function to download market data for multiple tickers.
 - :attr:`Search <yfinance.Search>`: Class for accessing search results.
 - :attr:`Sector <yfinance.Sector>`: Domain class for accessing sector information.
@@ -33,6 +34,7 @@ The following are the publicly available classes, and functions exposed by the `
 
    yfinance.ticker_tickers
    yfinance.stock
+   yfinance.market
    yfinance.financials
    yfinance.analysis
    yfinance.market

@@ -29,7 +29,8 @@ exclude_patterns = []
 autoclass_content = 'both'
 autosummary_generate = True
 autodoc_default_options = {
-    'exclude-members': '__init__'
+    'exclude-members': '__init__',
+    'members': True,
 }
 
 # -- Options for HTML output -------------------------------------------------
