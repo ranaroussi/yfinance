@@ -7,7 +7,7 @@ from yfinance import utils
 
 from typing import Dict, Optional
 
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
+_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 class FundsData:
     """

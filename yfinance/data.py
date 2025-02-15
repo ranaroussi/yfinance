@@ -355,6 +355,7 @@ class YfData(metaclass=SingletonMeta):
             raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
 
         cookie, crumb, strategy = self._get_cookie_and_crumb()
+    
         if crumb is not None:
             crumbs = {'crumb': crumb}
         else:
@@ -364,6 +365,7 @@ class YfData(metaclass=SingletonMeta):
             cookies = {cookie.name: cookie.value}
         else:
             cookies = None
+            
 
         request_args = {
             'url': url,
@@ -395,7 +397,9 @@ class YfData(metaclass=SingletonMeta):
             # Raise exception if rate limited
             if response.status_code == 429:
                 raise YFRateLimitError()
-
+           
+        print(f"Cookies: {cookie}")
+        print(f"Crumb: {crumb}")
         return response
 
     @lru_cache_freezeargs
@@ -412,6 +416,7 @@ class YfData(metaclass=SingletonMeta):
         return proxy
 
     def get_raw_json(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        print(url)
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
         response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
         response.raise_for_status()

@@ -8,7 +8,7 @@ from yfinance.data import YfData
 from yfinance.const import _BASE_URL_
 from yfinance.exceptions import YFDataException
 
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
+_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 
 class Holders:
@@ -38,7 +38,7 @@ class Holders:
     @property
     def institutional(self) -> pd.DataFrame:
         if self._institutional is None:
-            # self._scrape(self.proxy)
+            #self._scrape(self.proxy)
             self._fetch_and_parse()
         return self._institutional
 
@@ -71,10 +71,13 @@ class Holders:
         return self._insider_roster
 
     def _fetch(self, proxy):
+        print(proxy)
         modules = ','.join(
             ["institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"])
+        
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false"}
         result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+
         return result
 
     def _fetch_and_parse(self):
@@ -105,7 +108,8 @@ class Holders:
             self._parse_net_share_purchase_activity(data.get("netSharePurchaseActivity", {}))
         except (KeyError, IndexError):
             raise YFDataException("Failed to parse holders json data.")
-
+    
+        
     @staticmethod
     def _parse_raw_values(data):
         if isinstance(data, dict) and "raw" in data:
