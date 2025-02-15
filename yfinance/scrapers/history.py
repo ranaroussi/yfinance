@@ -1304,7 +1304,7 @@ class PriceHistory:
 
         if df is None or df.empty:
             return df
-        if interval != '1d':
+        if interval in ['1wk', '1mo', '3mo', '1y']:
             return df
 
         logger = utils.get_yf_logger()
@@ -1614,9 +1614,9 @@ class PriceHistory:
         checks += ['adj_missing', 'adj_exceeds_div', 'div_exceeds_adj']
 
         div_status_df['phantom'] = False
-        phantom_proximity_threshold = _datetime.timedelta(days=7)
+        phantom_proximity_threshold = _datetime.timedelta(days=17)
         f = div_status_df[['div_too_big', 'div_exceeds_adj']].any(axis=1)
-        if f.any():
+        if f.any() and len(div_status_df) > 1:
             # One/some of these may be phantom dividends. Clue is if another correct dividend is very close
             indices = np.where(f)[0]
             dts_to_check = div_status_df.index[f]
@@ -1625,37 +1625,24 @@ class PriceHistory:
                 div_dt = div.name
                 phantom_dt = None
                 if i > 0:
-                    prev_div = div_status_df.iloc[i-1]
-                    ratio1 = (div['div']/currency_divide) / prev_div['div']
-                    ratio2 = div['div'] / prev_div['div']
-                    divergence = min(abs(ratio1-1.0), abs(ratio2-1.0))
-                    if abs(div_dt-prev_div.name) <= phantom_proximity_threshold and not prev_div['phantom'] and divergence < 0.01:
-                        if prev_div.name in dts_to_check:
-                            # Both this and previous are anomalous, so mark smallest drop as phantom
-                            drop = div['drop']
-                            drop_prev = prev_div['drop']
-                            if drop > 1.5*drop_prev:
-                                phantom_dt = prev_div.name
-                            else:
-                                phantom_dt = div_dt
+                    other_div = div_status_df.iloc[i-1]
+                else:
+                    other_div = div_status_df.iloc[i+1]
+                ratio1 = (div['div']/currency_divide) / other_div['div']
+                ratio2 = div['div'] / other_div['div']
+                divergence = min(abs(ratio1-1.0), abs(ratio2-1.0))
+                if abs(div_dt-other_div.name) <= phantom_proximity_threshold and not other_div['phantom'] and divergence < 0.01:
+                    if other_div.name in dts_to_check:
+                        # Both this and previous are anomalous, so mark smallest drop as phantom
+                        drop = div['drop']
+                        drop_next = other_div['drop']
+                        if drop > 1.5*drop_next:
+                            phantom_dt = other_div.name
                         else:
                             phantom_dt = div_dt
-                elif i < len(div_status_df)-1:
-                    next_div = div_status_df.iloc[i+1]
-                    ratio1 = (div['div']/currency_divide) / next_div['div']
-                    ratio2 = div['div'] / next_div['div']
-                    divergence = min(abs(ratio1-1.0), abs(ratio2-1.0))
-                    if abs(div_dt-next_div.name) <= phantom_proximity_threshold and divergence < 0.01:
-                        if next_div.name in dts_to_check:
-                            # Both this and previous are anomalous, so mark smallest drop as phantom
-                            drop = div['drop']
-                            drop_next = next_div['drop']
-                            if drop > 1.5*drop_next:
-                                phantom_dt = next_div.name
-                            else:
-                                phantom_dt = div_dt
-                        else:
-                            phantom_dt = div_dt
+                    else:
+                        phantom_dt = div_dt
+
                 if phantom_dt:
                     div_status_df.loc[phantom_dt, 'phantom'] = True
                     for c in checks:
@@ -1754,7 +1741,7 @@ class PriceHistory:
             lookahead_idx = bisect.bisect_left(df2.index, lookahead_date)
             lookahead_idx = min(lookahead_idx, len(df2)-1)
             # In rare cases, the price dropped 1 day before dividend (DVD.OL @ 2024-05-15)
-            lookback_idx = div_idx-2 if div_idx > 1 else div_idx-1
+            lookback_idx = max(0, div_idx-14)
             # Check for bad stock splits in the lookahead period - 
             # if present, reduce lookahead to before.
             future_changes = df2['Close'].iloc[div_idx:lookahead_idx+1].pct_change()
@@ -1776,8 +1763,6 @@ class PriceHistory:
                 adjDeltas = x['Adj Low'].iloc[1:].to_numpy() - x['Adj Close'].iloc[:-1].to_numpy()
                 adjDeltas = np.append([0.0], adjDeltas)
                 x['adjDelta'] = adjDeltas
-                for i in np.where(x['Dividends']>0)[0]:
-                    x.loc[x.index[i], 'adjDelta'] += x['Dividends'].iloc[i]*x['Adj'].iloc[i]
                 deltas = x[['delta', 'adjDelta']]
                 if div_pct > 0.05 and div_pct < 1.0:
                     adjDiv = div * x['Adj'].iloc[0]
@@ -1912,7 +1897,7 @@ class PriceHistory:
                 pct_fail = n_fail / n
                 if c == 'div_too_big':
                     true_threshold = 1.0
-                    fals_threshold = 0.2
+                    fals_threshold = 0.25
 
                     if 'div_date_wrong' in cluster.columns and (cluster[c] == cluster['div_date_wrong']).all():
                         continue
@@ -1991,7 +1976,7 @@ class PriceHistory:
                 if c == 'div_date_wrong':
                     # Fine, these should be rare
                     continue
-                if c == 'div_pre_split':
+                if c in ['div_pre_split', 'div_too_big_and_pre_split']:
                     # Fine, these should be rare
                     continue
 
@@ -2226,6 +2211,26 @@ class PriceHistory:
                         df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
                         df2_nan.loc[:enddt, 'Repaired?'] = True
                         cluster.loc[dt, 'Fixed?'] = True
+
+                elif n_failed_checks == 3:
+                    if div_too_big and div_exceeds_adj and div_pre_split:
+                        k = 'too-big div & pre-split'
+                        correction = (1.0/currency_divide) * (1.0/df2['Stock Splits'].loc[dt])
+                        correct_div = row['div'] * correction
+                        df2.loc[dt, 'Dividends'] = correct_div
+
+                        target_div_pct = row['%'] * correction
+                        target_adj = 1.0 - target_div_pct
+                        present_adj = row['present adj']
+                        # Also correct adjustment to match corrected dividend
+                        k += ' & div-adjust'
+                        adj_correction = target_adj / present_adj
+                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
+                        df2.loc[    :enddt, 'Repaired?'] = True
+                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
+                        df2_nan.loc[:enddt, 'Repaired?'] = True
+                        cluster.loc[dt, 'Fixed?'] = True
+                        div_repairs.setdefault(k, []).append(dt)
 
             if cluster.empty:
                 continue
@@ -2482,14 +2487,14 @@ class PriceHistory:
 
         r = _1d_change_x / split_rcp
         f_down = _1d_change_x < 1.0 / threshold
-        if f_down.any():
-            # Discard where triggered by negative Adj Close after dividend
-            f_neg = _1d_change_x < 0.0
-            f_div = (df2['Dividends']>0).to_numpy()
-            f_div_before = np.roll(f_div, 1)
-            if f_down.ndim == 2:
-                f_div_before = f_div_before[:, np.newaxis].repeat(f_down.shape[1], axis=1)
-            f_down = f_down & ~(f_neg + f_div_before)
+        # if f_down.any():
+        #     # Discard where triggered by negative Adj Close after dividend
+        #     f_neg = _1d_change_x < 0.0
+        #     f_div = (df2['Dividends']>0).to_numpy()
+        #     f_div_before = np.roll(f_div, 1)
+        #     if f_down.ndim == 2:
+        #         f_div_before = f_div_before[:, np.newaxis].repeat(f_down.shape[1], axis=1)
+        #     f_down = f_down & ~(f_neg + f_div_before)
         f_up = _1d_change_x > threshold
         f_up_ndims = len(f_up.shape)
         f_up_shifts = f_up if f_up_ndims==1 else f_up.any(axis=1)
@@ -2512,7 +2517,7 @@ class PriceHistory:
                         # assume false positive
                         continue
                     avg_vol_after = df2['Volume'].iloc[lookback:i-1].mean()
-                    if not np.isnan(avg_vol_after) and v/avg_vol_after < 2.0:
+                    if not np.isnan(avg_vol_after) and avg_vol_after > 0 and v/avg_vol_after < 2.0:
                         # volume spike is actually a step-change, so 
                         # probably missing stock split
                         continue

@@ -118,7 +118,7 @@ class TestPriceHistory(unittest.TestCase):
                 continue
             test_run = True
 
-            df = dat.history(start=dt.date() - _dt.timedelta(days=7), interval="1wk")
+            df = dat.history(start=dt.date() - _dt.timedelta(days=13), interval="1wk")
             dt0 = df.index[-2]
             dt1 = df.index[-1]
             try:
@@ -401,7 +401,7 @@ class TestPriceHistory(unittest.TestCase):
 
         # Setup
         tkr = "AMZN"
-        special_day = _dt.date(2023, 11, 24)
+        special_day = _dt.date(2024, 11, 29)
         time_early_close = _dt.time(13)
         dat = yf.Ticker(tkr, session=self.session)
 
@@ -427,8 +427,8 @@ class TestPriceHistory(unittest.TestCase):
         dat = yf.Ticker(tkr, session=self.session)
 
         # Test no other afternoons (or mornings) were pruned
-        start_d = _dt.date(2023, 1, 1)
-        end_d = _dt.date(2023+1, 1, 1)
+        start_d = _dt.date(2024, 1, 1)
+        end_d = _dt.date(2024+1, 1, 1)
         df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
         last_dts = _pd.Series(df.index).groupby(df.index.date).last()
         dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)

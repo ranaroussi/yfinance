@@ -1,5 +1,3 @@
-# from io import StringIO
-
 import pandas as pd
 import requests
 
@@ -8,7 +6,7 @@ from yfinance.data import YfData
 from yfinance.const import _BASE_URL_
 from yfinance.exceptions import YFDataException
 
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
+_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 
 class Holders:
@@ -31,42 +29,36 @@ class Holders:
     @property
     def major(self) -> pd.DataFrame:
         if self._major is None:
-            # self._scrape(self.proxy)
             self._fetch_and_parse()
         return self._major
 
     @property
     def institutional(self) -> pd.DataFrame:
         if self._institutional is None:
-            # self._scrape(self.proxy)
             self._fetch_and_parse()
         return self._institutional
 
     @property
     def mutualfund(self) -> pd.DataFrame:
         if self._mutualfund is None:
-            # self._scrape(self.proxy)
             self._fetch_and_parse()
         return self._mutualfund
 
     @property
     def insider_transactions(self) -> pd.DataFrame:
         if self._insider_transactions is None:
-            # self._scrape_insider_transactions(self.proxy)
             self._fetch_and_parse()
         return self._insider_transactions
 
     @property
     def insider_purchases(self) -> pd.DataFrame:
         if self._insider_purchases is None:
-            # self._scrape_insider_transactions(self.proxy)
             self._fetch_and_parse()
         return self._insider_purchases
 
     @property
     def insider_roster(self) -> pd.DataFrame:
         if self._insider_roster is None:
-            # self._scrape_insider_ros(self.proxy)
             self._fetch_and_parse()
         return self._insider_roster
 
@@ -187,8 +179,10 @@ class Holders:
             del owner["maxAge"]
         df = pd.DataFrame(holders)
         if not df.empty:
-            df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
-            df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
+            if "positionDirectDate" in df:
+                df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
+            if "latestTransDate" in df:
+                df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
 
             df.rename(columns={
                 "name": "Name",
