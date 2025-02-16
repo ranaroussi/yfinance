@@ -45,6 +45,27 @@ user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
+def merge_two_level_dicts(dict1, dict2):
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if key in result:
+            # If both are sets, merge them
+            if isinstance(value, set) and isinstance(result[key], set):
+                result[key] = result[key] | value
+            # If both are dicts, merge their contents
+            elif isinstance(value, dict) and isinstance(result[key], dict):
+                result[key] = {
+                    k: (result[key].get(k, set()) | v if isinstance(v, set) 
+                        else v) if k in result[key]
+                    else v
+                    for k, v in value.items()
+                }
+        else:
+            result[key] = value
+    return result
+
+
+
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
     disallowed_names = {
