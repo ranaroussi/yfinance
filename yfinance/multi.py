@@ -186,7 +186,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             else:
                 errors[err].append(ticker)
         for err in errors.keys():
-            logger.error(f'{errors[err]}: ' + err)
+            logger.error(err.replace('%ticker%',errors[err][0]))
 
         # Log each distinct traceback once, with list of symbols affected
         tbs = {}
