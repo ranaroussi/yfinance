@@ -407,8 +407,6 @@ class YfData(metaclass=SingletonMeta):
             if response.status_code == 429:
                 raise YFRateLimitError()
            
-        print(f"Cookies: {cookie}")
-        print(f"Crumb: {crumb}")
         return response
 
     @lru_cache_freezeargs

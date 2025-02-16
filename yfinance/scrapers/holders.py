@@ -35,10 +35,7 @@ class Holders:
     @property
     def institutional(self) -> pd.DataFrame:
         if self._institutional is None:
-<<<<<<< HEAD
             #self._scrape(self.proxy)
-=======
->>>>>>> 1ddc38c04f162e631ae8ef070f1237b3af2e296a
             self._fetch_and_parse()
         return self._institutional
 
@@ -67,7 +64,6 @@ class Holders:
         return self._insider_roster
 
     def _fetch(self, proxy):
-        print(proxy)
         modules = ','.join(
             ["institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"])
         
