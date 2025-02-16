@@ -36,7 +36,7 @@ from . import shared
 
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True,
-             ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
+             ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",
              prepost=False, proxy=None, rounding=False, timeout=10, session=None,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
@@ -93,6 +93,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     """
     logger = utils.get_yf_logger()
 
+    if auto_adjust is None:
+        # Warn users that default has changed to True
+        utils.print_once("YF.download() has changed argument auto_adjust default to True")
+        auto_adjust = True
+
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
             # With DEBUG, each thread generates a lot of log messages.
@@ -106,7 +111,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     if ignore_tz is None:
         # Set default value depending on interval
-        if interval[1:] in ['m', 'h']:
+        if interval[-1] in ['m', 'h']:
             # Intraday
             ignore_tz = False
         else:
@@ -180,7 +185,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         errors = {}
         for ticker in shared._ERRORS:
             err = shared._ERRORS[ticker]
-            err = err.replace(f'{ticker}', '%ticker%')
+            err = err.replace(f'${ticker}: ', '')
             if err not in errors:
                 errors[err] = [ticker]
             else:
@@ -192,7 +197,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         tbs = {}
         for ticker in shared._TRACEBACKS:
             tb = shared._TRACEBACKS[ticker]
-            tb = tb.replace(f'{ticker}', '%ticker%')
+            tb = tb.replace(f'${ticker}: ', '')
             if tb not in tbs:
                 tbs[tb] = [ticker]
             else:

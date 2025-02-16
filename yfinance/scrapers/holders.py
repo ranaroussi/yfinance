@@ -1,5 +1,3 @@
-# from io import StringIO
-
 import pandas as pd
 import requests
 
@@ -31,42 +29,40 @@ class Holders:
     @property
     def major(self) -> pd.DataFrame:
         if self._major is None:
-            # self._scrape(self.proxy)
             self._fetch_and_parse()
         return self._major
 
     @property
     def institutional(self) -> pd.DataFrame:
         if self._institutional is None:
+<<<<<<< HEAD
             #self._scrape(self.proxy)
+=======
+>>>>>>> 1ddc38c04f162e631ae8ef070f1237b3af2e296a
             self._fetch_and_parse()
         return self._institutional
 
     @property
     def mutualfund(self) -> pd.DataFrame:
         if self._mutualfund is None:
-            # self._scrape(self.proxy)
             self._fetch_and_parse()
         return self._mutualfund
 
     @property
     def insider_transactions(self) -> pd.DataFrame:
         if self._insider_transactions is None:
-            # self._scrape_insider_transactions(self.proxy)
             self._fetch_and_parse()
         return self._insider_transactions
 
     @property
     def insider_purchases(self) -> pd.DataFrame:
         if self._insider_purchases is None:
-            # self._scrape_insider_transactions(self.proxy)
             self._fetch_and_parse()
         return self._insider_purchases
 
     @property
     def insider_roster(self) -> pd.DataFrame:
         if self._insider_roster is None:
-            # self._scrape_insider_ros(self.proxy)
             self._fetch_and_parse()
         return self._insider_roster
 
@@ -191,8 +187,10 @@ class Holders:
             del owner["maxAge"]
         df = pd.DataFrame(holders)
         if not df.empty:
-            df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
-            df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
+            if "positionDirectDate" in df:
+                df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
+            if "latestTransDate" in df:
+                df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
 
             df.rename(columns={
                 "name": "Name",

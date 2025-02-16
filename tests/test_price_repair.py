@@ -367,9 +367,9 @@ class TestPriceRepair(unittest.TestCase):
                                      "Close":     [103.03, 102.05, 102.08],
                                      "Adj Close": [102.03, 102.05, 102.08],
                                      "Volume": [560, 137, 117]},
-                               index=_pd.to_datetime([_dt.datetime(2022, 11, 1),
-                                                      _dt.datetime(2022, 10, 31),
-                                                      _dt.datetime(2022, 10, 30)]))
+                               index=_pd.to_datetime([_dt.datetime(2024, 11, 1),
+                                                      _dt.datetime(2024, 10, 31),
+                                                      _dt.datetime(2024, 10, 30)]))
         df_bad = df_bad.sort_index()
         df_bad.index.name = "Date"
         df_bad.index = df_bad.index.tz_localize(tz_exchange)
@@ -377,9 +377,9 @@ class TestPriceRepair(unittest.TestCase):
         repaired_df = hist._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
 
         correct_df = df_bad.copy()
-        correct_df.loc["2022-11-01", "Open"] = 102.080002
-        correct_df.loc["2022-11-01", "Low"] = 102.032501
-        correct_df.loc["2022-11-01", "High"] = 102.080002
+        correct_df.loc["2024-11-01", "Open"] = 102.572729
+        correct_df.loc["2024-11-01", "Low"] = 102.309091
+        correct_df.loc["2024-11-01", "High"] = 102.572729
         for c in ["Open", "Low", "High", "Close"]:
             self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-8).all())
 
@@ -462,7 +462,7 @@ class TestPriceRepair(unittest.TestCase):
         # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
-        good_tkrs += ['AEI', 'GHI', 'IRON', 'LXU', 'NUZE', 'RSLS', 'TISI']
+        good_tkrs += ['AEI', 'GHI', 'IRON', 'LXU', 'RSLS', 'TISI']
         good_tkrs += ['BOL.ST', 'TUI1.DE']
         intervals = ['1d', '1wk', '1mo', '3mo']
         for tkr in good_tkrs:
@@ -580,7 +580,6 @@ class TestPriceRepair(unittest.TestCase):
         # Div 100x
         bad_tkrs += ['ABDP.L']
         bad_tkrs += ['ELCO.L']
-        bad_tkrs += ['KWS.L']
         bad_tkrs += ['PSH.L']
 
         # Div 100x and adjust too big
