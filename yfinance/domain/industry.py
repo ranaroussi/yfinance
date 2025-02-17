@@ -3,7 +3,9 @@ from typing import Dict, Optional
 
 import pandas as _pd
 
-from .domain import Domain, _QUERY_URL_
+from ..data import YfData
+
+from .domain import Domain
 from .. import utils
 
 class Industry(Domain):
@@ -19,7 +21,7 @@ class Industry(Domain):
             proxy (optional): The proxy to use for requests.
         """
         super(Industry, self).__init__(key, session, proxy)
-        self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
+        self._query_url = YfData.URLS.INDUSTRY_URL.format(self._key)
 
         self._sector_key = None
         self._sector_name = None

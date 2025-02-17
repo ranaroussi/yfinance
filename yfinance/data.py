@@ -53,7 +53,91 @@ class SingletonMeta(type):
             else:
                 cls._instances[cls]._set_session(*args, **kwargs)
             return cls._instances[cls]
-     
+        
+class URLS:
+    @property
+    def ROOT_URL(self):
+        return f"https://{YfData.url}"
+    
+    @property
+    def QUERY1_URL(self):
+        return f"https://query1.{YfData.url}"
+    
+    @property
+    def QUERY2_URL(self):
+        return f"https://query2.{YfData.url}"
+    
+    @property
+    def QUERY_URL(self):
+        return f"{self.QUERY1_URL}/v1/finance"
+    
+    @property
+    def SUMMARY_URL(self):
+        return f"{self.QUERY1_URL}/v6/finance/quote/marketSummary"
+    
+    @property
+    def STATUS_URL(self):
+        return f"{self.QUERY1_URL}/v6/finance/markettime"
+    
+    @property
+    def NEWS_URL(self):
+        return f"{self.ROOT_URL}/xhr/ncp"
+    
+    @property
+    def EARNINGS_URL(self):
+        return f"{self.ROOT_URL}/calendar/earnings"
+    
+    @property
+    def TICKER_URL(self):
+        return f"{self.QUERY2_URL}/v8/finance/chart/{{}}"
+    
+    @property
+    def SEARCH_URL(self):
+        return f"{self.QUERY2_URL}/v1/finance/search"
+    
+    @property
+    def OPTIONS_URL(self):
+        return f"{self.QUERY2_URL}/v7/finance/options/{{}}"
+    
+    @property
+    def FINANCIAL_TIME_SERIES_URL(self):
+        return f"{self.QUERY2_URL}/ws/fundamentals-timeseries/v1/finance/timeseries/{{}}"
+    
+    @property
+    def QUOTE_SUMMARY_URL(self):
+        return f"{self.QUERY2_URL}/v10/finance/quoteSummary/{{}}" # CHECK, DO NOT MERGE YET
+
+    @property
+    def HISTORY_URL(self):
+        return f"{self.QUERY2_URL}/v8/finance/chart/{{}}"
+    
+    @property
+    def QUOTE_URL(self):
+        return f"{self.QUERY2_URL}/quote"
+    
+    @property
+    def SCREENER_URL(self):
+        return f"{self.QUERY2_URL}/v1/finance/screener"
+
+    @property
+    def PREDEFINED_URL(self):
+        return f"{self.SCREENER_URL}/predefined/saved"
+    
+    @property
+    def SECTOR_URL(self):
+        return f"{self.QUERY1_URL}/sectors/{{}}"
+    
+    @property
+    def INDUSTRY_URL(self):
+        return f"{self.QUERY1_URL}/industries/{{}}"
+
+DEFAULT_PROXY = None
+DEFAULT_TIMEOUT = 30
+DEFAULT_LANG = "en-US"
+DEFAULT_REGION = "US"
+DEFAULT_SESSION = requests.Session()
+DEFAULT_URL = "finance.yahoo.com"
+
 class YfData(metaclass=SingletonMeta):
     """
     Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations.
@@ -63,17 +147,38 @@ class YfData(metaclass=SingletonMeta):
         'User-Agent': random.choice(USER_AGENTS)
     }
 
+    URLS = URLS()
+
+    proxy = DEFAULT_PROXY
+    timeout = DEFAULT_TIMEOUT
+    lang = DEFAULT_LANG
+    region = DEFAULT_REGION
+    session = DEFAULT_SESSION
+    url = DEFAULT_URL
+
+    @classmethod
+    def reset_config(cls):
+        cls.proxy = DEFAULT_PROXY
+        cls.timeout = DEFAULT_TIMEOUT
+        cls.lang = DEFAULT_LANG
+        cls.region = DEFAULT_REGION
+        cls.session = DEFAULT_SESSION
+        cls.url = DEFAULT_URL
+
+
     @classmethod
     def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None):
-        cls.proxy = proxy
-        cls.timeout = timeout or 30
-        cls.lang = lang or "en-US"
-        cls.region = region or "US"
-        cls.session = session or requests.Session()
+        if proxy is not None: cls.proxy = proxy
+        if timeout is not None: cls.timeout = timeout
+        if lang is not None: cls.lang = lang
+        if region is not None: cls.region = region
+        if session is not None: cls.session = session
+        if url is not None: cls.url = url
+
 
 
     def __init__(self, session=None):
-        YfData.set_config(session=session)
+        self.set_config(session=session)
         self._crumb = None
         self._cookie = None
 
@@ -173,7 +278,7 @@ class YfData(metaclass=SingletonMeta):
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         response = self._session.get(
-            url=f"https://{const._BASE_URL_}",
+            url=self.URLS.QUERY2_URL,
             headers=self.user_agent_headers,
             proxies=YfData.proxy,
             timeout=YfData.timeout,
@@ -312,7 +417,7 @@ class YfData(metaclass=SingletonMeta):
             return None
 
         get_args = {
-            'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
+            'url': f"{self.url}/v1/test/getcrumb",
             'headers': self.user_agent_headers,
             'proxies': YfData.proxy,
             'timeout': YfData.timeout
@@ -363,10 +468,8 @@ class YfData(metaclass=SingletonMeta):
         return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, proxy=proxy)
 
     @utils.log_indent_decorator
-    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None):
+    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None, timeout=None):
         # Important: treat input arguments as immutable.
-        url = f"https://{url}"
-
         if len(url) > 200:
             utils.get_yf_logger().debug(f'url={url[:200]}...')
         else:
@@ -403,7 +506,7 @@ class YfData(metaclass=SingletonMeta):
             'params': {**params, **crumbs},
             'cookies': cookies,
             'proxies': proxy,
-            'timeout': YfData.timeout,
+            'timeout': YfData.timeout or timeout,
             'headers': user_agent_headers or self.user_agent_headers
         }
 
@@ -442,8 +545,8 @@ class YfData(metaclass=SingletonMeta):
             proxy = {"https": proxy}
         return proxy
 
-    def get_raw_json(self, url, user_agent_headers=None, params=None):
+    def get_raw_json(self, url, user_agent_headers=None, params=None, proxy=None):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
-        response = self.get(f"https://{url}", user_agent_headers=user_agent_headers, params=params)
+        response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy)
         response.raise_for_status()
         return response.json()

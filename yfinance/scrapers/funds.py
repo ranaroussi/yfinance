@@ -1,13 +1,11 @@
 import pandas as pd
 
 from yfinance.data import YfData
-from yfinance.const import _BASE_URL_
 from yfinance.exceptions import YFDataException
 from yfinance import utils
 
 from typing import Dict, Optional
 
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
 
 class FundsData:
     """
@@ -175,7 +173,7 @@ class FundsData:
         """
         modules = ','.join(["quoteType", "summaryProfile", "topHoldings", "fundProfile"])
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol, "formatted": "false"}
-        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_+self._symbol, user_agent_headers=self._data.user_agent_headers, params=params_dict)
+        result = self._data.get_raw_json(YfData.URLS.QUOTE_SUMMARY_URL.format(self._symbol), user_agent_headers=self._data.user_agent_headers, params=params_dict)
         return result
 
     def _fetch_and_parse(self) -> None:

@@ -106,7 +106,7 @@ class Financials:
         timescale = timescale_translation[timescale]
 
         # Step 2: construct url:
-        ts_url_base = f"https://{const._BASE_URL_}/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
+        ts_url_base = f"{YfData.URLS.FINANCIAL_TIME_SERIES_URL.format(self._symbol)}?symbol={self._symbol}"
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)

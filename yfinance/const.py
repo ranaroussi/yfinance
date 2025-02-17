@@ -1,8 +1,3 @@
-_ROOT_URL_ = "finance.yahoo.com"
-_QUERY1_URL_ = f"query1.{_ROOT_URL_}"
-_BASE_URL_ = f"query2.{_ROOT_URL_}"
-
-
 fundamentals_keys = {
     'financials': ["TaxEffectOfUnusualItems", "TaxRateForCalcs", "NormalizedEBITDA", "NormalizedDilutedEPS",
                    "NormalizedBasicEPS", "TotalUnusualItems", "TotalUnusualItemsExcludingGoodwill",

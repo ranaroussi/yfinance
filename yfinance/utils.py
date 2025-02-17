@@ -92,7 +92,10 @@ def multi_index(string, *substrings):
         i += 1
     raise ValueError("No substrings found in string")
 
-def deprecated(*params, message="", new=None, since=None, **message_params):
+C1 = t.TypeVar("C1", bound=t.Callable)
+C2 = t.TypeVar("C2", bound=t.Callable)
+
+def deprecated(*params, message="", new:'t.Optional[C1]'=None, since=None, **message_params):
     """
     Decorator to mark functions, methods or parameters as deprecated.
 
@@ -117,7 +120,7 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
         removed_in: Version when item will be removed (optional) 
         **message_params: Parameters to deprecate with custom messages
     """
-    def decorator(func:'t.Callable'):
+    def decorator(func:'C2') -> 't.Union[C1, C2]':
         sig = signature(func)
         func_name = func.__qualname__
 
@@ -193,7 +196,7 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
             return "\n".join(new_doc)
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> 't.Union[C1, C2]':
             warnings_list = []
 
             # Entire function deprecation
@@ -202,7 +205,7 @@ def deprecated(*params, message="", new=None, since=None, **message_params):
 
             bound_args = sig.bind(*args, **kwargs)
             for param in bound_args.arguments:
-                if param in message_params:
+                if (param in message_params) and (param != sig.parameters[param].default):
                     warnings_list.append(build_warning(message_params[param], include_since=False))
 
             if warnings_list and since:

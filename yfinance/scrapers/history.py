@@ -8,7 +8,8 @@ import time as _time
 import bisect
 
 from yfinance import shared, utils
-from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
+from yfinance.const import _PRICE_COLNAMES_
+from yfinance.data import YfData
 from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
 
 class PriceHistory:
@@ -162,7 +163,7 @@ class PriceHistory:
         logger.debug(f'{self.ticker}: Yahoo GET parameters: {str(params_pretty)}')
 
         # Getting data from json
-        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
+        url = YfData.URLS.HISTORY_URL.format(self.ticker)
         data = None
         get_fn = self._data.get
         if end is not None:

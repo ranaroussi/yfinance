@@ -22,7 +22,6 @@
 import json as _json
 
 from . import utils
-from .const import _BASE_URL_
 from .data import YfData
 
 class Search:
@@ -80,7 +79,6 @@ class Search:
 
     def search(self) -> 'Search':
         """Search using the query parameters defined in the constructor."""
-        url = f"{_BASE_URL_}/v1/finance/search"
         params = {
             "q": self.query,
             "quotesCount": self.max_results,
@@ -98,7 +96,7 @@ class Search:
 
         self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
 
-        data = self._data.get(url=url, params=params)
+        data = self._data.get(url=YfData.URLS.SEARCH_URL, params=params)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
