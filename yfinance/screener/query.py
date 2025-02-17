@@ -4,6 +4,7 @@ from typing import List, Union, Dict, TypeVar, TypedDict, Literal, Generic
 
 from yfinance.const import EQUITY_SCREENER_EQ_MAP, EQUITY_SCREENER_FIELDS
 from yfinance.const import FUND_SCREENER_EQ_MAP, FUND_SCREENER_FIELDS
+from yfinance.const import SECTOR_INDUSTY_MAPPING
 from yfinance.exceptions import YFNotImplementedError
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
@@ -230,13 +231,19 @@ def industry(sector:'str', industry:'Union[str, list[str]]') -> 'OP_DICT':
                     "operands": ["industry", industry] 
                 }
     else:
+        operands = ["industry"]
+        for i in industry:
+            if i in SECTOR_INDUSTY_MAPPING[sector]:
+                operands.append(i)
+            else:
+                raise ValueError(f"Invalid industry '{i}' for sector '{sector}'")
         _industry = {
             "operator": "OR",
             "operands": [
                 {
                     "operator": "EQ",
-                    "operands": ["industry", i] 
-                } for i in industry
+                    "operands": operands
+                }
             ]
         }
     
