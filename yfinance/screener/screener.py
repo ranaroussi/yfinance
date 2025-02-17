@@ -51,13 +51,13 @@ PREDEFINED_SCREENER_QUERIES = {
 }
 
 @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title='Predefined queries (Dec-2024)')})
-def screen(query: Union[str, EquityQuery, FundQuery],
-            offset: int = None, 
-            size: int = None, 
-            sortField: str = None, 
+def screen(query: Union[str, EquityQuery, FundQuery, dict],
+            offset: int = None,
+            size: int = None,
+            sortField: str = None,
             sortAsc: bool = None,
-            userId: str = None, 
-            userIdType: str = None, 
+            userId: str = None,
+            userIdType: str = None,
             session = None, proxy = None):
     """
     Run a screen: predefined query, or custom query.
@@ -146,7 +146,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
             raise
         return resp.json()["finance"]["result"][0]
 
-    elif isinstance(query, QueryBase):
+    elif isinstance(query, (QueryBase, dict)):
         # Prepare other fields
         for k in defaults:
             if k not in fields or fields[k] is None:
@@ -167,7 +167,9 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         post_query['quoteType'] = 'EQUITY'
     elif isinstance(post_query['query'], FndQy):
         post_query['quoteType'] = 'MUTUALFUND'
-    post_query['query'] = post_query['query'].to_dict()
+
+    if isinstance(post_query['query'], QueryBase):
+        post_query['query'] = post_query['query'].to_dict()
 
     # Fetch
     _data = YfData(session=session)
