@@ -40,8 +40,6 @@ from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
-from .const import _BASE_URL_, _ROOT_URL_
-
 
 class TickerBase:
     ticker = None # set so __repr__ works for deprecation in __init__
@@ -116,11 +114,10 @@ class TickerBase:
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy, timeout=10))
+            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy))
         return self._price_history
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
-    def _get_ticker_tz(self, proxy, timeout):
+    def _get_ticker_tz(self, proxy = None, timeout = None):
         proxy = proxy or self.proxy
         if self._tz is not None:
             return self._tz
@@ -154,7 +151,7 @@ class TickerBase:
         params = {"range": "1d", "interval": "1d"}
 
         # Getting data from json
-        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
+        url = YfData.URLS.TICKER_URL.format(self.ticker)
 
         try:
             data = self._data.get(url=url, params=params, proxy=proxy, timeout=timeout)
@@ -279,10 +276,9 @@ class TickerBase:
         data = self._quote.info
         return data
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
-    def get_fast_info(self, proxy=None):
+    def get_fast_info(self):
         if self._fast_info is None:
-            self._fast_info = FastInfo(self, proxy=proxy)
+            self._fast_info = FastInfo(self, proxy=self.proxy)
         return self._fast_info
 
     @property
@@ -626,7 +622,7 @@ class TickerBase:
         if not query_ref:
             raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
 
-        url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
+        url = f"{YfData.URLS.NEWS_URL}?queryRef={query_ref}&serviceKey=ncp_fin"
         payload = {
             "serviceConfig": {
                 "snippetCount": count,
@@ -674,7 +670,7 @@ class TickerBase:
         page_offset = 0
         dates = None
         while True:
-            url = f"{_ROOT_URL_}/calendar/earnings?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
+            url = f"{YfData.URLS.EARNINGS_URL}?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
             data = self._data.get(url=url, proxy=proxy).text
 
             if "Will be right back" in data:

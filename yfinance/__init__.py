@@ -50,7 +50,6 @@ __all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
 
 def set_config(proxy=None, timeout=30, lang="en-US", region="US", session=None, url="finance.yahoo.com") -> 'CONFIG':
     from .data import YfData
-    from .const import _ROOT_URL_
-    _ROOT_URL_ = url or _ROOT_URL_
-    YfData.set_config(proxy, timeout, lang, region, session)
+    from .utils import deprecated
+    YfData.set_config(proxy, timeout, lang, region, session, url)
     return {"proxy": proxy, "timeout": timeout, "lang": lang, "region": region, "session": session, "url": url}

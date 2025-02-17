@@ -29,8 +29,7 @@ from .scrapers.funds import FundsData
 import pandas as _pd
 
 from .base import TickerBase
-from .const import _BASE_URL_
-
+from .data import YfData
 
 class Ticker(TickerBase):
     @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", session="`session` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
@@ -44,9 +43,9 @@ class Ticker(TickerBase):
 
     def _download_options(self, date=None):
         if date is None:
-            url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}"
+            url = YfData.URLS.OPTIONS_URL.format(self.ticker)
         else:
-            url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}?date={date}"
+            url = f"{YfData.URLS.OPTIONS_URL.format(self.ticker)}?date={date}"
 
         r = self._data.get(url=url, proxy=self.proxy).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:

@@ -4,7 +4,6 @@ import requests
 from yfinance import utils
 from yfinance.data import YfData
 from yfinance.const import quote_summary_valid_modules
-from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
 from yfinance.exceptions import YFException
 
 
@@ -176,7 +175,7 @@ class Analysis:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
-            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
+            result = self._data.get_raw_json(YfData.URLS.QUOTE_SUMMARY_URL.format(self._symbol), user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None

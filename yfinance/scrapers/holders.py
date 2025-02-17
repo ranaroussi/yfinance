@@ -3,14 +3,10 @@ import requests
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import _BASE_URL_
 from yfinance.exceptions import YFDataException
 
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
-
-
 class Holders:
-    _SCRAPE_URL_ = f"{_BASE_URL_}/quote"
+    
 
     @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def __init__(self, data: YfData, symbol: str, proxy=None):
@@ -67,7 +63,7 @@ class Holders:
         modules = ','.join(
             ["institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"])
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false"}
-        result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict)
+        result = self._data.get_raw_json(YfData.URLS.QUOTE_SUMMARY_URL.format(self._symbol), user_agent_headers=self._data.user_agent_headers, params=params_dict)
         return result
 
     def _fetch_and_parse(self):
