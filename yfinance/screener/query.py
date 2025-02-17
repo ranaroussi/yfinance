@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numbers
-from typing import List, Union, Dict, TypeVar, TypedDict, Literal, Generic
+from typing import List, Union, Dict, TypeVar, TypedDict, Literal
 
 from yfinance.const import EQUITY_SCREENER_EQ_MAP, EQUITY_SCREENER_FIELDS
 from yfinance.const import FUND_SCREENER_EQ_MAP, FUND_SCREENER_FIELDS
