@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.54
+------
+Hotfix user-agent #2277
+
 0.2.53
 ------
 Fixes:
