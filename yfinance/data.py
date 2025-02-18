@@ -1,4 +1,5 @@
 import functools
+import random
 from functools import lru_cache
 
 import requests as requests
@@ -10,6 +11,7 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
+from .const import USER_AGENTS
 from .exceptions import YFRateLimitError
 
 cache_maxsize = 64
@@ -59,7 +61,8 @@ class YfData(metaclass=SingletonMeta):
     Singleton means one session one cookie shared by all threads.
     """
     user_agent_headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+        'User-Agent': random.choice(USER_AGENTS)
+    }
 
     def __init__(self, session=None):
         self._crumb = None
