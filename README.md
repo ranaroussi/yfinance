@@ -39,7 +39,7 @@ Yahoo! finance API is intended for personal use only.**
 - `Ticker`: single ticker data
 - `Tickers`: multiple tickers' data
 - `download`: download market data for multiple tickers
-- `Market`: get infomation about a market
+- `Market`: get information about a market
 - `Search`: quotes and news from search
 - `Sector` and `Industry`: sector and industry information
 - `EquityQuery` and `Screener`: build query to screen market
@@ -58,7 +58,7 @@ The list of changes can be found in the [Changelog](https://github.com/ranarouss
 
 ## Developers: want to contribute?
 
-`yfinance` relies on community to investigate bugs, review code, and contribute code. Developer guide: https://github.com/ranaroussi/yfinance/discussions/1084
+`yfinance` relies on the community to investigate bugs, review code, and contribute code. Developer guide: https://github.com/ranaroussi/yfinance/discussions/1084
 
 ---
 
