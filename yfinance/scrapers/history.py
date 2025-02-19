@@ -467,7 +467,6 @@ class PriceHistory:
             self._reconstruct_start_interval = None
         return df
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_history_metadata(self, proxy=None) -> dict:
         if self._history_metadata is None:
             # Request intraday data, because then Yahoo returns exchange schedule.
@@ -479,7 +478,6 @@ class PriceHistory:
 
         return self._history_metadata
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_dividends(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -488,7 +486,6 @@ class PriceHistory:
             return dividends[dividends != 0]
         return pd.Series()
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_capital_gains(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -497,7 +494,6 @@ class PriceHistory:
             return capital_gains[capital_gains != 0]
         return pd.Series()
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_splits(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -506,7 +502,6 @@ class PriceHistory:
             return splits[splits != 0]
         return pd.Series()
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def get_actions(self, proxy=None) -> pd.Series:
         if self._history is None:
             self.history(period="max", proxy=proxy)
@@ -518,7 +513,6 @@ class PriceHistory:
             return actions[actions != 0].dropna(how='all').fillna(0)
         return pd.Series()
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
     def _resample(self, df, df_interval, target_interval, period=None) -> pd.DataFrame:
         # resample
         if df_interval == target_interval:
