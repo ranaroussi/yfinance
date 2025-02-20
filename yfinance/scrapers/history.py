@@ -12,9 +12,10 @@ from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
 from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
 
 class PriceHistory:
-    def __init__(self, data, ticker, tz, session=None, proxy=None):
+    def __init__(self, data, ticker, ticker_class, tz, session=None, proxy=None):
         self._data = data
         self.ticker = ticker.upper()
+        self.ticker_class = ticker_class
         self.tz = tz
         self.proxy = proxy
         self.session = session

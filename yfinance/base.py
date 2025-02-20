@@ -39,6 +39,7 @@ from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
+from .domain.market import Market
 
 from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
 
@@ -49,6 +50,8 @@ class TickerBase:
         self.proxy = proxy
         self.session = session
         self._tz = None
+        self._market = None
+        self._market_name = None
 
         self._isin = None
         self._news = []
@@ -79,11 +82,21 @@ class TickerBase:
     def history(self, *args, **kwargs) -> pd.DataFrame:
         return self._lazy_load_price_history().history(*args, **kwargs)
 
+    @property
+    def market(self):
+        self.get_market()
+        return self._market
+
+    @property
+    def market_name(self):
+        self.get_market()
+        return self._market_name
+
     # ------------------------
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy, timeout=10))
+            self._price_history = PriceHistory(self._data, self.ticker, self, self._get_ticker_tz(self.proxy, timeout=10))
         return self._price_history
 
     def _get_ticker_tz(self, proxy, timeout):
@@ -145,6 +158,13 @@ class TickerBase:
                     logger.debug(f" {data}")
                     logger.debug("-------------")
         return None
+    
+    def get_market(self, proxy=None):
+        if self._market is None or self._market_name is None:
+            resp = self._data.get(f"{_BASE_URL_}/v8/finance/chart/{self.ticker}")
+            self._market_name = resp["chart"]["result"][0]["meta"]["exchangeName"]
+            self._market = Market(self._market_name)
+
 
     def get_recommendations(self, proxy=None, as_dict=False):
         """
