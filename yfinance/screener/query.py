@@ -10,7 +10,7 @@ from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
 T = TypeVar('T', bound=Union[str, numbers.Real])
 
-OPERATORS = Literal["AND", "OR", "EQ", "BTWN", "GT", "LT", "GTE", "LTE"]
+OPERATORS = Literal["AND", "OR", "EQ", "BTWN", "GT", "LT", "GTE", "LTE", "IS-IN"]
 
 class OP_DICT(TypedDict):
     operator: 'OPERATORS'
@@ -18,7 +18,7 @@ class OP_DICT(TypedDict):
 
 
 class QueryBase(ABC):
-    def __init__(self, operator: 'OPERATORS', operand: 'Union[list[Union[QueryBase, OP_DICT]], tuple[str, tuple[Union[str, numbers.Real],  ...]] ]'):
+    def __init__(self, operator: 'OPERATORS', operand: 'Union[list[Union[EquityQuery, FundQuery, OP_DICT]], tuple[str, tuple[Union[str, numbers.Real],  ...]] ]'):
         operator = operator.upper()
 
         if not isinstance(operand, list):
@@ -156,11 +156,11 @@ class EquityQuery(QueryBase):
         
         .. code-block:: python
 
-            from yfinance import EquityQuery
+            from yfinance.screener import EquityQuery
 
-            EquityQuery('and', [
-                EquityQuery('is-in', ['exchange', 'NMS', 'NYQ']), 
-                EquityQuery('lt', ["epsgrowth.lasttwelvemonths", 15])
+            EquityQuery("AND", [
+                EquityQuery("IS-IN", ["exchange", "NMS", "NYQ"]), 
+                EquityQuery("LT", ["epsgrowth.lasttwelvemonths", 15])
             ])
     """
 
@@ -196,14 +196,14 @@ class FundQuery(QueryBase):
         
         .. code-block:: python
 
-            from yfinance import FundQuery
+            from yfinance.screener import FundQuery
             
-            FundQuery('and', [
-                FundQuery('eq', ['categoryname', 'Large Growth']), 
-                FundQuery('is-in', ['performanceratingoverall', 4, 5]), 
-                FundQuery('lt', ['initialinvestment', 100001]), 
-                FundQuery('lt', ['annualreturnnavy1categoryrank', 50]), 
-                FundQuery('eq', ['exchange', 'NAS'])
+            FundQuery("AND", [
+                FundQuery("EQ", ["categoryname", "Large Growth"]), 
+                FundQuery("IS-IN", ["performanceratingoverall", 4, 5]), 
+                FundQuery("LT", ["initialinvestment", 100001]), 
+                FundQuery("LT", ["annualreturnnavy1categoryrank", 50]), 
+                FundQuery("EQ", ["exchange", "NAS"])
             ])
     """
     @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(FUND_SCREENER_FIELDS)})

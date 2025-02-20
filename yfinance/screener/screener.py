@@ -1,6 +1,6 @@
 from .query import EquityQuery as EqyQy
 from .query import FundQuery as FndQy
-from .query import QueryBase, EquityQuery, FundQuery
+from .query import QueryBase, EquityQuery, FundQuery, OP_DICT
 
 from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
@@ -18,40 +18,40 @@ PREDEFINED_SCREENER_BODY_DEFAULTS = {
 }
 
 PREDEFINED_SCREENER_QUERIES = {
-    'aggressive_small_caps': {"sortField":"eodvolume", "sortType":"desc",
-                            "query": EqyQy('and', [EqyQy('is-in', ['exchange', 'NMS', 'NYQ']), EqyQy('lt', ["epsgrowth.lasttwelvemonths", 15])])},
-    'day_gainers': {"sortField":"percentchange", "sortType":"DESC",
-                    "query": EqyQy('and', [EqyQy('gt', ['percentchange', 3]), EqyQy('eq', ['region', 'us']), EqyQy('gte', ['intradaymarketcap', 2000000000]), EqyQy('gte', ['intradayprice', 5]), EqyQy('gt', ['dayvolume', 15000])])},
-    'day_losers': {"sortField":"percentchange", "sortType":"ASC",
-                    "query": EqyQy('and', [EqyQy('lt', ['percentchange', -2.5]), EqyQy('eq', ['region', 'us']), EqyQy('gte', ['intradaymarketcap', 2000000000]), EqyQy('gte', ['intradayprice', 5]), EqyQy('gt', ['dayvolume', 20000])])},
-    'growth_technology_stocks': {"sortField":"eodvolume", "sortType":"desc",
-                                "query": EqyQy('and', [EqyQy('gte', ['quarterlyrevenuegrowth.quarterly', 25]), EqyQy('gte', ['epsgrowth.lasttwelvemonths', 25]), EqyQy('eq', ['sector', 'Technology']), EqyQy('is-in', ['exchange', 'NMS', 'NYQ'])])},
-    'most_actives': {"sortField":"dayvolume", "sortType":"DESC",
-                    "query": EqyQy('and', [EqyQy('eq', ['region', 'us']), EqyQy('gte', ['intradaymarketcap', 2000000000]), EqyQy('gt', ['dayvolume', 5000000])])},
-    'most_shorted_stocks': {"size":25, "offset":0, "sortField":"short_percentage_of_shares_outstanding.value", "sortType":"DESC", 
-                            "query": EqyQy('and', [EqyQy('eq', ['region', 'us']), EqyQy('gt', ['intradayprice', 1]), EqyQy('gt', ['avgdailyvol3m', 200000])])},
-    'small_cap_gainers': {"sortField":"eodvolume", "sortType":"desc", 
-                        "query": EqyQy("and", [EqyQy("lt", ["intradaymarketcap",2000000000]), EqyQy("is-in", ["exchange", "NMS", "NYQ"])])},
-    'undervalued_growth_stocks': {"sortType":"DESC", "sortField":"eodvolume", 
-                                "query": EqyQy('and', [EqyQy('btwn', ['peratio.lasttwelvemonths', 0, 20]), EqyQy('lt', ['pegratio_5y', 1]), EqyQy('gte', ['epsgrowth.lasttwelvemonths', 25]), EqyQy('is-in', ['exchange', 'NMS', 'NYQ'])])},
-    'undervalued_large_caps': {"sortField":"eodvolume", "sortType":"desc", 
-                            "query": EqyQy('and', [EqyQy('btwn', ['peratio.lasttwelvemonths', 0, 20]), EqyQy('lt', ['pegratio_5y', 1]), EqyQy('btwn', ['intradaymarketcap', 10000000000, 100000000000]), EqyQy('is-in', ['exchange', 'NMS', 'NYQ'])])},
-    'conservative_foreign_funds': {"sortType":"DESC", "sortField":"fundnetassets",
-                                "query": FndQy('and', [FndQy('is-in', ['categoryname', 'Foreign Large Value', 'Foreign Large Blend', 'Foreign Large Growth', 'Foreign Small/Mid Growth', 'Foreign Small/Mid Blend', 'Foreign Small/Mid Value']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('is-in', ['riskratingoverall', 1, 2, 3]), FndQy('eq', ['exchange', 'NAS'])])},
-    'high_yield_bond': {"sortType":"DESC", "sortField":"fundnetassets",
-                        "query": FndQy('and', [FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('is-in', ['riskratingoverall', 1, 2, 3]), FndQy('eq', ['categoryname', 'High Yield Bond']), FndQy('eq', ['exchange', 'NAS'])])},
-    'portfolio_anchors': {"sortType":"DESC", "sortField":"fundnetassets",
-                        "query": FndQy('and', [FndQy('eq', ['categoryname', 'Large Blend']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('eq', ['exchange', 'NAS'])])},
-    'solid_large_growth_funds': {"sortType":"DESC", "sortField":"fundnetassets",
-                                "query": FndQy('and', [FndQy('eq', ['categoryname', 'Large Growth']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('eq', ['exchange', 'NAS'])])},
-    'solid_midcap_growth_funds': {"sortType":"DESC", "sortField":"fundnetassets",
-                                "query": FndQy('and', [FndQy('eq', ['categoryname', 'Mid-Cap Growth']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('eq', ['exchange', 'NAS'])])},
-    'top_mutual_funds': {"sortType":"DESC", "sortField":"percentchange",
-                        "query": FndQy('and', [FndQy('gt', ['intradayprice', 15]), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('gt', ['initialinvestment', 1000]), FndQy('eq', ['exchange', 'NAS'])])}
+    "aggressive_small_caps": {"sortField":"eodvolume", "sortType":"desc",
+                            "query": EqyQy("AND", [EqyQy("IS-IN", ["exchange", "NMS", "NYQ"]), EqyQy("LT", ["epsgrowth.lasttwelvemonths", 15])])},
+    "day_gainers": {"sortField":"percentchange", "sortType":"DESC",
+                    "query": EqyQy("AND", [EqyQy("GT", ["percentchange", 3]), EqyQy("EQ", ["region", "us"]), EqyQy("GTE", ["intradaymarketcap", 2000000000]), EqyQy("GTE", ["intradayprice", 5]), EqyQy("GT", ["dayvolume", 15000])])},
+    "day_losers": {"sortField":"percentchange", "sortType":"ASC",
+                    "query": EqyQy("AND", [EqyQy("LT", ["percentchange", -2.5]), EqyQy("EQ", ["region", "us"]), EqyQy("GTE", ["intradaymarketcap", 2000000000]), EqyQy("GTE", ["intradayprice", 5]), EqyQy("GT", ["dayvolume", 20000])])},
+    "growth_technology_stocks": {"sortField":"eodvolume", "sortType":"desc",
+                                "query": EqyQy("AND", [EqyQy("GTE", ["quarterlyrevenuegrowth.quarterly", 25]), EqyQy("GTE", ["epsgrowth.lasttwelvemonths", 25]), EqyQy("EQ", ["sector", "Technology"]), EqyQy("IS-IN", ["exchange", "NMS", "NYQ"])])},
+    "most_actives": {"sortField":"dayvolume", "sortType":"DESC",
+                    "query": EqyQy("AND", [EqyQy("EQ", ["region", "us"]), EqyQy("GTE", ["intradaymarketcap", 2000000000]), EqyQy("GT", ["dayvolume", 5000000])])},
+    "most_shorted_stocks": {"size":25, "offset":0, "sortField":"short_percentage_of_shares_outstanding.value", "sortType":"DESC", 
+                            "query": EqyQy("AND", [EqyQy("EQ", ["region", "us"]), EqyQy("GT", ["intradayprice", 1]), EqyQy("GT", ["avgdailyvol3m", 200000])])},
+    "small_cap_gainers": {"sortField":"eodvolume", "sortType":"desc", 
+                        "query": EqyQy("AND", [EqyQy("LT", ["intradaymarketcap",2000000000]), EqyQy("IS-IN", ["exchange", "NMS", "NYQ"])])},
+    "undervalued_growth_stocks": {"sortType":"DESC", "sortField":"eodvolume", 
+                                "query": EqyQy("AND", [EqyQy("btwn", ["peratio.lasttwelvemonths", 0, 20]), EqyQy("LT", ["pegratio_5y", 1]), EqyQy("GTE", ["epsgrowth.lasttwelvemonths", 25]), EqyQy("IS-IN", ["exchange", "NMS", "NYQ"])])},
+    "undervalued_large_caps": {"sortField":"eodvolume", "sortType":"desc", 
+                            "query": EqyQy("AND", [EqyQy("btwn", ["peratio.lasttwelvemonths", 0, 20]), EqyQy("LT", ["pegratio_5y", 1]), EqyQy("btwn", ["intradaymarketcap", 10000000000, 100000000000]), EqyQy("IS-IN", ["exchange", "NMS", "NYQ"])])},
+    "conservative_foreign_funds": {"sortType":"DESC", "sortField":"fundnetassets",
+                                "query": FndQy("AND", [FndQy("IS-IN", ["categoryname", "Foreign Large Value", "Foreign Large Blend", "Foreign Large Growth", "Foreign Small/Mid Growth", "Foreign Small/Mid Blend", "Foreign Small/Mid Value"]), FndQy("IS-IN", ["performanceratingoverall", 4, 5]), FndQy("LT", ["initialinvestment", 100001]), FndQy("LT", ["annualreturnnavy1categoryrank", 50]), FndQy("IS-IN", ["riskratingoverall", 1, 2, 3]), FndQy("EQ", ["exchange", "NAS"])])},
+    "high_yield_bond": {"sortType":"DESC", "sortField":"fundnetassets",
+                        "query": FndQy("AND", [FndQy("IS-IN", ["performanceratingoverall", 4, 5]), FndQy("LT", ["initialinvestment", 100001]), FndQy("LT", ["annualreturnnavy1categoryrank", 50]), FndQy("IS-IN", ["riskratingoverall", 1, 2, 3]), FndQy("EQ", ["categoryname", "High Yield Bond"]), FndQy("EQ", ["exchange", "NAS"])])},
+    "portfolio_anchors": {"sortType":"DESC", "sortField":"fundnetassets",
+                        "query": FndQy("AND", [FndQy("EQ", ["categoryname", "Large Blend"]), FndQy("IS-IN", ["performanceratingoverall", 4, 5]), FndQy("LT", ["initialinvestment", 100001]), FndQy("LT", ["annualreturnnavy1categoryrank", 50]), FndQy("EQ", ["exchange", "NAS"])])},
+    "solid_large_growth_funds": {"sortType":"DESC", "sortField":"fundnetassets",
+                                "query": FndQy("AND", [FndQy("EQ", ["categoryname", "Large Growth"]), FndQy("IS-IN", ["performanceratingoverall", 4, 5]), FndQy("LT", ["initialinvestment", 100001]), FndQy("LT", ["annualreturnnavy1categoryrank", 50]), FndQy("EQ", ["exchange", "NAS"])])},
+    "solid_midcap_growth_funds": {"sortType":"DESC", "sortField":"fundnetassets",
+                                "query": FndQy("AND", [FndQy("EQ", ["categoryname", "Mid-Cap Growth"]), FndQy("IS-IN", ["performanceratingoverall", 4, 5]), FndQy("LT", ["initialinvestment", 100001]), FndQy("LT", ["annualreturnnavy1categoryrank", 50]), FndQy("EQ", ["exchange", "NAS"])])},
+    "top_mutual_funds": {"sortType":"DESC", "sortField":"percentchange",
+                        "query": FndQy("AND", [FndQy("GT", ["intradayprice", 15]), FndQy("IS-IN", ["performanceratingoverall", 4, 5]), FndQy("GT", ["initialinvestment", 1000]), FndQy("EQ", ["exchange", "NAS"])])}
 }
 
-@dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title='Predefined queries (Dec-2024)')})
-def screen(query: Union[str, EquityQuery, FundQuery, dict],
+@dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title="Predefined queries (Dec-2024)")})
+def screen(query: Union[str, EquityQuery, FundQuery, OP_DICT],
             offset: int = None,
             size: int = None,
             sortField: str = None,
@@ -91,17 +91,17 @@ def screen(query: Union[str, EquityQuery, FundQuery, dict],
 
             import yfinance as yf
             from yfinance import EquityQuery
-            q = EquityQuery('and', [
-                   EquityQuery('gt', ['percentchange', 3]), 
-                   EquityQuery('eq', ['region', 'us'])
+            q = EquityQuery("AND", [
+                   EquityQuery("GT", ["percentchange", 3]), 
+                   EquityQuery("EQ", ["region", "us"])
             ])
-            response = yf.screen(q, sortField = 'percentchange', sortAsc = True)
+            response = yf.screen(q, sortField = "percentchange", sortAsc = True)
 
     To access predefineds query code
         .. code-block:: python
 
             import yfinance as yf
-            query = yf.PREDEFINED_SCREENER_QUERIES['aggressive_small_caps']
+            query = yf.PREDEFINED_SCREENER_QUERIES["aggressive_small_caps"]
 
     {predefined_screeners}
     """
