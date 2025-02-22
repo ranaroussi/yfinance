@@ -40,10 +40,10 @@ html_title = 'yfinance'
 html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
     "github_url": "https://github.com/ranaroussi/yfinance",
-    "navbar_align": "left"
+    "navbar_align": "left",
     "logo": {
       "image_light": "_static/logo-light.webp",
-      "image_dark": "_static/logo-dark.webp",
+      "image_dark": "_static/logo-dark.webp"
    }
 }
 html_static_path = ['_static']
