@@ -30,7 +30,7 @@
 > [!TIP]
 > THE NEW DOCUMENTATION WEBSITE IS NOW LIVE! 🤘
 > 
-> Visit [**ranaroussi.github.io/yfinance**](https://ranaroussi.github.io/yfinance/index.html) ›
+> Visit [**yfinance-python.org**](https://yfinance-python.org/) ›
 
 ## Main components
 
