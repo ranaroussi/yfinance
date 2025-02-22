@@ -96,7 +96,7 @@ class Search:
 
         self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
 
-        data = self._data.get(url=YfData.URLS.SEARCH_URL, params=params)
+        data = self._data.cache_get(url=YfData.URLS.SEARCH_URL, params=params)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "

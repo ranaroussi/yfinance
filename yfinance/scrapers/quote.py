@@ -687,7 +687,7 @@ class Quote:
             end = int(end.timestamp())
             url += f"&period1={start}&period2={end}"
 
-            json_str = self._data.get(url=url, proxy=proxy).text
+            json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:

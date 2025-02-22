@@ -152,7 +152,7 @@ class TickerBase:
         url = YfData.URLS.TICKER_URL.format(self.ticker)
 
         try:
-            data = self._data.get(url=url, params=params, proxy=proxy, timeout=timeout)
+            data = self._data.cache_get(url=url, params=params, proxy=proxy, timeout=timeout)
             data = data.json()
         except YFRateLimitError:
             # Must propagate this
@@ -503,7 +503,7 @@ class TickerBase:
         ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self.ticker}?symbol={self.ticker}"
         shares_url = f"{ts_url_base}&period1={int(start.timestamp())}&period2={int(end.timestamp())}"
         try:
-            json_data = self._data.get(url=shares_url, proxy=proxy)
+            json_data = self._data.cache_get(url=shares_url, proxy=proxy)
             json_data = json_data.json()
         except (_json.JSONDecodeError, requests.exceptions.RequestException):
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
@@ -550,7 +550,7 @@ class TickerBase:
             q = self._quote.info['shortName']
 
         url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
-        data = self._data.get(url=url, proxy=proxy).text
+        data = self._data.cache_get(url=url, proxy=proxy).text
 
         search_str = f'"{ticker}|'
         if search_str not in data:

@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import datetime
 
 from frozendict import frozendict
+from functools import lru_cache
 
 from . import utils, cache, const
 import threading
@@ -417,7 +418,7 @@ class YfData(metaclass=SingletonMeta):
             return None
 
         get_args = {
-            'url': f"{self.url}/v1/test/getcrumb",
+            'url': f"https://{self.url}/v1/test/getcrumb",
             'headers': self.user_agent_headers,
             'proxies': YfData.proxy,
             'timeout': YfData.timeout
@@ -483,10 +484,11 @@ class YfData(metaclass=SingletonMeta):
                 "region": YfData.region
             }
         else:
-            params.update({
+            params = {
+                **params,
                 "lang": YfData.lang,
-                "region": YfData.region
-            })
+                "region": YfData.region,
+            }
         if 'crumb' in params:
             raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
 
@@ -550,3 +552,8 @@ class YfData(metaclass=SingletonMeta):
         response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy)
         response.raise_for_status()
         return response.json()
+    
+    @lru_cache_freezeargs
+    @lru_cache(maxsize=cache_maxsize)
+    def cache_get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        return self.get(url, user_agent_headers, params, proxy, timeout)

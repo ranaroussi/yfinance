@@ -172,7 +172,7 @@ class PriceHistory:
             data_delay = _datetime.timedelta(minutes=30)
             if end_dt + data_delay <= dt_now:
                 # Date range in past so safe to fetch through cache:
-                get_fn = self._data.get
+                get_fn = self._data.cache_get
         try:
             data = get_fn(
                 url=url,

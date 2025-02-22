@@ -112,7 +112,7 @@ class Financials:
         url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
         # Step 3: fetch and reshape data
-        json_str = self._data.get(url=url, proxy=proxy).text
+        json_str = self._data.cache_get(url=url, proxy=proxy).text
         json_data = json.loads(json_str)
         data_raw = json_data["timeseries"]["result"]
         # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
