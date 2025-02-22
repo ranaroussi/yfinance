@@ -1,6 +1,27 @@
 Change Log
 ===========
 
+0.2.54
+------
+Hotfix user-agent #2277
+
+0.2.53
+------
+Fixes:
+- Fix: Failed to parse holders JSON data  #2234
+- Fix: Bad data in Holders #2244
+- Stop CSRF-cookie-fetch fail killing yfinance #2249
+- Fix Market Docs #2250
+- Fix: Broken "See also" links in documentation #2253
+- Fix: Interval check and error message formatting in multi.py #2256
+Improve:
+- Add pre- / post-stock prices (and other useful information) #2212
+- Warn user when use download() without specifying auto_adjust #2230
+- Refactor: Earnings Dates – Switch to API Fetching #2247
+- Improve prices div repair #2260
+Maintenance:
+- Add GitHub Actions workflow and fix failing tests #2233
+
 0.2.52
 ------
 Features:
