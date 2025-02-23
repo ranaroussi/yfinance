@@ -32,6 +32,8 @@
 > 
 > Visit [**yfinance-python.org**](https://yfinance-python.org/) ›
 
+---
+
 ## Main components
 
 - `Ticker`: single ticker data
@@ -55,6 +57,10 @@ The list of changes can be found in the [Changelog](https://github.com/ranarouss
 ## Developers: want to contribute?
 
 `yfinance` relies on the community to investigate bugs, review code, and contribute code. Developer guide: https://github.com/ranaroussi/yfinance/discussions/1084
+
+---
+
+![Star History Chart](https://api.star-history.com/svg?repos=ranaroussi/yfinance)
 
 ---
 
