@@ -37,10 +37,12 @@ ticker_attributes = (
     ("recommendations", Union[pd.DataFrame, dict]),
     ("recommendations_summary", Union[pd.DataFrame, dict]),
     ("upgrades_downgrades", Union[pd.DataFrame, dict]),
+    ("ttm_cashflow", pd.DataFrame),
     ("quarterly_cashflow", pd.DataFrame),
     ("cashflow", pd.DataFrame),
     ("quarterly_balance_sheet", pd.DataFrame),
     ("balance_sheet", pd.DataFrame),
+    ("ttm_income_stmt", pd.DataFrame),
     ("quarterly_income_stmt", pd.DataFrame),
     ("income_stmt", pd.DataFrame),
     ("analyst_price_targets", dict),
@@ -554,6 +556,34 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data = self.ticker.get_income_stmt(as_dict=True)
         self.assertIsInstance(data, dict, "data has wrong type")
 
+    def test_ttm_income_statement(self):
+        expected_keys = ["Total Revenue", "Pretax Income", "Normalized EBITDA"]
+
+        # Test contents of table
+        data = self.ticker.get_income_stmt(pretty=True, freq='trailing')
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        # Trailing 12 months there must be exactly one column
+        self.assertEqual(len(data.columns), 1, "Only one column should be returned on TTM income statement")
+
+        # Test property defaults
+        data2 = self.ticker.ttm_income_stmt
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_income_stmt(pretty=False, freq='trailing')
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+
+        # Test to_dict
+        data = self.ticker.get_income_stmt(as_dict=True, freq='trailing')
+        self.assertIsInstance(data, dict, "data has wrong type")
+
     def test_balance_sheet(self):
         expected_keys = ["Total Assets", "Net PPE"]
         expected_periods_days = 365
@@ -670,6 +700,34 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data = self.ticker.get_cashflow(as_dict=True)
         self.assertIsInstance(data, dict, "data has wrong type")
 
+    def test_ttm_cash_flow(self):
+        expected_keys = ["Operating Cash Flow", "Net PPE Purchase And Sale"]
+
+        # Test contents of table
+        data = self.ticker.get_cashflow(pretty=True, freq='trailing')
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+        # Trailing 12 months there must be exactly one column
+        self.assertEqual(len(data.columns), 1, "Only one column should be returned on TTM cash flow")
+
+        # Test property defaults
+        data2 = self.ticker.ttm_cashflow
+        self.assertTrue(data.equals(data2), "property not defaulting to 'pretty=True'")
+
+        # Test pretty=False
+        expected_keys = [k.replace(' ', '') for k in expected_keys]
+        data = self.ticker.get_cashflow(pretty=False, freq='trailing')
+        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+        for k in expected_keys:
+            self.assertIn(k, data.index, "Did not find expected row in index")
+
+        # Test to_dict
+        data = self.ticker.get_cashflow(as_dict=True, freq='trailing')
+        self.assertIsInstance(data, dict, "data has wrong type")
+
     def test_income_alt_names(self):
         i1 = self.ticker.income_stmt
         i2 = self.ticker.incomestmt
@@ -693,6 +751,18 @@ class TestTickerMiscFinancials(unittest.TestCase):
         i2 = self.ticker.get_incomestmt(freq="quarterly")
         self.assertTrue(i1.equals(i2))
         i3 = self.ticker.get_financials(freq="quarterly")
+        self.assertTrue(i1.equals(i3))
+
+        i1 = self.ticker.ttm_income_stmt
+        i2 = self.ticker.ttm_incomestmt
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.ttm_financials
+        self.assertTrue(i1.equals(i3))
+
+        i1 = self.ticker.get_income_stmt(freq="trailing")
+        i2 = self.ticker.get_incomestmt(freq="trailing")
+        self.assertTrue(i1.equals(i2))
+        i3 = self.ticker.get_financials(freq="trailing")
         self.assertTrue(i1.equals(i3))
 
     def test_balance_sheet_alt_names(self):
@@ -727,6 +797,14 @@ class TestTickerMiscFinancials(unittest.TestCase):
 
         i1 = self.ticker.get_cash_flow(freq="quarterly")
         i2 = self.ticker.get_cashflow(freq="quarterly")
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.ttm_cash_flow
+        i2 = self.ticker.ttm_cashflow
+        self.assertTrue(i1.equals(i2))
+
+        i1 = self.ticker.get_cash_flow(freq="trailing")
+        i2 = self.ticker.get_cashflow(freq="trailing")
         self.assertTrue(i1.equals(i2))
 
     def test_bad_freq_value_raises_exception(self):
