@@ -19,7 +19,6 @@
 # limitations under the License.
 #
 
-from typing import TYPE_CHECKING, TypedDict, Optional
 from . import version
 from .search import Search
 from .ticker import Ticker
@@ -30,6 +29,7 @@ from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
 from .domain.market import Market
+from .data import YfData
 
 from .screener.query import EquityQuery, FundQuery
 from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
@@ -40,15 +40,35 @@ __author__ = "Ran Aroussi"
 import warnings
 warnings.filterwarnings("default", category=DeprecationWarning, module="^yfinance")
 
-if TYPE_CHECKING:
-    import requests
-    CONFIG = TypedDict("CONFIG", {"proxy": Optional[str], "timeout": int, "lang": str, "region": str, "session": requests.Session, "url": str})
-
-__all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
+__all__ = ["download", "Market", "Search", "Ticker", "Tickers", "enable_debug_mode", "set_tz_cache_location", "Sector", "Industry"]
 # screener stuff:
-__all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
+__all__ += ["EquityQuery", "FundQuery", "screen", "PREDEFINED_SCREENER_QUERIES"]
 
-def set_config(proxy=None, timeout=30, lang="en-US", region="US", session=None, url="finance.yahoo.com") -> 'CONFIG':
-    from .data import YfData
-    YfData.set_config(proxy, timeout, lang, region, session, url)
-    return {"proxy": proxy, "timeout": timeout, "lang": lang, "region": region, "session": session, "url": url}
+def set_config(
+    proxy: 'str' = None,
+    timeout: 'int' =  None,
+    lang: 'str' =  None,
+    region: 'str' =  None,
+    session =  None,
+    url: 'str' = None
+):
+    return YfData.set_config(proxy, timeout, lang, region, session, url)
+
+def reset_config(
+    proxy : 'bool' = True,
+    timeout: 'bool' =  True,
+    lang : 'bool' =  True,
+    region : 'bool' =  True,
+    session:'bool' =  True,
+    url : 'bool' = True
+):
+    return YfData.reset_config(
+        proxy,
+        timeout,
+        lang,
+        region,
+        session,
+        url
+    )
+# Config stuff:
+__all__ += ["set_config", "reset_config", "YfData"]

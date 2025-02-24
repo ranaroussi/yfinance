@@ -1,6 +1,8 @@
 import functools
 import random
 from functools import lru_cache
+from typing import TypedDict, Optional
+
 
 import requests as requests
 from bs4 import BeautifulSoup
@@ -16,6 +18,18 @@ from .const import USER_AGENTS
 from .exceptions import YFRateLimitError
 
 cache_maxsize = 64
+
+CONFIG = TypedDict("CONFIG", 
+    {
+        "proxy": Optional[str],
+        "timeout": int,
+        "lang": str,
+        "region": str,
+        "session": requests.Session,
+        "url": str
+    }
+)
+
 
 
 def lru_cache_freezeargs(func):
@@ -58,15 +72,15 @@ class SingletonMeta(type):
 class URLS:
     @property
     def ROOT_URL(self):
-        return f"https://{YfData.url}"
+        return YfData.url
     
     @property
     def QUERY1_URL(self):
-        return f"https://query1.{YfData.url}"
+        return f"query1.{self.ROOT_URL}"
     
     @property
     def QUERY2_URL(self):
-        return f"https://query2.{YfData.url}"
+        return f"query2.{self.ROOT_URL}"
     
     @property
     def QUERY_URL(self):
@@ -110,7 +124,7 @@ class URLS:
     
     @property
     def QUOTE_SUMMARY_URL(self):
-        return f"{self.QUERY2_URL}/v10/finance/quoteSummary/{{}}" # CHECK, DO NOT MERGE YET
+        return f"{self.QUERY2_URL}/v10/finance/quoteSummary/{{}}"
 
     @property
     def HISTORY_URL(self):
@@ -136,12 +150,7 @@ class URLS:
     def INDUSTRY_URL(self):
         return f"{self.QUERY1_URL}/industries/{{}}"
 
-DEFAULT_PROXY = None
-DEFAULT_TIMEOUT = 30
-DEFAULT_LANG = "en-US"
-DEFAULT_REGION = "US"
-DEFAULT_SESSION = requests.Session()
-DEFAULT_URL = "finance.yahoo.com"
+
 
 class YfData(metaclass=SingletonMeta):
     """
@@ -154,6 +163,13 @@ class YfData(metaclass=SingletonMeta):
 
     URLS = URLS()
 
+    DEFAULT_PROXY = None
+    DEFAULT_TIMEOUT = 30
+    DEFAULT_LANG = "en-US"
+    DEFAULT_REGION = "US"
+    DEFAULT_SESSION = requests.Session()
+    DEFAULT_URL = "finance.yahoo.com"
+
     proxy = DEFAULT_PROXY
     timeout = DEFAULT_TIMEOUT
     lang = DEFAULT_LANG
@@ -162,23 +178,56 @@ class YfData(metaclass=SingletonMeta):
     url = DEFAULT_URL
 
     @classmethod
-    def reset_config(cls):
-        cls.proxy = DEFAULT_PROXY
-        cls.timeout = DEFAULT_TIMEOUT
-        cls.lang = DEFAULT_LANG
-        cls.region = DEFAULT_REGION
-        cls.session = DEFAULT_SESSION
-        cls.url = DEFAULT_URL
+    def reset_config(cls, proxy:'bool'=True, timeout:'bool'=True, lang:'bool'=True, region:'bool'=True, session:'bool'=True, url:'bool'=True) -> 'CONFIG':
+        """
+        Resets config to `YfData.DEFAULT_{setting}` if the setting is True
 
+        Args:
+            proxy: bool = True
+            timeout: bool = True
+            lang: bool = True
+            region: bool = True
+            session: bool = True
+            url: bool = True
+        """
+        
+        if proxy: cls.proxy = cls.DEFAULT_PROXY
+        if timeout: cls.timeout = cls.DEFAULT_TIMEOUT
+        if lang: cls.lang = cls.DEFAULT_LANG
+        if region: cls.region = cls.DEFAULT_REGION
+        if session: cls.session = cls.DEFAULT_SESSION
+        if url: cls.url = cls.DEFAULT_URL
+
+        return {
+            "proxy": cls.proxy,
+            "timeout": cls.timeout,
+            "lang": cls.lang,
+            "region": cls.region,
+            "session": cls.session,
+            "url": cls.url
+        }
 
     @classmethod
-    def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None):
+    def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None) -> 'CONFIG':
+        if "https://" in url:
+            raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")
+        
+        
         if proxy is not None: cls.proxy = proxy
         if timeout is not None: cls.timeout = timeout
         if lang is not None: cls.lang = lang
         if region is not None: cls.region = region
         if session is not None: cls.session = session
         if url is not None: cls.url = url
+
+        return {
+            "proxy": cls.proxy,
+            "timeout": cls.timeout,
+            "lang": cls.lang,
+            "region": cls.region,
+            "session": cls.session,
+            "url": cls.url
+        }
 
 
 
@@ -482,19 +531,22 @@ class YfData(metaclass=SingletonMeta):
         utils.get_yf_logger().debug(f'params={params}')
         proxy = self._get_proxy(proxy)
 
-        if params is None:
-            params = {
-                "lang": YfData.lang,
-                "region": YfData.region
-            }
-        else:
-            params = {
-                **params,
-                "lang": YfData.lang,
-                "region": YfData.region,
-            }
-        if 'crumb' in params:
-            raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
+        if "region" in params:
+            raise ValueError("Don't manually add 'region' to params dict, let data.py handle it")
+        
+        if "proxy" in params:
+            raise ValueError("Don't manually add 'proxy' to params dict, let data.py handle it")
+
+        if "crumb" in params:
+            raise ValueError("Don't manually add 'crumb' to params dict, let data.py handle it")
+        
+        if "https" in url:
+            raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")
+        
+        config = {
+            "region": YfData.region,
+            "lang": YfData.lang
+        }
 
         cookie, crumb, strategy = self._get_cookie_and_crumb()
         if crumb is not None:
@@ -508,8 +560,8 @@ class YfData(metaclass=SingletonMeta):
             cookies = None
 
         request_args = {
-            'url': url,
-            'params': {**params, **crumbs},
+            'url': f"https://{url}",
+            'params': {**params, **crumbs, **config},
             'cookies': cookies,
             'proxies': proxy,
             'timeout': YfData.timeout or timeout,
@@ -542,7 +594,7 @@ class YfData(metaclass=SingletonMeta):
 
     def _get_proxy(self, proxy=None):
         if proxy is None:
-            proxy = YfData.proxy
+            proxy = {"https": YfData.proxy}
 
         # setup proxy in requests format
         if proxy is not None:
