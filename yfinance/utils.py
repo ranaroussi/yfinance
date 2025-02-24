@@ -532,6 +532,7 @@ def parse_actions(data):
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
+            dividends = dividends[["amount"]]
             dividends.columns = ["Dividends"]
 
         if "capitalGains" in data["events"]:
