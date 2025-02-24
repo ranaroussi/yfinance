@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 from . import Ticker, multi
+from .live import WebSocket
 
 
 # from collections import namedtuple as _namedtuple
@@ -37,6 +38,9 @@ class Tickers:
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
         self.tickers = {ticker: Ticker(ticker, session=session) for ticker in self.symbols}
+
+        self._message_handler = None
+        self.ws = None
 
         # self.tickers = _namedtuple(
         #     "Tickers", ticker_objects.keys(), rename=True
@@ -90,3 +94,10 @@ class Tickers:
 
     def news(self):
         return {ticker: [item for item in Ticker(ticker).news] for ticker in self.symbols}
+
+    def live(self, message_handler=None, verbose=True):
+        self._message_handler = message_handler
+
+        self.ws = WebSocket(verbose=verbose)
+        self.ws.subscribe(self.symbols)
+        self.ws.listen(self._message_handler)
