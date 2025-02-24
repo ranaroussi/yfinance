@@ -29,7 +29,7 @@ from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
 from .domain.market import Market
-from .data import YfData
+from .data import YfData, URLS
 
 from .screener.query import EquityQuery, FundQuery
 from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
@@ -71,4 +71,4 @@ def reset_config(
         url
     )
 # Config stuff:
-__all__ += ["set_config", "reset_config", "YfData"]
+__all__ += ["set_config", "reset_config", "YfData", "URLS"]
