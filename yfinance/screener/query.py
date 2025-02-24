@@ -1,16 +1,24 @@
 from abc import ABC, abstractmethod
 import numbers
-from typing import List, Union, Dict, TypeVar, Tuple
+from typing import List, Union, Dict, TypeVar, TypedDict, Literal
 
 from yfinance.const import EQUITY_SCREENER_EQ_MAP, EQUITY_SCREENER_FIELDS
 from yfinance.const import FUND_SCREENER_EQ_MAP, FUND_SCREENER_FIELDS
+from yfinance.const import SECTORS_LITERAL, INDUSTRIES_LITERAL
 from yfinance.exceptions import YFNotImplementedError
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
 T = TypeVar('T', bound=Union[str, numbers.Real])
 
+OPERATORS = Literal["AND", "OR", "EQ", "BTWN", "GT", "LT", "GTE", "LTE", "IS-IN"]
+
+class OP_DICT(TypedDict):
+    operator: 'OPERATORS'
+    operands: 'list[Union[OP_DICT, str, numbers.Real]]'
+
+
 class QueryBase(ABC):
-    def __init__(self, operator: str, operand: Union[ List['QueryBase'], Tuple[str, Tuple[Union[str, numbers.Real],  ...]] ]):
+    def __init__(self, operator: 'OPERATORS', operand: 'Union[list[Union[EquityQuery, FundQuery, OP_DICT]], tuple[str, tuple[Union[str, numbers.Real],  ...]] ]'):
         operator = operator.upper()
 
         if not isinstance(operand, list):
@@ -99,13 +107,13 @@ class QueryBase(ABC):
                 if operand[i] not in vv:
                     raise ValueError(f'Invalid EQ value "{operand[i]}"')
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> 'OP_DICT':
         op = self.operator
         ops = self.operands
-        if self.operator == 'IS-IN':
+        if self.operator == "IS-IN":
             # Expand to OR of EQ queries
-            op = 'OR'
-            ops = [type(self)('EQ', [self.operands[0], v]) for v in self.operands[1:]]
+            op = "OR"
+            ops = [type(self)("EQ", [self.operands[0], v]) for v in self.operands[1:]]
         return {
             "operator": op,
             "operands": [o.to_dict() if isinstance(o, QueryBase) else o for o in ops]
@@ -148,11 +156,11 @@ class EquityQuery(QueryBase):
         
         .. code-block:: python
 
-            from yfinance import EquityQuery
+            from yfinance.screener import EquityQuery
 
-            EquityQuery('and', [
-                EquityQuery('is-in', ['exchange', 'NMS', 'NYQ']), 
-                EquityQuery('lt', ["epsgrowth.lasttwelvemonths", 15])
+            EquityQuery("AND", [
+                EquityQuery("IS-IN", ["exchange", "NMS", "NYQ"]), 
+                EquityQuery("LT", ["epsgrowth.lasttwelvemonths", 15])
             ])
     """
 
@@ -188,14 +196,14 @@ class FundQuery(QueryBase):
         
         .. code-block:: python
 
-            from yfinance import FundQuery
+            from yfinance.screener import FundQuery
             
-            FundQuery('and', [
-                FundQuery('eq', ['categoryname', 'Large Growth']), 
-                FundQuery('is-in', ['performanceratingoverall', 4, 5]), 
-                FundQuery('lt', ['initialinvestment', 100001]), 
-                FundQuery('lt', ['annualreturnnavy1categoryrank', 50]), 
-                FundQuery('eq', ['exchange', 'NAS'])
+            FundQuery("AND", [
+                FundQuery("EQ", ["categoryname", "Large Growth"]), 
+                FundQuery("IS-IN", ["performanceratingoverall", 4, 5]), 
+                FundQuery("LT", ["initialinvestment", 100001]), 
+                FundQuery("LT", ["annualreturnnavy1categoryrank", 50]), 
+                FundQuery("EQ", ["exchange", "NAS"])
             ])
     """
     @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(FUND_SCREENER_FIELDS)})
@@ -216,3 +224,30 @@ class FundQuery(QueryBase):
         """
         return FUND_SCREENER_EQ_MAP
 
+def industry(sector:'SECTORS_LITERAL', industry:'Union[INDUSTRIES_LITERAL, list[INDUSTRIES_LITERAL]]') -> 'OP_DICT':
+    if isinstance(industry, str):
+        _industry = {
+                    "operator": "EQ",
+                    "operands": ["industry", industry] 
+                }
+    else:
+        _industry = {
+            "operator": "OR",
+            "operands": [
+                {
+                    "operator": "EQ",
+                    "operands": ["industry", i] 
+                } for i in industry
+            ]
+        }
+    
+    return {
+            "operator": "AND",
+            "operands": [
+                {
+                    "operator": "EQ",
+                    "operands": ["sector", sector]
+                },
+                _industry
+            ]
+        }
