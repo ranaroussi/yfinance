@@ -268,8 +268,9 @@ class TickerBase:
         return self._fast_info
 
     @property
+    @utils.deprecated
     def basic_info(self):
-        return self.fast_info
+        return None
 
     def get_sustainability(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy or self.proxy
@@ -622,43 +623,36 @@ class TickerBase:
             pd.DataFrame
         """
         logger = utils.get_yf_logger()
+        clamped_limit = min(limit, 100)  # YF caps at 100, don't go higher
 
-        page_size = min(limit, 100)  # YF caps at 100, don't go higher
-        page_offset = 0
-        dates = None
-        while True:
-            url = f"{YfData.URLS.EARNINGS_URL}?day={date.today()}&symbol={self.ticker}&offset={page_offset}&size={page_size}"
-            data = self._data.get(url=url, proxy=proxy).text
+        if self._earnings_dates and clamped_limit in self._earnings_dates:
+            return self._earnings_dates[clamped_limit]
 
-            if "Will be right back" in data:
-                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                                   "Our engineers are working quickly to resolve "
-                                   "the issue. Thank you for your patience.")
+        # Fetch data
+        params = {"lang": "en-US", "region": "US"}
+        body = {
+            "size": clamped_limit,
+            "query": {
+                "operator": "and",
+                "operands": [
+                    {"operator": "eq", "operands": ["ticker", self.ticker]},
+                    {"operator": "eq", "operands": ["eventtype", "2"]}
+                ]
+            },
+            "sortField": "startdatetime",
+            "sortType": "DESC",
+            "entityIdType": "earnings",
+            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct"]
+        }
+        response = self._data.post(YfData.URLS.EARNINGS_DATES_URL, params=params, body=body, proxy=proxy)
+        json_data = response.json()
 
-            try:
-                data = pd.read_html(StringIO(data))[0]
-            except ValueError:
-                if page_offset == 0:
-                    # Should not fail on first page
-                    if "Showing Earnings for:" in data:
-                        # Actually YF was successful, problem is company doesn't have earnings history
-                        dates = utils.empty_earnings_dates_df()
-                break
-            if dates is None:
-                dates = data
-            else:
-                dates = pd.concat([dates, data], axis=0)
+        # Extract data
+        columns = [row['label'] for row in json_data['finance']['result'][0]['documents'][0]['columns']]
+        rows = json_data['finance']['result'][0]['documents'][0]['rows']
+        df = pd.DataFrame(rows, columns=columns)
 
-            page_offset += page_size
-            # got less data then we asked for or already fetched all we requested, no need to fetch more pages
-            if len(data) < page_size or len(dates) >= limit:
-                dates = dates.iloc[:limit]
-                break
-            else:
-                # do not fetch more than needed next time
-                page_size = min(limit - len(dates), page_size)
-
-        if dates is None or dates.shape[0] == 0:
+        if df.empty:
             _exception = YFEarningsDateMissing(self.ticker)
             err_msg = str(_exception)
             logger.error(f'{self.ticker}: {err_msg}')

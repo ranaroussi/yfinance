@@ -89,6 +89,10 @@ class URLS:
         return f"{self.ROOT_URL}/calendar/earnings"
     
     @property
+    def EARNINGS_DATES_URL(self):
+        return f"{self.QUERY1_URL}/v1/finance/visualization"
+    
+    @property
     def TICKER_URL(self):
         return f"{self.QUERY2_URL}/v8/finance/chart/{{}}"
     
