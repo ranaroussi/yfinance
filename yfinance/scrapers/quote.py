@@ -576,12 +576,22 @@ class Quote:
         if not isinstance(modules, list):
             raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
-        modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
-        if len(modules) == 0:
-            raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(YfData.URLS.QUOTE_SUMMARY_URL.format(self._symbol), user_agent_headers=self._data.user_agent_headers, params=params_dict)
+        except requests.exceptions.HTTPError as e:
+            utils.get_yf_logger().error(str(e))
+            return None
+        return result
+
+    def _fetch_additional_info(self, proxy):
+        params_dict = {"symbols": self._symbol, "formatted": "false"}
+        try:
+            result = self._data.get_raw_json(
+                YfData.URLS.QUOTE_URL,
+                params=params_dict,
+                proxy=proxy
+            )
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
