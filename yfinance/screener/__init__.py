@@ -1,4 +1,4 @@
-from .query import EquityQuery
-from .screener import screen, PREDEFINED_SCREENER_QUERIES
+from .screener import Screener
+from .screener_query import EquityQuery
 
-__all__ = ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
+__all__ = ['EquityQuery', 'Screener']

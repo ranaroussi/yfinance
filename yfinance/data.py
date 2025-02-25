@@ -1,5 +1,4 @@
 import functools
-import random
 from functools import lru_cache
 
 import requests as requests
@@ -11,7 +10,6 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
-from .const import USER_AGENTS
 from .exceptions import YFRateLimitError
 
 cache_maxsize = 64
@@ -61,8 +59,7 @@ class YfData(metaclass=SingletonMeta):
     Singleton means one session one cookie shared by all threads.
     """
     user_agent_headers = {
-        'User-Agent': random.choice(USER_AGENTS)
-    }
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
     def __init__(self, session=None):
         self._crumb = None
@@ -234,16 +231,11 @@ class YfData(metaclass=SingletonMeta):
             'timeout': timeout}
 
         get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
-        try:
-            if self._session_is_caching:
-                get_args['expire_after'] = self._expire_after
-                response = self._session.get(**get_args)
-            else:
-                response = self._session.get(**get_args)
-        except requests.exceptions.ChunkedEncodingError:
-            # No idea why happens, but handle nicely so can switch to other cookie method.
-            utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
-            return False
+        if self._session_is_caching:
+            get_args['expire_after'] = self._expire_after
+            response = self._session.get(**get_args)
+        else:
+            response = self._session.get(**get_args)
 
         soup = BeautifulSoup(response.content, 'html.parser')
         csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
@@ -272,18 +264,14 @@ class YfData(metaclass=SingletonMeta):
         get_args = {**base_args,
             'url': f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
             'data': data}
-        try:
-            if self._session_is_caching:
-                post_args['expire_after'] = self._expire_after
-                get_args['expire_after'] = self._expire_after
-                self._session.post(**post_args)
-                self._session.get(**get_args)
-            else:
-                self._session.post(**post_args)
-                self._session.get(**get_args)
-        except requests.exceptions.ChunkedEncodingError:
-            # No idea why happens, but handle nicely so can switch to other cookie method.
-            utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
+        if self._session_is_caching:
+            post_args['expire_after'] = self._expire_after
+            get_args['expire_after'] = self._expire_after
+            self._session.post(**post_args)
+            self._session.get(**get_args)
+        else:
+            self._session.post(**post_args)
+            self._session.get(**get_args)
         self._cookie = True
         self._save_session_cookies()
         return True
