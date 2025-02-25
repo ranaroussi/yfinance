@@ -11,7 +11,7 @@ import datetime
 from frozendict import frozendict
 from functools import lru_cache
 
-from . import utils, cache, const
+from . import utils, cache
 import threading
 
 from .const import USER_AGENTS
@@ -29,7 +29,6 @@ CONFIG = TypedDict("CONFIG",
         "url": str
     }
 )
-
 
 
 def lru_cache_freezeargs(func):
@@ -209,9 +208,8 @@ class YfData(metaclass=SingletonMeta):
 
     @classmethod
     def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None) -> 'CONFIG':
-        if url is not None and "https://" in url:
-            raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")
-        
+        if isinstance(url, str) and "https://" in url:
+            raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")        
         
         if proxy is not None: cls.proxy = proxy
         if timeout is not None: cls.timeout = timeout
