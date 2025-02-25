@@ -209,7 +209,7 @@ class YfData(metaclass=SingletonMeta):
 
     @classmethod
     def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None) -> 'CONFIG':
-        if "https://" in url:
+        if url is not None and "https://" in url:
             raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")
         
         
