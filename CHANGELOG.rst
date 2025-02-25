@@ -1,49 +1,14 @@
 Change Log
 ===========
 
-0.2.54
-------
-Hotfix user-agent #2277
-
-0.2.53
-------
-Fixes:
-- Fix: Failed to parse holders JSON data  #2234
-- Fix: Bad data in Holders #2244
-- Stop CSRF-cookie-fetch fail killing yfinance #2249
-- Fix Market Docs #2250
-- Fix: Broken "See also" links in documentation #2253
-- Fix: Interval check and error message formatting in multi.py #2256
-Improve:
-- Add pre- / post-stock prices (and other useful information) #2212
-- Warn user when use download() without specifying auto_adjust #2230
-- Refactor: Earnings Dates – Switch to API Fetching #2247
-- Improve prices div repair #2260
-Maintenance:
-- Add GitHub Actions workflow and fix failing tests #2233
-
-0.2.52
-------
-Features:
-- Improve Screener & docs #2207
-- Add Market summary & status #2175
-- Support custom period in Ticker.history() #2192
-- raise YfRateLimitError if rate limited #2108
-- add more options to Search #2191
-Fixes:
-- remove hardcoded keys in Analysis #2194
-- handle Yahoo changed Search response #2202
-Maintenance:
-- add optional dependencies to requirements.txt #2199
-
 0.2.51
 ------
+Fixes:
+- earnings_dates #2169
 Features:
 - Screener tweaks #2168
 - Search #2160
 - get_news() expose count #2173
-Fixes:
-- earnings_dates #2169
 
 0.2.50
 ------
