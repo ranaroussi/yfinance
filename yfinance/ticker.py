@@ -32,7 +32,7 @@ from .base import TickerBase
 from .data import YfData
 
 class Ticker(TickerBase):
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", session="`session` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", session="`session` is deprecated. Please set it using `yf.set_config`", since="0.2.55")
     def __init__(self, ticker, session=None, proxy=None):
         super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}

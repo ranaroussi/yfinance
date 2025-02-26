@@ -73,7 +73,7 @@ class TickerBase:
 
         self._fast_info = None
 
-    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set it using `yf.set_config`", since="0.2.55")
     @utils.log_indent_decorator
     def history(
             self,
@@ -268,7 +268,7 @@ class TickerBase:
         return self._fast_info
 
     @property
-    @utils.deprecated
+    @utils.deprecated()
     def basic_info(self):
         return None
 

@@ -25,7 +25,7 @@ from . import utils
 from .data import YfData
 
 class Search:
-    @utils.deprecated(session="`session` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set using `yf.set_config", proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.53")
+    @utils.deprecated(session="`session` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set using `yf.set_config", proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.55")
     def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
                  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
                  session=None, proxy=None, timeout=None, raise_errors=True):
