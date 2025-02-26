@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 import datetime
 
 from frozendict import frozendict
-from functools import lru_cache
 
 from . import utils, cache
 import threading
@@ -190,12 +189,18 @@ class YfData(metaclass=SingletonMeta):
             url: bool = True
         """
         
-        if proxy: cls.proxy = cls.DEFAULT_PROXY
-        if timeout: cls.timeout = cls.DEFAULT_TIMEOUT
-        if lang: cls.lang = cls.DEFAULT_LANG
-        if region: cls.region = cls.DEFAULT_REGION
-        if session: cls.session = cls.DEFAULT_SESSION
-        if url: cls.url = cls.DEFAULT_URL
+        if proxy:
+            cls.proxy = cls.DEFAULT_PROXY
+        if timeout:
+            cls.timeout = cls.DEFAULT_TIMEOUT
+        if lang:
+            cls.lang = cls.DEFAULT_LANG
+        if region:
+            cls.region = cls.DEFAULT_REGION
+        if session:
+            cls.session = cls.DEFAULT_SESSION
+        if url:
+            cls.url = cls.DEFAULT_URL
 
         return {
             "proxy": cls.proxy,
@@ -211,12 +216,18 @@ class YfData(metaclass=SingletonMeta):
         if isinstance(url, str) and "https://" in url:
             raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")        
         
-        if proxy is not None: cls.proxy = proxy
-        if timeout is not None: cls.timeout = timeout
-        if lang is not None: cls.lang = lang
-        if region is not None: cls.region = region
-        if session is not None: cls.session = session
-        if url is not None: cls.url = url
+        if proxy is not None:
+            cls.proxy = proxy
+        if timeout is not None:
+            cls.timeout = timeout
+        if lang is not None:
+            cls.lang = lang
+        if region is not None:
+            cls.region = region
+        if session is not None:
+            cls.session = session
+        if url is not None:
+            cls.url = url
 
         return {
             "proxy": cls.proxy,
