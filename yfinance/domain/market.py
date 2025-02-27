@@ -2,7 +2,6 @@ import datetime as dt
 
 from ..data import YfData
 from ..data import utils
-from ..const import _QUERY1_URL_
 import json as _json
 
 class Market:
@@ -19,7 +18,7 @@ class Market:
         self._summary = None
 
     def _fetch_json(self, url, params):
-        data = self._data.cache_get(url=url, params=params, proxy=self.proxy, timeout=self.timeout)
+        data = self._data.get(url=url, params=params, proxy=self.proxy, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -39,7 +38,6 @@ class Market:
 
         # Summary
 
-        summary_url = f"{_QUERY1_URL_}/v6/finance/quote/marketSummary"
         summary_fields = ["shortName", "regularMarketPrice", "regularMarketChange", "regularMarketChangePercent"]
         summary_params = {
             "fields": ",".join(summary_fields),
@@ -48,7 +46,6 @@ class Market:
             "market": self.market
         }
 
-        status_url = f"{_QUERY1_URL_}/v6/finance/markettime"
         status_params = {
             "formatted": True,
             "key": "finance",
@@ -56,8 +53,8 @@ class Market:
             "market": self.market
         }
 
-        self._summary = self._fetch_json(summary_url, summary_params)
-        self._status = self._fetch_json(status_url, status_params)
+        self._summary = self._fetch_json(YfData.URLS.SUMMARY_URL, summary_params)
+        self._status = self._fetch_json(YfData.URLS.STATUS_URL, status_params)
 
         try:
             self._summary = self._summary['marketSummaryResponse']['result']

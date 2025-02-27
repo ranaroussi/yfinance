@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
 from ..ticker import Ticker
-from ..const import _QUERY1_URL_
 from ..data import YfData
 from typing import Dict, List, Optional
 import pandas as _pd
-
-_QUERY_URL_ = f'{_QUERY1_URL_}/v1/finance'
 
 class Domain(ABC):
     """
