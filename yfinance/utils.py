@@ -128,7 +128,6 @@ def deprecated(*params, message="", new:'t.Optional[C1]'=None, since=None, **mes
             param: f"Parameter `{param}` of {func_name} is deprecated" for param in params
         })
 
-
         def build_warning(base_msg, colour=True, indent=0, include_since=True):
             msg_parts = [base_msg]
             if since and include_since:
@@ -215,7 +214,6 @@ def deprecated(*params, message="", new:'t.Optional[C1]'=None, since=None, **mes
                 warnings.warn(f"\n{"\n".join(warnings_list)}", DeprecationWarning, stacklevel=2)
 
             return new(*args, **kwargs) if new else func(*args, **kwargs)
-
         func.__doc__ = build_doc(func.__doc__ or "", message_params, function=bool(message))
         return wrapper
     return decorator
