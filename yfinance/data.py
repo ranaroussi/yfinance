@@ -341,7 +341,7 @@ class YfData(metaclass=SingletonMeta):
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         response = self._session.get(
-            url=self.URLS.QUERY2_URL,
+            url=f"https://{self.url}",
             headers=self.user_agent_headers,
             proxies=YfData.proxy,
             timeout=YfData.timeout,
@@ -480,7 +480,7 @@ class YfData(metaclass=SingletonMeta):
             return None
 
         get_args = {
-            'url': f"https://{self.url}/v1/test/getcrumb",
+            'url': f"https://query2.finance.yahoo.com/v1/test/getcrumb",
             'headers': self.user_agent_headers,
             'proxies': YfData.proxy,
             'timeout': YfData.timeout
@@ -554,7 +554,7 @@ class YfData(metaclass=SingletonMeta):
         
         config = {
             "region": YfData.region,
-            "lang": YfData.lang
+            "lang": YfData.lang,
         }
 
         cookie, crumb, strategy = self._get_cookie_and_crumb()
@@ -570,7 +570,7 @@ class YfData(metaclass=SingletonMeta):
 
         request_args = {
             'url': f"https://{url}",
-            'params': {**params, **crumbs, **config},
+            'params': {**params, **config, **crumbs},
             'cookies': cookies,
             'proxies': proxy,
             'timeout': YfData.timeout or timeout,
@@ -579,7 +579,6 @@ class YfData(metaclass=SingletonMeta):
 
         if body:
             request_args['json'] = body
-            
         response = request_method(**request_args)
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:

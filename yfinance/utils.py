@@ -214,7 +214,9 @@ def deprecated(*params, message="", new:'t.Optional[C1]'=None, since=None, **mes
                 warnings.warn(f"\n{"\n".join(warnings_list)}", DeprecationWarning, stacklevel=2)
 
             return new(*args, **kwargs) if new else func(*args, **kwargs)
+        
         func.__doc__ = build_doc(func.__doc__ or "", message_params, function=bool(message))
+
         return wrapper
     return decorator
 

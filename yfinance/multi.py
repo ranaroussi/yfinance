@@ -260,7 +260,7 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=10):
+                           keepna=False, rounding=False, timeout=None):
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
                          keepna, timeout)
@@ -272,7 +272,7 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=10):
+                  keepna=False, timeout=None):
     data = None
     try:
         data = Ticker(ticker).history(
