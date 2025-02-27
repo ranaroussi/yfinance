@@ -668,7 +668,8 @@ class Quote:
             return
 
         # Complementary key-statistics. For now just want 'trailing PEG ratio'
-        keys = {"trailingPegRatio"}
+        # keys = {"trailingPegRatio"}
+        keys = {"quarterlyMarketCap","trailingMarketCap","quarterlyEnterpriseValue","trailingEnterpriseValue","quarterlyPeRatio","trailingPeRatio","quarterlyForwardPeRatio","trailingForwardPeRatio","quarterlyPegRatio","trailingPegRatio","quarterlyPsRatio","trailingPsRatio","quarterlyPbRatio","trailingPbRatio","quarterlyEnterprisesValueRevenueRatio","trailingEnterprisesValueRevenueRatio","quarterlyEnterprisesValueEBITDARatio","trailingEnterprisesValueEBITDARatio"}
         if keys:
             # Simplified the original scrape code for key-statistics. Very expensive for fetching
             # just one value, best if scraping most/all:
@@ -693,8 +694,9 @@ class Quote:
             #
             # For just one/few variable is faster to query directly:
             url = f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
-            for k in keys:
-                url += "&type=" + k
+            url += "&type=" + ','.join(keys)
+            url += '&padTimeSeries=true'
+            url += '&merge=false'
             # Request 6 months of data
             start = pd.Timestamp.utcnow().floor("D") - datetime.timedelta(days=365 // 2)
             start = int(start.timestamp())
@@ -708,9 +710,10 @@ class Quote:
             if json_result["error"] is not None:
                 raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
             for k in keys:
-                keydict = json_result["result"][0]
-                if k in keydict:
-                    self._info[k] = keydict[k][-1]["reportedValue"]["raw"]
+                for keydict in json_result["result"]:
+                    if k in keydict:
+                        self._info[k] = keydict[k][-1]["reportedValue"]["raw"]
+                        break
                 else:
                     self.info[k] = None
 
