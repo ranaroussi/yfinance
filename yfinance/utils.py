@@ -204,7 +204,7 @@ def deprecated(*params, message="", new:'t.Optional[C1]'=None, since=None, **mes
 
             bound_args = sig.bind(*args, **kwargs)
             for param in bound_args.arguments:
-                if (param in message_params) and (param != sig.parameters[param].default):
+                if (param in message_params) and (bound_args.arguments[param] != sig.parameters[param].default):
                     warnings_list.append(build_warning(message_params[param], include_since=False))
 
             if warnings_list and since:

@@ -480,7 +480,7 @@ class YfData(metaclass=SingletonMeta):
             return None
 
         get_args = {
-            'url': f"https://query2.finance.yahoo.com/v1/test/getcrumb",
+            'url': "https://query2.finance.yahoo.com/v1/test/getcrumb",
             'headers': self.user_agent_headers,
             'proxies': YfData.proxy,
             'timeout': YfData.timeout
