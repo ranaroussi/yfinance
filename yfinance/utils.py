@@ -28,9 +28,11 @@ import re as _re
 import sys as _sys
 import threading
 from functools import lru_cache, wraps
-from inspect import getmembers
+from inspect import getmembers, signature
 from types import FunctionType
 from typing import List, Optional
+import warnings
+import typing as t
 
 import numpy as _np
 import pandas as _pd
@@ -43,6 +45,180 @@ from yfinance import const
 
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+
+def nindex(string, substring):
+    """
+    Return the index of the first character that is not the substring.
+
+    Args:
+        string (str): The string to search.
+        substring (str): The substring to search for.
+
+    Returns:
+        int: The index of the first character that is not the substring.
+
+    Raises:
+        ValueError: If the substring is not found in the string.
+    """
+    i = 0
+    assert len(substring) == 1, "substring must be a single character"
+    for c in string:
+        if c != substring:
+            return i
+        i += 1
+    raise ValueError("No substring found in string")
+
+def multi_index(string, *substrings):
+    """
+    Returns the index of the first occurrence of any of the substrings in the string.
+
+    Args:
+        string (str): The string to search.
+        substrings (str): The substrings to search for.
+
+    Returns:
+        int: The index of the first occurrence of any of the substrings in the string.
+
+    Raises:
+        ValueError: If no substrings are found in the string.
+    """
+    i = 0
+    text = ""
+    for c in string:
+        text += c
+        for substring in substrings:
+            if substring in text:
+                return i - len(substring)
+        i += 1
+    raise ValueError("No substrings found in string")
+
+C1 = t.TypeVar("C1", bound=t.Callable)
+C2 = t.TypeVar("C2", bound=t.Callable)
+
+def deprecated(*params, message="", new:'t.Optional[C1]'=None, since=None, **message_params):
+    """
+    Decorator to mark functions, methods or parameters as deprecated.
+
+    Can be used in three ways:
+    1. Deprecate entire function/method:
+        @deprecated(message="Use new_func() instead", new=new_func)
+        def old_func(): ...
+
+    2. Deprecate specific parameters:
+        @deprecated("old_param", old_param="Use new_param instead")
+        def func(old_param): ...
+
+    3. Deprecate with version info:
+        @deprecated(message="...", since="0.1.0")
+        def old_func(): ...
+
+    Args:
+        *params: Parameters to deprecate (for parameter deprecation)
+        message: Deprecation message (for function deprecation)
+        new: Replacement function (optional)
+        since: Version when deprecation was introduced (optional)
+        removed_in: Version when item will be removed (optional) 
+        **message_params: Parameters to deprecate with custom messages
+    """
+    def decorator(func:'C2') -> 't.Union[C1, C2]':
+        sig = signature(func)
+        func_name = func.__qualname__
+
+        message_params.update({
+            param: f"Parameter `{param}` of {func_name} is deprecated" for param in params
+        })
+
+        def build_warning(base_msg, colour=True, indent=0, include_since=True):
+            msg_parts = [base_msg]
+            if since and include_since:
+                msg_parts.append(f"Deprecated since version \033[1m{since}\033[20m")
+            if new:
+                msg_parts.append(f"Use \033[1m{new.__qualname__}()\033[20m instead")
+
+            msg = f"\n{' ' * indent}".join(msg_parts)
+            return f"\033[33m{msg}\033[0m" if colour else msg
+
+        def build_doc(doc:'str', deprecate:'dict[str, str]'={}, since:'str'=None, function:'bool'=False):
+            new_doc = doc.splitlines()
+            params = list(deprecate.keys())
+            if function:
+                msg = [
+                    "..warning::",
+                    "    This function is deprecated"
+                ]
+                if since:
+                    msg.append(f"    Deprecated since version \033[1m{since}\033[20m")
+                if new:
+                    msg.append(f"    Use \033[1m{new.__qualname__}()\033[20m instead")
+                msg.append(message)
+                msg.append("")
+                new_doc.insert(0, "\n".join(msg))
+            indent = 0
+            if "Args" in doc:
+                loc = doc.find("Args")
+                indent = len(doc[::-1][loc:doc.find("\n", loc)][::-1])-1
+                try:
+                    for line_no, line in enumerate(doc[loc:].splitlines()[1:]):
+                        if (index := nindex(line, " ")) < indent:
+                            break
+
+                        end = multi_index(line[index:], ":", "(", " ")
+                        if (param := line[index:index+end].strip()) in deprecate.keys():
+                            params.remove(param)
+                            msg = [
+                                "..warning::"
+                                f"    {param} is deprecated"
+                            ]
+                            if since:
+                                msg.append(f"    Deprecated since version {since}")
+                            msg.append(f"    {deprecate[param]}")
+                            new_doc.insert(line_no+1, "\n".join(msg))
+                except Exception:
+                    pass
+            if params:
+                max_len = max(len(param) for param in params)+2
+                msg = [
+                    "..warning::",
+                    "    The following parameters are deprecated"
+                ]
+                if since:
+                    msg.append(f"    Deprecated since version {since}")
+                msg += [
+                    (
+                        f"    {f"*{param}*".ljust(max_len)}"
+                        f"    {deprecate[param]}"
+                    )
+                    for param in params
+                ]
+                new_doc.insert(0, "\n".join(msg))
+
+            return "\n".join(new_doc)
+
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> 't.Union[C1, C2]':
+            warnings_list = []
+
+            # Entire function deprecation
+            if message:
+                warnings_list.append(build_warning(message))
+
+            bound_args = sig.bind(*args, **kwargs)
+            for param in bound_args.arguments:
+                if (param in message_params) and (bound_args.arguments[param] != sig.parameters[param].default):
+                    warnings_list.append(build_warning(message_params[param], include_since=False))
+
+            if warnings_list and since:
+                warnings_list.append(f"\033[1mDeprecated since version {since}\033[0m")
+
+            if warnings_list:
+                warnings.warn(f"\n{"\n".join(warnings_list)}", DeprecationWarning, stacklevel=2)
+
+            return new(*args, **kwargs) if new else func(*args, **kwargs)
+        
+        func.__doc__ = build_doc(func.__doc__ or "", message_params, function=bool(message))
+
+        return wrapper
+    return decorator
 
 
 # From https://stackoverflow.com/a/59128615

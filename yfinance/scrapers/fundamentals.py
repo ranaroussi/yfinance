@@ -1,6 +1,4 @@
 import datetime
-import json
-import warnings
 
 import pandas as pd
 
@@ -9,7 +7,6 @@ from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
 class Fundamentals:
-
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol
@@ -29,8 +26,8 @@ class Fundamentals:
         return self._financials
 
     @property
+    @utils.deprecated(message="'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", since="0.2.41")
     def earnings(self) -> dict:
-        warnings.warn("'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", DeprecationWarning)
         return None
 
     @property
@@ -82,7 +79,6 @@ class Financials:
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
-
             if statement is not None:
                 return statement
         except YFException as e:
@@ -104,18 +100,16 @@ class Financials:
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly"}
         timescale = timescale_translation[timescale]
-
         # Step 2: construct url:
-        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
+        ts_url_base = f"{YfData.URLS.FINANCIAL_TIME_SERIES_URL.format(self._symbol)}?symbol={self._symbol}"
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
         end = pd.Timestamp.utcnow().ceil("D")
         url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
-
         # Step 3: fetch and reshape data
-        json_str = self._data.cache_get(url=url, proxy=proxy).text
-        json_data = json.loads(json_str)
+        json_str = self._data.cache_get(url=url, proxy=proxy)
+        json_data = json_str.json()
         data_raw = json_data["timeseries"]["result"]
         # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
         for d in data_raw:

@@ -76,9 +76,7 @@ class TestTicker(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session = session_gbl
-
-        cls.proxy = None
+        cls.session = yf.set_config(session=session_gbl, timeout=5, proxy=None)["session"]
 
     @classmethod
     def tearDownClass(cls):
@@ -92,8 +90,8 @@ class TestTicker(unittest.TestCase):
             yf.cache.get_tz_cache().store(tkr, None)
 
             # Test:
-            dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=5)
+            dat = yf.Ticker(tkr)
+            tz = dat._get_ticker_tz()
 
             self.assertIsNotNone(tz)
 
@@ -101,7 +99,7 @@ class TestTicker(unittest.TestCase):
         # Check yfinance doesn't die when ticker delisted
 
         tkr = "DJI"  # typo of "^DJI"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
 
         dat.history(period="5d")
         dat.history(start="2022-01-01")
@@ -131,7 +129,7 @@ class TestTicker(unittest.TestCase):
 
     def test_invalid_period(self):
         tkr = 'VALE'
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         with self.assertRaises(YFInvalidPeriodError):
             dat.history(period="2wks", interval="1d", raise_errors=True)
         with self.assertRaises(YFInvalidPeriodError):
@@ -149,7 +147,7 @@ class TestTicker(unittest.TestCase):
         ]
 
         tkr = "AAPL"
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
 
         for period, interval in valid_periods:
             with self.subTest(period=period, interval=interval):
@@ -190,13 +188,13 @@ class TestTicker(unittest.TestCase):
         # hard to find a ticker that matches this error other than options
         # META call option, 2024 April 26th @ strike of 180000
         tkr = 'META240426C00180000'
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         with self.assertRaises(YFPricesMissingError):
             dat.history(period="5d", interval="1m", raise_errors=True)
 
     def test_ticker_missing(self):
         tkr = 'ATVI'
-        dat = yf.Ticker(tkr, session=self.session)
+        dat = yf.Ticker(tkr)
         # A missing ticker can trigger either a niche error or the generalized error
         with self.assertRaises((YFTickerMissingError, YFTzMissingError, YFPricesMissingError)):
             dat.history(period="3mo", interval="1d", raise_errors=True)
@@ -207,7 +205,7 @@ class TestTicker(unittest.TestCase):
         tkrs = ["IBM"]
         tkrs.append("QCSTIX")  # weird ticker, no price history but has previous close
         for tkr in tkrs:
-            dat = yf.Ticker(tkr, session=self.session)
+            dat = yf.Ticker(tkr)
 
             dat.history(period="5d")
             dat.history(start="2022-01-01")
@@ -225,10 +223,10 @@ class TestTicker(unittest.TestCase):
 
     def test_goodTicker_withProxy(self):
         tkr = "IBM"
-        dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
+        dat = yf.Ticker(tkr)
 
-        dat._fetch_ticker_tz(proxy=None, timeout=5)
-        dat._get_ticker_tz(proxy=None, timeout=5)
+        dat._fetch_ticker_tz()
+        dat._get_ticker_tz()
         dat.history(period="5d")
 
         for attribute_name, attribute_type in ticker_attributes:
@@ -250,7 +248,7 @@ class TestTickerHistory(unittest.TestCase):
     def setUp(self):
         # use a ticker that has dividends
         self.symbol = "IBM"
-        self.ticker = yf.Ticker(self.symbol, session=self.session)
+        self.ticker = yf.Ticker(self.symbol)
 
         self.symbols = ["AMZN", "MSFT", "NVDA"]
 
@@ -271,7 +269,7 @@ class TestTickerHistory(unittest.TestCase):
                 for m in [False, True]:
                     for n in [1, 'all']:
                         symbols = self.symbols[0] if n == 1 else self.symbols
-                        data = yf.download(symbols, end=tomorrow, session=self.session, 
+                        data = yf.download(symbols, end=tomorrow, 
                                            threads=t, ignore_tz=i, multi_level_index=m)
                         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
                         self.assertFalse(data.empty, "data is empty")
@@ -344,7 +342,7 @@ class TestTickerEarnings(unittest.TestCase):
             cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL", session=self.session)
+        self.ticker = yf.Ticker("GOOGL")
 
     def tearDown(self):
         self.ticker = None
@@ -401,7 +399,7 @@ class TestTickerHolders(unittest.TestCase):
             cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL", session=self.session)
+        self.ticker = yf.Ticker("GOOGL")
 
     def tearDown(self):
         self.ticker = None
@@ -468,12 +466,12 @@ class TestTickerMiscFinancials(unittest.TestCase):
             cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL", session=self.session)
+        self.ticker = yf.Ticker("GOOGL")
 
         # For ticker 'BSE.AX' (and others), Yahoo not returning
         # full quarterly financials (usually cash-flow) with all entries,
         # instead returns a smaller version in different data store.
-        self.ticker_old_fmt = yf.Ticker("BSE.AX", session=self.session)
+        self.ticker_old_fmt = yf.Ticker("BSE.AX")
 
     def tearDown(self):
         self.ticker = None
@@ -778,8 +776,8 @@ class TestTickerAnalysts(unittest.TestCase):
             cls.session.close()
 
     def setUp(self):
-        self.ticker = yf.Ticker("GOOGL", session=self.session)
-        self.ticker_no_analysts = yf.Ticker("^GSPC", session=self.session)
+        self.ticker = yf.Ticker("GOOGL")
+        self.ticker_no_analysts = yf.Ticker("^GSPC")
 
     def tearDown(self):
         self.ticker = None
@@ -902,13 +900,13 @@ class TestTickerInfo(unittest.TestCase):
         self.symbols.append("QCSTIX")  # good for testing, doesn't trade
         self.symbols += ["BTC-USD", "IWO", "VFINX", "^GSPC"]
         self.symbols += ["SOKE.IS", "ADS.DE"]  # detected bugs
-        self.tickers = [yf.Ticker(s, session=self.session) for s in self.symbols]
+        self.tickers = [yf.Ticker(s) for s in self.symbols]
 
     def tearDown(self):
         self.ticker = None
 
     def test_fast_info(self):
-        f = yf.Ticker("AAPL", session=self.session).fast_info
+        f = yf.Ticker("AAPL").fast_info
         for k in f:
             self.assertIsNotNone(f[k])
 
@@ -1042,9 +1040,9 @@ class TestTickerFundsData(unittest.TestCase):
             cls.session.close()
 
     def setUp(self):
-        self.test_tickers = [yf.Ticker("SPY", session=self.session),    # equity etf
-                            yf.Ticker("JNK", session=self.session),     # bonds etf
-                            yf.Ticker("VTSAX", session=self.session)]   # mutual fund
+        self.test_tickers = [yf.Ticker("SPY"),    # equity etf
+                            yf.Ticker("JNK"),     # bonds etf
+                            yf.Ticker("VTSAX")]   # mutual fund
 
     def tearDown(self):
         self.ticker = None
@@ -1058,7 +1056,7 @@ class TestTickerFundsData(unittest.TestCase):
             self.fail(f"_fetch_and_parse raised an exception unexpectedly: {e}")
 
         with self.assertRaises(YFDataException):
-            ticker = yf.Ticker("AAPL", session=self.session) # stock, not funds
+            ticker = yf.Ticker("AAPL") # stock, not funds
             ticker.funds_data._fetch_and_parse()
             self.fail("_fetch_and_parse should have failed when calling for non-funds data")
 
