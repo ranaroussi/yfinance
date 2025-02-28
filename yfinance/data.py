@@ -539,6 +539,8 @@ class YfData(metaclass=SingletonMeta):
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
         proxy = self._get_proxy(proxy)
+        if params is None:
+            params = {}
 
         if "region" in params:
             raise ValueError("Don't manually add 'region' to params dict, let data.py handle it")
@@ -556,7 +558,6 @@ class YfData(metaclass=SingletonMeta):
             "region": YfData.region,
             "lang": YfData.lang,
         }
-
         cookie, crumb, strategy = self._get_cookie_and_crumb()
         if crumb is not None:
             crumbs = {'crumb': crumb}
@@ -576,7 +577,6 @@ class YfData(metaclass=SingletonMeta):
             'timeout': YfData.timeout or timeout,
             'headers': user_agent_headers or self.user_agent_headers
         }
-
         if body:
             request_args['json'] = body
         response = request_method(**request_args)

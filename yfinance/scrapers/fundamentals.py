@@ -80,7 +80,6 @@ class Financials:
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
-
             if statement is not None:
                 return statement
         except YFException as e:
@@ -96,13 +95,12 @@ class Financials:
 
         try:
             return self.get_financials_time_series(timescale, keys, proxy)
-        except Exception:
+        except Exception as e:
             pass
-    
+
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly"}
         timescale = timescale_translation[timescale]
-
         # Step 2: construct url:
         ts_url_base = f"{YfData.URLS.FINANCIAL_TIME_SERIES_URL.format(self._symbol)}?symbol={self._symbol}"
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
@@ -110,10 +108,9 @@ class Financials:
         start_dt = datetime.datetime(2016, 12, 31)
         end = pd.Timestamp.utcnow().ceil("D")
         url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
-
         # Step 3: fetch and reshape data
-        json_str = self._data.cache_get(url=url, proxy=proxy).text
-        json_data = json.loads(json_str)
+        json_str = self._data.cache_get(url=url, proxy=proxy)
+        json_data = json_str.json()
         data_raw = json_data["timeseries"]["result"]
         # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
         for d in data_raw:
