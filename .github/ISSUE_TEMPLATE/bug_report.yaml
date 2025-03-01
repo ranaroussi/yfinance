@@ -54,7 +54,7 @@ body:
   - type: textarea
     id: debug-log
     attributes:
-      label: "Debug log"
+      label: "Debug log from yf.enable_debug_mode()"
       description: "Run code with debug logging enabled - `yf.enable_debug_mode()` - and post the full output. Context: https://github.com/ranaroussi/yfinance/tree/main#logging"
     validations:
       required: true
@@ -63,7 +63,7 @@ body:
     id: bad-data-proof
     attributes:
       label: "Bad data proof"
-      description: "If `yfinance` returning bad data, show proof here. Best is screenshot of finance.yahoo.com"
+      description: "If `yfinance` returning bad data, show proof of good data here. Best proof is screenshot of finance.yahoo.com"
     validations:
       required: false
 
