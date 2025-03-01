@@ -30,15 +30,14 @@ from .domain.sector import Sector
 from .domain.industry import Industry
 from .domain.market import Market
 
-from .screener.query import EquityQuery, FundQuery
-from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
+from . import screener
 
 __version__ = version.version
 __author__ = "Ran Aroussi"
 
 import warnings
-warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
+warnings.filterwarnings("default", category=DeprecationWarning, module="^yfinance")
 
-__all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
+__all__ = ["download", "Market", "Search", "Ticker", "Tickers", "enable_debug_mode", "set_tz_cache_location", "Sector", "Industry"]
 # screener stuff:
-__all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
+__all__ += ["screener"]
