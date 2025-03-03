@@ -1,11 +1,13 @@
 from __future__ import print_function
 from typing import Dict, Optional
+
+from ..data import YfData
 from ..utils import dynamic_docstring, generate_list_table_from_dict
 from ..const import SECTOR_INDUSTY_MAPPING
 
 import pandas as _pd
 
-from .domain import Domain, _QUERY_URL_
+from .domain import Domain
 from .. import utils
 
 class Sector(Domain):
@@ -27,7 +29,7 @@ class Sector(Domain):
                 Map of sector and industry
         """
         super(Sector, self).__init__(key, session, proxy)
-        self._query_url: str = f'{_QUERY_URL_}/sectors/{self._key}'
+        self._query_url = YfData.URLS.SECTOR_URL.format(self._key)
         self._top_etfs: Optional[Dict] = None
         self._top_mutual_funds: Optional[Dict] = None
         self._industries: Optional[_pd.DataFrame] = None

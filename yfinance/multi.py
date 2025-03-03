@@ -35,10 +35,11 @@ from . import shared
 
 
 @utils.log_indent_decorator
+@utils.deprecated(session="`session` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set using `yf.set_config`", proxy="`proxy` is deprecated. Please set it using `yf.set_config`", since="0.2.55")
 def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",
-             prepost=False, proxy=None, rounding=False, timeout=10, session=None,
+             prepost=False, proxy=None, rounding=False, timeout=None, session=None,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
@@ -259,7 +260,7 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=10):
+                           keepna=False, rounding=False, timeout=None):
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
                          keepna, timeout)
@@ -271,7 +272,7 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=10):
+                  keepna=False, timeout=None):
     data = None
     try:
         data = Ticker(ticker).history(

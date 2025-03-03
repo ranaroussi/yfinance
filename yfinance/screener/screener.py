@@ -2,16 +2,12 @@ from .query import EquityQuery as EqyQy
 from .query import FundQuery as FndQy
 from .query import QueryBase, EquityQuery, FundQuery
 
-from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
 
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
 from typing import Union
 import requests
-
-_SCREENER_URL_ = f"{_BASE_URL_}/v1/finance/screener"
-_PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
 
 PREDEFINED_SCREENER_BODY_DEFAULTS = {
     "offset":0, "size":25, "userId":"","userIdType":"guid"
@@ -137,7 +133,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         for k,v in fields.items():
             if v is not None:
                 params_dict[k] = v
-        resp = _data.get(url=_PREDEFINED_URL_, params=params_dict, proxy=proxy)
+        resp = _data.get(url=YfData.URLS.PREDEFINED_URL, params=params_dict, proxy=proxy)
         try:
             resp.raise_for_status()
         except requests.exceptions.HTTPError:
@@ -171,7 +167,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
 
     # Fetch
     _data = YfData(session=session)
-    response = _data.post(_SCREENER_URL_, 
+    response = _data.post(YfData.URLS.SCREENER_URL,
                             body=post_query, 
                             user_agent_headers=_data.user_agent_headers, 
                             params=params_dict, 
