@@ -712,7 +712,6 @@ class Quote:
 
             json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
-            print(json_data)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:
                 raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
