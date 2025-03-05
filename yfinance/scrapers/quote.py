@@ -575,8 +575,21 @@ class Quote:
     def _fetch(self, modules: list):
         if not isinstance(modules, list):
             raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
+        
+        invalid_modules = []
+        for m in modules:
+            if m not in self.valid_modules():
+                modules.remove(m)
+                invalid_modules.append(m)
 
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
+
+        if invalid_modules:
+            raise YFException(f"Invalid modules provided: {invalid_modules}\nSee available modules using `valid_modules`")
+        
+        if len(modules) == 0:
+            raise YFException("No valid modules provided, see available modules using `valid_modules`")
+
+        params_dict = {"modules": ",".join(modules), "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(YfData.URLS.QUOTE_SUMMARY_URL.format(self._symbol), user_agent_headers=self._data.user_agent_headers, params=params_dict)
         except requests.exceptions.HTTPError as e:
@@ -652,7 +665,7 @@ class Quote:
 
         self._info = {k: _format(k, v) for k, v in query1_info.items()}
 
-    def _fetch_complementary(self, proxy):
+    def _fetch_complementary(self, proxy=None):
         if self._already_fetched_complementary:
             return
         self._already_fetched_complementary = True
@@ -699,6 +712,7 @@ class Quote:
 
             json_str = self._data.cache_get(url=url, proxy=proxy).text
             json_data = json.loads(json_str)
+            print(json_data)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:
                 raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))

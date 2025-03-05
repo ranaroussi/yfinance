@@ -155,6 +155,10 @@ class URLS:
     @property
     def COOKIE_BASIC_URL(self):
         return "fc.yahoo.com"
+    
+    @property
+    def ISIN_URL(self):
+        return "markets.businessinsider.com/ajax/SearchController_Suggest"
 
 
 

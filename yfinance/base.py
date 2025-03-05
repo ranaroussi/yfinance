@@ -550,7 +550,7 @@ class TickerBase:
         if "shortName" in self._quote.info:
             q = self._quote.info['shortName']
 
-        url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
+        url = f'{YfData.URLS.ISIN_URL}?max_results=25&query={urlencode(q)}'
         data = self._data.cache_get(url=url, proxy=proxy).text
 
         search_str = f'"{ticker}|'
