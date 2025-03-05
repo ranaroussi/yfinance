@@ -22,7 +22,6 @@
 from __future__ import print_function
 
 import json as _json
-import warnings
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
@@ -40,10 +39,9 @@ from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
-from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
-
 
 class TickerBase:
+    ticker = None # set so __repr__ works for deprecation in __init__
     def __init__(self, ticker, session=None, proxy=None):
         self.ticker = ticker.upper()
         self.proxy = proxy
@@ -75,18 +73,50 @@ class TickerBase:
 
         self._fast_info = None
 
+    @utils.deprecated(proxy="`proxy` is deprecated. Please set it using `yf.set_config`", timeout="`timeout` is deprecated. Please set it using `yf.set_config`", since="0.2.55")
     @utils.log_indent_decorator
-    def history(self, *args, **kwargs) -> pd.DataFrame:
-        return self._lazy_load_price_history().history(*args, **kwargs)
+    def history(
+            self,
+            period:'str'="1mo",
+            interval:'str'="1d",
+            start:'Optional[str]'=None,
+            end:'Optional[str]'=None,
+            prepost:'bool'=False,
+            actions:'bool'=True,
+            auto_adjust:'bool'=True,
+            back_adjust:'bool'=False,
+            repair:'bool'=False,
+            keepna:'bool'=False,
+            proxy:'Optional[str]'=None,
+            rounding:'bool'=False,
+            timeout:'Optional[int]'=None,
+            raise_errors:'bool'=False
+        ) -> 'pd.DataFrame':
+        return self._lazy_load_price_history().history(
+            period=period,
+            interval=interval,
+            start=start,
+            end=end,
+            prepost=prepost,
+            actions=actions,
+            auto_adjust=auto_adjust,
+            back_adjust=back_adjust,
+            repair=repair,
+            keepna=keepna,
+            proxy=proxy,
+            rounding=rounding,
+            timeout=timeout,
+            raise_errors=raise_errors
+        )
 
     # ------------------------
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy, timeout=10))
+            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(self.proxy))
         return self._price_history
 
-    def _get_ticker_tz(self, proxy, timeout):
+    def _get_ticker_tz(self, proxy = None, timeout = None):
         proxy = proxy or self.proxy
         if self._tz is not None:
             return self._tz
@@ -111,7 +141,7 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, proxy, timeout):
+    def _fetch_ticker_tz(self, proxy=None, timeout=None):
         # Query Yahoo for fast price data just to get returned timezone
         proxy = proxy or self.proxy
         logger = utils.get_yf_logger()
@@ -119,7 +149,7 @@ class TickerBase:
         params = {"range": "1d", "interval": "1d"}
 
         # Getting data from json
-        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
+        url = YfData.URLS.TICKER_URL.format(self.ticker)
 
         try:
             data = self._data.cache_get(url=url, params=params, proxy=proxy, timeout=timeout)
@@ -186,7 +216,7 @@ class TickerBase:
         if as_dict:
             return data.to_dict()
         return data
-
+    
     def get_institutional_holders(self, proxy=None, as_dict=False):
         self._holders.proxy = proxy or self.proxy
         data = self._holders.institutional
@@ -232,15 +262,15 @@ class TickerBase:
         data = self._quote.info
         return data
 
-    def get_fast_info(self, proxy=None):
+    def get_fast_info(self):
         if self._fast_info is None:
-            self._fast_info = FastInfo(self, proxy=proxy)
+            self._fast_info = FastInfo(self, proxy=self.proxy)
         return self._fast_info
 
     @property
+    @utils.deprecated()
     def basic_info(self):
-        warnings.warn("'Ticker.basic_info' is deprecated and will be removed in future, Switch to 'Ticker.fast_info'", DeprecationWarning)
-        return self.fast_info
+        return None
 
     def get_sustainability(self, proxy=None, as_dict=False):
         self._quote.proxy = proxy or self.proxy
@@ -471,7 +501,7 @@ class TickerBase:
         end = end.ceil("D")
 
         # Fetch
-        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self.ticker}?symbol={self.ticker}"
+        ts_url_base = f"{YfData.URLS.FINANCIAL_TIME_SERIES_URL.format(self.ticker)}?symbol={self.ticker}"
         shares_url = f"{ts_url_base}&period1={int(start.timestamp())}&period2={int(end.timestamp())}"
         try:
             json_data = self._data.cache_get(url=shares_url, proxy=proxy)
@@ -520,7 +550,7 @@ class TickerBase:
         if "shortName" in self._quote.info:
             q = self._quote.info['shortName']
 
-        url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
+        url = f'{YfData.URLS.ISIN_URL}?max_results=25&query={urlencode(q)}'
         data = self._data.cache_get(url=url, proxy=proxy).text
 
         search_str = f'"{ticker}|'
@@ -554,7 +584,7 @@ class TickerBase:
         if not query_ref:
             raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
 
-        url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
+        url = f"{YfData.URLS.NEWS_URL}?queryRef={query_ref}&serviceKey=ncp_fin"
         payload = {
             "serviceConfig": {
                 "snippetCount": count,
@@ -599,7 +629,6 @@ class TickerBase:
             return self._earnings_dates[clamped_limit]
 
         # Fetch data
-        url = f"{_QUERY1_URL_}/v1/finance/visualization"
         params = {"lang": "en-US", "region": "US"}
         body = {
             "size": clamped_limit,
@@ -615,7 +644,7 @@ class TickerBase:
             "entityIdType": "earnings",
             "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct"]
         }
-        response = self._data.post(url, params=params, body=body, proxy=proxy)
+        response = self._data.post(YfData.URLS.EARNINGS_DATES_URL, params=params, body=body, proxy=proxy)
         json_data = response.json()
 
         # Extract data

@@ -1,6 +1,8 @@
 import functools
 import random
 from functools import lru_cache
+from typing import TypedDict, Optional
+
 
 import requests as requests
 from bs4 import BeautifulSoup
@@ -15,6 +17,17 @@ from .const import USER_AGENTS
 from .exceptions import YFRateLimitError
 
 cache_maxsize = 64
+
+CONFIG = TypedDict("CONFIG", 
+    {
+        "proxy": Optional[str],
+        "timeout": int,
+        "lang": str,
+        "region": str,
+        "session": requests.Session,
+        "url": str
+    }
+)
 
 
 def lru_cache_freezeargs(func):
@@ -53,6 +66,100 @@ class SingletonMeta(type):
             else:
                 cls._instances[cls]._set_session(*args, **kwargs)
             return cls._instances[cls]
+        
+class URLS:
+    @property
+    def ROOT_URL(self):
+        return YfData.url
+    
+    @property
+    def QUERY1_URL(self):
+        return f"query1.{self.ROOT_URL}"
+    
+    @property
+    def QUERY2_URL(self):
+        return f"query2.{self.ROOT_URL}"
+    
+    @property
+    def QUERY_URL(self):
+        return f"{self.QUERY1_URL}/v1/finance"
+    
+    @property
+    def SUMMARY_URL(self):
+        return f"{self.QUERY1_URL}/v6/finance/quote/marketSummary"
+    
+    @property
+    def STATUS_URL(self):
+        return f"{self.QUERY1_URL}/v6/finance/markettime"
+    
+    @property
+    def NEWS_URL(self):
+        return f"{self.ROOT_URL}/xhr/ncp"
+    
+    @property
+    def EARNINGS_URL(self):
+        return f"{self.ROOT_URL}/calendar/earnings"
+    
+    @property
+    def EARNINGS_DATES_URL(self):
+        return f"{self.QUERY1_URL}/v1/finance/visualization"
+    
+    @property
+    def TICKER_URL(self):
+        return f"{self.QUERY2_URL}/v8/finance/chart/{{}}"
+    
+    @property
+    def SEARCH_URL(self):
+        return f"{self.QUERY2_URL}/v1/finance/search"
+    
+    @property
+    def OPTIONS_URL(self):
+        return f"{self.QUERY2_URL}/v7/finance/options/{{}}"
+    
+    @property
+    def FINANCIAL_TIME_SERIES_URL(self):
+        return f"{self.QUERY2_URL}/ws/fundamentals-timeseries/v1/finance/timeseries/{{}}"
+    
+    @property
+    def COMPLIMENTARY_URL(self):
+        return f"{self.QUERY1_URL}/ws/fundamentals-timeseries/v1/finance/timeseries/{{}}"
+    
+    @property
+    def QUOTE_SUMMARY_URL(self):
+        return f"{self.QUERY2_URL}/v10/finance/quoteSummary/{{}}"
+
+    @property
+    def HISTORY_URL(self):
+        return f"{self.QUERY2_URL}/v8/finance/chart/{{}}"
+    
+    @property
+    def QUOTE_URL(self):
+        return f"{self.QUERY2_URL}/quote"
+    
+    @property
+    def SCREENER_URL(self):
+        return f"{self.QUERY2_URL}/v1/finance/screener"
+
+    @property
+    def PREDEFINED_URL(self):
+        return f"{self.SCREENER_URL}/predefined/saved"
+    
+    @property
+    def SECTOR_URL(self):
+        return f"{self.QUERY1_URL}/sectors/{{}}"
+    
+    @property
+    def INDUSTRY_URL(self):
+        return f"{self.QUERY1_URL}/industries/{{}}"
+    
+    @property
+    def COOKIE_BASIC_URL(self):
+        return "fc.yahoo.com"
+    
+    @property
+    def ISIN_URL(self):
+        return "markets.businessinsider.com/ajax/SearchController_Suggest"
+
 
 
 class YfData(metaclass=SingletonMeta):
@@ -64,7 +171,89 @@ class YfData(metaclass=SingletonMeta):
         'User-Agent': random.choice(USER_AGENTS)
     }
 
+    URLS = URLS()
+
+    DEFAULT_PROXY = None
+    DEFAULT_TIMEOUT = 30
+    DEFAULT_LANG = "en-US"
+    DEFAULT_REGION = "US"
+    DEFAULT_SESSION = requests.Session()
+    DEFAULT_URL = "finance.yahoo.com"
+
+    proxy = DEFAULT_PROXY
+    timeout = DEFAULT_TIMEOUT
+    lang = DEFAULT_LANG
+    region = DEFAULT_REGION
+    session = DEFAULT_SESSION
+    url = DEFAULT_URL
+
+    @classmethod
+    def reset_config(cls, proxy:'bool'=True, timeout:'bool'=True, lang:'bool'=True, region:'bool'=True, session:'bool'=True, url:'bool'=True) -> 'CONFIG':
+        """
+        Resets config to `YfData.DEFAULT_{setting}` if the setting is True
+
+        Args:
+            proxy: bool = True
+            timeout: bool = True
+            lang: bool = True
+            region: bool = True
+            session: bool = True
+            url: bool = True
+        """
+        
+        if proxy:
+            cls.proxy = cls.DEFAULT_PROXY
+        if timeout:
+            cls.timeout = cls.DEFAULT_TIMEOUT
+        if lang:
+            cls.lang = cls.DEFAULT_LANG
+        if region:
+            cls.region = cls.DEFAULT_REGION
+        if session:
+            cls.session = cls.DEFAULT_SESSION
+        if url:
+            cls.url = cls.DEFAULT_URL
+
+        return {
+            "proxy": cls.proxy,
+            "timeout": cls.timeout,
+            "lang": cls.lang,
+            "region": cls.region,
+            "session": cls.session,
+            "url": cls.url
+        }
+
+    @classmethod
+    def set_config(cls, proxy=None, timeout=None, lang=None, region=None, session=None, url=None) -> 'CONFIG':
+        if isinstance(url, str) and "https://" in url:
+            raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")        
+        
+        if proxy is not None:
+            cls.proxy = proxy
+        if timeout is not None:
+            cls.timeout = timeout
+        if lang is not None:
+            cls.lang = lang
+        if region is not None:
+            cls.region = region
+        if session is not None:
+            cls.session = session
+        if url is not None:
+            cls.url = url
+
+        return {
+            "proxy": cls.proxy,
+            "timeout": cls.timeout,
+            "lang": cls.lang,
+            "region": cls.region,
+            "session": cls.session,
+            "url": cls.url
+        }
+
+
+
     def __init__(self, session=None):
+        self.set_config(session=session)
         self._crumb = None
         self._cookie = None
 
@@ -75,7 +264,7 @@ class YfData(metaclass=SingletonMeta):
 
         self._cookie_lock = threading.Lock()
 
-        self._set_session(session or requests.Session())
+        self._set_session(YfData.session)
 
         utils.get_yf_logger().debug(f"Using User-Agent: {self.user_agent_headers['User-Agent']}")
 
@@ -154,7 +343,7 @@ class YfData(metaclass=SingletonMeta):
         utils.get_yf_logger().debug('loaded persistent cookie')
         return cookie_dict['cookie']
 
-    def _get_cookie_basic(self, proxy=None, timeout=30):
+    def _get_cookie_basic(self):
         if self._cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
             return self._cookie
@@ -166,11 +355,12 @@ class YfData(metaclass=SingletonMeta):
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         response = self._session.get(
-            url='https://fc.yahoo.com',
+            url=f"https://{YfData.URLS.COOKIE_BASIC_URL}",
             headers=self.user_agent_headers,
-            proxies=proxy,
-            timeout=timeout,
-            allow_redirects=True)
+            proxies=YfData.proxy,
+            timeout=YfData.timeout,
+            allow_redirects=True
+            )
 
         if not response.cookies:
             utils.get_yf_logger().debug("response.cookies = None")
@@ -183,7 +373,7 @@ class YfData(metaclass=SingletonMeta):
         utils.get_yf_logger().debug(f"fetched basic cookie = {self._cookie}")
         return self._cookie
 
-    def _get_crumb_basic(self, proxy=None, timeout=30):
+    def _get_crumb_basic(self):
         if self._crumb is not None:
             utils.get_yf_logger().debug('reusing crumb')
             return self._crumb
@@ -197,8 +387,8 @@ class YfData(metaclass=SingletonMeta):
             'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
             'headers': self.user_agent_headers,
             'cookies': {cookie.name: cookie.value},
-            'proxies': proxy,
-            'timeout': timeout,
+            'proxies': YfData.proxy,
+            'timeout': YfData.timeout,
             'allow_redirects': True
         }
         if self._session_is_caching:
@@ -215,12 +405,12 @@ class YfData(metaclass=SingletonMeta):
         return self._crumb
 
     @utils.log_indent_decorator
-    def _get_cookie_and_crumb_basic(self, proxy, timeout):
-        cookie = self._get_cookie_basic(proxy, timeout)
-        crumb = self._get_crumb_basic(proxy, timeout)
+    def _get_cookie_and_crumb_basic(self):
+        cookie = self._get_cookie_basic()
+        crumb = self._get_crumb_basic()
         return cookie, crumb
 
-    def _get_cookie_csrf(self, proxy, timeout):
+    def _get_cookie_csrf(self):
         if self._cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
             return True
@@ -232,8 +422,9 @@ class YfData(metaclass=SingletonMeta):
 
         base_args = {
             'headers': self.user_agent_headers,
-            'proxies': proxy,
-            'timeout': timeout}
+            'proxies': YfData.proxy,
+            'timeout': YfData.timeout
+        }
 
         get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
         try:
@@ -291,22 +482,23 @@ class YfData(metaclass=SingletonMeta):
         return True
 
     @utils.log_indent_decorator
-    def _get_crumb_csrf(self, proxy=None, timeout=30):
+    def _get_crumb_csrf(self):
         # Credit goes to @bot-unit #1729
 
         if self._crumb is not None:
             utils.get_yf_logger().debug('reusing crumb')
             return self._crumb
 
-        if not self._get_cookie_csrf(proxy, timeout):
+        if not self._get_cookie_csrf():
             # This cookie stored in session
             return None
 
         get_args = {
-            'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
+            'url': "https://query2.finance.yahoo.com/v1/test/getcrumb",
             'headers': self.user_agent_headers,
-            'proxies': proxy,
-            'timeout': timeout}
+            'proxies': YfData.proxy,
+            'timeout': YfData.timeout
+        }
         if self._session_is_caching:
             get_args['expire_after'] = self._expire_after
             r = self._session.get(**get_args)
@@ -322,7 +514,7 @@ class YfData(metaclass=SingletonMeta):
         return self._crumb
 
     @utils.log_indent_decorator
-    def _get_cookie_and_crumb(self, proxy=None, timeout=30):
+    def _get_cookie_and_crumb(self):
         cookie, crumb, strategy = None, None, None
 
         utils.get_yf_logger().debug(f"cookie_mode = '{self._cookie_strategy}'")
@@ -333,10 +525,10 @@ class YfData(metaclass=SingletonMeta):
                 if crumb is None:
                     # Fail
                     self._set_cookie_strategy('basic', have_lock=True)
-                    cookie, crumb = self._get_cookie_and_crumb_basic(proxy, timeout)
+                    cookie, crumb = self._get_cookie_and_crumb_basic()
             else:
                 # Fallback strategy
-                cookie, crumb = self._get_cookie_and_crumb_basic(proxy, timeout)
+                cookie, crumb = self._get_cookie_and_crumb_basic()
                 if cookie is None or crumb is None:
                     # Fail
                     self._set_cookie_strategy('csrf', have_lock=True)
@@ -345,29 +537,41 @@ class YfData(metaclass=SingletonMeta):
         return cookie, crumb, strategy
 
     @utils.log_indent_decorator
-    def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+    def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=None):
         return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
-    
-    @utils.log_indent_decorator
-    def post(self, url, body, user_agent_headers=None, params=None, proxy=None, timeout=30):
-        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, proxy=proxy, timeout=timeout)
-    
-    @utils.log_indent_decorator
-    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None, timeout=30):
-        # Important: treat input arguments as immutable.
 
+    @utils.log_indent_decorator
+    def post(self, url, body, user_agent_headers=None, params=None, proxy=None):
+        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, proxy=proxy)
+
+    @utils.log_indent_decorator
+    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, proxy=None, timeout=None):
+        # Important: treat input arguments as immutable.
         if len(url) > 200:
             utils.get_yf_logger().debug(f'url={url[:200]}...')
         else:
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
         proxy = self._get_proxy(proxy)
-
         if params is None:
             params = {}
-        if 'crumb' in params:
-            raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
 
+        if "region" in params:
+            raise ValueError("Don't manually add 'region' to params dict, let data.py handle it")
+        
+        if "proxy" in params:
+            raise ValueError("Don't manually add 'proxy' to params dict, let data.py handle it")
+
+        if "crumb" in params:
+            raise ValueError("Don't manually add 'crumb' to params dict, let data.py handle it")
+        
+        if "https" in url:
+            raise ValueError("Don't manually add 'https://' to the url, let data.py handle it")
+        
+        config = {
+            "region": YfData.region,
+            "lang": YfData.lang,
+        }
         cookie, crumb, strategy = self._get_cookie_and_crumb()
         if crumb is not None:
             crumbs = {'crumb': crumb}
@@ -380,17 +584,15 @@ class YfData(metaclass=SingletonMeta):
             cookies = None
 
         request_args = {
-            'url': url,
-            'params': {**params, **crumbs},
+            'url': f"https://{url}",
+            'params': {**params, **config, **crumbs},
             'cookies': cookies,
             'proxies': proxy,
-            'timeout': timeout,
+            'timeout': YfData.timeout or timeout,
             'headers': user_agent_headers or self.user_agent_headers
         }
-
         if body:
             request_args['json'] = body
-            
         response = request_method(**request_args)
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
@@ -399,7 +601,7 @@ class YfData(metaclass=SingletonMeta):
                 self._set_cookie_strategy('csrf')
             else:
                 self._set_cookie_strategy('basic')
-            cookie, crumb, strategy = self._get_cookie_and_crumb(proxy, timeout)
+            cookie, crumb, strategy = self._get_cookie_and_crumb()
             request_args['params']['crumb'] = crumb
             if strategy == 'basic':
                 request_args['cookies'] = {cookie.name: cookie.value}
@@ -412,12 +614,10 @@ class YfData(metaclass=SingletonMeta):
 
         return response
 
-    @lru_cache_freezeargs
-    @lru_cache(maxsize=cache_maxsize)
-    def cache_get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
-        return self.get(url, user_agent_headers, params, proxy, timeout)
+    def _get_proxy(self, proxy=None):
+        if proxy is None:
+            proxy = {"https": YfData.proxy}
 
-    def _get_proxy(self, proxy):
         # setup proxy in requests format
         if proxy is not None:
             if isinstance(proxy, (dict, frozendict)) and "https" in proxy:
@@ -425,8 +625,13 @@ class YfData(metaclass=SingletonMeta):
             proxy = {"https": proxy}
         return proxy
 
-    def get_raw_json(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+    def get_raw_json(self, url, user_agent_headers=None, params=None, proxy=None):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
-        response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy, timeout=timeout)
+        response = self.get(url, user_agent_headers=user_agent_headers, params=params, proxy=proxy)
         response.raise_for_status()
         return response.json()
+    
+    @lru_cache_freezeargs
+    @lru_cache(maxsize=cache_maxsize)
+    def cache_get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
+        return self.get(url, user_agent_headers, params, proxy, timeout)
