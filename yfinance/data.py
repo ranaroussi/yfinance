@@ -121,6 +121,10 @@ class URLS:
         return f"{self.QUERY2_URL}/ws/fundamentals-timeseries/v1/finance/timeseries/{{}}"
     
     @property
+    def COMPLIMENTARY_URL(self):
+        return f"{self.QUERY1_URL}/ws/fundamentals-timeseries/v1/finance/timeseries/{{}}"
+    
+    @property
     def QUOTE_SUMMARY_URL(self):
         return f"{self.QUERY2_URL}/v10/finance/quoteSummary/{{}}"
 
@@ -147,6 +151,10 @@ class URLS:
     @property
     def INDUSTRY_URL(self):
         return f"{self.QUERY1_URL}/industries/{{}}"
+    
+    @property
+    def COOKIE_BASIC_URL(self):
+        return "fc.yahoo.com"
 
 
 
@@ -341,7 +349,7 @@ class YfData(metaclass=SingletonMeta):
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         response = self._session.get(
-            url=f"https://{self.url}",
+            url=f"https://{YfData.URLS.COOKIE_BASIC_URL}",
             headers=self.user_agent_headers,
             proxies=YfData.proxy,
             timeout=YfData.timeout,

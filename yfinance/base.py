@@ -501,7 +501,7 @@ class TickerBase:
         end = end.ceil("D")
 
         # Fetch
-        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self.ticker}?symbol={self.ticker}"
+        ts_url_base = f"{YfData.URLS.FINANCIAL_TIME_SERIES_URL.format(self.ticker)}?symbol={self.ticker}"
         shares_url = f"{ts_url_base}&period1={int(start.timestamp())}&period2={int(end.timestamp())}"
         try:
             json_data = self._data.cache_get(url=shares_url, proxy=proxy)

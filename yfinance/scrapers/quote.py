@@ -687,7 +687,7 @@ class Quote:
             #     pass
             #
             # For just one/few variable is faster to query directly:
-            url = f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
+            url = f"{YfData.URLS.COMPLIMENTARY_URL.format(self._symbol)}?symbol={self._symbol}"
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data
