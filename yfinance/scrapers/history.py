@@ -19,7 +19,7 @@ class PriceHistory:
         self.proxy = proxy
         self.session = session
 
-        self._history = None
+        self._max_history = None
         self._history_metadata = None
         self._history_metadata_formatted = False
 
@@ -439,7 +439,8 @@ class PriceHistory:
         else:
             df.index.name = "Date"
 
-        self._history = df.copy()
+        if period_user == "max":
+            self._max_history = df.copy()
 
         # missing rows cleanup
         if not actions:
@@ -477,37 +478,37 @@ class PriceHistory:
         return self._history_metadata
 
     def get_dividends(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._max_history is None:
             self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history:
-            dividends = self._history["Dividends"]
+        if self._max_history is not None and "Dividends" in self._max_history:
+            dividends = self._max_history["Dividends"]
             return dividends[dividends != 0]
         return pd.Series()
 
     def get_capital_gains(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._max_history is None:
             self.history(period="max", proxy=proxy)
-        if self._history is not None and "Capital Gains" in self._history:
-            capital_gains = self._history["Capital Gains"]
+        if self._max_history is not None and "Capital Gains" in self._max_history:
+            capital_gains = self._max_history["Capital Gains"]
             return capital_gains[capital_gains != 0]
         return pd.Series()
 
     def get_splits(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._max_history is None:
             self.history(period="max", proxy=proxy)
-        if self._history is not None and "Stock Splits" in self._history:
-            splits = self._history["Stock Splits"]
+        if self._max_history is not None and "Stock Splits" in self._max_history:
+            splits = self._max_history["Stock Splits"]
             return splits[splits != 0]
         return pd.Series()
 
     def get_actions(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._max_history is None:
             self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
+        if self._max_history is not None and "Dividends" in self._max_history and "Stock Splits" in self._max_history:
             action_columns = ["Dividends", "Stock Splits"]
-            if "Capital Gains" in self._history:
+            if "Capital Gains" in self._max_history:
                 action_columns.append("Capital Gains")
-            actions = self._history[action_columns]
+            actions = self._max_history[action_columns]
             return actions[actions != 0].dropna(how='all').fillna(0)
         return pd.Series()
 

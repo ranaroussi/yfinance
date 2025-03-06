@@ -332,6 +332,12 @@ class TestTickerHistory(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
+    def test_chained_history_calls(self):
+        _ = self.ticker.history(period="2d")
+        data = self.ticker.dividends
+        self.assertIsInstance(data, pd.Series, "data has wrong type")
+        self.assertFalse(data.empty, "data is empty")
+
 
 class TestTickerEarnings(unittest.TestCase):
     session = None
