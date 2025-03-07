@@ -466,7 +466,7 @@ class PriceHistory:
         return df
 
     def get_history_metadata(self, proxy=None) -> dict:
-        if self._history_metadata is None:
+        if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
             # Request intraday data, because then Yahoo returns exchange schedule.
             self.history(period="5d", interval="1h", prepost=True, proxy=proxy)
 
@@ -477,7 +477,7 @@ class PriceHistory:
         return self._history_metadata
 
     def get_dividends(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._history is None or self._history_metadata['range'] != '':
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Dividends" in self._history:
             dividends = self._history["Dividends"]
@@ -485,7 +485,7 @@ class PriceHistory:
         return pd.Series()
 
     def get_capital_gains(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._history is None or self._history_metadata['range'] != '':
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Capital Gains" in self._history:
             capital_gains = self._history["Capital Gains"]
@@ -493,7 +493,7 @@ class PriceHistory:
         return pd.Series()
 
     def get_splits(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._history is None or self._history_metadata['range'] != '':
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Stock Splits" in self._history:
             splits = self._history["Stock Splits"]
@@ -501,7 +501,7 @@ class PriceHistory:
         return pd.Series()
 
     def get_actions(self, proxy=None) -> pd.Series:
-        if self._history is None:
+        if self._history is None or self._history_metadata['range'] != '':
             self.history(period="max", proxy=proxy)
         if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
             action_columns = ["Dividends", "Stock Splits"]
