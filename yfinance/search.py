@@ -25,7 +25,6 @@ from . import utils
 from .const import _BASE_URL_
 from .data import YfData
 
-
 class Search:
     def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
                  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
@@ -49,6 +48,7 @@ class Search:
             timeout: Request timeout in seconds (default 30).
             raise_errors: Raise exceptions on error (default True).
         """
+        self.fields = ["quotes" if max_results else "", "news" if news_count else "", "lists" if lists_count else "", "cb" if include_cb else "", "nav_links" if include_nav_links else "", "research" if include_research else "", "cultural_assets" if include_cultural_assets else ""]
         self.query = query
         self.max_results = max_results
         self.enable_fuzzy_query = enable_fuzzy_query
@@ -65,9 +65,6 @@ class Search:
         self.enable_cultural_assets = include_cultural_assets
         self.recommended = recommended
 
-        self._data = YfData(session=self.session)
-        self._logger = utils.get_yf_logger()
-
         self._response = {}
         self._all = {}
         self._quotes = []
@@ -76,29 +73,35 @@ class Search:
         self._research = []
         self._nav = []
 
+        self._data = YfData()
+        self._logger = utils.get_yf_logger()
+
+
         self.search()
 
-    def search(self) -> 'Search':
-        """Search using the query parameters defined in the constructor."""
-        url = f"{_BASE_URL_}/v1/finance/search"
+    def fetch(self, query:'str', fields:'list[str]', session=None, proxy=None, timeout=30, **kwargs:'dict') -> 'dict':        
         params = {
-            "q": self.query,
-            "quotesCount": self.max_results,
-            "enableFuzzyQuery": self.enable_fuzzy_query,
-            "newsCount": self.news_count,
+            "q": query,
+            "enableFuzzyQuery": "enable_fuzzy_query" in fields,
             "quotesQueryId": "tss_match_phrase_query",
             "newsQueryId": "news_cie_vespa",
-            "listsCount": self.lists_count,
-            "enableCb": self.include_cb,
-            "enableNavLinks": self.nav_links,
-            "enableResearchReports": self.enable_research,
-            "enableCulturalAssets": self.enable_cultural_assets,
-            "recommendedCount": self.recommended
+            "enableCb": "cb" in fields,
+            "enableNavLinks": "nav_links" in fields,
+            "enableResearchReports": "research" in fields,
+            "enableCulturalAssets": "cultural_assets" in fields,
         }
 
-        self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
-
-        data = self._data.cache_get(url=url, params=params, proxy=self.proxy, timeout=self.timeout)
+        
+        if "quotes" in fields:
+            params["quotesCount"] = kwargs.get("max_results", 8)
+            params["recommendedCount"] = kwargs.get("recommended", 8)
+        if "news" in fields:
+            params["newsCount"] = kwargs.get("news_count", 8)
+        if "lists" in fields:
+            params["listsCount"] = kwargs.get("lists_count", 8)
+        
+        url = f"{_BASE_URL_}/v1/finance/search"
+        data = self._data.cache_get(url=url, params=params, proxy=proxy, timeout=timeout, session=session)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
@@ -106,8 +109,16 @@ class Search:
         try:
             data = data.json()
         except _json.JSONDecodeError:
-            self._logger.error(f"{self.query}: Failed to retrieve search results and received faulty response instead.")
+            self._logger.error(f"{query}: Failed to retrieve search results and received faulty response instead.")
             data = {}
+        return data
+
+
+    def search(self) -> 'Search':
+        """Search using the query parameters defined in the constructor."""
+        self._logger.debug(f'{self.query}: Fields: {self.fields}')
+
+        data = self.fetch(self.query, self.fields, session=self.session, proxy=self.proxy, timeout=self.timeout)
 
         self._response = data
         # Filter quotes to only include symbols
@@ -117,10 +128,67 @@ class Search:
         self._research = data.get("researchReports", [])
         self._nav = data.get("nav", [])
 
-        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research,
-                     "nav": self._nav}
+        self._all = {
+            "quotes": self._quotes,
+            "news": self._news,
+            "lists": self._lists,
+            "research": self._research,
+            "nav": self._nav
+        }
 
         return self
+
+
+
+    def search_quotes(self) -> 'list':
+        """Search using the query parameters defined in the constructor, but only return the quotes."""
+        self._logger.debug(f'{self.query}: Fields: [quotes]')
+        data = self.fetch(self.query, ["quotes"], session=self.session, proxy=self.proxy, timeout=self.timeout)
+
+        self._quotes = data.get("quotes", [])
+        self._response = data
+        self._all["quotes"] = self._quotes
+        return self.quotes
+
+    def search_news(self) -> 'list':
+        """Search using the query parameters defined in the constructor, but only return the news."""
+        self._logger.debug(f'{self.query}: Fields: [news]')
+        data = self.fetch(self.query, ["news"], session=self.session, proxy=self.proxy, timeout=self.timeout)
+
+        self._news = data.get("news", [])
+        self._response = data
+        self._all["news"] = self._news
+        return self.news
+    
+    def search_lists(self) -> 'list':
+        """Search using the query parameters defined in the constructor, but only return the lists."""
+        self._logger.debug(f'{self.query}: Fields: [lists]')
+        data = self.fetch(self.query, ["lists"], session=self.session, proxy=self.proxy, timeout=self.timeout)
+
+        self._lists = data.get("lists", [])
+        self._response = data
+        self._all["lists"] = self._lists
+        return self.lists
+    
+    def search_research(self) -> 'list':
+        """Search using the query parameters defined in the constructor, but only return the research reports."""
+        self._logger.debug(f'{self.query}: Fields: [research]')
+        data = self.fetch(self.query, ["research"], session=self.session, proxy=self.proxy, timeout=self.timeout)
+
+        self._research = data.get("researchReports", [])
+        self._response = data
+        self._all["research"] = self._research
+        return self.research
+
+    def search_nav(self) -> 'list':
+        """Search using the query parameters defined in the constructor, but only return the navigation links."""
+        self._logger.debug(f'{self.query}: Fields: [nav]')
+        data = self.fetch(self.query, ["nav"], session=self.session, proxy=self.proxy, timeout=self.timeout)
+
+        self._nav = data.get("nav", [])
+        self._response = data
+        self._all["nav"] = self._nav
+        return self.nav
 
     @property
     def quotes(self) -> 'list':
