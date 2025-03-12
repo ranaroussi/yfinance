@@ -614,11 +614,11 @@ class Quote:
 
         query1_info = {}
         for quote in ["quoteSummary", "quoteResponse"]:
-            if quote in result:
+            if quote in result and len(result[quote]["result"]) > 0:
                 result[quote]["result"][0]["symbol"] = self._symbol
                 query_info = next(
                     (info for info in result.get(quote, {}).get("result", [])
-                     if info["symbol"] == self._symbol),
+                    if info["symbol"] == self._symbol),
                     None,
                 )
                 if query_info:
