@@ -29,6 +29,7 @@ from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
 from .domain.market import Market
+from .data import YfData, URLS
 
 from .screener.query import EquityQuery, FundQuery
 from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
@@ -37,8 +38,37 @@ __version__ = version.version
 __author__ = "Ran Aroussi"
 
 import warnings
-warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
+warnings.filterwarnings("default", category=DeprecationWarning, module="^yfinance")
 
-__all__ = ['download', 'Market', 'Search', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location', 'Sector', 'Industry']
+__all__ = ["download", "Market", "Search", "Ticker", "Tickers", "enable_debug_mode", "set_tz_cache_location", "Sector", "Industry"]
 # screener stuff:
-__all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
+__all__ += ["EquityQuery", "FundQuery", "screen", "PREDEFINED_SCREENER_QUERIES"]
+
+def set_config(
+    proxy: 'str' = None,
+    timeout: 'int' =  None,
+    lang: 'str' =  None,
+    region: 'str' =  None,
+    session =  None,
+    url: 'str' = None
+):
+    return YfData.set_config(proxy, timeout, lang, region, session, url)
+
+def reset_config(
+    proxy : 'bool' = True,
+    timeout: 'bool' =  True,
+    lang : 'bool' =  True,
+    region : 'bool' =  True,
+    session:'bool' =  True,
+    url : 'bool' = True
+):
+    return YfData.reset_config(
+        proxy,
+        timeout,
+        lang,
+        region,
+        session,
+        url
+    )
+# Config stuff:
+__all__ += ["set_config", "reset_config", "YfData", "URLS"]
