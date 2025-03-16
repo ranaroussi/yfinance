@@ -630,7 +630,7 @@ class TickerBase:
             return None
 
         # Calculate earnings date
-        df['Earnings Date'] = pd.to_datetime(df['Event Start Date']).dt.normalize()
+        df['Earnings Date'] = pd.to_datetime(df['Event Start Date'])
         tz = self._get_ticker_tz(proxy=proxy, timeout=30)
         if df['Earnings Date'].dt.tz is None:
             df['Earnings Date'] = df['Earnings Date'].dt.tz_localize(tz)
