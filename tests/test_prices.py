@@ -453,6 +453,59 @@ class TestPriceHistory(unittest.TestCase):
 
         dat.history(start=start, end=end, interval=interval)
 
+    def test_get_history_metadata(self):
+        tkrs = ["AAPL", "INTC", "FORTUM.HE"]
+        periods = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
+
+        for tkr in tkrs:
+            metadata = yf.Ticker(tkr).get_history_metadata()
+            # Check that tradingPeriods were returned
+            self.assertTrue('tradingPeriods' in metadata)
+            self.assertTrue(len(metadata['tradingPeriods']) > 0)
+            for prd in periods:
+                self.assertIsInstance(metadata['tradingPeriods'][prd].iloc[0], _pd.Timestamp, f"Trading period {prd} is not a Timestap.")
+
+    def test_get_dividends(self):
+        tkrs = ["AAPL", "INTC"]
+
+        for tkr in tkrs:
+            df = yf.Ticker(tkr).get_dividends()
+            # Check that dividends were returned
+            self.assertEqual('Dividends', df.name, "Name doesn't match with Dividends")
+            self.assertEqual('float64', df.dtype, "Value is not float64")
+            self.assertTrue(len(df) > 0)
+
+    def test_get_capital_gains(self):
+        tkrs = ["FXAIX"]
+
+        for tkr in tkrs:
+            df = yf.Ticker(tkr).get_capital_gains()
+            # Check that capital gains were returned
+            self.assertEqual('Capital Gains', df.name, "Name doesn't match with Capital Gains")
+            self.assertEqual('float64', df.dtype, "Value is not float64")
+            self.assertTrue(len(df) > 0)
+
+    def test_get_splits(self):
+        tkrs = ["AAPL", "INTC"]
+
+        for tkr in tkrs:
+            df = yf.Ticker(tkr).get_splits()
+            # Check that splits were returned
+            self.assertEqual('Stock Splits', df.name, "Name doesn't match with Stock Splits")
+            self.assertEqual('float64', df.dtype, "Value is not float64")
+            self.assertTrue(len(df) > 0)
+
+    def test_get_actions(self):
+        tkrs = [["FXAIX", ['Dividends', 'Stock Splits', 'Capital Gains']], 
+                ["AAPL", ['Dividends', 'Stock Splits']]]
+
+        for tkr in tkrs:
+            df = yf.Ticker(tkr[0]).get_actions()
+            # Check that Dividends, Stock Splits and Capital Gains were returned
+            for column in tkr[1]:
+                self.assertTrue(column, df)
+            self.assertEqual('float64', df.iloc[0].dtype, "Value is not float64")
+            self.assertTrue(len(df) > 0)
 
 if __name__ == '__main__':
     unittest.main()
