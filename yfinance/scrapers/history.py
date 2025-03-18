@@ -19,7 +19,7 @@ class PriceHistory:
         self.proxy = proxy
         self.session = session
 
-        self._history = None
+        self._history_cache = {}
         self._history_metadata = None
         self._history_metadata_formatted = False
 
@@ -439,8 +439,6 @@ class PriceHistory:
         else:
             df.index.name = "Date"
 
-        self._history = df.copy()
-
         # missing rows cleanup
         if not actions:
             df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
@@ -465,10 +463,19 @@ class PriceHistory:
             self._reconstruct_start_interval = None
         return df
 
+    def _get_history_cache(self, period="max", interval="1d", proxy=None) -> pd.DataFrame:
+        cache_key = (interval, period)
+        if cache_key in self._history_cache:
+            return self._history_cache[cache_key]
+
+        df = self.history(period=period, interval=interval, prepost=True, proxy=proxy)
+        self._history_cache[cache_key] = df
+        return df
+
     def get_history_metadata(self, proxy=None) -> dict:
-        if self._history_metadata is None:
-            # Request intraday data, because then Yahoo returns exchange schedule.
-            self.history(period="5d", interval="1h", prepost=True, proxy=proxy)
+        if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
+            # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
+            self._get_history_cache(period="5d", interval="1h", proxy=proxy)
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
@@ -476,38 +483,40 @@ class PriceHistory:
 
         return self._history_metadata
 
-    def get_dividends(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history:
-            dividends = self._history["Dividends"]
+    def get_dividends(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+        if "Dividends" in df.columns:
+            dividends = df["Dividends"]
             return dividends[dividends != 0]
         return pd.Series()
 
-    def get_capital_gains(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Capital Gains" in self._history:
-            capital_gains = self._history["Capital Gains"]
+    def get_capital_gains(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+        if "Capital Gains" in df.columns:
+            capital_gains = df["Capital Gains"]
             return capital_gains[capital_gains != 0]
         return pd.Series()
 
-    def get_splits(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Stock Splits" in self._history:
-            splits = self._history["Stock Splits"]
+    def get_splits(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+        if "Stock Splits" in df.columns:
+            splits = df["Stock Splits"]
             return splits[splits != 0]
         return pd.Series()
 
-    def get_actions(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
-            action_columns = ["Dividends", "Stock Splits"]
-            if "Capital Gains" in self._history:
-                action_columns.append("Capital Gains")
-            actions = self._history[action_columns]
+    def get_actions(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+
+        action_columns = []
+        if "Dividends" in df.columns:
+            action_columns.append("Dividends")
+        if "Stock Splits" in df.columns:
+            action_columns.append("Stock Splits")
+        if "Capital Gains" in df.columns:
+            action_columns.append("Capital Gains")
+
+        if action_columns:
+            actions = df[action_columns]
             return actions[actions != 0].dropna(how='all').fillna(0)
         return pd.Series()
 
