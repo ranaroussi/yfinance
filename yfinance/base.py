@@ -43,6 +43,8 @@ from .scrapers.funds import FundsData
 from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
 
 
+_tz_info_fetch_ctr = 0
+
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=None):
         self.ticker = ticker.upper()
@@ -100,9 +102,19 @@ class TickerBase:
 
         if tz is None:
             tz = self._fetch_ticker_tz(proxy, timeout)
-
+            if tz is None:
+                # _fetch_ticker_tz works in 99.999% of cases.
+                # For rare fail get from info.
+                global _tz_info_fetch_ctr
+                if _tz_info_fetch_ctr < 2:
+                    # ... but limit. If _fetch_ticker_tz() always
+                    # failing then bigger problem.
+                    _tz_info_fetch_ctr += 1
+                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
+                        if k in self.info:
+                            tz = self.info[k]
+                            break
             if utils.is_valid_timezone(tz):
-                # info fetch is relatively slow so cache timezone
                 c.store(self.ticker, tz)
             else:
                 tz = None
