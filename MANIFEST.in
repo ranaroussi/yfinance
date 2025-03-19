@@ -3,3 +3,7 @@ include LICENSE.txt
 
 # Include the data files
 recursive-include data *
+
+# Include protobuf files
+include yfinance/pricing.proto
+include yfinance/pricing_pb2.py
