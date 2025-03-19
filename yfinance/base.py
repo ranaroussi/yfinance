@@ -428,17 +428,17 @@ class TickerBase:
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(proxy, as_dict, pretty, freq)
 
-    def get_dividends(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_dividends(proxy)
+    def get_dividends(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_dividends(period=period, proxy=proxy)
 
-    def get_capital_gains(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_capital_gains(proxy)
+    def get_capital_gains(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_capital_gains(period=period, proxy=proxy)
 
-    def get_splits(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_splits(proxy)
+    def get_splits(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_splits(period=period, proxy=proxy)
 
-    def get_actions(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_actions(proxy)
+    def get_actions(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_actions(period=period, proxy=proxy)
 
     def get_shares(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._fundamentals.proxy = proxy or self.proxy
