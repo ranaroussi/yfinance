@@ -46,7 +46,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="yfinance.Ticker.earnings" href="yfinance.Ticker.earnings.html" />
-    <link rel="prev" title="yfinance.Ticker.cashflow" href="yfinance.Ticker.cashflow.html" />
+    <link rel="prev" title="yfinance.Ticker.ttm_cashflow" href="yfinance.Ticker.ttm_cashflow.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -364,10 +364,14 @@ document.write(`
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.financials.html">Financials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.quarterly_income_stmt.html">yfinance.Ticker.quarterly_income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.ttm_income_stmt.html">yfinance.Ticker.ttm_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_balance_sheet.html">yfinance.Ticker.get_balance_sheet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.balance_sheet.html">yfinance.Ticker.balance_sheet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_cashflow.html">yfinance.Ticker.get_cashflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.cashflow.html">yfinance.Ticker.cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.quarterly_cashflow.html">yfinance.Ticker.quarterly_cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.ttm_cashflow.html">yfinance.Ticker.ttm_cashflow</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">yfinance.Ticker.get_earnings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.earnings.html">yfinance.Ticker.earnings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.calendar.html">yfinance.Ticker.calendar</a></li>
@@ -517,7 +521,7 @@ document.write(`
 <dt>as_dict: bool</dt><dd><p>Return table as Python dict
 Default is False</p>
 </dd>
-<dt>freq: str</dt><dd><p>“yearly” or “quarterly”
+<dt>freq: str</dt><dd><p>“yearly” or “quarterly” or “trailing”
 Default is “yearly”</p>
 </dd>
 <dt>proxy: str</dt><dd><p>Optional. Proxy server URL scheme
@@ -541,12 +545,12 @@ Default is None</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="yfinance.Ticker.cashflow.html"
+       href="yfinance.Ticker.ttm_cashflow.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">yfinance.Ticker.cashflow</p>
+        <p class="prev-next-title">yfinance.Ticker.ttm_cashflow</p>
       </div>
     </a>
     <a class="right-next"

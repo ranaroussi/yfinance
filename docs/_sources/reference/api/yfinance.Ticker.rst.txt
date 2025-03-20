@@ -108,6 +108,16 @@ Ticker
       :noindex:
    .. autoattribute:: sustainability
       :noindex:
+   .. autoattribute:: ttm_cash_flow
+      :noindex:
+   .. autoattribute:: ttm_cashflow
+      :noindex:
+   .. autoattribute:: ttm_financials
+      :noindex:
+   .. autoattribute:: ttm_income_stmt
+      :noindex:
+   .. autoattribute:: ttm_incomestmt
+      :noindex:
    .. autoattribute:: upgrades_downgrades
       :noindex:
    

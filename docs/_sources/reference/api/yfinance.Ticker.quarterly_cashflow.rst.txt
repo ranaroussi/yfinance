@@ -1,0 +1,6 @@
+﻿yfinance.Ticker.quarterly\_cashflow
+===================================
+
+.. currentmodule:: yfinance
+
+.. autoproperty:: Ticker.quarterly_cashflow

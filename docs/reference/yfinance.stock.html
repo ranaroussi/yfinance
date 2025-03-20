@@ -364,10 +364,14 @@ document.write(`
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.quarterly_income_stmt.html">yfinance.Ticker.quarterly_income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.ttm_income_stmt.html">yfinance.Ticker.ttm_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_balance_sheet.html">yfinance.Ticker.get_balance_sheet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.balance_sheet.html">yfinance.Ticker.balance_sheet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_cashflow.html">yfinance.Ticker.get_cashflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.cashflow.html">yfinance.Ticker.cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.quarterly_cashflow.html">yfinance.Ticker.quarterly_cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.ttm_cashflow.html">yfinance.Ticker.ttm_cashflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_earnings.html">yfinance.Ticker.get_earnings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.earnings.html">yfinance.Ticker.earnings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.calendar.html">yfinance.Ticker.calendar</a></li>
@@ -533,25 +537,25 @@ document.write(`
 <tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_history_metadata.html#yfinance.Ticker.get_history_metadata" title="yfinance.Ticker.get_history_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_history_metadata</span></code></a>([proxy])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_dividends.html#yfinance.Ticker.get_dividends" title="yfinance.Ticker.get_dividends"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_dividends</span></code></a>([proxy])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_dividends.html#yfinance.Ticker.get_dividends" title="yfinance.Ticker.get_dividends"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_dividends</span></code></a>([proxy, period])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.dividends.html#yfinance.Ticker.dividends" title="yfinance.Ticker.dividends"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dividends</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_splits.html#yfinance.Ticker.get_splits" title="yfinance.Ticker.get_splits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_splits</span></code></a>([proxy])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_splits.html#yfinance.Ticker.get_splits" title="yfinance.Ticker.get_splits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_splits</span></code></a>([proxy, period])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.splits.html#yfinance.Ticker.splits" title="yfinance.Ticker.splits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">splits</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_actions.html#yfinance.Ticker.get_actions" title="yfinance.Ticker.get_actions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_actions</span></code></a>([proxy])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_actions.html#yfinance.Ticker.get_actions" title="yfinance.Ticker.get_actions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_actions</span></code></a>([proxy, period])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.actions.html#yfinance.Ticker.actions" title="yfinance.Ticker.actions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">actions</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_capital_gains.html#yfinance.Ticker.get_capital_gains" title="yfinance.Ticker.get_capital_gains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_capital_gains</span></code></a>([proxy])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_capital_gains.html#yfinance.Ticker.get_capital_gains" title="yfinance.Ticker.get_capital_gains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_capital_gains</span></code></a>([proxy, period])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.capital_gains.html#yfinance.Ticker.capital_gains" title="yfinance.Ticker.capital_gains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capital_gains</span></code></a></p></td>
