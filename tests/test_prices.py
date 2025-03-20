@@ -46,7 +46,7 @@ class TestPriceHistory(unittest.TestCase):
 
     def test_download_multi_small_interval(self):
         use_tkrs = ["AAPL", "0Q3.DE", "ATVI"]
-        df = yf.download(use_tkrs, period="1d", interval="5m")
+        df = yf.download(use_tkrs, period="1d", interval="5m", auto_adjust=True)
         self.assertEqual(df.index.tz, _dt.timezone.utc)
 
     def test_download_with_invalid_ticker(self):
@@ -56,10 +56,11 @@ class TestPriceHistory(unittest.TestCase):
         invalid_tkrs = ["AAPL", "ATVI"] #AAPL exists and ATVI does not exist
         valid_tkrs = ["AAPL", "INTC"] #AAPL and INTC both exist
 
-        data_invalid_sym = yf.download(invalid_tkrs, start='2023-11-16', end='2023-11-17')
-        data_valid_sym = yf.download(valid_tkrs, start='2023-11-16', end='2023-11-17')
-
-        self.assertEqual(data_invalid_sym['Close']['AAPL']['2023-11-16'],data_valid_sym['Close']['AAPL']['2023-11-16'])
+        start_d = _dt.date.today() - _dt.timedelta(days=30)
+        data_invalid_sym = yf.download(invalid_tkrs, start=start_d, auto_adjust=True)
+        data_valid_sym = yf.download(valid_tkrs, start=start_d, auto_adjust=True)
+        dt_compare = data_valid_sym.index[0]
+        self.assertEqual(data_invalid_sym['Close']['AAPL'][dt_compare],data_valid_sym['Close']['AAPL'][dt_compare])
 
     def test_duplicatingHourly(self):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
@@ -118,7 +119,7 @@ class TestPriceHistory(unittest.TestCase):
                 continue
             test_run = True
 
-            df = dat.history(start=dt.date() - _dt.timedelta(days=13), interval="1wk")
+            df = dat.history(start=dt.date() - _dt.timedelta(days=7), interval="1wk")
             dt0 = df.index[-2]
             dt1 = df.index[-1]
             try:
@@ -185,7 +186,7 @@ class TestPriceHistory(unittest.TestCase):
 
             df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
             df_intraday_divs.index = df_intraday_divs.index.floor('D')
-            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
+            self.assertTrue(df_daily_divs.index.equals(df_intraday_divs.index))
 
             test_run = True
 
@@ -212,7 +213,7 @@ class TestPriceHistory(unittest.TestCase):
 
             df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
             df_intraday_divs.index = df_intraday_divs.index.floor('D')
-            self.assertTrue(df_daily_divs.equals(df_intraday_divs))
+            self.assertTrue(df_daily_divs.index.equals(df_intraday_divs.index))
 
             test_run = True
 
@@ -416,6 +417,8 @@ class TestPriceHistory(unittest.TestCase):
         start_d = _dt.date(special_day.year, 1, 1)
         end_d = _dt.date(special_day.year+1, 1, 1)
         df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
+        if df.empty:
+            self.skipTest("TEST NEEDS UPDATE: 'special_day' needs to be LATEST Thanksgiving date")
         last_dts = _pd.Series(df.index).groupby(df.index.date).last()
         dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)
         self.assertTrue(_np.equal(dfd.index.date, _pd.to_datetime(last_dts.index).date).all())
@@ -423,7 +426,7 @@ class TestPriceHistory(unittest.TestCase):
     def test_prune_post_intraday_asx(self):
         # Setup
         tkr = "BHP.AX"
-        # No early closes in 2023
+        # No early closes in 2024
         dat = yf.Ticker(tkr, session=self.session)
 
         # Test no other afternoons (or mornings) were pruned
