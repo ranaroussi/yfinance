@@ -73,12 +73,15 @@ class Financials:
         # despite 'QuoteSummaryStore' containing valid data.
 
         allowed_names = ["income", "balance-sheet", "cash-flow"]
-        allowed_timescales = ["yearly", "quarterly"]
+        allowed_timescales = ["yearly", "quarterly", "trailing"]
 
         if name not in allowed_names:
             raise ValueError(f"Illegal argument: name must be one of: {allowed_names}")
         if timescale not in allowed_timescales:
             raise ValueError(f"Illegal argument: timescale must be one of: {allowed_timescales}")
+        if timescale == "trailing" and name not in ('income', 'cash-flow'):
+            raise ValueError("Illegal argument: frequency 'trailing'" +
+                             " only available for cash-flow or income data.")
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
@@ -102,7 +105,7 @@ class Financials:
             pass
 
     def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
-        timescale_translation = {"yearly": "annual", "quarterly": "quarterly"}
+        timescale_translation = {"yearly": "annual", "quarterly": "quarterly", "trailing": "trailing"}
         timescale = timescale_translation[timescale]
 
         # Step 2: construct url:
@@ -144,5 +147,9 @@ class Financials:
         # Reorder table to match order on Yahoo website
         df = df.reindex([k for k in keys if k in df.index])
         df = df[sorted(df.columns, reverse=True)]
+
+        # Trailing 12 months return only the first column.
+        if (timescale == "trailing"):
+            df = df.iloc[:, [0]]
 
         return df

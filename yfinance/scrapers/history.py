@@ -19,7 +19,7 @@ class PriceHistory:
         self.proxy = proxy
         self.session = session
 
-        self._history = None
+        self._history_cache = {}
         self._history_metadata = None
         self._history_metadata_formatted = False
 
@@ -439,8 +439,6 @@ class PriceHistory:
         else:
             df.index.name = "Date"
 
-        self._history = df.copy()
-
         # missing rows cleanup
         if not actions:
             df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
@@ -465,10 +463,19 @@ class PriceHistory:
             self._reconstruct_start_interval = None
         return df
 
+    def _get_history_cache(self, period="max", interval="1d", proxy=None) -> pd.DataFrame:
+        cache_key = (interval, period)
+        if cache_key in self._history_cache:
+            return self._history_cache[cache_key]
+
+        df = self.history(period=period, interval=interval, prepost=True, proxy=proxy)
+        self._history_cache[cache_key] = df
+        return df
+
     def get_history_metadata(self, proxy=None) -> dict:
-        if self._history_metadata is None:
-            # Request intraday data, because then Yahoo returns exchange schedule.
-            self.history(period="5d", interval="1h", prepost=True, proxy=proxy)
+        if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
+            # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
+            self._get_history_cache(period="5d", interval="1h", proxy=proxy)
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
@@ -476,38 +483,40 @@ class PriceHistory:
 
         return self._history_metadata
 
-    def get_dividends(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history:
-            dividends = self._history["Dividends"]
+    def get_dividends(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+        if "Dividends" in df.columns:
+            dividends = df["Dividends"]
             return dividends[dividends != 0]
         return pd.Series()
 
-    def get_capital_gains(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Capital Gains" in self._history:
-            capital_gains = self._history["Capital Gains"]
+    def get_capital_gains(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+        if "Capital Gains" in df.columns:
+            capital_gains = df["Capital Gains"]
             return capital_gains[capital_gains != 0]
         return pd.Series()
 
-    def get_splits(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Stock Splits" in self._history:
-            splits = self._history["Stock Splits"]
+    def get_splits(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+        if "Stock Splits" in df.columns:
+            splits = df["Stock Splits"]
             return splits[splits != 0]
         return pd.Series()
 
-    def get_actions(self, proxy=None) -> pd.Series:
-        if self._history is None:
-            self.history(period="max", proxy=proxy)
-        if self._history is not None and "Dividends" in self._history and "Stock Splits" in self._history:
-            action_columns = ["Dividends", "Stock Splits"]
-            if "Capital Gains" in self._history:
-                action_columns.append("Capital Gains")
-            actions = self._history[action_columns]
+    def get_actions(self, period="max", proxy=None) -> pd.Series:
+        df = self._get_history_cache(period=period, proxy=proxy)
+
+        action_columns = []
+        if "Dividends" in df.columns:
+            action_columns.append("Dividends")
+        if "Stock Splits" in df.columns:
+            action_columns.append("Stock Splits")
+        if "Capital Gains" in df.columns:
+            action_columns.append("Capital Gains")
+
+        if action_columns:
+            actions = df[action_columns]
             return actions[actions != 0].dropna(how='all').fillna(0)
         return pd.Series()
 
@@ -1980,6 +1989,38 @@ class PriceHistory:
                     # Fine, these should be rare
                     continue
 
+        if 'div_too_big' in checks and 'div_exceeds_adj' in checks:
+            c = "adj_too_small"
+            div_status_df[c] = False
+            for i in range(len(div_status_df)):
+                dt = div_status_df.index[i]
+                row = div_status_df.iloc[i]
+                if row['div_too_big'] and row['div_exceeds_adj']:
+                    # Check if div_too_big AND adj-too-small-for-prices
+                    div_yield = row['div']
+                    pct = row['%']
+                    close = div_yield/pct
+                    adj_present = row['present adj']
+                    implied_div_yield = (1-adj_present)*close
+                    ratio = div_yield/implied_div_yield
+                    also_correct_adj = abs(ratio-(currency_divide*currency_divide)) < currency_divide
+                    if also_correct_adj:
+                        div_status_df.loc[dt, c] = True
+            if not div_status_df[c].any():
+                div_status_df = div_status_df.drop(c, axis=1)
+            else:
+                checks.append(c)
+
+        if 'div_too_big_and_pre_split' in div_status_df.columns:
+            for c in ['div_too_big', 'div_pre_split']:
+                if c in div_status_df:
+                    div_status_df[c] = div_status_df[c] | div_status_df['div_too_big_and_pre_split']
+                else:
+                    div_status_df[c] = div_status_df['div_too_big_and_pre_split']
+                    checks.append(c)
+            div_status_df = div_status_df.drop('div_too_big_and_pre_split', axis=1)
+            checks.remove('div_too_big_and_pre_split')
+
         div_status_df = div_status_df.sort_index()
 
         # Discard dividends with no problems
@@ -2011,6 +2052,7 @@ class PriceHistory:
                 # div_too_small_and_pre_split = 'div_too_small_and_pre_split' in row and row['div_too_small_and_pre_split']  # not happened yet
                 # div_too_big_and_pre_split = 'div_too_big_and_pre_split' in row and row['div_too_big_and_pre_split']  # not happened yet
                 div_date_wrong = 'div_date_wrong' in row and row['div_date_wrong']
+                adj_too_small = 'adj_too_small' in row and row['adj_too_small']
                 n_failed_checks = np.sum([row[c] for c in checks if c in row])
 
                 if div_too_big and adj_exceeds_prices and n_failed_checks == 2:
@@ -2176,23 +2218,13 @@ class PriceHistory:
                         cluster.loc[dt, 'Fixed?'] = True
 
                     elif div_too_big and div_exceeds_adj:
+                        div = row['div']
+                        close = div/row['%']
+                        adj_present = row['present adj']
                         # Adj Close is correct, just need to fix Dividend.
                         # Probably just a currency unit mixup.
                         df2.loc[dt, 'Dividends'] /= currency_divide
-                        k = 'too-big div'
-                        if 'FX was repaired' in row and row['FX was repaired']:
-                            # Complication: not just a currency unit mixup, but
-                            # mixed up the local currency with $. So need to 
-                            # recalculate adjustment.
-                            msg = None
-                            div_adj = 1.0 - (row['%']/currency_divide)
-                            adj_correction = div_adj / row['present adj']
-                            df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                            df2.loc[    :enddt, 'Repaired?'] = True
-                            df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                            df2_nan.loc[:enddt, 'Repaired?'] = True
-                            # Currently not logging this FX-fix event, since I refactored fixing.
-                            k += " and FX mixup"
+                        k = 'div-too-big'
                         div_repairs.setdefault(k, []).append(dt)
                         cluster.loc[dt, 'Fixed?'] = True
 
@@ -2210,6 +2242,27 @@ class PriceHistory:
                         df2.loc[    :enddt, 'Repaired?'] = True
                         df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
                         df2_nan.loc[:enddt, 'Repaired?'] = True
+                        cluster.loc[dt, 'Fixed?'] = True
+
+                    elif div_too_small and adj_exceeds_div:
+                        # Adj Close is correct, just need to fix Dividend.
+                        # Probably just a currency unit mixup.
+                        df2.loc[dt, 'Dividends'] *= currency_divide
+                        k = 'too-small div'
+                        if 'FX was repaired' in row and row['FX was repaired']:
+                            # Complication: not just a currency unit mixup, but
+                            # mixed up the local currency with $. So need to 
+                            # recalculate adjustment.
+                            msg = None
+                            div_adj = 1.0 - (row['%']*currency_divide)
+                            adj_correction = div_adj / row['present adj']
+                            df2.loc[    :enddt, 'Adj Close'] *= adj_correction
+                            df2.loc[    :enddt, 'Repaired?'] = True
+                            df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
+                            df2_nan.loc[:enddt, 'Repaired?'] = True
+                            # Currently not logging this FX-fix event, since I refactored fixing.
+                            k += " and FX mixup"
+                        div_repairs.setdefault(k, []).append(dt)
                         cluster.loc[dt, 'Fixed?'] = True
 
                 elif n_failed_checks == 3:
@@ -2231,6 +2284,27 @@ class PriceHistory:
                         df2_nan.loc[:enddt, 'Repaired?'] = True
                         cluster.loc[dt, 'Fixed?'] = True
                         div_repairs.setdefault(k, []).append(dt)
+
+                    elif div_too_big and div_exceeds_adj and adj_too_small:
+                        # Need to fix dividend AND adj close.
+                        # Probably just a currency unit mixup.
+                        div = row['div']
+                        close = div/row['%']
+                        adj_present = row['present adj']
+                        k = 'div-too-big and adj-too-small'
+                        #
+                        div_true = div/currency_divide
+                        pct_true = div_true / close
+                        df2.loc[dt, 'Dividends'] = div_true
+                        #
+                        adj_correct = 1.0 - pct_true
+                        adj_correction = adj_correct / adj_present
+                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
+                        df2.loc[    :enddt, 'Repaired?'] = True
+                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
+                        df2_nan.loc[:enddt, 'Repaired?'] = True
+                        div_repairs.setdefault(k, []).append(dt)
+                        cluster.loc[dt, 'Fixed?'] = True
 
             if cluster.empty:
                 continue
@@ -2395,7 +2469,12 @@ class PriceHistory:
 
         # Update: if a VERY large dividend is paid out, then can be mistaken for a 1:2 stock split.
         # Fix = use adjusted prices
-        adj = df2['Adj Close'].to_numpy() / df2['Close'].to_numpy()
+        f_zero = df2['Close'] == 0
+        if f_zero.any():
+            adj = np.ones(len(df2))
+            adj[~f_zero] = df2['Adj Close'].to_numpy()[~f_zero] / df2['Close'].to_numpy()[~f_zero]
+        else:
+            adj = df2['Adj Close'].to_numpy() / df2['Close'].to_numpy()
         df_dtype = price_data.dtype
         if df_dtype == np.int64:
             price_data = price_data.astype('float')
@@ -2564,7 +2643,13 @@ class PriceHistory:
                     threshold = _dateutil.relativedelta.relativedelta(days=threshold_days)
                 else:
                     threshold = _datetime.timedelta(days=threshold_days)
-                if gap_td < threshold:
+                if isinstance(threshold, _dateutil.relativedelta.relativedelta) and isinstance(gap_td, _dateutil.relativedelta.relativedelta):
+                    idx = np.where(gaps==gap_min)[0][0]
+                    dt = df2.index[idx]
+                    within_threshold = (dt + gap_td) < (dt + threshold)
+                else:
+                    within_threshold = gap_td < threshold
+                if within_threshold:
                     logger.info('100x changes are too soon after stock split events, aborting', extra=log_extras)
                     return df
 

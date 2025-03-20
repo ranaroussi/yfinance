@@ -43,6 +43,8 @@ from .scrapers.funds import FundsData
 from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
 
 
+_tz_info_fetch_ctr = 0
+
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=None):
         self.ticker = ticker.upper()
@@ -100,9 +102,19 @@ class TickerBase:
 
         if tz is None:
             tz = self._fetch_ticker_tz(proxy, timeout)
-
+            if tz is None:
+                # _fetch_ticker_tz works in 99.999% of cases.
+                # For rare fail get from info.
+                global _tz_info_fetch_ctr
+                if _tz_info_fetch_ctr < 2:
+                    # ... but limit. If _fetch_ticker_tz() always
+                    # failing then bigger problem.
+                    _tz_info_fetch_ctr += 1
+                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
+                        if k in self.info:
+                            tz = self.info[k]
+                            break
             if utils.is_valid_timezone(tz):
-                # info fetch is relatively slow so cache timezone
                 c.store(self.ticker, tz)
             else:
                 tz = None
@@ -318,7 +330,7 @@ class TickerBase:
                 Return table as Python dict
                 Default is False
             freq: str
-                "yearly" or "quarterly"
+                "yearly" or "quarterly" or "trailing"
                 Default is "yearly"
             proxy: str
                 Optional. Proxy server URL scheme
@@ -345,7 +357,7 @@ class TickerBase:
                 Format row names nicely for readability
                 Default is False
             freq: str
-                "yearly" or "quarterly"
+                "yearly" or "quarterly" or "trailing"
                 Default is "yearly"
             proxy: str
                 Optional. Proxy server URL scheme
@@ -428,17 +440,17 @@ class TickerBase:
     def get_cashflow(self, proxy=None, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(proxy, as_dict, pretty, freq)
 
-    def get_dividends(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_dividends(proxy)
+    def get_dividends(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_dividends(period=period, proxy=proxy)
 
-    def get_capital_gains(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_capital_gains(proxy)
+    def get_capital_gains(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_capital_gains(period=period, proxy=proxy)
 
-    def get_splits(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_splits(proxy)
+    def get_splits(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_splits(period=period, proxy=proxy)
 
-    def get_actions(self, proxy=None) -> pd.Series:
-        return self._lazy_load_price_history().get_actions(proxy)
+    def get_actions(self, proxy=None, period="max") -> pd.Series:
+        return self._lazy_load_price_history().get_actions(period=period, proxy=proxy)
 
     def get_shares(self, proxy=None, as_dict=False) -> Union[pd.DataFrame, dict]:
         self._fundamentals.proxy = proxy or self.proxy
@@ -630,7 +642,7 @@ class TickerBase:
             return None
 
         # Calculate earnings date
-        df['Earnings Date'] = pd.to_datetime(df['Event Start Date']).dt.normalize()
+        df['Earnings Date'] = pd.to_datetime(df['Event Start Date'])
         tz = self._get_ticker_tz(proxy=proxy, timeout=30)
         if df['Earnings Date'].dt.tz is None:
             df['Earnings Date'] = df['Earnings Date'].dt.tz_localize(tz)

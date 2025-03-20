@@ -77,6 +77,8 @@ class YfData(metaclass=SingletonMeta):
 
         self._set_session(session or requests.Session())
 
+        utils.get_yf_logger().debug(f"Using User-Agent: {self.user_agent_headers['User-Agent']}")
+
     def _set_session(self, session):
         if session is None:
             return
