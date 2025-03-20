@@ -1,6 +1,19 @@
 Change Log
 ===========
 
+0.2.55
+------
+Features
+- TTM financials #2321
+Fixes
+- info IndexError #2354
+- earnings dates TZ #2366
+- price repair tweaks & fixes #2368
+- history caching #2345
+- backup fetch TZ from info #2369
+Maintenance
+- log user agent #2326
+
 0.2.54
 ------
 Hotfix user-agent #2277
