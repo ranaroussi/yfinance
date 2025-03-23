@@ -249,9 +249,16 @@ class PriceHistory:
                 self._reconstruct_start_interval = None
             return utils.empty_df()
 
+        # Select useful info from metadata
+        quote_type = self._history_metadata["instrumentType"]
+        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
+        tz_exchange = self._history_metadata["exchangeTimezoneName"]
+        currency = self._history_metadata["currency"]
+
         # Process custom periods
         if period and period not in self._history_metadata.get("validRanges", []):
             end = int(_time.time())
+            end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
             start = _datetime.date.fromtimestamp(end)
             start -= utils._interval_to_timedelta(period)
             start -= _datetime.timedelta(days=4)
@@ -260,9 +267,8 @@ class PriceHistory:
         quotes = utils.parse_quotes(data["chart"]["result"][0])
         # Yahoo bug fix - it often appends latest price even if after end date
         if end and not quotes.empty:
-            endDt = pd.to_datetime(end, unit='s')
-            if quotes.index[quotes.shape[0] - 1] >= endDt:
-                quotes = quotes.iloc[0:quotes.shape[0] - 1]
+            if quotes.index[-1] >= end_dt.tz_convert('UTC').tz_localize(None):
+                quotes = quotes.drop(quotes.index[-1])
         if quotes.empty:
             msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
         elif len(quotes) == 1:
@@ -288,12 +294,6 @@ class PriceHistory:
                 quotes['Stock Splits'] = quotes2['Stock Splits'].max()
             except Exception:
                 pass
-
-        # Select useful info from metadata
-        quote_type = self._history_metadata["instrumentType"]
-        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
-        tz_exchange = self._history_metadata["exchangeTimezoneName"]
-        currency = self._history_metadata["currency"]
 
         # Note: ordering is important. If you change order, run the tests!
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
@@ -327,21 +327,22 @@ class PriceHistory:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
         if start is not None:
             if not quotes.empty:
-                startDt = quotes.index[0].floor('D')
+                start_d = quotes.index[0].floor('D')
                 if dividends is not None:
-                    dividends = dividends.loc[startDt:]
+                    dividends = dividends.loc[start_d:]
                 if capital_gains is not None:
-                    capital_gains = capital_gains.loc[startDt:]
+                    capital_gains = capital_gains.loc[start_d:]
                 if splits is not None:
-                    splits = splits.loc[startDt:]
+                    splits = splits.loc[start_d:]
         if end is not None:
-            endDt = pd.Timestamp(end, unit='s').tz_localize(tz)
+            # -1 because date-slice end is inclusive
+            end_dt_sub1 = end_dt - pd.Timedelta(1)
             if dividends is not None:
-                dividends = dividends[dividends.index < endDt]
+                dividends = dividends[:end_dt_sub1]
             if capital_gains is not None:
-                capital_gains = capital_gains[capital_gains.index < endDt]
+                capital_gains = capital_gains[:end_dt_sub1]
             if splits is not None:
-                splits = splits[splits.index < endDt]
+                splits = splits[:end_dt_sub1]
 
         # Prepare for combine
         intraday = params["interval"][-1] in ("m", 'h')
