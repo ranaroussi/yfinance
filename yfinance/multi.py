@@ -24,6 +24,7 @@ from __future__ import print_function
 import logging
 import time as _time
 import traceback
+import signal
 from typing import Union
 
 import multitasking as _multitasking
@@ -33,6 +34,16 @@ from . import Ticker, utils
 from .data import YfData
 from . import shared
 
+# Add a flag to track if operation should be canceled
+shared._DOWNLOAD_CANCELLATION_FLAG = False
+
+def _handle_interrupt(signum, frame):
+    """Signal handler for keyboard interruption (Ctrl+C)"""
+    logger = utils.get_yf_logger()
+    logger.info("\nKeyboard interrupt detected, canceling downloads...")
+    shared._DOWNLOAD_CANCELLATION_FLAG = True
+    # Don't exit immediately, allow graceful shutdown
+    return
 
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True,
@@ -92,143 +103,178 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Always return a MultiIndex DataFrame? Default is True
     """
     logger = utils.get_yf_logger()
+    
+    # Reset cancellation flag
+    shared._DOWNLOAD_CANCELLATION_FLAG = False
+    
+    # Register signal handler for keyboard interrupt
+    original_sigint_handler = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, _handle_interrupt)
 
-    if auto_adjust is None:
-        # Warn users that default has changed to True
-        utils.print_once("YF.download() has changed argument auto_adjust default to True")
-        auto_adjust = True
+    try:
+        if auto_adjust is None:
+            # Warn users that default has changed to True
+            utils.print_once("YF.download() has changed argument auto_adjust default to True")
+            auto_adjust = True
 
-    if logger.isEnabledFor(logging.DEBUG):
-        if threads:
-            # With DEBUG, each thread generates a lot of log messages.
-            # And with multi-threading, these messages will be interleaved, bad!
-            # So disable multi-threading to make log readable.
-            logger.debug('Disabling multithreading because DEBUG logging enabled')
-            threads = False
+        if logger.isEnabledFor(logging.DEBUG):
+            if threads:
+                # With DEBUG, each thread generates a lot of log messages.
+                # And with multi-threading, these messages will be interleaved, bad!
+                # So disable multi-threading to make log readable.
+                logger.debug('Disabling multithreading because DEBUG logging enabled')
+                threads = False
+            if progress:
+                # Disable progress bar, interferes with display of log messages
+                progress = False
+
+        if ignore_tz is None:
+            # Set default value depending on interval
+            if interval[-1] in ['m', 'h']:
+                # Intraday
+                ignore_tz = False
+            else:
+                ignore_tz = True
+
+        # create ticker list
+        tickers = tickers if isinstance(
+            tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
+
+        # accept isin as ticker
+        shared._ISINS = {}
+        _tickers_ = []
+        for ticker in tickers:
+            if utils.is_isin(ticker):
+                isin = ticker
+                ticker = utils.get_ticker_by_isin(ticker, proxy, session=session)
+                shared._ISINS[ticker] = isin
+            _tickers_.append(ticker)
+
+        tickers = _tickers_
+
+        tickers = list(set([ticker.upper() for ticker in tickers]))
+
         if progress:
-            # Disable progress bar, interferes with display of log messages
-            progress = False
+            shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
 
-    if ignore_tz is None:
-        # Set default value depending on interval
-        if interval[-1] in ['m', 'h']:
-            # Intraday
-            ignore_tz = False
-        else:
-            ignore_tz = True
+        # reset shared._DFS
+        shared._DFS = {}
+        shared._ERRORS = {}
+        shared._TRACEBACKS = {}
 
-    # create ticker list
-    tickers = tickers if isinstance(
-        tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
+        # Ensure data initialised with session.
+        YfData(session=session)
 
-    # accept isin as ticker
-    shared._ISINS = {}
-    _tickers_ = []
-    for ticker in tickers:
-        if utils.is_isin(ticker):
-            isin = ticker
-            ticker = utils.get_ticker_by_isin(ticker, proxy, session=session)
-            shared._ISINS[ticker] = isin
-        _tickers_.append(ticker)
-
-    tickers = _tickers_
-
-    tickers = list(set([ticker.upper() for ticker in tickers]))
-
-    if progress:
-        shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
-
-    # reset shared._DFS
-    shared._DFS = {}
-    shared._ERRORS = {}
-    shared._TRACEBACKS = {}
-
-    # Ensure data initialised with session.
-    YfData(session=session)
-
-    # download using threads
-    if threads:
-        if threads is True:
-            threads = min([len(tickers), _multitasking.cpu_count() * 2])
-        _multitasking.set_max_threads(threads)
-        for i, ticker in enumerate(tickers):
-            _download_one_threaded(ticker, period=period, interval=interval,
+        # download using threads
+        if threads:
+            if threads is True:
+                threads = min([len(tickers), _multitasking.cpu_count() * 2])
+            _multitasking.set_max_threads(threads)
+            for i, ticker in enumerate(tickers):
+                if shared._DOWNLOAD_CANCELLATION_FLAG:
+                    logger.info("Download canceled by user")
+                    break
+                
+                _download_one_threaded(ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
                                    rounding=rounding, timeout=timeout)
-        while len(shared._DFS) < len(tickers):
-            _time.sleep(0.01)
-    # download synchronously
-    else:
-        for i, ticker in enumerate(tickers):
-            data = _download_one(ticker, period=period, interval=interval,
+            
+            # Wait for tasks to complete or cancellation
+            while len(shared._DFS) < len(tickers) and not shared._DOWNLOAD_CANCELLATION_FLAG:
+                _time.sleep(0.01)
+                
+        # download synchronously
+        else:
+            for i, ticker in enumerate(tickers):
+                if shared._DOWNLOAD_CANCELLATION_FLAG:
+                    logger.info("Download canceled by user")
+                    break
+                    
+                data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, repair=repair, keepna=keepna,
                                  proxy=proxy,
                                  rounding=rounding, timeout=timeout)
-            if progress:
-                shared._PROGRESS_BAR.animate()
+                if progress:
+                    shared._PROGRESS_BAR.animate()
 
-    if progress:
-        shared._PROGRESS_BAR.completed()
+        # If download was canceled, return what we have so far
+        if shared._DOWNLOAD_CANCELLATION_FLAG and progress:
+            shared._PROGRESS_BAR.completed()
+            logger.info("Returning partial data due to user cancellation")
+        
+        # Continue with data processing as normal
+        if progress:
+            shared._PROGRESS_BAR.completed()
 
-    if shared._ERRORS:
-        # Send errors to logging module
-        logger = utils.get_yf_logger()
-        logger.error('\n%.f Failed download%s:' % (
-            len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
+        if shared._ERRORS:
+            # Send errors to logging module
+            logger = utils.get_yf_logger()
+            logger.error('\n%.f Failed download%s:' % (
+                len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
 
-        # Log each distinct error once, with list of symbols affected
-        errors = {}
-        for ticker in shared._ERRORS:
-            err = shared._ERRORS[ticker]
-            err = err.replace(f'${ticker}: ', '')
-            if err not in errors:
-                errors[err] = [ticker]
-            else:
-                errors[err].append(ticker)
-        for err in errors.keys():
-            logger.error(f'{errors[err]}: ' + err)
+            # Log each distinct error once, with list of symbols affected
+            errors = {}
+            for ticker in shared._ERRORS:
+                err = shared._ERRORS[ticker]
+                err = err.replace(f'${ticker}: ', '')
+                if err not in errors:
+                    errors[err] = [ticker]
+                else:
+                    errors[err].append(ticker)
+            for err in errors.keys():
+                logger.error(f'{errors[err]}: ' + err)
 
-        # Log each distinct traceback once, with list of symbols affected
-        tbs = {}
-        for ticker in shared._TRACEBACKS:
-            tb = shared._TRACEBACKS[ticker]
-            tb = tb.replace(f'${ticker}: ', '')
-            if tb not in tbs:
-                tbs[tb] = [ticker]
-            else:
-                tbs[tb].append(ticker)
-        for tb in tbs.keys():
-            logger.debug(f'{tbs[tb]}: ' + tb)
+            # Log each distinct traceback once, with list of symbols affected
+            tbs = {}
+            for ticker in shared._TRACEBACKS:
+                tb = shared._TRACEBACKS[ticker]
+                tb = tb.replace(f'${ticker}: ', '')
+                if tb not in tbs:
+                    tbs[tb] = [ticker]
+                else:
+                    tbs[tb].append(ticker)
+            for tb in tbs.keys():
+                logger.debug(f'{tbs[tb]}: ' + tb)
 
-    if ignore_tz:
-        for tkr in shared._DFS.keys():
-            if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
-                shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
+        if ignore_tz:
+            for tkr in shared._DFS.keys():
+                if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
+                    shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
 
-    try:
-        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
+        if shared._DOWNLOAD_CANCELLATION_FLAG:
+            logger.info("Download was interrupted. Partial data is being returned.")
+        
+        if len(shared._DFS) == 0:
+            return None
+            
+        # Continue with normal processing
+        try:
+            data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
-    except Exception:
-        _realign_dfs()
-        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
+        except Exception:
+            _realign_dfs()
+            data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
-    data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
-    # switch names back to isins if applicable
-    data.rename(columns=shared._ISINS, inplace=True)
+        data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
+        # switch names back to isins if applicable
+        data.rename(columns=shared._ISINS, inplace=True)
 
-    if group_by == 'column':
-        data.columns = data.columns.swaplevel(0, 1)
-        data.sort_index(level=0, axis=1, inplace=True)
+        if group_by == 'column':
+            data.columns = data.columns.swaplevel(0, 1)
+            data.sort_index(level=0, axis=1, inplace=True)
 
-    if not multi_level_index and len(tickers) == 1:
-        data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
+        if not multi_level_index and len(tickers) == 1:
+            data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
 
-    return data
+        return data
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGINT, original_sigint_handler)
 
 
 def _realign_dfs():
@@ -260,10 +306,14 @@ def _download_one_threaded(ticker, start=None, end=None,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
                            keepna=False, rounding=False, timeout=10):
+    # Check for cancellation before starting the download
+    if shared._DOWNLOAD_CANCELLATION_FLAG:
+        return
+        
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
                          keepna, timeout)
-    if progress:
+    if progress and not shared._DOWNLOAD_CANCELLATION_FLAG:
         shared._PROGRESS_BAR.animate()
 
 
@@ -272,6 +322,10 @@ def _download_one(ticker, start=None, end=None,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
                   keepna=False, timeout=10):
+    # Check for cancellation
+    if shared._DOWNLOAD_CANCELLATION_FLAG:
+        return None
+        
     data = None
     try:
         data = Ticker(ticker).history(
