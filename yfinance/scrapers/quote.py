@@ -607,10 +607,11 @@ class Quote:
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         result = self._fetch(proxy, modules=modules)
-        result.update(self._fetch_additional_info(proxy))
-        if result is None:
-            self._info = {}
-            return
+        additional_info = self._fetch_additional_info(proxy)
+        if additional_info is not None and result is not None:
+            result.update(additional_info)
+        else:
+            result = additional_info
 
         query1_info = {}
         for quote in ["quoteSummary", "quoteResponse"]:
