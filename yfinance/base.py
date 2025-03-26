@@ -61,9 +61,16 @@ class TickerBase:
         self._earnings = None
         self._financials = None
 
+        # raise an error if user tries to give empty ticker
+        if self.ticker == "":
+            raise ValueError("Empty ticker name")
+
         # accept isin as ticker
         if utils.is_isin(self.ticker):
+            isin = self.ticker
             self.ticker = utils.get_ticker_by_isin(self.ticker, None, session)
+            if self.ticker == "":
+                raise ValueError(f"Invalid ISIN number: {isin}")
 
         self._data: YfData = YfData(session=session)
 
