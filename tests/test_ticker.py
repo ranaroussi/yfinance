@@ -1016,6 +1016,22 @@ class TestTickerInfo(unittest.TestCase):
         data2 = self.tickers[2].info
         self.assertIsInstance(data2['trailingPegRatio'], float)
 
+    def test_isin_info(self):
+        isin_list = {"ES0137650018": True,
+                     "does_not_exist": True,  # Nonexistent but doesn't raise an error
+                     "INF209K01EN2": True,
+                     "INX846K01K35": False,    # Nonexistent and raises an error
+                     "INF846K01K35": True
+                     }
+        for isin in isin_list:
+            if not isin_list[isin]:
+                with self.assertRaises(ValueError) as context:
+                    ticker = yf.Ticker(isin)
+                self.assertIn(str(context.exception), [ f"Invalid ISIN number: {isin}", "Empty tickername" ])
+            else:
+                ticker = yf.Ticker(isin)
+            ticker.info
+            
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()
     #     for ticker in self.tickers:
