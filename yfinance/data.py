@@ -586,7 +586,7 @@ class YfData(metaclass=SingletonMeta):
             'params': {**params, **config, **crumbs},
             'cookies': cookies,
             'proxies': proxy,
-            'timeout': YfData.timeout or timeout,
+            'timeout': timeout or YfData.timeout,
             'headers': user_agent_headers or self.user_agent_headers
         }
         if body:
