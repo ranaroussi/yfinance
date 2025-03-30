@@ -44,7 +44,6 @@ from yfinance import const
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
-
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
     disallowed_names = {
@@ -186,9 +185,13 @@ def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9])$", string))
 
 
-def get_all_by_isin(isin, proxy=None, session=None):
+def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
     if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
+
+    if proxy is not const._SENTINEL_:
+        print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+        proxy = None
 
     # Deferred this to prevent circular imports
     from .search import Search
@@ -212,17 +215,17 @@ def get_all_by_isin(isin, proxy=None, session=None):
     }
 
 
-def get_ticker_by_isin(isin, proxy=None, session=None):
+def get_ticker_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
     return data.get('ticker', {}).get('symbol', '')
 
 
-def get_info_by_isin(isin, proxy=None, session=None):
+def get_info_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
     return data.get('ticker', {})
 
 
-def get_news_by_isin(isin, proxy=None, session=None):
+def get_news_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
     return data.get('news', {})
 
