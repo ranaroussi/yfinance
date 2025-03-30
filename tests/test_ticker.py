@@ -986,6 +986,7 @@ class TestTickerInfo(unittest.TestCase):
         self.symbols.append("QCSTIX")  # good for testing, doesn't trade
         self.symbols += ["BTC-USD", "IWO", "VFINX", "^GSPC"]
         self.symbols += ["SOKE.IS", "ADS.DE"]  # detected bugs
+        self.symbols += ["EXTO", "NEPT" ] # Issues 2343 and 2363
         self.tickers = [yf.Ticker(s, session=self.session) for s in self.symbols]
 
     def tearDown(self):
@@ -1032,6 +1033,21 @@ class TestTickerInfo(unittest.TestCase):
                 ticker = yf.Ticker(isin)
             ticker.info
             
+    def test_empty_info(self):
+        # Test issue 2343 (Empty result _fetch)
+        data = self.tickers[10].info
+        self.assertCountEqual(["trailingPegRatio"], data.keys())
+        self.assertIn("trailingPegRatio", data.keys(), "Did not find expected key 'trailingPegRatio' in info dict")
+
+        # Test issue 2363 (Empty QuoteResponse)
+        data = self.tickers[11].info
+        expected_keys = ['maxAge', 'priceHint', 'previousClose', 'open', 'dayLow', 'dayHigh', 'regularMarketPreviousClose',
+                         'regularMarketOpen', 'regularMarketDayLow', 'regularMarketDayHigh', 'volume', 'regularMarketVolume',
+                         'bid', 'ask', 'bidSize', 'askSize', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'currency', 'tradeable',
+                         'exchange', 'quoteType', 'symbol', 'underlyingSymbol', 'shortName', 'timeZoneFullName', 'timeZoneShortName',
+                         'uuid', 'gmtOffSetMilliseconds', 'trailingPegRatio']
+        self.assertCountEqual(expected_keys, data.keys())
+
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()
     #     for ticker in self.tickers:
