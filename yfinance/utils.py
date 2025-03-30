@@ -193,7 +193,7 @@ def get_all_by_isin(isin, proxy=None, session=None):
     # Deferred this to prevent circular imports
     from .search import Search
 
-    session = session or _requests
+    session = session or _requests.Session()
     search = Search(query=isin, max_results=1, session=session, proxy=proxy)
 
     # Extract the first quote and news
