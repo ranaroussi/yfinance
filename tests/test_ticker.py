@@ -80,8 +80,6 @@ class TestTicker(unittest.TestCase):
     def setUpClass(cls):
         cls.session = session_gbl
 
-        cls.proxy = None
-
     @classmethod
     def tearDownClass(cls):
         if cls.session is not None:
@@ -95,7 +93,7 @@ class TestTicker(unittest.TestCase):
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=5)
+            tz = dat._get_ticker_tz(timeout=5)
 
             self.assertIsNotNone(tz)
 
@@ -227,10 +225,10 @@ class TestTicker(unittest.TestCase):
 
     def test_goodTicker_withProxy(self):
         tkr = "IBM"
-        dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
+        dat = yf.Ticker(tkr, session=self.session)
 
-        dat._fetch_ticker_tz(proxy=None, timeout=5)
-        dat._get_ticker_tz(proxy=None, timeout=5)
+        dat._fetch_ticker_tz(timeout=5)
+        dat._get_ticker_tz(timeout=5)
         dat.history(period="5d")
 
         for attribute_name, attribute_type in ticker_attributes:
