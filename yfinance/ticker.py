@@ -27,11 +27,11 @@ from .scrapers.funds import FundsData
 import pandas as _pd
 
 from .base import TickerBase
-from .const import _BASE_URL_
+from .const import _BASE_URL_, _SENTINEL_
 
 
 class Ticker(TickerBase):
-    def __init__(self, ticker, session=None, proxy=None):
+    def __init__(self, ticker, session=None, proxy=_SENTINEL_):
         super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}
         self._underlying  = {}
@@ -45,7 +45,7 @@ class Ticker(TickerBase):
         else:
             url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}?date={date}"
 
-        r = self._data.get(url=url, proxy=self.proxy).json()
+        r = self._data.get(url=url).json()
         if len(r.get('optionChain', {}).get('result', [])) > 0:
             for exp in r['optionChain']['result'][0]['expirationDates']:
                 self._expirations[_pd.Timestamp(exp, unit='s').strftime('%Y-%m-%d')] = exp
