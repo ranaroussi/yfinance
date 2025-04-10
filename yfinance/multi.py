@@ -39,7 +39,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",
              prepost=False, proxy=None, rounding=False, timeout=10, session=None,
-             multi_level_index=True) -> Union[_pd.DataFrame, None]:
+             multi_level_index=True, raise_errors=False, raises=[]) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
     :Parameters:
@@ -90,6 +90,10 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Pass your own session object to be used for all requests
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
+        raise_errors: bool
+            If True, then raise errors as Exceptions instead of logging. Default is False
+        raises: list
+            List of exceptions to raise allowing granular control. Ignores raise_errors if set. Default is [] e.g. [YFTzMissingError]
     """
     logger = utils.get_yf_logger()
 
@@ -157,7 +161,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding, timeout=timeout)
+                                   rounding=rounding, timeout=timeout, raise_errors=raise_errors, raises=raises)
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
     # download synchronously
@@ -168,7 +172,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, repair=repair, keepna=keepna,
                                  proxy=proxy,
-                                 rounding=rounding, timeout=timeout)
+                                 rounding=rounding, timeout=timeout, raise_errors=raise_errors, raises=raises)
             if progress:
                 shared._PROGRESS_BAR.animate()
 
@@ -259,10 +263,10 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=10):
+                           keepna=False, rounding=False, timeout=10, raise_errors=False, raises=[]):
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
-                         keepna, timeout)
+                         keepna, timeout, raise_errors, raises)
     if progress:
         shared._PROGRESS_BAR.animate()
 
@@ -271,7 +275,7 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=10):
+                  keepna=False, timeout=10, raise_errors=False, raises=[]):
     data = None
     try:
         data = Ticker(ticker).history(
@@ -285,7 +289,14 @@ def _download_one(ticker, start=None, end=None,
     except Exception as e:
         # glob try/except needed as current thead implementation breaks if exception is raised.
         shared._DFS[ticker.upper()] = utils.empty_df()
-        shared._ERRORS[ticker.upper()] = repr(e)
+        if raises:
+            for r in raises:
+                if type(e) == r:
+                    raise e
+        elif raise_errors:
+            raise e
+        else:
+            shared._ERRORS[ticker.upper()] = repr(e)
         shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
     else:
         shared._DFS[ticker.upper()] = data
