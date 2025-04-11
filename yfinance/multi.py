@@ -290,9 +290,8 @@ def _download_one(ticker, start=None, end=None,
         # glob try/except needed as current thead implementation breaks if exception is raised.
         shared._DFS[ticker.upper()] = utils.empty_df()
         if raises:
-            for r in raises:
-                if type(e) == r:
-                    raise e
+            if any(isinstance(e, exc_type) for exc_type in raises):
+                raise e
         elif raise_errors:
             raise e
         else:
