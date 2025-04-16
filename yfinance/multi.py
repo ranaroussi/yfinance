@@ -25,6 +25,7 @@ import logging
 import time as _time
 import traceback
 from typing import Union
+import sys
 
 import multitasking as _multitasking
 import pandas as _pd
@@ -90,8 +91,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Pass your own session object to be used for all requests
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
-        raise_errors: bool
+        raise_errors: bool / 'one'
             If True, then raise errors as Exceptions instead of logging. Default is False
+            Or set to "one" to print just the worst error
         raises: list
             List of exceptions to raise allowing granular control. Ignores raise_errors if set. Default is [] e.g. [YFTzMissingError]
     """
@@ -209,6 +211,18 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         for tb in tbs.keys():
             logger.debug(f'{tbs[tb]}: ' + tb)
 
+        if raise_errors:
+            tbs_reverse = {' '.join(v):k for k,v in tbs.items()}
+            if raise_errors == 'one':
+                worst_error_tkrs = max(tbs_reverse.keys(), key=lambda k: k.count(' '))
+                print(f'# {worst_error_tkrs}:', file=sys.stderr)
+                print(tbs_reverse[worst_error_tkrs], file=sys.stderr)
+            else:
+                for tkrs, tb in tbs_reverse.items():
+                    print(f'# {tkrs}:', file=sys.stderr)
+                    print(tb, file=sys.stderr)
+            quit(1)
+
     if ignore_tz:
         for tkr in shared._DFS.keys():
             if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
@@ -292,11 +306,9 @@ def _download_one(ticker, start=None, end=None,
         if raises:
             if any(isinstance(e, exc_type) for exc_type in raises):
                 raise e
-        elif raise_errors:
-            raise e
         else:
             shared._ERRORS[ticker.upper()] = repr(e)
-        shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
+        shared._TRACEBACKS[ticker.upper()] = traceback.format_exc().replace(f'{ticker}:', '*:')
     else:
         shared._DFS[ticker.upper()] = data
 
