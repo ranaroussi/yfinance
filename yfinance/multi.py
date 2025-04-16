@@ -25,6 +25,7 @@ import logging
 import time as _time
 import traceback
 from typing import Union
+import sys
 
 import multitasking as _multitasking
 import pandas as _pd
@@ -39,7 +40,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period="max", interval="1d",
              prepost=False, proxy=None, rounding=False, timeout=10, session=None,
-             multi_level_index=True) -> Union[_pd.DataFrame, None]:
+             multi_level_index=True, raise_errors=False, raises=[]) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
     :Parameters:
@@ -90,6 +91,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Pass your own session object to be used for all requests
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
+        raise_errors: bool / 'one'
+            If True, then raise errors as Exceptions instead of logging. Default is False
+            Or set to "one" to print just the worst error
+        raises: list
+            List of exceptions to raise allowing granular control. Ignores raise_errors if set. Default is [] e.g. [YFTzMissingError]
     """
     logger = utils.get_yf_logger()
 
@@ -157,7 +163,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0), proxy=proxy,
-                                   rounding=rounding, timeout=timeout)
+                                   rounding=rounding, timeout=timeout, raise_errors=raise_errors, raises=raises)
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
     # download synchronously
@@ -168,7 +174,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, repair=repair, keepna=keepna,
                                  proxy=proxy,
-                                 rounding=rounding, timeout=timeout)
+                                 rounding=rounding, timeout=timeout, raise_errors=raise_errors, raises=raises)
             if progress:
                 shared._PROGRESS_BAR.animate()
 
@@ -204,6 +210,18 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                 tbs[tb].append(ticker)
         for tb in tbs.keys():
             logger.debug(f'{tbs[tb]}: ' + tb)
+
+        if raise_errors:
+            tbs_reverse = {' '.join(v):k for k,v in tbs.items()}
+            if raise_errors == 'one':
+                worst_error_tkrs = max(tbs_reverse.keys(), key=lambda k: k.count(' '))
+                print(f'# {worst_error_tkrs}:', file=sys.stderr)
+                print(tbs_reverse[worst_error_tkrs], file=sys.stderr)
+            else:
+                for tkrs, tb in tbs_reverse.items():
+                    print(f'# {tkrs}:', file=sys.stderr)
+                    print(tb, file=sys.stderr)
+            quit(1)
 
     if ignore_tz:
         for tkr in shared._DFS.keys():
@@ -259,10 +277,10 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False, proxy=None,
-                           keepna=False, rounding=False, timeout=10):
+                           keepna=False, rounding=False, timeout=10, raise_errors=False, raises=[]):
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, proxy, rounding,
-                         keepna, timeout)
+                         keepna, timeout, raise_errors, raises)
     if progress:
         shared._PROGRESS_BAR.animate()
 
@@ -271,7 +289,7 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, proxy=None, rounding=False,
-                  keepna=False, timeout=10):
+                  keepna=False, timeout=10, raise_errors=False, raises=[]):
     data = None
     try:
         data = Ticker(ticker).history(
@@ -285,8 +303,12 @@ def _download_one(ticker, start=None, end=None,
     except Exception as e:
         # glob try/except needed as current thead implementation breaks if exception is raised.
         shared._DFS[ticker.upper()] = utils.empty_df()
-        shared._ERRORS[ticker.upper()] = repr(e)
-        shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
+        if raises:
+            if any(isinstance(e, exc_type) for exc_type in raises):
+                raise e
+        else:
+            shared._ERRORS[ticker.upper()] = repr(e)
+        shared._TRACEBACKS[ticker.upper()] = traceback.format_exc().replace(f'{ticker}:', '*:')
     else:
         shared._DFS[ticker.upper()] = data
 
