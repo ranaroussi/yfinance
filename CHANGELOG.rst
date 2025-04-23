@@ -1,6 +1,17 @@
 Change Log
 ===========
 
+0.2.56
+------
+Features:
+- Ticker lookups #2364
+- Config #2391
+Fixes:
+- converting end epoch to localized dt #2378
+- info IndexError #2382
+- AttributeError: module 'requests.cookies' has no attribute 'update' #2388
+- fix_Yahoo_returning_live_separate() #2389
+
 0.2.55
 ------
 Features

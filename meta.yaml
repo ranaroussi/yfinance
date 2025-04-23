@@ -1,5 +1,5 @@
 {% set name = "yfinance" %}
-{% set version = "0.2.55" %}
+{% set version = "0.2.56" %}
 
 package:
   name: "{{ name|lower }}"
@@ -27,7 +27,6 @@ requirements:
     - beautifulsoup4 >=4.11.1
     - html5lib >=1.1
     - peewee >=3.16.2
-    # - pycryptodome >=3.6.6
     - pip
     - python
 
@@ -43,7 +42,6 @@ requirements:
     - beautifulsoup4 >=4.11.1
     - html5lib >=1.1
     - peewee >=3.16.2
-    # - pycryptodome >=3.6.6
     - python
 
 test:
