@@ -1034,7 +1034,7 @@ class TestTickerInfo(unittest.TestCase):
     def test_empty_info(self):
         # Test issue 2343 (Empty result _fetch)
         data = self.tickers[10].info
-        self.assertCountEqual(["trailingPegRatio"], data.keys())
+        self.assertCountEqual(['quoteType', 'symbol', 'underlyingSymbol', 'uuid', 'maxAge', 'trailingPegRatio'], data.keys())
         self.assertIn("trailingPegRatio", data.keys(), "Did not find expected key 'trailingPegRatio' in info dict")
 
         # Test issue 2363 (Empty QuoteResponse)

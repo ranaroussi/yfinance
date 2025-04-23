@@ -48,6 +48,9 @@ class Search:
             timeout: Request timeout in seconds (default 30).
             raise_errors: Raise exceptions on error (default True).
         """
+        self.session = session
+        self._data = YfData(session=self.session)
+        
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
             self._data._set_proxy(proxy)
@@ -56,7 +59,6 @@ class Search:
         self.max_results = max_results
         self.enable_fuzzy_query = enable_fuzzy_query
         self.news_count = news_count
-        self.session = session
         self.timeout = timeout
         self.raise_errors = raise_errors
 
@@ -67,7 +69,6 @@ class Search:
         self.enable_cultural_assets = include_cultural_assets
         self.recommended = recommended
 
-        self._data = YfData(session=self.session)
         self._logger = utils.get_yf_logger()
 
         self._response = {}
