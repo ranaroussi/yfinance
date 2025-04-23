@@ -386,7 +386,7 @@ class PriceHistory:
             msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
-        df, last_trade = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, repair=repair, currency=currency)
+        df, last_trade = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, prepost, repair=repair, currency=currency)
         if last_trade is not None:
             self._history_metadata['lastTrade'] = {'Price':last_trade['Close'], "Time":last_trade.name}
 

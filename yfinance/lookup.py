@@ -24,7 +24,7 @@ import json as _json
 import pandas as pd
 
 from . import utils
-from .const import _QUERY1_URL_
+from .const import _QUERY1_URL_, _SENTINEL_
 from .data import YfData
 from .exceptions import YFException
 
@@ -44,15 +44,19 @@ class Lookup:
     """
 
     def __init__(self, query: str, session=None, proxy=None, timeout=30, raise_errors=True):
+        self.session = session
+        self._data = YfData(session=self.session)
+
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            self._data._set_proxy(proxy)
+
         self.query = query
 
-        self.session = session
-        self.proxy = proxy
         self.timeout = timeout
         self.raise_errors = raise_errors
 
         self._logger = utils.get_yf_logger()
-        self._data = YfData(session=self.session)
 
         self._cache = {}
 
@@ -75,7 +79,7 @@ class Lookup:
 
         self._logger.debug(f'GET Lookup for ticker ({self.query}) with parameters: {str(dict(params))}')
 
-        data = self._data.get(url=url, params=params, proxy=self.proxy, timeout=self.timeout)
+        data = self._data.get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "
