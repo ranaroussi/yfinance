@@ -6,6 +6,6 @@ Advanced
    :maxdepth: 2
 
    logging
-   proxy
+   config
    caching
    multi_level_columns

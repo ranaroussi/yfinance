@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Proxy Server &#8212; yfinance</title>
+    <title>Config &#8212; yfinance</title>
   
   
   
@@ -42,7 +42,7 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'advanced/proxy';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'advanced/config';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Caching" href="caching.html" />
@@ -331,7 +331,7 @@ document.write(`
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="logging.html">Logging</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Proxy Server</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="caching.html">Caching</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multi_level_columns.html">Multi-Level Column Index</a></li>
 </ul>
@@ -374,7 +374,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Advanced</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Proxy Server</li>
+    <li class="breadcrumb-item active" aria-current="page">Config</li>
   </ul>
 </nav>
 </div>
@@ -391,13 +391,17 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="proxy-server">
-<h1>Proxy Server<a class="headerlink" href="#proxy-server" title="Link to this heading">#</a></h1>
-<p>You can download data via a proxy:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">msft</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">&quot;MSFT&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
+  <section id="config">
+<h1>Config<a class="headerlink" href="#config" title="Link to this heading">#</a></h1>
+<p><cite>yfinance</cite> has a new global config for sharing common values.</p>
+<section id="proxy">
+<h2>Proxy<a class="headerlink" href="#proxy" title="Link to this heading">#</a></h2>
+<p>Set proxy once in config, affects all yfinance data fetches.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">set_config</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+</section>
 </section>
 
 
@@ -439,9 +443,21 @@ document.write(`
 
 
   <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#proxy">Proxy</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/advanced/proxy.rst.txt">
+    <a href="../_sources/advanced/config.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

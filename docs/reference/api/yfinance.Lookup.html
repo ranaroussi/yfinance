@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>FundsData &#8212; yfinance</title>
+    <title>Lookup &#8212; yfinance</title>
   
   
   
@@ -42,11 +42,11 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.scrapers.funds.FundsData';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.Lookup';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="PriceHistory class" href="../yfinance.price_history.html" />
-    <link rel="prev" title="FundsData class" href="../yfinance.funds_data.html" />
+    <link rel="next" title="Sector and Industry" href="../yfinance.sector_industry.html" />
+    <link rel="prev" title="Search" href="yfinance.Search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -424,9 +424,9 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; Lookup</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; Lookup</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Search.html">Search</a></li>
-<li class="toctree-l2"><a class="reference internal" href="yfinance.Lookup.html">Lookup</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Lookup</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -446,8 +446,8 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.set_tz_cache_location.html">yfinance.set_tz_cache_location</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.funds_data.html"><cite>FundsData</cite> class</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">FundsData</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.funds_data.html"><cite>FundsData</cite> class</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.scrapers.funds.FundsData.html">FundsData</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../yfinance.price_history.html"><cite>PriceHistory</cite> class</a></li>
@@ -492,9 +492,9 @@ document.write(`
     <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
     
     
-    <li class="breadcrumb-item"><a href="../yfinance.funds_data.html" class="nav-link"><cite>FundsData</cite> class</a></li>
+    <li class="breadcrumb-item"><a href="../yfinance.search.html" class="nav-link">Search &amp; Lookup</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">FundsData</li>
+    <li class="breadcrumb-item active" aria-current="page">Lookup</li>
   </ul>
 </nav>
 </div>
@@ -511,316 +511,300 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="fundsdata">
-<h1>FundsData<a class="headerlink" href="#fundsdata" title="Link to this heading">#</a></h1>
+  <section id="lookup">
+<h1>Lookup<a class="headerlink" href="#lookup" title="Link to this heading">#</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.scrapers.funds.</span></span><span class="sig-name descname"><span class="pre">FundsData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data:</span> <span class="pre">~yfinance.data.YfData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol:</span> <span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.scrapers.funds.FundsData" title="Link to this definition">#</a></dt>
-<dd><p>ETF and Mutual Funds Data
-Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings</p>
-<p>Notes:
-- fundPerformance module is not implemented as better data is queryable using history</p>
+<dt class="sig sig-object py" id="yfinance.Lookup">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Lookup" title="Link to this definition">#</a></dt>
+<dd><p>Fetches quote (ticker) lookups from Yahoo Finance.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (<em>YfData</em>) – The YfData object for fetching data.</p></li>
-<li><p><strong>symbol</strong> (<em>str</em>) – The symbol of the fund.</p></li>
+<li><p><strong>query</strong> (<em>str</em>) – The search query for financial data lookup.</p></li>
+<li><p><strong>session</strong> – Custom HTTP session for requests (default None).</p></li>
+<li><p><strong>proxy</strong> – Proxy settings for requests (default None).</p></li>
+<li><p><strong>timeout</strong> – Request timeout in seconds (default 30).</p></li>
+<li><p><strong>raise_errors</strong> – Raise exceptions on error (default True).</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Attributes</p>
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">asset_classes</span></span></dt>
-<dd><p>Returns the asset classes of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The asset classes.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, float]</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">all</span></span></dt>
+<dd><p>Returns all available financial instruments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">bond_holdings</span></span></dt>
-<dd><p>Returns the bond holdings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The bond holdings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">cryptocurrency</span></span></dt>
+<dd><p>Returns Cryptocurrencies related financial instruments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">bond_ratings</span></span></dt>
-<dd><p>Returns the bond ratings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The bond ratings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, float]</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">currency</span></span></dt>
+<dd><p>Returns Currencies related financial instruments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">description</span></span></dt>
-<dd><p>Returns the description of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The description.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>str</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">etf</span></span></dt>
+<dd><p>Returns ETFs related financial instruments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">equity_holdings</span></span></dt>
-<dd><p>Returns the equity holdings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The equity holdings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">future</span></span></dt>
+<dd><p>Returns Futures related financial instruments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">fund_operations</span></span></dt>
-<dd><p>Returns the fund operations.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The fund operations.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">index</span></span></dt>
+<dd><p>Returns Indices related financial instruments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">fund_overview</span></span></dt>
-<dd><p>Returns the fund overview.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The fund overview.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, Optional[str]]</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">mutualfund</span></span></dt>
+<dd><p>Returns mutual funds related financial instruments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">sector_weightings</span></span></dt>
-<dd><p>Returns the sector weightings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The sector weightings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, float]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">top_holdings</span></span></dt>
-<dd><p>Returns the top holdings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The top holdings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">stock</span></span></dt>
+<dd><p>Returns stock related financial instruments.</p>
 </dd></dl>
 
 <p class="rubric">Methods</p>
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data:</span> <span class="pre">~yfinance.data.YfData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol:</span> <span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span></dt>
-<dd><dl class="field-list simple">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns all available financial instruments.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (<em>YfData</em>) – The YfData object for fetching data.</p></li>
-<li><p><strong>symbol</strong> (<em>str</em>) – The symbol of the fund.</p></li>
-</ul>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">quote_type</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span></dt>
-<dd><p>Returns the quote type of the fund.</p>
+<span class="sig-name descname"><span class="pre">get_cryptocurrency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns Cryptocurrencies related financial instruments.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The quote type.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.asset_classes">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">asset_classes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.asset_classes" title="Link to this definition">#</a></dt>
-<dd><p>Returns the asset classes of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The asset classes.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, float]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.bond_holdings">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bond_holdings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.bond_holdings" title="Link to this definition">#</a></dt>
-<dd><p>Returns the bond holdings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The bond holdings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.bond_ratings">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bond_ratings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.bond_ratings" title="Link to this definition">#</a></dt>
-<dd><p>Returns the bond ratings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The bond ratings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, float]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.description">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">description</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.description" title="Link to this definition">#</a></dt>
-<dd><p>Returns the description of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The description.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.equity_holdings">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">equity_holdings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.equity_holdings" title="Link to this definition">#</a></dt>
-<dd><p>Returns the equity holdings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The equity holdings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.fund_operations">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fund_operations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.fund_operations" title="Link to this definition">#</a></dt>
-<dd><p>Returns the fund operations.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The fund operations.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.fund_overview">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fund_overview</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.fund_overview" title="Link to this definition">#</a></dt>
-<dd><p>Returns the fund overview.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The fund overview.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, Optional[str]]</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.quote_type">
-<span class="sig-name descname"><span class="pre">quote_type</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.quote_type" title="Link to this definition">#</a></dt>
-<dd><p>Returns the quote type of the fund.</p>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_currency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns Currencies related financial instruments.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The quote type.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>str</p>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_etf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns ETFs related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_future</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns Futures related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns Indices related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_mutualfund</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns mutual funds related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_stock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Returns stock related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.sector_weightings">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sector_weightings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.sector_weightings" title="Link to this definition">#</a></dt>
-<dd><p>Returns the sector weightings of the fund.</p>
+<dt class="sig sig-object py" id="yfinance.Lookup.all">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">all</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.all" title="Link to this definition">#</a></dt>
+<dd><p>Returns all available financial instruments.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yfinance.Lookup.cryptocurrency">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cryptocurrency</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.cryptocurrency" title="Link to this definition">#</a></dt>
+<dd><p>Returns Cryptocurrencies related financial instruments.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yfinance.Lookup.currency">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">currency</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.currency" title="Link to this definition">#</a></dt>
+<dd><p>Returns Currencies related financial instruments.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yfinance.Lookup.etf">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">etf</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.etf" title="Link to this definition">#</a></dt>
+<dd><p>Returns ETFs related financial instruments.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yfinance.Lookup.future">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">future</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.future" title="Link to this definition">#</a></dt>
+<dd><p>Returns Futures related financial instruments.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_all">
+<span class="sig-name descname"><span class="pre">get_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_all" title="Link to this definition">#</a></dt>
+<dd><p>Returns all available financial instruments.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The sector weightings.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dict[str, float]</p>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_cryptocurrency">
+<span class="sig-name descname"><span class="pre">get_cryptocurrency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_cryptocurrency" title="Link to this definition">#</a></dt>
+<dd><p>Returns Cryptocurrencies related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_currency">
+<span class="sig-name descname"><span class="pre">get_currency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_currency" title="Link to this definition">#</a></dt>
+<dd><p>Returns Currencies related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_etf">
+<span class="sig-name descname"><span class="pre">get_etf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_etf" title="Link to this definition">#</a></dt>
+<dd><p>Returns ETFs related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_future">
+<span class="sig-name descname"><span class="pre">get_future</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_future" title="Link to this definition">#</a></dt>
+<dd><p>Returns Futures related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_index">
+<span class="sig-name descname"><span class="pre">get_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_index" title="Link to this definition">#</a></dt>
+<dd><p>Returns Indices related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_mutualfund">
+<span class="sig-name descname"><span class="pre">get_mutualfund</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_mutualfund" title="Link to this definition">#</a></dt>
+<dd><p>Returns mutual funds related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Lookup.get_stock">
+<span class="sig-name descname"><span class="pre">get_stock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_stock" title="Link to this definition">#</a></dt>
+<dd><p>Returns stock related financial instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="yfinance.scrapers.funds.FundsData.top_holdings">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">top_holdings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.scrapers.funds.FundsData.top_holdings" title="Link to this definition">#</a></dt>
-<dd><p>Returns the top holdings of the fund.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The top holdings.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
+<dt class="sig sig-object py" id="yfinance.Lookup.index">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.index" title="Link to this definition">#</a></dt>
+<dd><p>Returns Indices related financial instruments.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yfinance.Lookup.mutualfund">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mutualfund</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.mutualfund" title="Link to this definition">#</a></dt>
+<dd><p>Returns mutual funds related financial instruments.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yfinance.Lookup.stock">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stock</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFrame</span></em><a class="headerlink" href="#yfinance.Lookup.stock" title="Link to this definition">#</a></dt>
+<dd><p>Returns stock related financial instruments.</p>
 </dd></dl>
 
 </dd></dl>
@@ -838,20 +822,20 @@ Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../yfinance.funds_data.html"
+       href="yfinance.Search.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title"><cite>FundsData</cite> class</p>
+        <p class="prev-next-title">Search</p>
       </div>
     </a>
     <a class="right-next"
-       href="../yfinance.price_history.html"
+       href="../yfinance.sector_industry.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title"><cite>PriceHistory</cite> class</p>
+        <p class="prev-next-title">Sector and Industry</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -873,17 +857,23 @@ Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData"><code class="docutils literal notranslate"><span class="pre">FundsData</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.asset_classes"><code class="docutils literal notranslate"><span class="pre">FundsData.asset_classes</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.bond_holdings"><code class="docutils literal notranslate"><span class="pre">FundsData.bond_holdings</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.bond_ratings"><code class="docutils literal notranslate"><span class="pre">FundsData.bond_ratings</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.description"><code class="docutils literal notranslate"><span class="pre">FundsData.description</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.equity_holdings"><code class="docutils literal notranslate"><span class="pre">FundsData.equity_holdings</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.fund_operations"><code class="docutils literal notranslate"><span class="pre">FundsData.fund_operations</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.fund_overview"><code class="docutils literal notranslate"><span class="pre">FundsData.fund_overview</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.quote_type"><code class="docutils literal notranslate"><span class="pre">FundsData.quote_type()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.sector_weightings"><code class="docutils literal notranslate"><span class="pre">FundsData.sector_weightings</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.scrapers.funds.FundsData.top_holdings"><code class="docutils literal notranslate"><span class="pre">FundsData.top_holdings</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup"><code class="docutils literal notranslate"><span class="pre">Lookup</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.all"><code class="docutils literal notranslate"><span class="pre">Lookup.all</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.cryptocurrency"><code class="docutils literal notranslate"><span class="pre">Lookup.cryptocurrency</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.currency"><code class="docutils literal notranslate"><span class="pre">Lookup.currency</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.etf"><code class="docutils literal notranslate"><span class="pre">Lookup.etf</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.future"><code class="docutils literal notranslate"><span class="pre">Lookup.future</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_all"><code class="docutils literal notranslate"><span class="pre">Lookup.get_all()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_cryptocurrency"><code class="docutils literal notranslate"><span class="pre">Lookup.get_cryptocurrency()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_currency"><code class="docutils literal notranslate"><span class="pre">Lookup.get_currency()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_etf"><code class="docutils literal notranslate"><span class="pre">Lookup.get_etf()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_future"><code class="docutils literal notranslate"><span class="pre">Lookup.get_future()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_index"><code class="docutils literal notranslate"><span class="pre">Lookup.get_index()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_mutualfund"><code class="docutils literal notranslate"><span class="pre">Lookup.get_mutualfund()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_stock"><code class="docutils literal notranslate"><span class="pre">Lookup.get_stock()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.index"><code class="docutils literal notranslate"><span class="pre">Lookup.index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.mutualfund"><code class="docutils literal notranslate"><span class="pre">Lookup.mutualfund</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.stock"><code class="docutils literal notranslate"><span class="pre">Lookup.stock</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -892,7 +882,7 @@ Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings</p>
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../../_sources/reference/api/yfinance.scrapers.funds.FundsData.rst.txt">
+    <a href="../../_sources/reference/api/yfinance.Lookup.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

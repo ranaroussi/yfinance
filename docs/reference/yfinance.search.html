@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Search &amp; News &#8212; yfinance</title>
+    <title>Search &amp; Lookup &#8212; yfinance</title>
   
   
   
@@ -424,8 +424,9 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Search &amp; News</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Search &amp; Lookup</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Search.html">Search</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Lookup.html">Lookup</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -490,7 +491,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Search &amp; News</li>
+    <li class="breadcrumb-item active" aria-current="page">Search &amp; Lookup</li>
   </ul>
 </nav>
 </div>
@@ -507,8 +508,8 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="search-news">
-<h1>Search &amp; News<a class="headerlink" href="#search-news" title="Link to this heading">#</a></h1>
+  <section id="search-lookup">
+<h1>Search &amp; Lookup<a class="headerlink" href="#search-lookup" title="Link to this heading">#</a></h1>
 <section id="class">
 <h2>Class<a class="headerlink" href="#class" title="Link to this heading">#</a></h2>
 <p>The <cite>Search</cite> module, allows you to access search data in a Pythonic way.</p>
@@ -520,9 +521,18 @@ document.write(`
 </tbody>
 </table>
 </div>
+<p>The <cite>Lookup</cite> module, allows you to look up tickers in a Pythonic way.</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Lookup.html#yfinance.Lookup" title="yfinance.Lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Lookup</span></code></a>(query[, session, proxy, timeout, ...])</p></td>
+<td><p>Fetches quote (ticker) lookups from Yahoo Finance.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
-<section id="search-sample-code">
-<h2>Search Sample Code<a class="headerlink" href="#search-sample-code" title="Link to this heading">#</a></h2>
+<section id="sample-code">
+<h2>Sample Code<a class="headerlink" href="#sample-code" title="Link to this heading">#</a></h2>
 <p>The <cite>Search</cite> module, allows you to access search data in a Pythonic way.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 
@@ -534,6 +544,42 @@ document.write(`
 
 <span class="c1"># get list of related research</span>
 <span class="n">research</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Search</span><span class="p">(</span><span class="s2">&quot;apple&quot;</span><span class="p">,</span> <span class="n">include_research</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">research</span>
+</pre></div>
+</div>
+<p>The <cite>Lookup</cite> module, allows you to look up tickers in a Pythonic way.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+
+<span class="c1"># Get All</span>
+<span class="nb">all</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">all</span>
+<span class="nb">all</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Get Stocks</span>
+<span class="n">stock</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">stock</span>
+<span class="n">stock</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_stock</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Get Mutual Funds</span>
+<span class="n">mutualfund</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mutualfund</span>
+<span class="n">mutualfund</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_mutualfund</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Get ETFs</span>
+<span class="n">etf</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">etf</span>
+<span class="n">etf</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_etf</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Get Indices</span>
+<span class="n">index</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">index</span>
+<span class="n">index</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_index</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Get Futures</span>
+<span class="n">future</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">future</span>
+<span class="n">future</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_future</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Get Currencies</span>
+<span class="n">currency</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">currency</span>
+<span class="n">currency</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_currency</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Get Cryptocurrencies</span>
+<span class="n">cryptocurrency</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cryptocurrency</span>
+<span class="n">cryptocurrency</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Lookup</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_cryptocurrency</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -585,8 +631,10 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#class">Class</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#search-sample-code">Search Sample Code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#class">Class</a><ul class="nav section-nav flex-column">
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sample-code">Sample Code</a></li>
 </ul>
   </nav></div>
 

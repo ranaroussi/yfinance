@@ -45,8 +45,8 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.Search';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Sector and Industry" href="../yfinance.sector_industry.html" />
-    <link rel="prev" title="Search &amp; News" href="../yfinance.search.html" />
+    <link rel="next" title="Lookup" href="yfinance.Lookup.html" />
+    <link rel="prev" title="Search &amp; Lookup" href="../yfinance.search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -424,8 +424,9 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; News</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; Lookup</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Search</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Lookup.html">Lookup</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -491,7 +492,7 @@ document.write(`
     <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
     
     
-    <li class="breadcrumb-item"><a href="../yfinance.search.html" class="nav-link">Search &amp; News</a></li>
+    <li class="breadcrumb-item"><a href="../yfinance.search.html" class="nav-link">Search &amp; Lookup</a></li>
     
     <li class="breadcrumb-item active" aria-current="page">Search</li>
   </ul>
@@ -514,7 +515,7 @@ document.write(`
 <h1>Search<a class="headerlink" href="#search" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="yfinance.Search">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">news_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lists_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_nav_links</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_research</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cultural_assets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_fuzzy_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recommended</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Search" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_results=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">news_count=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lists_count=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cb=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_nav_links=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_research=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cultural_assets=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_fuzzy_query=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recommended=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout=30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Search" title="Link to this definition">#</a></dt>
 <dd><p>Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -530,7 +531,6 @@ document.write(`
 <li><p><strong>enable_fuzzy_query</strong> – Enable fuzzy search for typos (default False).</p></li>
 <li><p><strong>recommended</strong> – Recommended number of results to return (default 8).</p></li>
 <li><p><strong>session</strong> – Custom HTTP session for requests (default None).</p></li>
-<li><p><strong>proxy</strong> – Proxy settings for requests (default None).</p></li>
 <li><p><strong>timeout</strong> – Request timeout in seconds (default 30).</p></li>
 <li><p><strong>raise_errors</strong> – Raise exceptions on error (default True).</p></li>
 </ul>
@@ -587,7 +587,7 @@ document.write(`
 <p class="rubric">Methods</p>
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">news_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lists_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_nav_links</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_research</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cultural_assets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_fuzzy_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recommended</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_results=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">news_count=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lists_count=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cb=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_nav_links=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_research=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_cultural_assets=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_fuzzy_query=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recommended=8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout=30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors=True</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -603,7 +603,6 @@ document.write(`
 <li><p><strong>enable_fuzzy_query</strong> – Enable fuzzy search for typos (default False).</p></li>
 <li><p><strong>recommended</strong> – Recommended number of results to return (default 8).</p></li>
 <li><p><strong>session</strong> – Custom HTTP session for requests (default None).</p></li>
-<li><p><strong>proxy</strong> – Proxy settings for requests (default None).</p></li>
 <li><p><strong>timeout</strong> – Request timeout in seconds (default 30).</p></li>
 <li><p><strong>raise_errors</strong> – Raise exceptions on error (default True).</p></li>
 </ul>
@@ -690,15 +689,15 @@ document.write(`
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Search &amp; News</p>
+        <p class="prev-next-title">Search &amp; Lookup</p>
       </div>
     </a>
     <a class="right-next"
-       href="../yfinance.sector_industry.html"
+       href="yfinance.Lookup.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Sector and Industry</p>
+        <p class="prev-next-title">Lookup</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
