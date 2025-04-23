@@ -406,10 +406,11 @@ class PriceHistory:
             df = self._fix_bad_div_adjust(df, interval, currency)
 
             # Need the latest/last row to be repaired before 100x/split repair:
-            df_last = self._fix_zeroes(df.iloc[-1:], interval, tz_exchange, prepost)
-            if 'Repaired?' not in df.columns:
-                df['Repaired?'] = False
-            df = pd.concat([df.drop(df.index[-1]), df_last])
+            if not df.empty:
+                df_last = self._fix_zeroes(df.iloc[-1:], interval, tz_exchange, prepost)
+                if 'Repaired?' not in df.columns:
+                    df['Repaired?'] = False
+                df = pd.concat([df.drop(df.index[-1]), df_last])
 
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
             df = self._fix_bad_stock_splits(df, interval, tz_exchange)
