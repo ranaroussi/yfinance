@@ -80,8 +80,6 @@ class TestTicker(unittest.TestCase):
     def setUpClass(cls):
         cls.session = session_gbl
 
-        cls.proxy = None
-
     @classmethod
     def tearDownClass(cls):
         if cls.session is not None:
@@ -95,7 +93,7 @@ class TestTicker(unittest.TestCase):
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=5)
+            tz = dat._get_ticker_tz(timeout=5)
 
             self.assertIsNotNone(tz)
 
@@ -227,10 +225,10 @@ class TestTicker(unittest.TestCase):
 
     def test_goodTicker_withProxy(self):
         tkr = "IBM"
-        dat = yf.Ticker(tkr, session=self.session, proxy=self.proxy)
+        dat = yf.Ticker(tkr, session=self.session)
 
-        dat._fetch_ticker_tz(proxy=None, timeout=5)
-        dat._get_ticker_tz(proxy=None, timeout=5)
+        dat._fetch_ticker_tz(timeout=5)
+        dat._get_ticker_tz(timeout=5)
         dat.history(period="5d")
 
         for attribute_name, attribute_type in ticker_attributes:
@@ -986,6 +984,7 @@ class TestTickerInfo(unittest.TestCase):
         self.symbols.append("QCSTIX")  # good for testing, doesn't trade
         self.symbols += ["BTC-USD", "IWO", "VFINX", "^GSPC"]
         self.symbols += ["SOKE.IS", "ADS.DE"]  # detected bugs
+        self.symbols += ["EXTO", "NEPT" ] # Issues 2343 and 2363
         self.tickers = [yf.Ticker(s, session=self.session) for s in self.symbols]
 
     def tearDown(self):
@@ -1015,6 +1014,37 @@ class TestTickerInfo(unittest.TestCase):
         # This one should have a trailing PEG ratio
         data2 = self.tickers[2].info
         self.assertIsInstance(data2['trailingPegRatio'], float)
+
+    def test_isin_info(self):
+        isin_list = {"ES0137650018": True,
+                     "does_not_exist": True,  # Nonexistent but doesn't raise an error
+                     "INF209K01EN2": True,
+                     "INX846K01K35": False,    # Nonexistent and raises an error
+                     "INF846K01K35": True
+                     }
+        for isin in isin_list:
+            if not isin_list[isin]:
+                with self.assertRaises(ValueError) as context:
+                    ticker = yf.Ticker(isin)
+                self.assertIn(str(context.exception), [ f"Invalid ISIN number: {isin}", "Empty tickername" ])
+            else:
+                ticker = yf.Ticker(isin)
+            ticker.info
+            
+    def test_empty_info(self):
+        # Test issue 2343 (Empty result _fetch)
+        data = self.tickers[10].info
+        self.assertCountEqual(['quoteType', 'symbol', 'underlyingSymbol', 'uuid', 'maxAge', 'trailingPegRatio'], data.keys())
+        self.assertIn("trailingPegRatio", data.keys(), "Did not find expected key 'trailingPegRatio' in info dict")
+
+        # Test issue 2363 (Empty QuoteResponse)
+        data = self.tickers[11].info
+        expected_keys = ['maxAge', 'priceHint', 'previousClose', 'open', 'dayLow', 'dayHigh', 'regularMarketPreviousClose',
+                         'regularMarketOpen', 'regularMarketDayLow', 'regularMarketDayHigh', 'volume', 'regularMarketVolume',
+                         'bid', 'ask', 'bidSize', 'askSize', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'currency', 'tradeable',
+                         'exchange', 'quoteType', 'symbol', 'underlyingSymbol', 'shortName', 'timeZoneFullName', 'timeZoneShortName',
+                         'uuid', 'gmtOffSetMilliseconds', 'trailingPegRatio']
+        self.assertCountEqual(expected_keys, data.keys())
 
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()

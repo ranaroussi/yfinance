@@ -22,9 +22,9 @@
 from __future__ import print_function
 
 from . import Ticker, multi
-
-
-# from collections import namedtuple as _namedtuple
+from .utils import print_once
+from .data import YfData
+from .const import _SENTINEL_
 
 
 class Tickers:
@@ -38,6 +38,8 @@ class Tickers:
         self.symbols = [ticker.upper() for ticker in tickers]
         self.tickers = {ticker: Ticker(ticker, session=session) for ticker in self.symbols}
 
+        self._data = YfData(session=session)
+
         # self.tickers = _namedtuple(
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
@@ -45,24 +47,31 @@ class Tickers:
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, repair=False,
-                proxy=None,
+                proxy=_SENTINEL_,
                 threads=True, group_by='column', progress=True,
                 timeout=10, **kwargs):
+
+        if proxy is not _SENTINEL_:
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            self._data._set_proxy(proxy)
 
         return self.download(
             period, interval,
             start, end, prepost,
             actions, auto_adjust, repair, 
-            proxy,
             threads, group_by, progress,
             timeout, **kwargs)
 
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, repair=False, 
-                 proxy=None,
+                 proxy=_SENTINEL_,
                  threads=True, group_by='column', progress=True,
                  timeout=10, **kwargs):
+
+        if proxy is not _SENTINEL_:
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            self._data._set_proxy(proxy)
 
         data = multi.download(self.symbols,
                               start=start, end=end,
@@ -72,7 +81,6 @@ class Tickers:
                               period=period,
                               interval=interval,
                               prepost=prepost,
-                              proxy=proxy,
                               group_by='ticker',
                               threads=threads,
                               progress=progress,
