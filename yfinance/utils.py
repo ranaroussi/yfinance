@@ -529,7 +529,7 @@ def parse_actions(data):
     splits = None
 
     if "events" in data:
-        if "dividends" in data["events"]:
+        if "dividends" in data["events"] and len(data["events"]['dividends']) > 0:
             dividends = _pd.DataFrame(
                 data=list(data["events"]["dividends"].values()))
             dividends.set_index("date", inplace=True)
@@ -537,7 +537,7 @@ def parse_actions(data):
             dividends.sort_index(inplace=True)
             dividends.columns = ["Dividends"]
 
-        if "capitalGains" in data["events"]:
+        if "capitalGains" in data["events"] and len(data["events"]['capitalGains']) > 0:
             capital_gains = _pd.DataFrame(
                 data=list(data["events"]["capitalGains"].values()))
             capital_gains.set_index("date", inplace=True)
@@ -545,7 +545,7 @@ def parse_actions(data):
             capital_gains.sort_index(inplace=True)
             capital_gains.columns = ["Capital Gains"]
 
-        if "splits" in data["events"]:
+        if "splits" in data["events"] and len(data["events"]['splits']) > 0:
             splits = _pd.DataFrame(
                 data=list(data["events"]["splits"].values()))
             splits.set_index("date", inplace=True)
