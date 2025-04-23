@@ -7,7 +7,7 @@ import requests
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
+from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_, _SENTINEL_
 from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
@@ -26,9 +26,11 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
-    def __init__(self, tickerBaseObject, proxy=None):
+    def __init__(self, tickerBaseObject, proxy=_SENTINEL_):
         self._tkr = tickerBaseObject
-        self.proxy = proxy
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            self._tkr._data._set_proxy(proxy)
 
         self._prices_1y = None
         self._prices_1wk_1h_prepost = None
@@ -128,8 +130,8 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="1y", auto_adjust=False, keepna=True, proxy=self.proxy)
-            self._md = self._tkr.get_history_metadata(proxy=self.proxy)
+            self._prices_1y = self._tkr.history(period="1y", auto_adjust=False, keepna=True)
+            self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
                 self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
@@ -154,12 +156,12 @@ class FastInfo:
 
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
-            self._prices_1wk_1h_prepost = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=True, proxy=self.proxy)
+            self._prices_1wk_1h_prepost = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=True)
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
-            self._prices_1wk_1h_reg = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=False, proxy=self.proxy)
+            self._prices_1wk_1h_reg = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=False)
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -167,7 +169,7 @@ class FastInfo:
             return self._md
 
         self._get_1y_prices()
-        self._md = self._tkr.get_history_metadata(proxy=self.proxy)
+        self._md = self._tkr.get_history_metadata()
         return self._md
 
     def _exchange_open_now(self):
@@ -198,7 +200,7 @@ class FastInfo:
         if self._currency is not None:
             return self._currency
 
-        md = self._tkr.get_history_metadata(proxy=self.proxy)
+        md = self._tkr.get_history_metadata()
         self._currency = md["currency"]
         return self._currency
 
@@ -207,7 +209,7 @@ class FastInfo:
         if self._quote_type is not None:
             return self._quote_type
 
-        md = self._tkr.get_history_metadata(proxy=self.proxy)
+        md = self._tkr.get_history_metadata()
         self._quote_type = md["instrumentType"]
         return self._quote_type
 
@@ -232,7 +234,7 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548), proxy=self.proxy)
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
@@ -484,11 +486,12 @@ class FastInfo:
 
 
 class Quote:
-
-    def __init__(self, data: YfData, symbol: str, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
         self._data = data
         self._symbol = symbol
-        self.proxy = proxy
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            self._data._set_proxy(proxy)
 
         self._info = None
         self._retired_info = None
@@ -505,15 +508,15 @@ class Quote:
     @property
     def info(self) -> dict:
         if self._info is None:
-            self._fetch_info(self.proxy)
-            self._fetch_complementary(self.proxy)
+            self._fetch_info()
+            self._fetch_complementary()
 
         return self._info
 
     @property
     def sustainability(self) -> pd.DataFrame:
         if self._sustainability is None:
-            result = self._fetch(self.proxy, modules=['esgScores'])
+            result = self._fetch(modules=['esgScores'])
             if result is None:
                 self._sustainability = pd.DataFrame()
             else:
@@ -527,7 +530,7 @@ class Quote:
     @property
     def recommendations(self) -> pd.DataFrame:
         if self._recommendations is None:
-            result = self._fetch(self.proxy, modules=['recommendationTrend'])
+            result = self._fetch(modules=['recommendationTrend'])
             if result is None:
                 self._recommendations = pd.DataFrame()
             else:
@@ -541,7 +544,7 @@ class Quote:
     @property
     def upgrades_downgrades(self) -> pd.DataFrame:
         if self._upgrades_downgrades is None:
-            result = self._fetch(self.proxy, modules=['upgradeDowngradeHistory'])
+            result = self._fetch(modules=['upgradeDowngradeHistory'])
             if result is None:
                 self._upgrades_downgrades = pd.DataFrame()
             else:
@@ -575,7 +578,7 @@ class Quote:
     def valid_modules():
         return quote_summary_valid_modules
 
-    def _fetch(self, proxy, modules: list):
+    def _fetch(self, modules: list):
         if not isinstance(modules, list):
             raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
@@ -584,33 +587,34 @@ class Quote:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
-            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict)
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
         return result
 
-    def _fetch_additional_info(self, proxy):
+    def _fetch_additional_info(self):
         params_dict = {"symbols": self._symbol, "formatted": "false"}
         try:
             result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?",
                                              user_agent_headers=self._data.user_agent_headers,
-                                             params=params_dict, proxy=proxy)
+                                             params=params_dict)
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
         return result
 
-    def _fetch_info(self, proxy):
+    def _fetch_info(self):
         if self._already_fetched:
             return
         self._already_fetched = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
-        result = self._fetch(proxy, modules=modules)
-        result.update(self._fetch_additional_info(proxy))
-        if result is None:
-            self._info = {}
-            return
+        result = self._fetch(modules=modules)
+        additional_info = self._fetch_additional_info()
+        if additional_info is not None and result is not None:
+            result.update(additional_info)
+        else:
+            result = additional_info
 
         query1_info = {}
         for quote in ["quoteSummary", "quoteResponse"]:
@@ -657,13 +661,12 @@ class Quote:
 
         self._info = {k: _format(k, v) for k, v in query1_info.items()}
 
-    def _fetch_complementary(self, proxy):
+    def _fetch_complementary(self):
         if self._already_fetched_complementary:
             return
         self._already_fetched_complementary = True
 
-        # self._scrape(proxy)  # decrypt broken
-        self._fetch_info(proxy)
+        self._fetch_info()
         if self._info is None:
             return
 
@@ -702,7 +705,7 @@ class Quote:
             end = int(end.timestamp())
             url += f"&period1={start}&period2={end}"
 
-            json_str = self._data.cache_get(url=url, proxy=proxy).text
+            json_str = self._data.cache_get(url=url).text
             json_data = json.loads(json_str)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:
@@ -716,7 +719,7 @@ class Quote:
 
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
-        result = self._fetch(self.proxy, modules=['calendarEvents'])
+        result = self._fetch(modules=['calendarEvents'])
         if result is None:
             self._calendar = {}
             return
@@ -743,7 +746,7 @@ class Quote:
 
 
     def _fetch_sec_filings(self):
-        result = self._fetch(self.proxy, modules=['secFilings'])
+        result = self._fetch(modules=['secFilings'])
         if result is None:
             return None
 

@@ -2,10 +2,10 @@ from .query import EquityQuery as EqyQy
 from .query import FundQuery as FndQy
 from .query import QueryBase, EquityQuery, FundQuery
 
-from yfinance.const import _BASE_URL_
+from yfinance.const import _BASE_URL_, _SENTINEL_
 from yfinance.data import YfData
 
-from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
+from ..utils import dynamic_docstring, generate_list_table_from_dict_universal, print_once
 
 from typing import Union
 import requests
@@ -58,7 +58,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
             sortAsc: bool = None,
             userId: str = None, 
             userIdType: str = None, 
-            session = None, proxy = None):
+            session = None, proxy = _SENTINEL_):
     """
     Run a screen: predefined query, or custom query.
 
@@ -106,6 +106,12 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     {predefined_screeners}
     """
 
+    if proxy is not _SENTINEL_:
+        print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+        _data = YfData(session=session, proxy=proxy)
+    else:
+        _data = YfData(session=session)
+
     # Only use defaults when user NOT give a predefined, because
     # Yahoo's predefined endpoint auto-applies defaults. Also,
     # that endpoint might be ignoring these fields.
@@ -121,10 +127,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     if size is not None and size > 250:
         raise ValueError("Yahoo limits query size to 250, reduce size.")
 
-    fields = dict(locals())
-    for k in ['query', 'session', 'proxy']:
-        if k in fields:
-            del fields[k]
+    fields = {'offset': offset, 'size': size, 'sortField': sortField, 'sortAsc': sortAsc, 'userId': userId, 'userIdType': userIdType}
 
     params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
 
@@ -132,12 +135,11 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     if isinstance(query, str):
         # post_query = PREDEFINED_SCREENER_QUERIES[query]
         # Switch to Yahoo's predefined endpoint
-        _data = YfData(session=session)
         params_dict['scrIds'] = query
         for k,v in fields.items():
             if v is not None:
                 params_dict[k] = v
-        resp = _data.get(url=_PREDEFINED_URL_, params=params_dict, proxy=proxy)
+        resp = _data.get(url=_PREDEFINED_URL_, params=params_dict)
         try:
             resp.raise_for_status()
         except requests.exceptions.HTTPError:
@@ -170,11 +172,9 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     post_query['query'] = post_query['query'].to_dict()
 
     # Fetch
-    _data = YfData(session=session)
     response = _data.post(_SCREENER_URL_, 
                             body=post_query, 
                             user_agent_headers=_data.user_agent_headers, 
-                            params=params_dict, 
-                            proxy=proxy)
+                            params=params_dict)
     response.raise_for_status()
     return response.json()['finance']['result'][0]
