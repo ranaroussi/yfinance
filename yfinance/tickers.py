@@ -59,6 +59,7 @@ class Tickers:
             period, interval,
             start, end, prepost,
             actions, auto_adjust, repair, 
+            proxy,
             threads, group_by, progress,
             timeout, **kwargs)
 
