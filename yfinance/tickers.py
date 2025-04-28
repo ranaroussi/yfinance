@@ -52,13 +52,14 @@ class Tickers:
                 timeout=10, **kwargs):
 
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         return self.download(
             period, interval,
             start, end, prepost,
             actions, auto_adjust, repair, 
+            proxy,
             threads, group_by, progress,
             timeout, **kwargs)
 
@@ -70,7 +71,7 @@ class Tickers:
                  timeout=10, **kwargs):
 
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         data = multi.download(self.symbols,

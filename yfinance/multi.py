@@ -143,7 +143,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     # Ensure data initialised with session.
     if proxy is not _SENTINEL_:
-        utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+        utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
         YfData(session=session, proxy=proxy)
     else:
         YfData(session=session)

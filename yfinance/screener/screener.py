@@ -107,7 +107,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     """
 
     if proxy is not _SENTINEL_:
-        print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+        print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
         _data = YfData(session=session, proxy=proxy)
     else:
         _data = YfData(session=session)
