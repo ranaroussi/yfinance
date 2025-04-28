@@ -190,7 +190,7 @@ def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
         raise ValueError("Invalid ISIN number")
 
     if proxy is not const._SENTINEL_:
-        print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+        print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
         proxy = None
 
     # Deferred this to prevent circular imports

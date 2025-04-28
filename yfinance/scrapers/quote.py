@@ -29,7 +29,7 @@ class FastInfo:
     def __init__(self, tickerBaseObject, proxy=_SENTINEL_):
         self._tkr = tickerBaseObject
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._tkr._data._set_proxy(proxy)
 
         self._prices_1y = None
@@ -490,7 +490,7 @@ class Quote:
         self._data = data
         self._symbol = symbol
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         self._info = None
