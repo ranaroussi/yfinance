@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.57
+------
+Fix proxy msg & pass-thru #2418
+
 0.2.56
 ------
 Features:
