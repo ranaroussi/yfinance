@@ -12,7 +12,7 @@ class Fundamentals:
 
     def __init__(self, data: YfData, symbol: str, proxy=const._SENTINEL_):
         if proxy is not const._SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             data._set_proxy(proxy)
 
         self._data = data
@@ -53,7 +53,7 @@ class Financials:
 
     def get_income_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
         if proxy is not const._SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         res = self._income_time_series
@@ -63,7 +63,7 @@ class Financials:
 
     def get_balance_sheet_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
         if proxy is not const._SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         res = self._balance_sheet_time_series
@@ -73,7 +73,7 @@ class Financials:
 
     def get_cash_flow_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
         if proxy is not const._SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         res = self._cash_flow_time_series

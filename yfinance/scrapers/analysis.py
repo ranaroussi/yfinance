@@ -11,7 +11,7 @@ class Analysis:
 
     def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             data._set_proxy(proxy)
 
         self._data = data
