@@ -2,7 +2,7 @@ from .query import EquityQuery as EqyQy
 from .query import FundQuery as FndQy
 from .query import QueryBase, EquityQuery, FundQuery
 
-from yfinance.const import _BASE_URL_, _SENTINEL_
+from yfinance.const import _QUERY1_URL_, _SENTINEL_
 from yfinance.data import YfData
 
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal, print_once
@@ -10,11 +10,11 @@ from ..utils import dynamic_docstring, generate_list_table_from_dict_universal, 
 from typing import Union
 import requests
 
-_SCREENER_URL_ = f"{_BASE_URL_}/v1/finance/screener"
+_SCREENER_URL_ = f"{_QUERY1_URL_}/v1/finance/screener"
 _PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
 
 PREDEFINED_SCREENER_BODY_DEFAULTS = {
-    "offset":0, "size":25, "userId":"","userIdType":"guid"
+    "offset":0, "count":25, "userId":"","userIdType":"guid"
 }
 
 PREDEFINED_SCREENER_QUERIES = {
@@ -28,7 +28,7 @@ PREDEFINED_SCREENER_QUERIES = {
                                 "query": EqyQy('and', [EqyQy('gte', ['quarterlyrevenuegrowth.quarterly', 25]), EqyQy('gte', ['epsgrowth.lasttwelvemonths', 25]), EqyQy('eq', ['sector', 'Technology']), EqyQy('is-in', ['exchange', 'NMS', 'NYQ'])])},
     'most_actives': {"sortField":"dayvolume", "sortType":"DESC",
                     "query": EqyQy('and', [EqyQy('eq', ['region', 'us']), EqyQy('gte', ['intradaymarketcap', 2000000000]), EqyQy('gt', ['dayvolume', 5000000])])},
-    'most_shorted_stocks': {"size":25, "offset":0, "sortField":"short_percentage_of_shares_outstanding.value", "sortType":"DESC", 
+    'most_shorted_stocks': {"count":25, "offset":0, "sortField":"short_percentage_of_shares_outstanding.value", "sortType":"DESC", 
                             "query": EqyQy('and', [EqyQy('eq', ['region', 'us']), EqyQy('gt', ['intradayprice', 1]), EqyQy('gt', ['avgdailyvol3m', 200000])])},
     'small_cap_gainers': {"sortField":"eodvolume", "sortType":"desc", 
                         "query": EqyQy("and", [EqyQy("lt", ["intradaymarketcap",2000000000]), EqyQy("is-in", ["exchange", "NMS", "NYQ"])])},
@@ -53,7 +53,8 @@ PREDEFINED_SCREENER_QUERIES = {
 @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title='Predefined queries (Dec-2024)')})
 def screen(query: Union[str, EquityQuery, FundQuery],
             offset: int = None, 
-            size: int = None, 
+            size: int = None,
+            count: int = None,
             sortField: str = None, 
             sortAsc: bool = None,
             userId: str = None, 
@@ -71,6 +72,10 @@ def screen(query: Union[str, EquityQuery, FundQuery],
             The offset for the results. Default 0.
         size : int
             number of results to return. Default 100, maximum 250 (Yahoo)
+            Use count instead for predefined queries.
+        count : int
+            number of results to return. Default 25, maximum 250 (Yahoo)
+            Use size instead for custom queries.
         sortField : str
             field to sort by. Default "ticker"
         sortAsc : bool
@@ -117,17 +122,20 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     # that endpoint might be ignoring these fields.
     defaults = {
         'offset': 0,
-        'size': 25,
+        'count': 25,
         'sortField': 'ticker',
         'sortAsc': False,
         'userId': "",
         'userIdType': "guid"
     }
 
+    if count is not None and count > 250:
+        raise ValueError("Yahoo limits query count to 250, reduce count.")
+
     if size is not None and size > 250:
         raise ValueError("Yahoo limits query size to 250, reduce size.")
 
-    fields = {'offset': offset, 'size': size, 'sortField': sortField, 'sortAsc': sortAsc, 'userId': userId, 'userIdType': userIdType}
+    fields = {'offset': offset, 'count': count, "size": size, 'sortField': sortField, 'sortAsc': sortAsc, 'userId': userId, 'userIdType': userIdType}
 
     params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
 
@@ -135,6 +143,14 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     if isinstance(query, str):
         # post_query = PREDEFINED_SCREENER_QUERIES[query]
         # Switch to Yahoo's predefined endpoint
+
+        if size is not None:
+            print_once("YF deprecation warning: 'size' argument is deprecated for predefined screens, set 'count' instead.")
+            count = size
+            size = None
+            fields['count'] = fields['size']
+            del fields['size']
+
         params_dict['scrIds'] = query
         for k,v in fields.items():
             if v is not None:
