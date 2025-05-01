@@ -35,7 +35,6 @@ from typing import List, Optional
 import numpy as _np
 import pandas as _pd
 import pytz as _tz
-import requests as _requests
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
@@ -196,7 +195,6 @@ def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
     # Deferred this to prevent circular imports
     from .search import Search
 
-    session = session or _requests.Session()
     search = Search(query=isin, max_results=1, session=session, proxy=proxy)
 
     # Extract the first quote and news

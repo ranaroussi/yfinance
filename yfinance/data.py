@@ -2,7 +2,7 @@ import functools
 import random
 from functools import lru_cache
 
-import requests as requests
+from curl_cffi import requests
 from bs4 import BeautifulSoup
 import datetime
 
@@ -82,7 +82,7 @@ class YfData(metaclass=SingletonMeta):
         self._cookie_lock = threading.Lock()
 
         self._session, self._proxy = None, None
-        self._set_session(session or requests.Session())
+        self._set_session(session or requests.Session(impersonate="chrome"))
         self._set_proxy(proxy)
 
         utils.get_yf_logger().debug(f"Using User-Agent: {self.user_agent_headers['User-Agent']}")
@@ -174,14 +174,6 @@ class YfData(metaclass=SingletonMeta):
         return cookie_dict['cookie']
 
     def _get_cookie_basic(self, timeout=30):
-        if self._cookie is not None:
-            utils.get_yf_logger().debug('reusing cookie')
-            return self._cookie
-
-        self._cookie = self._load_cookie_basic()
-        if self._cookie is not None:
-            return self._cookie
-
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         response = self._session.get(
@@ -190,31 +182,16 @@ class YfData(metaclass=SingletonMeta):
             timeout=timeout,
             allow_redirects=True)
 
-        if not response.cookies:
-            utils.get_yf_logger().debug("response.cookies = None")
-            return None
-        self._cookie = list(response.cookies)[0]
-        if self._cookie == '':
-            utils.get_yf_logger().debug("list(response.cookies)[0] = ''")
-            return None
-        self._save_cookie_basic(self._cookie)
-        utils.get_yf_logger().debug(f"fetched basic cookie = {self._cookie}")
-        return self._cookie
-
     def _get_crumb_basic(self, timeout=30):
         if self._crumb is not None:
             utils.get_yf_logger().debug('reusing crumb')
             return self._crumb
 
-        cookie = self._get_cookie_basic()
-        if cookie is None:
-            return None
-
+        self._get_cookie_basic()        
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         get_args = {
             'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
             'headers': self.user_agent_headers,
-            'cookies': {cookie.name: cookie.value},
             'timeout': timeout,
             'allow_redirects': True
         }
@@ -233,9 +210,9 @@ class YfData(metaclass=SingletonMeta):
 
     @utils.log_indent_decorator
     def _get_cookie_and_crumb_basic(self, timeout):
-        cookie = self._get_cookie_basic(timeout)
+        self._get_cookie_basic(timeout)
         crumb = self._get_crumb_basic(timeout)
-        return cookie, crumb
+        return crumb
 
     def _get_cookie_csrf(self, timeout):
         if self._cookie is not None:
@@ -338,7 +315,7 @@ class YfData(metaclass=SingletonMeta):
 
     @utils.log_indent_decorator
     def _get_cookie_and_crumb(self, timeout=30):
-        cookie, crumb, strategy = None, None, None
+        crumb, strategy = None, None
 
         utils.get_yf_logger().debug(f"cookie_mode = '{self._cookie_strategy}'")
 
@@ -348,16 +325,16 @@ class YfData(metaclass=SingletonMeta):
                 if crumb is None:
                     # Fail
                     self._set_cookie_strategy('basic', have_lock=True)
-                    cookie, crumb = self._get_cookie_and_crumb_basic(timeout)
+                    crumb = self._get_cookie_and_crumb_basic(timeout)
             else:
                 # Fallback strategy
-                cookie, crumb = self._get_cookie_and_crumb_basic(timeout)
-                if cookie is None or crumb is None:
+                crumb = self._get_cookie_and_crumb_basic(timeout)
+                if crumb is None:
                     # Fail
                     self._set_cookie_strategy('csrf', have_lock=True)
                     crumb = self._get_crumb_csrf()
             strategy = self._cookie_strategy
-        return cookie, crumb, strategy
+        return crumb, strategy
 
     @utils.log_indent_decorator
     def get(self, url, user_agent_headers=None, params=None, timeout=30):
@@ -382,21 +359,15 @@ class YfData(metaclass=SingletonMeta):
         if 'crumb' in params:
             raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
 
-        cookie, crumb, strategy = self._get_cookie_and_crumb()
+        crumb, strategy = self._get_cookie_and_crumb()
         if crumb is not None:
             crumbs = {'crumb': crumb}
         else:
             crumbs = {}
-        if strategy == 'basic' and cookie is not None:
-            # Basic cookie strategy adds cookie to GET parameters
-            cookies = {cookie.name: cookie.value}
-        else:
-            cookies = None
 
         request_args = {
             'url': url,
             'params': {**params, **crumbs},
-            'cookies': cookies,
             'timeout': timeout,
             'headers': user_agent_headers or self.user_agent_headers
         }
@@ -412,10 +383,8 @@ class YfData(metaclass=SingletonMeta):
                 self._set_cookie_strategy('csrf')
             else:
                 self._set_cookie_strategy('basic')
-            cookie, crumb, strategy = self._get_cookie_and_crumb(timeout)
+            crumb, strategy = self._get_cookie_and_crumb(timeout)
             request_args['params']['crumb'] = crumb
-            if strategy == 'basic':
-                request_args['cookies'] = {cookie.name: cookie.value}
             response = request_method(**request_args)
             utils.get_yf_logger().debug(f'response code={response.status_code}')
 
