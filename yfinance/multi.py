@@ -28,6 +28,7 @@ from typing import Union
 
 import multitasking as _multitasking
 import pandas as _pd
+from curl_cffi import requests
 
 from . import Ticker, utils
 from .data import YfData
@@ -90,6 +91,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Always return a MultiIndex DataFrame? Default is True
     """
     logger = utils.get_yf_logger()
+    session = session or requests.Session(impersonate="chrome")
 
     if auto_adjust is None:
         # Warn users that default has changed to True

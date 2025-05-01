@@ -28,7 +28,8 @@ from urllib.parse import quote as urlencode
 
 import numpy as np
 import pandas as pd
-import requests
+from curl_cffi import requests
+
 
 from . import utils, cache
 from .data import YfData
@@ -48,7 +49,7 @@ _tz_info_fetch_ctr = 0
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=_SENTINEL_):
         self.ticker = ticker.upper()
-        self.session = session
+        self.session = session or requests.Session(impersonate="chrome")
         self._tz = None
 
         self._isin = None
