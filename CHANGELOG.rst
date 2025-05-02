@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+0.2.58
+------
+Fix false rate-limit problem #2430
+Fix predefined screen size/count #2425
+
 0.2.57
 ------
 Fix proxy msg & pass-thru #2418
