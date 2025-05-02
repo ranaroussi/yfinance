@@ -4,6 +4,67 @@
 
 The list of changes can be found in the [Changelog](https://github.com/ranaroussi/yfinance/blob/main/CHANGELOG.rst)
 
+## Running a branch
+
+### With PIP
+
+```bash
+pip install git+https://github.com/ranaroussi/yfinance.git@BRANCH
+```
+
+E.g.:
+
+```bash
+pip install git+https://github.com/ranaroussi/yfinance.git@feature/something
+```
+
+### With Git
+
+1: Download from GitHub:
+
+```bash
+git clone https://github.com/ranaroussi/yfinance.git
+```
+
+Or if a specific branch:
+
+```bash
+git clone -b <BRANCH NAME> https://github.com/ranaroussi/yfinance.git
+```
+
+> [!NOTE]
+> Only do the next part if you are installing globally
+>
+> If you are installing for 1 specific project, then you can skip this step
+> and just `git clone` in the project directory
+
+2: Add download location to Python search path
+
+Two different ways, choose one:
+
+`. Add path to PYTHONPATH environment variable
+1. Add to top of Python file: 
+```python
+import sys
+sys.path.insert(0, "path/to/downloaded/yfinance")
+```
+
+3: Verify
+
+```python
+import yfinance
+print(yfinance)
+```
+
+Output should be:
+
+`<module 'yfinance' from 'path/to/downloaded/yfinance/yfinance/__init__.py'>`
+
+If output looks like this then you did step 2 wrong
+
+`<module 'yfinance' from '.../lib/python3.10/site-packages/yfinance/__init__.py'>`
+
+
 ## Branches
 
 To support rapid development without breaking stable versions, this project uses a two-layer branch model: ![image](https://private-user-images.githubusercontent.com/96923577/269063055-5afe5e2b-a43c-4a64-a736-a9e57fb5fe70.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDYxNjkxODAsIm5iZiI6MTc0NjE2ODg4MCwicGF0aCI6Ii85NjkyMzU3Ny8yNjkwNjMwNTUtNWFmZTVlMmItYTQzYy00YTY0LWE3MzYtYTllNTdmYjVmZTcwLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA1MDIlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNTAyVDA2NTQ0MFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTZkYWJlZDQyNWMwNTBmY2M5NDY4YmQ2OWM4ZmYzYzg2NThiNGEzMzkzN2NlMjNiZWYwMGM0Mzg5NzVlOWQ4YzImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.ZK4rk7xa0w1U4KCkvv4hUKdWjuxeleuMYvZ3se6V33I) ([inspiration](https://miro.medium.com/max/700/1*2YagIpX6LuauC3ASpwHekg.png))
