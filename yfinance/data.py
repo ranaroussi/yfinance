@@ -3,6 +3,8 @@ import random
 from functools import lru_cache
 
 import requests as requests
+import curl_cffi
+
 from bs4 import BeautifulSoup
 import datetime
 
@@ -193,7 +195,11 @@ class YfData(metaclass=SingletonMeta):
         if not response.cookies:
             utils.get_yf_logger().debug("response.cookies = None")
             return None
-        self._cookie = list(response.cookies)[0]
+        if isinstance(response.cookies, curl_cffi.requests.cookies.Cookies):
+            _cookiejar = utils.convert_curl_cffi_cookies_to_cookiejar(response.cookies)
+        else:
+            _cookiejar = response.cookies
+        self._cookie = list(_cookiejar)[0]
         if self._cookie == '':
             utils.get_yf_logger().debug("list(response.cookies)[0] = ''")
             return None
