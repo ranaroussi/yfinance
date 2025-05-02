@@ -30,7 +30,7 @@
 > [!TIP]
 > THE NEW DOCUMENTATION WEBSITE IS NOW LIVE! 🤘
 > 
-> Visit [**ranaroussi.github.io/yfinance**](https://ranaroussi.github.io/yfinance) ›
+> Visit > Visit [**yfinance-python.org**](https://yfinance-python.org)
 
 ---
 
@@ -51,12 +51,6 @@ Install `yfinance` from PYPI using `pip`:
 ``` {.sourceCode .bash}
 $ pip install yfinance
 ```
-
-The list of changes can be found in the [Changelog](https://github.com/ranaroussi/yfinance/blob/main/CHANGELOG.rst)
-
-## Developers: want to contribute?
-
-`yfinance` relies on the community to investigate bugs, review code, and contribute code. Developer guide: https://github.com/ranaroussi/yfinance/discussions/1084
 
 ---
 
