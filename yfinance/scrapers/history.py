@@ -6,6 +6,7 @@ import pandas as pd
 from math import isclose
 import time as _time
 import bisect
+from curl_cffi import requests
 
 from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, _SENTINEL_
@@ -19,7 +20,7 @@ class PriceHistory:
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
-        self.session = session
+        self.session = session or requests.Session(impersonate="chrome")
 
         self._history_cache = {}
         self._history_metadata = None
