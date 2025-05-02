@@ -1125,3 +1125,22 @@ def generate_list_table_from_dict_universal(data: dict, bullets: bool=True, titl
                 table += ' '*5 + f"- {value_str}\n"
 
     return table
+
+
+def convert_curl_cffi_cookies_to_cookiejar(curl_cffi_cookies, domain=".yahoo.com"):
+    """
+    Convert curl_cffi Cookies object to requests RequestsCookieJar
+    Args:
+        curl_cffi_cookies: curl_cffi.requests.cookies.Cookies instance
+        domain: cookie default domain
+    Returns:
+        RequestsCookieJar instance
+    """
+    from requests.cookies import RequestsCookieJar, create_cookie
+
+    jar = RequestsCookieJar()
+    cookie_items = curl_cffi_cookies.items()
+    for name, value in cookie_items:
+        cookie = create_cookie(name=name, value=value, domain=domain)
+        jar.set_cookie(cookie)
+    return jar
