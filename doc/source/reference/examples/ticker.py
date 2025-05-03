@@ -20,3 +20,6 @@ dat.info
 
 # analysis
 dat.analyst_price_targets
+
+# websocket
+dat.live()

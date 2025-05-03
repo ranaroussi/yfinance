@@ -34,6 +34,7 @@ from curl_cffi import requests
 from . import utils, cache
 from .data import YfData
 from .exceptions import YFEarningsDateMissing, YFRateLimitError
+from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
@@ -86,6 +87,9 @@ class TickerBase:
         self._funds_data = None
 
         self._fast_info = None
+
+        self._message_handler = None
+        self.ws = None
 
     @utils.log_indent_decorator
     def history(self, *args, **kwargs) -> pd.DataFrame:
@@ -793,3 +797,10 @@ class TickerBase:
             self._funds_data = FundsData(self._data, self.ticker)
         
         return self._funds_data
+
+    def live(self, message_handler=None, verbose=True):
+        self._message_handler = message_handler
+
+        self.ws = WebSocket(verbose=verbose)
+        self.ws.subscribe(self.ticker)
+        self.ws.listen(self._message_handler)
