@@ -28,7 +28,7 @@ class Sector(Domain):
                 Map of sector and industry
         """
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             YfData(session=session, proxy=proxy)
 
         super(Sector, self).__init__(key, session)
