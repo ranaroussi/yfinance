@@ -39,6 +39,8 @@ import requests as _requests
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
+from curl_cffi import requests as curl_cffi_requests
+
 from yfinance import const
 
 user_agent_headers = {
@@ -196,7 +198,7 @@ def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
     # Deferred this to prevent circular imports
     from .search import Search
 
-    session = session or _requests.Session()
+    session = session or curl_cffi_requests.Session(impersonate="chrome")
     search = Search(query=isin, max_results=1, session=session, proxy=proxy)
 
     # Extract the first quote and news

@@ -19,7 +19,7 @@ class Sector(Domain):
         """
         Args:
             key (str): The key representing the sector.
-            session (requests.Session, optional): A session for making requests. Defaults to None.
+            session (curl_cffi.requests.Session, optional): A session for making requests. Defaults to None.
             proxy (dict, optional): A dictionary containing proxy settings for the request. Defaults to None.
         
         .. seealso::

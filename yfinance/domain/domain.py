@@ -20,7 +20,7 @@ class Domain(ABC):
 
         Args:
             key (str): Unique key identifying the domain entity.
-            session (Optional[requests.Session]): Session object for HTTP requests. Defaults to None.
+            session (Optional[curl_cffi.requests.Session]): Session object for HTTP requests. Defaults to None.
         """
         self._key: str = key
         self.session = session

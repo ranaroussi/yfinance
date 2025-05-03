@@ -3,7 +3,7 @@ import random
 from functools import lru_cache
 
 import requests as requests
-import curl_cffi
+from curl_cffi import requests as curl_cffi_requests
 
 from bs4 import BeautifulSoup
 import datetime
@@ -84,7 +84,7 @@ class YfData(metaclass=SingletonMeta):
         self._cookie_lock = threading.Lock()
 
         self._session, self._proxy = None, None
-        self._set_session(session or requests.Session())
+        self._set_session(session or curl_cffi_requests.Session(impersonate="chrome"))
         self._set_proxy(proxy)
 
         utils.get_yf_logger().debug(f"Using User-Agent: {self.user_agent_headers['User-Agent']}")
@@ -195,7 +195,7 @@ class YfData(metaclass=SingletonMeta):
         if not response.cookies:
             utils.get_yf_logger().debug("response.cookies = None")
             return None
-        if isinstance(response.cookies, curl_cffi.requests.cookies.Cookies):
+        if isinstance(response.cookies, curl_cffi_requests.cookies.Cookies):
             _cookiejar = utils.convert_curl_cffi_cookies_to_cookiejar(response.cookies)
         else:
             _cookiejar = response.cookies
