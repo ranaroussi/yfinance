@@ -46,7 +46,7 @@ Two different ways, choose one:
 
 1) Add path to PYTHONPATH environment variable
 
-1) Add to top of Python file: 
+2) Add to top of Python file: 
 ```python
 import sys
 sys.path.insert(0, "path/to/downloaded/yfinance")
@@ -91,9 +91,9 @@ Most of the time you want to target the **dev** branch, but default is **main** 
 
 1. Fork this project. If already forked, remember to `Sync fork`
 
-3. Implement your change in your fork, ideally in a specific branch
+2. Implement your change in your fork, ideally in a specific branch
 
-4. Create a Pull Request, from your fork to this project. If addressing an Issue, link to it
+3. Create a Pull Request, from your fork to this project. If addressing an Issue, link to it
 
 
 ### [How to download & run a GitHub version of yfinance](#Running-a-branch)
