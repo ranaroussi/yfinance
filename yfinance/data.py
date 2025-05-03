@@ -176,7 +176,7 @@ class YfData(metaclass=SingletonMeta):
     def _get_cookie_basic(self, timeout=30):
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
-        response = self._session.get(
+        self._session.get(
             url='https://fc.yahoo.com',
             headers=self.user_agent_headers,
             timeout=timeout,
