@@ -9,7 +9,7 @@ The list of changes can be found in the [Changelog](https://github.com/ranarouss
 ### With PIP
 
 ```bash
-pip install git+https://github.com/ranaroussi/yfinance.git@BRANCH
+pip install git+https://github.com/{user}/{repo}.git@{branch}
 ```
 
 E.g.:
@@ -23,13 +23,15 @@ pip install git+https://github.com/ranaroussi/yfinance.git@feature/something
 1: Download from GitHub:
 
 ```bash
-git clone https://github.com/ranaroussi/yfinance.git
+git clone https://github.com/{user}/{repo}.git
+pip install -r ./yfinance/requirements.txt
 ```
 
 Or if a specific branch:
 
 ```bash
-git clone -b <BRANCH NAME> https://github.com/ranaroussi/yfinance.git
+git clone -b {branch} https://github.com/{user}/{repo}.git
+pip install -r ./yfinance/requirements.txt
 ```
 
 > [!NOTE]
@@ -38,12 +40,13 @@ git clone -b <BRANCH NAME> https://github.com/ranaroussi/yfinance.git
 > If you are installing for 1 specific project, then you can skip this step
 > and just `git clone` in the project directory
 
-2: Add download location to Python search path
+2. Add download location to Python search path
 
 Two different ways, choose one:
 
-`. Add path to PYTHONPATH environment variable
-1. Add to top of Python file: 
+1) Add path to PYTHONPATH environment variable
+
+1) Add to top of Python file: 
 ```python
 import sys
 sys.path.insert(0, "path/to/downloaded/yfinance")
@@ -76,7 +79,7 @@ To support rapid development without breaking stable versions, this project uses
 
 Most of the time you want to target the **dev** branch, but default is **main** so remember to switch to **dev**.
 
-**Exception:** can straight merge into **main** if:
+#### **Exception:** can straight merge into **main** if:
 
 * yfinance is massively broken
 
@@ -84,18 +87,16 @@ Most of the time you want to target the **dev** branch, but default is **main** 
 
 * or not editing part of the code (e.g. editing this file)
 
-
-
 ### I'm a GitHub newbie, how do I contribute code?
 
 1. Fork this project. If already forked, remember to `Sync fork`
 
-2. Implement your change in your fork, ideally in a specific branch
+3. Implement your change in your fork, ideally in a specific branch
 
-3. Create a Pull Request, from your fork to this project. If addressing an Issue, link to it
+4. Create a Pull Request, from your fork to this project. If addressing an Issue, link to it
 
 
-### [How to download & run a GitHub version of yfinance](https://github.com/ranaroussi/yfinance/discussions/1080)
+### [How to download & run a GitHub version of yfinance](#Running-a-branch)
 
 ## Documentation website
 
@@ -141,10 +142,9 @@ To keep the Git commit history and [network graph](https://github.com/ranaroussi
 
 * `squash` tiny/negligible commits back with meaningful commits, or to combine successive related commits. [Guide](https://docs.gitlab.com/ee/topics/git/git_rebase.html#interactive-rebase) but basically it's:
 
-
 ```bash
 git rebase -i HEAD~2
-git push --force-with-lease origin <branch-name>
+git push --force-with-lease origin {branch}
 ```
 
 ### rebase
@@ -152,7 +152,7 @@ git push --force-with-lease origin <branch-name>
 You might be asked to move your branch from `main` to `dev`. Make sure you have pulled **all** relevant branches then run:
 
 ```bash
-git checkout <your branch>
-git rebase --onto dev main <branch-name>
-git push --force-with-lease origin <branch-name>
+git checkout {branch}
+git rebase --onto dev main {brach}
+git push --force-with-lease origin {branch}
 ```
