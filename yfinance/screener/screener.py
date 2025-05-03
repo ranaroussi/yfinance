@@ -156,7 +156,9 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         for k,v in fields.items():
             if v is not None:
                 params_dict[k] = v
-        
+
+        resp = _data.get(url=_PREDEFINED_URL_, params=params_dict)
+
         try:
             resp.raise_for_status()
         except requests.exceptions.HTTPError:
