@@ -20,7 +20,7 @@ class Industry(Domain):
             session (optional): The session to use for requests.
         """
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             YfData(session=session, proxy=proxy)
         super(Industry, self).__init__(key, session)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'

@@ -6,6 +6,7 @@ import pandas as pd
 from math import isclose
 import time as _time
 import bisect
+from curl_cffi import requests
 
 from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, _SENTINEL_
@@ -17,9 +18,9 @@ class PriceHistory:
         self.ticker = ticker.upper()
         self.tz = tz
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
-        self.session = session
+        self.session = session or requests.Session(impersonate="chrome")
 
         self._history_cache = {}
         self._history_metadata = None
@@ -76,7 +77,7 @@ class PriceHistory:
         logger = utils.get_yf_logger()
 
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         interval_user = interval
@@ -480,7 +481,7 @@ class PriceHistory:
 
     def get_history_metadata(self, proxy=_SENTINEL_) -> dict:
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
@@ -495,7 +496,7 @@ class PriceHistory:
 
     def get_dividends(self, period="max", proxy=_SENTINEL_) -> pd.Series:
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         df = self._get_history_cache(period=period)
@@ -506,7 +507,7 @@ class PriceHistory:
 
     def get_capital_gains(self, period="max", proxy=_SENTINEL_) -> pd.Series:
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         df = self._get_history_cache(period=period)
@@ -517,7 +518,7 @@ class PriceHistory:
 
     def get_splits(self, period="max", proxy=_SENTINEL_) -> pd.Series:
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         df = self._get_history_cache(period=period)
@@ -528,7 +529,7 @@ class PriceHistory:
 
     def get_actions(self, period="max", proxy=_SENTINEL_) -> pd.Series:
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         df = self._get_history_cache(period=period)

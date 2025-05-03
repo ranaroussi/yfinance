@@ -26,7 +26,7 @@ class Domain(ABC):
         self.session = session
         self._data: YfData = YfData(session=session)
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         self._name: Optional[str] = None
