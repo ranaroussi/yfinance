@@ -23,6 +23,9 @@ class YFTzMissingError(YFTickerMissingError):
     def __init__(self, ticker):
         super().__init__(ticker, "no timezone found")
 
+class YFMarketHoliday(YFTickerMissingError):
+    def __init__(self, ticker, holiday):
+        super().__init__(ticker, f"holiday {holiday} is on market holiday")
 
 class YFPricesMissingError(YFTickerMissingError):
     def __init__(self, ticker, debug_info):

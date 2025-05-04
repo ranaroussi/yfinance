@@ -99,7 +99,7 @@ class TickerBase:
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+            self._price_history = PriceHistory(self._data, self, self._get_ticker_tz(timeout=10))
         return self._price_history
 
     def _get_ticker_tz(self, timeout):
