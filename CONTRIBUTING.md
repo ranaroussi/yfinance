@@ -11,7 +11,7 @@ The list of changes can be found in the [Changelog](https://github.com/ranarouss
 ## Running a branch
 
 ```bash
-pip install git+https://github.com/{user}/{repo}.git@{branch}
+pip install git+ranaroussi/yfinance.git@dev # dev branch
 ```
 
 For more information, see the [Developer Guide](https://ranaroussi.github.io/yfinance/development/running.html).
