@@ -135,6 +135,18 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     if size is not None and size > 250:
         raise ValueError("Yahoo limits query size to 250, reduce size.")
 
+    if offset is not None and isinstance(query, str):
+        # offset ignored by predefined API so switch to other API
+        post_query = PREDEFINED_SCREENER_QUERIES[query]
+        query = post_query['query']
+        # use predefined's attributes if user not specified
+        if sortField is None:
+            sortField = post_query['sortField']
+        if sortAsc is None:
+            sortAsc = post_query['sortType'].lower() == 'asc'
+        # and don't use defaults
+        defaults = {}
+
     fields = {'offset': offset, 'count': count, "size": size, 'sortField': sortField, 'sortAsc': sortAsc, 'userId': userId, 'userIdType': userIdType}
 
     params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
