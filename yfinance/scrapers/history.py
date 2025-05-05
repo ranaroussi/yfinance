@@ -97,7 +97,6 @@ class PriceHistory:
             all_holidays.sort(key=lambda x: x.date)
             all_dates = [day.date for day in all_holidays]
 
-
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)

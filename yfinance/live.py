@@ -119,7 +119,8 @@ class AsyncWebSocket(BaseWebSocket):
         tickers = [Ticker(symbol) for symbol in symbols]
 
         for ticker in tickers:
-            if isinstance(day := bh.get_market(ticker.history_metadata["fullExchangeName"]).day(_datetime.date.today()), Holiday):
+            market = bh.get_market(ticker.history_metadata["fullExchangeName"], None)
+            if market and isinstance(day := market.day(_datetime.date.today()), Holiday):
                 self.messages.append(self._encode_message("error", self._encode_error(YFMarketHoliday(ticker, day), None)))
 
         self._subscriptions.update(symbols)
@@ -286,7 +287,8 @@ class WebSocket(BaseWebSocket):
 
         tickers = [Ticker(symbol) for symbol in symbols]
         for ticker in tickers:
-            if isinstance(day := bh.get_market(ticker.history_metadata["fullExchangeName"]).day(_datetime.date.today()), Holiday):
+            market = bh.get_market(ticker.history_metadata["fullExchangeName"], None)
+            if market and isinstance(day := market.day(_datetime.date.today()), Holiday):
                 self.messages.append(self._encode_message("error", self._encode_error(YFMarketHoliday(ticker, day), None)))
 
         self._subscriptions.update(symbols)
