@@ -83,6 +83,21 @@ class PriceHistory:
         """
         logger = utils.get_yf_logger()
 
+        market = bh.get_market(self.ticker.history_metadata["fullExchangeName"], None)
+
+        if market is None:
+            holidays = []
+            partial_days = []
+            all_holidays = []
+            all_dates = []
+        else:
+            holidays = market.get_holidays(_datetime.date.fromtimestamp(start), _datetime.date.fromtimestamp(end))
+            partial_days = market.get_partial_days(_datetime.date.fromtimestamp(start), _datetime.date.fromtimestamp(end))
+            all_holidays = holidays + partial_days
+            all_holidays.sort(key=lambda x: x.date)
+            all_dates = [day.date for day in all_holidays]
+
+
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
@@ -106,7 +121,7 @@ class PriceHistory:
                         raise _exception
                     else:
                         logger.error(err_msg)
-                    return utils.empty_df()
+                    return utils.empty_df(), all_holidays
                 if period == 'ytd':
                     start = _datetime.date(pd.Timestamp.utcnow().tz_convert(tz).year, 1, 1)
                 else:
@@ -132,7 +147,7 @@ class PriceHistory:
                     raise _exception
                 else:
                     logger.error(err_msg)
-                return utils.empty_df()
+                return utils.empty_df(), all_holidays
 
             if end is None:
                 end = int(_time.time())
@@ -204,7 +219,7 @@ class PriceHistory:
         # Store the meta data that gets retrieved simultaneously
         try:
             self._history_metadata = data["chart"]["result"][0]["meta"]
-        except Exception:
+        except:
             self._history_metadata = {}
 
         intraday = params["interval"][-1] in ("m", 'h')
@@ -227,9 +242,13 @@ class PriceHistory:
         else:
             _price_data_debug += f' (period={period})'
 
+        if market is not None:
+            days = [market.day(day) for day in utils.iterate_date(_datetime.date.fromtimestamp(start), _datetime.date.fromtimestamp(end)) if day in all_dates]
+        else:
+            days = []
         fail = False
-        if data is None and bh.get_market().is_holiday(_datetime.date(end_dt.year, end_dt.month, end_dt.day)):
-            _exception = YFMarketHoliday(self.ticker_name, bh.get_market(self.ticker).get_holiday(_datetime.date(end_dt.year, end_dt.month, end_dt.day)))
+        if data is None and all(isinstance(day, Holiday) for day in days):
+            _exception = YFMarketHoliday(self.ticker_name, holidays)
             fail = True
         elif data is None or not isinstance(data, dict):
             _exception = YFPricesMissingError(self.ticker_name, _price_data_debug)
@@ -260,7 +279,7 @@ class PriceHistory:
                 logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
-            return utils.empty_df(), bh.get_holidays().get_holidays(self.ticker)
+            return utils.empty_df(), all_holidays
 
         # Select useful info from metadata
         quote_type = self._history_metadata["instrumentType"]
@@ -478,7 +497,7 @@ class PriceHistory:
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
-        return df, bh.get_holidays().get_holidays(self.ticker)
+        return df, all_holidays
 
     def _get_history_cache(self, period="max", interval="1d") -> pd.DataFrame:
         cache_key = (interval, period)

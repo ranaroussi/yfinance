@@ -1,7 +1,13 @@
 import asyncio
 import base64
 import json
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, TypedDict
+import datetime as _datetime
+
+import BetterHolidays as bh
+from BetterHolidays.days import Holiday
+from .ticker import Ticker
+from .exceptions import YFMarketHoliday
 
 from websockets.sync.client import connect as sync_connect
 from websockets.asyncio.client import connect as async_connect
@@ -10,9 +16,10 @@ from yfinance import utils
 from yfinance.pricing_pb2 import PricingData
 from google.protobuf.json_format import MessageToDict
 
+DATA = TypedDict("DATA", {"type": str, "data": dict})
 
 class BaseWebSocket:
-    def __init__(self, url: str = "wss://streamer.finance.yahoo.com/?version=2", verbose=True):
+    def __init__(self, url: 'str' = "wss://streamer.finance.yahoo.com/?version=2", verbose=True):
         self.url = url
         self.verbose = verbose
         self.logger = utils.get_yf_logger()
@@ -20,22 +27,34 @@ class BaseWebSocket:
         self._subscriptions = set()
         self._subscription_interval = 15  # seconds
 
-    def _decode_message(self, base64_message: str) -> dict:
+    def _decode_message(self, base64_message: 'str') -> 'DATA':
         try:
             decoded_bytes = base64.b64decode(base64_message)
             pricing_data = PricingData()
             pricing_data.ParseFromString(decoded_bytes)
-            return MessageToDict(pricing_data, preserving_proto_field_name=True)
+            return self._encode_message("received", MessageToDict(pricing_data, preserving_proto_field_name=True))
         except Exception as e:
             self.logger.error("Failed to decode message: %s", e, exc_info=True)
             if self.verbose:
                 print("Failed to decode message: %s", e)
-            return {
-                'error': str(e),
-                'raw_base64': base64_message
-            }
+            return self._encode_message("error", self._encode_error(e, base64_message))
+    
+    def _encode_message(self, type:'str', data:'dict') -> 'DATA':
+        if type == "received":
+            return {"type": "received", "data": data}
+        
+        elif type == "error":
+            return {"type": "error", "data": data}
+        
+        else:
+            return {"type": "unknown", "data": data}
 
-
+    def _encode_error(self, error:'Exception', raw) -> 'dict[str, str]':
+        return {
+            "error": str(error),
+            "type": str(type(error)),
+            "raw_base64": raw
+        }
 class AsyncWebSocket(BaseWebSocket):
     """
     Asynchronous WebSocket client for streaming real time pricing data.
@@ -52,6 +71,7 @@ class AsyncWebSocket(BaseWebSocket):
         super().__init__(url, verbose)
         self._message_handler = None  # Callable to handle messages
         self._heartbeat_task = None  # Task to send heartbeat subscribe
+        self.messages = []
 
     async def _connect(self):
         try:
@@ -84,17 +104,23 @@ class AsyncWebSocket(BaseWebSocket):
                     print(f"Error in heartbeat subscription: {e}")
                 break
 
-    async def subscribe(self, symbols: str | List[str]):
+    async def subscribe(self, symbols: 'str | list[str]'):
         """
         Subscribe to a stock symbol or a list of stock symbols.
 
         Args:
-            symbols (str | List[str]): Stock symbol(s) to subscribe to.
+            symbols (str | list[str]): Stock symbol(s) to subscribe to.
         """
         await self._connect()
 
         if isinstance(symbols, str):
-            symbols = [symbols]
+            symbols = symbols.replace(',', ' ').split()
+
+        tickers = [Ticker(symbol) for symbol in symbols]
+
+        for ticker in tickers:
+            if isinstance(day := bh.get_market(ticker.history_metadata["fullExchangeName"]).day(_datetime.date.today()), Holiday):
+                self.messages.append(self._encode_message("error", self._encode_error(YFMarketHoliday(ticker, day), None)))
 
         self._subscriptions.update(symbols)
 
@@ -109,17 +135,17 @@ class AsyncWebSocket(BaseWebSocket):
         if self.verbose:
             print(f"Subscribed to symbols: {symbols}")
 
-    async def unsubscribe(self, symbols: str | List[str]):
+    async def unsubscribe(self, symbols: 'str | list[str]'):
         """
         Unsubscribe from a stock symbol or a list of stock symbols.
 
         Args:
-            symbols (str | List[str]): Stock symbol(s) to unsubscribe from.
+            symbols (str | list[str]): Stock symbol(s) to unsubscribe from.
         """
         await self._connect()
 
         if isinstance(symbols, str):
-            symbols = [symbols]
+            symbols = symbols.replace(',', ' ').split()
 
         self._subscriptions.difference_update(symbols)
 
@@ -150,6 +176,16 @@ class AsyncWebSocket(BaseWebSocket):
 
         while True:
             try:
+                while len(self.messages) > 0:
+                    msg = self.messages.pop(0)
+                    if self._message_handler is not None:
+                        if asyncio.iscoroutinefunction(self._message_handler):
+                            await self._message_handler(msg)
+                        else:
+                            self._message_handler(msg)
+                    else:
+                        print(msg)
+
                 async for message in self._ws:
                     message_json = json.loads(message)
                     encoded_data = message_json.get("message", "")
@@ -220,6 +256,7 @@ class WebSocket(BaseWebSocket):
             verbose (bool): Flag to enable or disable print statements. Defaults to True.
         """
         super().__init__(url, verbose)
+        self.messages = []
 
     def _connect(self):
         try:
@@ -245,7 +282,12 @@ class WebSocket(BaseWebSocket):
         self._connect()
 
         if isinstance(symbols, str):
-            symbols = [symbols]
+            symbols = symbols.replace(',', ' ').split()
+
+        tickers = [Ticker(symbol) for symbol in symbols]
+        for ticker in tickers:
+            if isinstance(day := bh.get_market(ticker.history_metadata["fullExchangeName"]).day(_datetime.date.today()), Holiday):
+                self.messages.append(self._encode_message("error", self._encode_error(YFMarketHoliday(ticker, day), None)))
 
         self._subscriptions.update(symbols)
 
@@ -256,17 +298,17 @@ class WebSocket(BaseWebSocket):
         if self.verbose:
             print(f"Subscribed to symbols: {symbols}")
 
-    def unsubscribe(self, symbols: str | List[str]):
+    def unsubscribe(self, symbols: 'str | list[str]'):
         """
         Unsubscribe from a stock symbol or a list of stock symbols.
 
         Args:
-            symbols (str | List[str]): Stock symbol(s) to unsubscribe from.
+            symbols (str | list[str]): Stock symbol(s) to unsubscribe from.
         """
         self._connect()
 
         if isinstance(symbols, str):
-            symbols = [symbols]
+            symbols = symbols.replace(',', ' ').split() 
 
         self._subscriptions.difference_update(symbols)
 
@@ -277,7 +319,7 @@ class WebSocket(BaseWebSocket):
         if self.verbose:
             print(f"Unsubscribed from symbols: {symbols}")
 
-    def listen(self, message_handler: Optional[Callable[[dict], None]] = None):
+    def listen(self, message_handler: 'Optional[Callable[[dict], None]]' = None):
         """
         Start listening to messages from the WebSocket server.
 
@@ -292,6 +334,12 @@ class WebSocket(BaseWebSocket):
 
         while True:
             try:
+                for msg in self.messages:
+                    if message_handler:
+                        message_handler(msg)
+                    else:
+                        print(msg)
+
                 message = self._ws.recv()
                 message_json = json.loads(message)
                 encoded_data = message_json.get("message", "")

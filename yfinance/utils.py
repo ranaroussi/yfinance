@@ -43,6 +43,12 @@ from yfinance import const
 user_agent_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
+def iterate_date(start: '_datetime.date', end: '_datetime.date'):
+    current = start
+    while current <= end:
+        yield current
+        current += _datetime.timedelta(days=1)
+
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
     disallowed_names = {
@@ -51,7 +57,6 @@ def attributes(obj):
     return {
         name: getattr(obj, name) for name in dir(obj)
         if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
-
 
 @lru_cache(maxsize=20)
 def print_once(msg):
