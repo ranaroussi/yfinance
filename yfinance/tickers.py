@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 from . import Ticker, multi
+from .live import WebSocket
 from .utils import print_once
 from .data import YfData
 from .const import _SENTINEL_
@@ -40,6 +41,9 @@ class Tickers:
 
         self._data = YfData(session=session)
 
+        self._message_handler = None
+        self.ws = None
+
         # self.tickers = _namedtuple(
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
@@ -52,13 +56,14 @@ class Tickers:
                 timeout=10, **kwargs):
 
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         return self.download(
             period, interval,
             start, end, prepost,
             actions, auto_adjust, repair, 
+            proxy,
             threads, group_by, progress,
             timeout, **kwargs)
 
@@ -70,7 +75,7 @@ class Tickers:
                  timeout=10, **kwargs):
 
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_proxy(proxy)")
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
         data = multi.download(self.symbols,
@@ -98,3 +103,10 @@ class Tickers:
 
     def news(self):
         return {ticker: [item for item in Ticker(ticker).news] for ticker in self.symbols}
+
+    def live(self, message_handler=None, verbose=True):
+        self._message_handler = message_handler
+
+        self.ws = WebSocket(verbose=verbose)
+        self.ws.subscribe(self.symbols)
+        self.ws.listen(self._message_handler)
