@@ -8,3 +8,6 @@ Development
    contributing
    documentation
    reporting_bug
+   branches
+   testing
+   running
