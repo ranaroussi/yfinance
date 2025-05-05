@@ -429,6 +429,11 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Lookup.html">Lookup</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.websocket.html">WebSocket</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.WebSocket.html">WebSocket</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.AsyncWebSocket.html">AsyncWebSocket</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Sector.html">Sector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Industry.html">Industry</a></li>
@@ -515,7 +520,7 @@ document.write(`
 <h1>yfinance.screen<a class="headerlink" href="#yfinance-screen" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="yfinance.screen">
-<span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">screen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~yfinance.screener.query.EquityQuery</span> <span class="pre">|</span> <span class="pre">~yfinance.screener.query.FundQuery</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortField:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortAsc:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userId:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userIdType:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.screen" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">screen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~yfinance.screener.query.EquityQuery</span> <span class="pre">|</span> <span class="pre">~yfinance.screener.query.FundQuery</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortField:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortAsc:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userId:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userIdType:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.screen" title="Link to this definition">#</a></dt>
 <dd><p>Run a screen: predefined query, or custom query.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -528,7 +533,11 @@ For predefined list run yf.PREDEFINED_SCREENER_QUERIES.keys()</p>
 </dd>
 <dt>offset<span class="classifier">int</span></dt><dd><p>The offset for the results. Default 0.</p>
 </dd>
-<dt>size<span class="classifier">int</span></dt><dd><p>number of results to return. Default 100, maximum 250 (Yahoo)</p>
+<dt>size<span class="classifier">int</span></dt><dd><p>number of results to return. Default 100, maximum 250 (Yahoo)
+Use count instead for predefined queries.</p>
+</dd>
+<dt>count<span class="classifier">int</span></dt><dd><p>number of results to return. Default 25, maximum 250 (Yahoo)
+Use size instead for custom queries.</p>
 </dd>
 <dt>sortField<span class="classifier">str</span></dt><dd><p>field to sort by. Default “ticker”</p>
 </dd>
@@ -666,6 +675,7 @@ For predefined list run yf.PREDEFINED_SCREENER_QUERIES.keys()</p>
 </tr>
 <tr class="row-odd"><td><p>most_shorted_stocks</p></td>
 <td><div class="line-block">
+<div class="line">count: 25</div>
 <div class="line">offset: 0</div>
 <div class="line">query:</div>
 <div class="line-block">
@@ -677,7 +687,6 @@ For predefined list run yf.PREDEFINED_SCREENER_QUERIES.keys()</p>
 </div>
 <div class="line">])</div>
 </div>
-<div class="line">size: 25</div>
 <div class="line">sortField: short_percentage_of_shares_outstanding.value</div>
 <div class="line">sortType: DESC</div>
 </div>

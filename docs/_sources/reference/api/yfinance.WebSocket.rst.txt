@@ -1,0 +1,30 @@
+﻿:orphan:
+
+WebSocket
+=========
+
+.. currentmodule:: yfinance
+
+.. autoclass:: WebSocket
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   
+   .. automethod:: __init__
+      :noindex:
+   .. automethod:: close
+      :noindex:
+   .. automethod:: listen
+      :noindex:
+   .. automethod:: subscribe
+      :noindex:
+   .. automethod:: unsubscribe
+      :noindex:
+   
+   

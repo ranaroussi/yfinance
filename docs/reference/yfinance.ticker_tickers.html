@@ -429,6 +429,11 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Lookup.html">Lookup</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.websocket.html">WebSocket</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.WebSocket.html">WebSocket</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.AsyncWebSocket.html">AsyncWebSocket</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Sector.html">Sector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Industry.html">Industry</a></li>
@@ -550,6 +555,9 @@ document.write(`
 
 <span class="c1"># analysis</span>
 <span class="n">dat</span><span class="o">.</span><span class="n">analyst_price_targets</span>
+
+<span class="c1"># websocket</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">live</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>To initialize multiple <cite>Ticker</cite> objects, use</p>
@@ -561,6 +569,9 @@ document.write(`
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;MSFT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;AAPL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">&quot;1mo&quot;</span><span class="p">)</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;GOOG&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
+
+<span class="c1"># websocket</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">live</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>For tickers that are ETFs/Mutual Funds, <cite>Ticker.funds_data</cite> provides access to fund related data.</p>
@@ -610,6 +621,9 @@ document.write(`
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;MSFT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;AAPL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">&quot;1mo&quot;</span><span class="p">)</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;GOOG&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
+
+<span class="c1"># websocket</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">live</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>

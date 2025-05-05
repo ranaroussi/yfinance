@@ -1,0 +1,717 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>WebSocket &#8212; yfinance</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/yfinance.css?v=6f22274e" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/yfinance.websocket';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="WebSocket" href="api/yfinance.WebSocket.html" />
+    <link rel="prev" title="Lookup" href="api/yfinance.Lookup.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo-light.webp" class="logo__image only-light" alt="yfinance - Home"/>
+    <script>document.write(`<img src="../_static/logo-dark.webp" class="logo__image only-dark" alt="yfinance - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../advanced/index.html">
+    Advanced
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../development/index.html">
+    Development
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ranaroussi/yfinance" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../advanced/index.html">
+    Advanced
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../development/index.html">
+    Development
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ranaroussi/yfinance" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.ticker_tickers.html">Ticker and Tickers</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.html">Ticker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Tickers.html">Tickers</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.stock.html">Stock</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_isin.html">yfinance.Ticker.get_isin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.isin.html">yfinance.Ticker.isin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.history.html">yfinance.Ticker.history</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_history_metadata.html">yfinance.Ticker.get_history_metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_dividends.html">yfinance.Ticker.get_dividends</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.dividends.html">yfinance.Ticker.dividends</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_splits.html">yfinance.Ticker.get_splits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.splits.html">yfinance.Ticker.splits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_actions.html">yfinance.Ticker.get_actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.actions.html">yfinance.Ticker.actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_capital_gains.html">yfinance.Ticker.get_capital_gains</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.capital_gains.html">yfinance.Ticker.capital_gains</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_shares_full.html">yfinance.Ticker.get_shares_full</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_info.html">yfinance.Ticker.get_info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.info.html">yfinance.Ticker.info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_fast_info.html">yfinance.Ticker.get_fast_info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.fast_info.html">yfinance.Ticker.fast_info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_news.html">yfinance.Ticker.get_news</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.news.html">yfinance.Ticker.news</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.market.html">Market</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Market.html">Market</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.quarterly_income_stmt.html">yfinance.Ticker.quarterly_income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.ttm_income_stmt.html">yfinance.Ticker.ttm_income_stmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_balance_sheet.html">yfinance.Ticker.get_balance_sheet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.balance_sheet.html">yfinance.Ticker.balance_sheet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_cashflow.html">yfinance.Ticker.get_cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.cashflow.html">yfinance.Ticker.cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.quarterly_cashflow.html">yfinance.Ticker.quarterly_cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.ttm_cashflow.html">yfinance.Ticker.ttm_cashflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_earnings.html">yfinance.Ticker.get_earnings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.earnings.html">yfinance.Ticker.earnings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.calendar.html">yfinance.Ticker.calendar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_earnings_dates.html">yfinance.Ticker.get_earnings_dates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.earnings_dates.html">yfinance.Ticker.earnings_dates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_sec_filings.html">yfinance.Ticker.get_sec_filings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.sec_filings.html">yfinance.Ticker.sec_filings</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.analysis.html">Analysis &amp; Holdings</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_recommendations.html">yfinance.Ticker.get_recommendations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.recommendations.html">yfinance.Ticker.recommendations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_recommendations_summary.html">yfinance.Ticker.get_recommendations_summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.recommendations_summary.html">yfinance.Ticker.recommendations_summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_upgrades_downgrades.html">yfinance.Ticker.get_upgrades_downgrades</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.upgrades_downgrades.html">yfinance.Ticker.upgrades_downgrades</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_sustainability.html">yfinance.Ticker.get_sustainability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.sustainability.html">yfinance.Ticker.sustainability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_analyst_price_targets.html">yfinance.Ticker.get_analyst_price_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.analyst_price_targets.html">yfinance.Ticker.analyst_price_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_earnings_estimate.html">yfinance.Ticker.get_earnings_estimate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.earnings_estimate.html">yfinance.Ticker.earnings_estimate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_revenue_estimate.html">yfinance.Ticker.get_revenue_estimate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.revenue_estimate.html">yfinance.Ticker.revenue_estimate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_earnings_history.html">yfinance.Ticker.get_earnings_history</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.earnings_history.html">yfinance.Ticker.earnings_history</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_eps_trend.html">yfinance.Ticker.get_eps_trend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.eps_trend.html">yfinance.Ticker.eps_trend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_eps_revisions.html">yfinance.Ticker.get_eps_revisions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.eps_revisions.html">yfinance.Ticker.eps_revisions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_growth_estimates.html">yfinance.Ticker.get_growth_estimates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.growth_estimates.html">yfinance.Ticker.growth_estimates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_funds_data.html">yfinance.Ticker.get_funds_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.funds_data.html">yfinance.Ticker.funds_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_insider_purchases.html">yfinance.Ticker.get_insider_purchases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.insider_purchases.html">yfinance.Ticker.insider_purchases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_insider_transactions.html">yfinance.Ticker.get_insider_transactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.insider_transactions.html">yfinance.Ticker.insider_transactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_insider_roster_holders.html">yfinance.Ticker.get_insider_roster_holders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.insider_roster_holders.html">yfinance.Ticker.insider_roster_holders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_major_holders.html">yfinance.Ticker.get_major_holders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.major_holders.html">yfinance.Ticker.major_holders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_institutional_holders.html">yfinance.Ticker.get_institutional_holders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.institutional_holders.html">yfinance.Ticker.institutional_holders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_mutualfund_holders.html">yfinance.Ticker.get_mutualfund_holders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.mutualfund_holders.html">yfinance.Ticker.mutualfund_holders</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.market.html">Market</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Market.html">Market</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.search.html">Search &amp; Lookup</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Search.html">Search</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Lookup.html">Lookup</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">WebSocket</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.WebSocket.html">WebSocket</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.AsyncWebSocket.html">AsyncWebSocket</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.sector_industry.html">Sector and Industry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Sector.html">Sector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Industry.html">Industry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.screener.html">Screener &amp; Query</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.EquityQuery.html">EquityQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.FundQuery.html">FundQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.screen.html">yfinance.screen</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.functions.html">Functions and Utilities</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.download.html">yfinance.download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.enable_debug_mode.html">yfinance.enable_debug_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.set_tz_cache_location.html">yfinance.set_tz_cache_location</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.funds_data.html"><cite>FundsData</cite> class</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.scrapers.funds.FundsData.html">FundsData</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="yfinance.price_history.html"><cite>PriceHistory</cite> class</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">WebSocket</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="websocket">
+<h1>WebSocket<a class="headerlink" href="#websocket" title="Link to this heading">#</a></h1>
+<p>The <cite>WebSocket</cite> module allows you to stream live price data from Yahoo Finance using both synchronous and asynchronous clients.</p>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.WebSocket.html#yfinance.WebSocket" title="yfinance.WebSocket"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WebSocket</span></code></a>([url, verbose])</p></td>
+<td><p>Synchronous WebSocket client for streaming real time pricing data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.AsyncWebSocket.html#yfinance.AsyncWebSocket" title="yfinance.AsyncWebSocket"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AsyncWebSocket</span></code></a>([url, verbose])</p></td>
+<td><p>Asynchronous WebSocket client for streaming real time pricing data.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="synchronous-websocket">
+<h2>Synchronous WebSocket<a class="headerlink" href="#synchronous-websocket" title="Link to this heading">#</a></h2>
+<p>The <cite>WebSocket</cite> class provides a synchronous interface for subscribing to price updates.</p>
+<p>Sample Code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+
+<span class="c1"># define your message callback</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">message_handler</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Received message:&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+
+<span class="c1"># =======================</span>
+<span class="c1"># With Context Manager</span>
+<span class="c1"># =======================</span>
+<span class="k">with</span> <span class="n">yf</span><span class="o">.</span><span class="n">WebSocket</span><span class="p">()</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
+    <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+    <span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">message_handler</span><span class="p">)</span>
+
+<span class="c1"># =======================</span>
+<span class="c1"># Without Context Manager</span>
+<span class="c1"># =======================</span>
+<span class="n">ws</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">WebSocket</span><span class="p">()</span>
+<span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+<span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">message_handler</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="asynchronous-websocket">
+<h2>Asynchronous WebSocket<a class="headerlink" href="#asynchronous-websocket" title="Link to this heading">#</a></h2>
+<p>The <cite>AsyncWebSocket</cite> class provides an asynchronous interface for subscribing to price updates.</p>
+<p>Sample Code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+
+<span class="c1"># define your message callback</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">message_handler</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Received message:&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="c1"># =======================</span>
+    <span class="c1"># With Context Manager</span>
+    <span class="c1"># =======================</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">yf</span><span class="o">.</span><span class="n">AsyncWebSocket</span><span class="p">()</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">()</span>
+
+    <span class="c1"># =======================</span>
+    <span class="c1"># Without Context Manager</span>
+    <span class="c1"># =======================</span>
+    <span class="n">ws</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">AsyncWebSocket</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">()</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you’re running asynchronous code in a Jupyter notebook, you may encounter issues with event loops. To resolve this, you need to import and apply <cite>nest_asyncio</cite> to allow nested event loops.</p>
+<p>Add the following code before running asynchronous operations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">nest_asyncio</span>
+<span class="n">nest_asyncio</span><span class="o">.</span><span class="n">apply</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="api/yfinance.Lookup.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Lookup</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="api/yfinance.WebSocket.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">WebSocket</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#classes">Classes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#synchronous-websocket">Synchronous WebSocket</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#asynchronous-websocket">Asynchronous WebSocket</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/reference/yfinance.websocket.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2017-2025 Ran Aroussi.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

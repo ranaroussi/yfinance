@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Contributiong to yfinance &#8212; yfinance</title>
+    <title>Contributing to yfinance &#8212; yfinance</title>
   
   
   
@@ -330,9 +330,14 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Contributiong to yfinance</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Contributing to yfinance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="documentation.html">Contribution to the documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reporting_bug.html">Reporting a Bug</a></li>
+<li class="toctree-l1"><a class="reference internal" href="branches.html">Branches</a></li>
+
+
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Unit Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="running.html">Running a branch</a></li>
 </ul>
 </div>
 </nav></div>
@@ -373,7 +378,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Development</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Contribution...</li>
+    <li class="breadcrumb-item active" aria-current="page">Contributing...</li>
   </ul>
 </nav>
 </div>
@@ -390,98 +395,46 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="contributiong-to-yfinance">
-<h1>Contributiong to yfinance<a class="headerlink" href="#contributiong-to-yfinance" title="Link to this heading">#</a></h1>
-<p><cite>yfinance</cite> relies on the community to investigate bugs and contribute code. Here’s how you can help:</p>
+  <section id="contributing-to-yfinance">
+<h1>Contributing to yfinance<a class="headerlink" href="#contributing-to-yfinance" title="Link to this heading">#</a></h1>
+<p><cite>yfinance</cite> relies on the community to investigate bugs and contribute code. Here&amp;apos;s how you can help:</p>
 <section id="contributing">
 <h2>Contributing<a class="headerlink" href="#contributing" title="Link to this heading">#</a></h2>
 <ol class="arabic">
-<li><p>Fork the repository on GitHub.</p></li>
+<li><p>Fork the repository on GitHub. If already forked, remember to <cite>Sync fork</cite></p></li>
 <li><p>Clone your forked repository:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/your-username/yfinance.git
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/<span class="o">{</span>user<span class="o">}</span>/<span class="o">{</span>repo<span class="o">}</span>.git
 </pre></div>
 </div>
 </li>
 <li><p>Create a new branch for your feature or bug fix:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>feature-branch-name
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
 </pre></div>
 </div>
 </li>
 <li><p>Make your changes, commit them, and push your branch to GitHub. To keep the commit history and <a class="reference external" href="https://github.com/ranaroussi/yfinance/network">network graph</a> compact:</p>
 <p>Use short summaries for commits</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;short summary&quot;</span><span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;full commit message&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;short summary&quot;</span><span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;full commit message&quot;</span>
 </pre></div>
 </div>
 <p><strong>Squash</strong> tiny or negligible commits with meaningful ones.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>rebase<span class="w"> </span>-i<span class="w"> </span>HEAD~2
-git<span class="w"> </span>push<span class="w"> </span>--force-with-lease<span class="w"> </span>origin<span class="w"> </span>&lt;branch-name&gt;
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>rebase<span class="w"> </span>-i<span class="w"> </span>HEAD~2
+git<span class="w"> </span>push<span class="w"> </span>--force-with-lease<span class="w"> </span>origin<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
 </pre></div>
 </div>
 </li>
-<li><p>Open a pull request on the <cite>yfinance</cite> GitHub page.</p></li>
-</ol>
-<p>For more information, see the <a class="reference external" href="https://github.com/ranaroussi/yfinance/discussions/1084">Developer Guide</a>.</p>
-</section>
-<section id="branches">
-<h2>Branches<a class="headerlink" href="#branches" title="Link to this heading">#</a></h2>
-<p>To support rapid development without breaking stable versions, this project uses a two-layer branch model:</p>
-<img alt="Branching Model" src="../_images/branches.png" />
-<p><a class="reference external" href="https://miro.medium.com/max/700/1*2YagIpX6LuauC3ASpwHekg.png">Inspiration</a></p>
-<ul class="simple">
-<li><p><strong>dev</strong>: New features and some bug fixes are merged here. This branch allows collective testing, conflict resolution, and further stabilization before merging into the stable branch.</p></li>
-<li><p><strong>main</strong>: Stable branch where PIP releases are created.</p></li>
-</ul>
-<p>By default, branches target <strong>main</strong>, but most contributions should target <strong>dev</strong>.</p>
-<p><strong>Exceptions</strong>:
-Direct merges to <strong>main</strong> are allowed if:</p>
-<ul class="simple">
-<li><p><cite>yfinance</cite> is massively broken</p></li>
-<li><p>Part of <cite>yfinance</cite> is broken, and the fix is simple and isolated</p></li>
-</ul>
-</section>
-<section id="unit-tests">
-<h2>Unit Tests<a class="headerlink" href="#unit-tests" title="Link to this heading">#</a></h2>
-<p>Tests are written using Python’s <cite>unittest</cite> module. Here are some ways to run tests:</p>
-<ul>
-<li><p><strong>Run all price tests</strong>:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>tests.test_prices
-</pre></div>
-</div>
-</li>
-<li><p><strong>Run a subset of price tests</strong>:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>tests.test_prices.TestPriceRepair
-</pre></div>
-</div>
-</li>
-<li><p><strong>Run a specific test</strong>:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>tests.test_prices.TestPriceRepair.test_ticker_missing
-</pre></div>
-</div>
-</li>
-<li><p><strong>Run all tests</strong>:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>discover<span class="w"> </span>-s<span class="w"> </span>tests
-</pre></div>
-</div>
-</li>
-</ul>
-</section>
-<section id="rebasing">
-<h2>Rebasing<a class="headerlink" href="#rebasing" title="Link to this heading">#</a></h2>
-<p>If asked to move your branch from <strong>main</strong> to <strong>dev</strong>:</p>
-<ol class="arabic">
-<li><p>Ensure all relevant branches are pulled.</p></li>
-<li><p>Run:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>checkout<span class="w"> </span>&lt;your-branch&gt;
-git<span class="w"> </span>rebase<span class="w"> </span>--onto<span class="w"> </span>dev<span class="w"> </span>main<span class="w"> </span>&lt;branch-name&gt;
-git<span class="w"> </span>push<span class="w"> </span>--force-with-lease<span class="w"> </span>origin<span class="w"> </span>&lt;branch-name&gt;
-</pre></div>
-</div>
-</li>
+<li><p>Open a pull request on the <cite>yfinance</cite> <a class="reference external" href="https://github.com/ranaroussi/yfinance/pulls">Github</a> page.</p></li>
 </ol>
 </section>
-<section id="running-the-github-version-of-yfinance">
-<h2>Running the GitHub Version of yfinance<a class="headerlink" href="#running-the-github-version-of-yfinance" title="Link to this heading">#</a></h2>
-<p>To download and run a GitHub version of <cite>yfinance</cite>, refer to <a class="reference external" href="https://github.com/ranaroussi/yfinance/discussions/1080">GitHub discussion</a></p>
+<section id="git-stuff">
+<h2>Git stuff<a class="headerlink" href="#git-stuff" title="Link to this heading">#</a></h2>
+<p>To keep the Git commit history and [network graph](<a class="github reference external" href="https://github.com/ranaroussi/yfinance/network">ranaroussi/yfinance</a>) compact please follow these two rules:</p>
+<ul class="simple">
+<li><p>For long commit messages use this: <cite>git commit -m “short sentence summary” -m “full commit message”</cite></p></li>
+<li><p><cite>squash</cite> tiny/negligible commits back with meaningful commits, or to combine successive related commits. [Guide](<a class="reference external" href="https://docs.gitlab.com/ee/topics/git/git_rebase.html#interactive-rebase">https://docs.gitlab.com/ee/topics/git/git_rebase.html#interactive-rebase</a>) but basically it’s:</p></li>
+</ul>
+<p>### rebase</p>
+<p>You might be asked to move your branch from <cite>main</cite> to <cite>dev</cite>. Make sure you have pulled <strong>all</strong> relevant branches then run:</p>
 </section>
 </section>
 
@@ -532,10 +485,7 @@ git<span class="w"> </span>push<span class="w"> </span>--force-with-lease<span c
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contributing">Contributing</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#branches">Branches</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unit-tests">Unit Tests</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rebasing">Rebasing</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-github-version-of-yfinance">Running the GitHub Version of yfinance</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#git-stuff">Git stuff</a></li>
 </ul>
   </nav></div>
 

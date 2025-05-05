@@ -22,6 +22,8 @@ Tickers
       :noindex:
    .. automethod:: history
       :noindex:
+   .. automethod:: live
+      :noindex:
    .. automethod:: news
       :noindex:
    
