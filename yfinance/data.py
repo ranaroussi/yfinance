@@ -183,11 +183,11 @@ class YfData(metaclass=SingletonMeta):
             allow_redirects=True)
 
     def _get_crumb_basic(self, timeout=30):
-        if self._crumb is not None:
-            utils.get_yf_logger().debug('reusing crumb')
+        if self._crumb is not None and not 'Too Many Requests' in self._crumb:
+            utils.get_yf_logger().debug(f'reusing crumb')
             return self._crumb
 
-        self._get_cookie_basic()        
+        self._get_cookie_basic()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         get_args = {
             'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
@@ -201,7 +201,7 @@ class YfData(metaclass=SingletonMeta):
         else:
             crumb_response = self._session.get(**get_args)
         self._crumb = crumb_response.text
-        if self._crumb is None or '<html>' in self._crumb:
+        if self._crumb is None or '<html>' in self._crumb or 'Too Many Requests' in self._crumb:
             utils.get_yf_logger().debug("Didn't receive crumb")
             return None
 
@@ -287,7 +287,7 @@ class YfData(metaclass=SingletonMeta):
     def _get_crumb_csrf(self, timeout=30):
         # Credit goes to @bot-unit #1729
 
-        if self._crumb is not None:
+        if self._crumb is not None and not 'Too Many Requests' in self._crumb:
             utils.get_yf_logger().debug('reusing crumb')
             return self._crumb
 
@@ -306,7 +306,7 @@ class YfData(metaclass=SingletonMeta):
             r = self._session.get(**get_args)
         self._crumb = r.text
 
-        if self._crumb is None or '<html>' in self._crumb or self._crumb == '':
+        if self._crumb is None or '<html>' in self._crumb or self._crumb == '' or 'Too Many Requests' in self._crumb:
             utils.get_yf_logger().debug("Didn't receive crumb")
             return None
 
@@ -339,11 +339,11 @@ class YfData(metaclass=SingletonMeta):
     @utils.log_indent_decorator
     def get(self, url, user_agent_headers=None, params=None, timeout=30):
         return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, timeout=timeout)
-    
+
     @utils.log_indent_decorator
     def post(self, url, body, user_agent_headers=None, params=None, timeout=30):
         return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, timeout=timeout)
-    
+
     @utils.log_indent_decorator
     def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, timeout=30):
         # Important: treat input arguments as immutable.
@@ -374,7 +374,7 @@ class YfData(metaclass=SingletonMeta):
 
         if body:
             request_args['json'] = body
-            
+
         response = request_method(**request_args)
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
