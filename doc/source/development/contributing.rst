@@ -1,109 +1,61 @@
 ********************************
-Contributiong to yfinance
+Contributing to yfinance
 ********************************
 
-`yfinance` relies on the community to investigate bugs and contribute code. Here’s how you can help:
+`yfinance` relies on the community to investigate bugs and contribute code. Here&apos;s how you can help:
 
 Contributing
 ------------
 
-1. Fork the repository on GitHub.
+1. Fork the repository on GitHub. If already forked, remember to `Sync fork`
 2. Clone your forked repository:
 
    .. code-block:: bash
 
-      git clone https://github.com/your-username/yfinance.git
+      git clone https://github.com/{user}/{repo}.git
 
 3. Create a new branch for your feature or bug fix:
 
    .. code-block:: bash
 
-      git checkout -b feature-branch-name
+      git checkout -b {branch}
 
 4. Make your changes, commit them, and push your branch to GitHub. To keep the commit history and `network graph <https://github.com/ranaroussi/yfinance/network>`_ compact:
 
    Use short summaries for commits
 
-   .. code-block:: shell
+   .. code-block:: bash
 
       git commit -m "short summary" -m "full commit message"
 
    **Squash** tiny or negligible commits with meaningful ones.
 
-   .. code-block:: shell
+   .. code-block:: bash
 
       git rebase -i HEAD~2
-      git push --force-with-lease origin <branch-name>
+      git push --force-with-lease origin {branch}
 
-5. Open a pull request on the `yfinance` GitHub page.
+5. Open a pull request on the `yfinance` `Github <https://github.com/ranaroussi/yfinance/pulls>`_ page.
 
-For more information, see the `Developer Guide <https://github.com/ranaroussi/yfinance/discussions/1084>`_.
-
-Branches
+Git stuff
 ---------
 
-To support rapid development without breaking stable versions, this project uses a two-layer branch model:
+To keep the Git commit history and [network graph](https://github.com/ranaroussi/yfinance/network) compact please follow these two rules:
 
-.. image:: assets/branches.png
-   :alt: Branching Model
+- For long commit messages use this: `git commit -m "short sentence summary" -m "full commit message"`
 
-`Inspiration <https://miro.medium.com/max/700/1*2YagIpX6LuauC3ASpwHekg.png>`_
+- `squash` tiny/negligible commits back with meaningful commits, or to combine successive related commits. [Guide](https://docs.gitlab.com/ee/topics/git/git_rebase.html#interactive-rebase) but basically it's:
 
-- **dev**: New features and some bug fixes are merged here. This branch allows collective testing, conflict resolution, and further stabilization before merging into the stable branch.
-- **main**: Stable branch where PIP releases are created.
+.. code-block:: bash
+   git rebase -i HEAD~2
+   git push --force-with-lease origin {branch}
 
-By default, branches target **main**, but most contributions should target **dev**. 
 
-**Exceptions**:
-Direct merges to **main** are allowed if:
+### rebase
+ 
+You might be asked to move your branch from `main` to `dev`. Make sure you have pulled **all** relevant branches then run:
 
-- `yfinance` is massively broken
-- Part of `yfinance` is broken, and the fix is simple and isolated
-
-Unit Tests
-----------
-
-Tests are written using Python’s `unittest` module. Here are some ways to run tests:
-
-- **Run all price tests**:
-
-  .. code-block:: shell
-
-     python -m unittest tests.test_prices
-
-- **Run a subset of price tests**:
-
-  .. code-block:: shell
-
-     python -m unittest tests.test_prices.TestPriceRepair
-
-- **Run a specific test**:
-
-  .. code-block:: shell
-
-     python -m unittest tests.test_prices.TestPriceRepair.test_ticker_missing
-
-- **Run all tests**:
-
-  .. code-block:: shell
-
-     python -m unittest discover -s tests
-
-Rebasing
---------------
-
-If asked to move your branch from **main** to **dev**:
-
-1. Ensure all relevant branches are pulled.
-2. Run:
-
-   .. code-block:: shell
-
-      git checkout <your-branch>
-      git rebase --onto dev main <branch-name>
-      git push --force-with-lease origin <branch-name>
-
-Running the GitHub Version of yfinance
---------------------------------------
-
-To download and run a GitHub version of `yfinance`, refer to `GitHub discussion <https://github.com/ranaroussi/yfinance/discussions/1080>`_
+.. code-block:: bash
+   git checkout {branch}
+   git rebase --onto dev main {brach}
+   git push --force-with-lease origin {branch}
