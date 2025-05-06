@@ -67,7 +67,7 @@ class Holders:
         modules = ','.join(
             ["institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"])
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false"}
-        result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict)
+        result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", params=params_dict)
         return result
 
     def _fetch_and_parse(self):
