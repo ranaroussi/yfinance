@@ -122,7 +122,7 @@ class Domain(ABC):
             Dict: The JSON response data from the request.
         """
         params_dict = {"formatted": "true", "withReturns": "true", "lang": "en-US", "region": "US"}
-        result = self._data.get_raw_json(query_url, user_agent_headers=self._data.user_agent_headers, params=params_dict)
+        result = self._data.get_raw_json(query_url, params=params_dict)
         return result
 
     def _parse_and_assign_common(self, data) -> None:
