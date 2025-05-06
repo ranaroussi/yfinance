@@ -13,3 +13,4 @@ scipy>=1.6.3
 curl_cffi>=0.7
 protobuf>=5.29.0,<6
 websockets>=11.0
+Better-Holidays>=0.1.1

@@ -34,7 +34,6 @@ from curl_cffi import requests
 from . import utils, cache
 from .data import YfData
 from .exceptions import YFEarningsDateMissing, YFRateLimitError
-from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.holders import Holders
@@ -99,7 +98,7 @@ class TickerBase:
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+            self._price_history = PriceHistory(self._data, self, self._get_ticker_tz(timeout=10))
         return self._price_history
 
     def _get_ticker_tz(self, timeout):
@@ -799,6 +798,8 @@ class TickerBase:
         return self._funds_data
 
     def live(self, message_handler=None, verbose=True):
+        from .live import WebSocket
+
         self._message_handler = message_handler
 
         self.ws = WebSocket(verbose=verbose)

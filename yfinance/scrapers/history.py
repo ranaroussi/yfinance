@@ -7,15 +7,18 @@ from math import isclose
 import time as _time
 import bisect
 from curl_cffi import requests
+import BetterHolidays as bh
+from BetterHolidays.days import Holiday, PartialTradingDay
+import typing as t
 
 from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, _SENTINEL_
-from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
+from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError, YFMarketHoliday
 
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None, proxy=_SENTINEL_):
         self._data = data
-        self.ticker = ticker.upper()
+        self.ticker = ticker
         self.tz = tz
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
@@ -28,13 +31,17 @@ class PriceHistory:
 
         # Limit recursion depth when repairing prices
         self._reconstruct_start_interval = None
+    
+    @property
+    def ticker_name(self):
+        return self.ticker.ticker.upper()
 
     @utils.log_indent_decorator
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=_SENTINEL_, rounding=False, timeout=10,
-                raise_errors=False) -> pd.DataFrame:
+                raise_errors=False) -> 'tuple[pd.DataFrame, list[t.Union[Holiday, PartialTradingDay]]]':
         """
         :Parameters:
             period : str
@@ -76,6 +83,20 @@ class PriceHistory:
         """
         logger = utils.get_yf_logger()
 
+        market = bh.get_market(self.ticker.history_metadata["fullExchangeName"], None)
+
+        if market is None:
+            holidays = []
+            partial_days = []
+            all_holidays = []
+            all_dates = []
+        else:
+            holidays = market.get_holidays(_datetime.date.fromtimestamp(start), _datetime.date.fromtimestamp(end))
+            partial_days = market.get_partial_days(_datetime.date.fromtimestamp(start), _datetime.date.fromtimestamp(end))
+            all_holidays = holidays + partial_days
+            all_holidays.sort(key=lambda x: x.date)
+            all_dates = [day.date for day in all_holidays]
+
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
@@ -91,15 +112,15 @@ class PriceHistory:
                 tz = self.tz
                 if tz is None:
                     # Every valid ticker has a timezone. A missing timezone is a problem.
-                    _exception = YFTzMissingError(self.ticker)
+                    _exception = YFTzMissingError(self.ticker_name)
                     err_msg = str(_exception)
-                    shared._DFS[self.ticker] = utils.empty_df()
-                    shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                    shared._DFS[self.ticker_name] = utils.empty_df()
+                    shared._ERRORS[self.ticker_name] = err_msg.split(': ', 1)[1]
                     if raise_errors:
                         raise _exception
                     else:
                         logger.error(err_msg)
-                    return utils.empty_df()
+                    return utils.empty_df(), all_holidays
                 if period == 'ytd':
                     start = _datetime.date(pd.Timestamp.utcnow().tz_convert(tz).year, 1, 1)
                 else:
@@ -117,15 +138,15 @@ class PriceHistory:
             tz = self.tz
             if tz is None:
                 # Every valid ticker has a timezone. A missing timezone is a problem.
-                _exception = YFTzMissingError(self.ticker)
+                _exception = YFTzMissingError(self.ticker_name)
                 err_msg = str(_exception)
-                shared._DFS[self.ticker] = utils.empty_df()
-                shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                shared._DFS[self.ticker_name] = utils.empty_df()
+                shared._ERRORS[self.ticker_name] = err_msg.split(': ', 1)[1]
                 if raise_errors:
                     raise _exception
                 else:
                     logger.error(err_msg)
-                return utils.empty_df()
+                return utils.empty_df(), all_holidays
 
             if end is None:
                 end = int(_time.time())
@@ -162,10 +183,10 @@ class PriceHistory:
         for k in ["period1", "period2"]:
             if k in params_pretty:
                 params_pretty[k] = str(pd.Timestamp(params[k], unit='s').tz_localize("UTC").tz_convert(tz))
-        logger.debug(f'{self.ticker}: Yahoo GET parameters: {str(params_pretty)}')
+        logger.debug(f'{self.ticker_name}: Yahoo GET parameters: {str(params_pretty)}')
 
         # Getting data from json
-        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
+        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker_name}"
         data = None
         get_fn = self._data.get
         if end is not None:
@@ -197,7 +218,7 @@ class PriceHistory:
         # Store the meta data that gets retrieved simultaneously
         try:
             self._history_metadata = data["chart"]["result"][0]["meta"]
-        except Exception:
+        except:
             self._history_metadata = {}
 
         intraday = params["interval"][-1] in ("m", 'h')
@@ -220,37 +241,44 @@ class PriceHistory:
         else:
             _price_data_debug += f' (period={period})'
 
+        if market is not None:
+            days = [market.day(day) for day in utils.iterate_date(_datetime.date.fromtimestamp(start), _datetime.date.fromtimestamp(end)) if day in all_dates]
+        else:
+            days = []
         fail = False
-        if data is None or not isinstance(data, dict):
-            _exception = YFPricesMissingError(self.ticker, _price_data_debug)
+        if data is None and all(isinstance(day, Holiday) for day in days):
+            _exception = YFMarketHoliday(self.ticker_name, holidays)
+            fail = True
+        elif data is None or not isinstance(data, dict):
+            _exception = YFPricesMissingError(self.ticker_name, _price_data_debug)
             fail = True
         elif isinstance(data, dict) and 'status_code' in data:
             _price_data_debug += f"(Yahoo status_code = {data['status_code']})"
-            _exception = YFPricesMissingError(self.ticker, _price_data_debug)
+            _exception = YFPricesMissingError(self.ticker_name, _price_data_debug)
             fail = True
         elif "chart" in data and data["chart"]["error"]:
             _price_data_debug += ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
-            _exception = YFPricesMissingError(self.ticker, _price_data_debug)
+            _exception = YFPricesMissingError(self.ticker_name, _price_data_debug)
             fail = True
         elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:
-            _exception = YFPricesMissingError(self.ticker, _price_data_debug)
+            _exception = YFPricesMissingError(self.ticker_name, _price_data_debug)
             fail = True
         elif period and period not in self._history_metadata['validRanges'] and not utils.is_valid_period_format(period):
             # User provided a bad period
-            _exception = YFInvalidPeriodError(self.ticker, period, ", ".join(self._history_metadata['validRanges']))
+            _exception = YFInvalidPeriodError(self.ticker_name, period, ", ".join(self._history_metadata['validRanges']))
             fail = True
 
         if fail:
             err_msg = str(_exception)
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+            shared._DFS[self.ticker_name] = utils.empty_df()
+            shared._ERRORS[self.ticker_name] = err_msg.split(': ', 1)[1]
             if raise_errors:
                 raise _exception
             else:
                 logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
-            return utils.empty_df()
+            return utils.empty_df(), all_holidays
 
         # Select useful info from metadata
         quote_type = self._history_metadata["instrumentType"]
@@ -273,16 +301,16 @@ class PriceHistory:
             if quotes.index[-1] >= end_dt.tz_convert('UTC').tz_localize(None):
                 quotes = quotes.drop(quotes.index[-1])
         if quotes.empty:
-            msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
+            msg = f'{self.ticker_name}: yfinance received OHLC data: EMPTY'
         elif len(quotes) == 1:
-            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} only'
+            msg = f'{self.ticker_name}: yfinance received OHLC data: {quotes.index[0]} only'
         else:
-            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
+            msg = f'{self.ticker_name}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
         logger.debug(msg)
 
         # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
-            logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
+            logger.debug(f'{self.ticker_name}: resampling 30m OHLC from 15m')
             quotes2 = quotes.resample('30min')
             quotes = pd.DataFrame(index=quotes2.last().index, data={
                 'Open': quotes2['Open'].first(),
@@ -310,11 +338,11 @@ class PriceHistory:
                 tps = self._history_metadata["tradingPeriods"]
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
         if quotes.empty:
-            msg = f'{self.ticker}: OHLC after cleaning: EMPTY'
+            msg = f'{self.ticker_name}: OHLC after cleaning: EMPTY'
         elif len(quotes) == 1:
-            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} only'
+            msg = f'{self.ticker_name}: OHLC after cleaning: {quotes.index[0]} only'
         else:
-            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}'
+            msg = f'{self.ticker_name}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}'
         logger.debug(msg)
 
         # actions
@@ -380,11 +408,11 @@ class PriceHistory:
             else:
                 df["Capital Gains"] = 0.0
         if df.empty:
-            msg = f'{self.ticker}: OHLC after combining events: EMPTY'
+            msg = f'{self.ticker_name}: OHLC after combining events: EMPTY'
         elif len(df) == 1:
-            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} only'
+            msg = f'{self.ticker_name}: OHLC after combining events: {df.index[0]} only'
         else:
-            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} -> {df.index[-1]}'
+            msg = f'{self.ticker_name}: OHLC after combining events: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
         df, last_trade = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, prepost, repair=repair, currency=currency)
@@ -395,7 +423,7 @@ class PriceHistory:
 
         if repair:
             # Do this before auto/back adjust
-            logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
+            logger.debug(f'{self.ticker_name}: checking OHLC for repairs ...')
 
             df = df.sort_index()
 
@@ -430,12 +458,12 @@ class PriceHistory:
                 err_msg = "auto_adjust failed with %s" % e
             else:
                 err_msg = "back_adjust failed with %s" % e
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
+            shared._DFS[self.ticker_name] = utils.empty_df()
+            shared._ERRORS[self.ticker_name] = err_msg
             if raise_errors:
-                raise Exception('%s: %s' % (self.ticker, err_msg))
+                raise Exception('%s: %s' % (self.ticker_name, err_msg))
             else:
-                logger.error('%s: %s' % (self.ticker, err_msg))
+                logger.error('%s: %s' % (self.ticker_name, err_msg))
 
         if rounding:
             df = np.round(df, data["chart"]["result"][0]["meta"]["priceHint"])
@@ -459,16 +487,16 @@ class PriceHistory:
             df = self._resample(df, interval, interval_user, period_user)
 
         if df.empty:
-            msg = f'{self.ticker}: yfinance returning OHLC: EMPTY'
+            msg = f'{self.ticker_name}: yfinance returning OHLC: EMPTY'
         elif len(df) == 1:
-            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} only'
+            msg = f'{self.ticker_name}: yfinance returning OHLC: {df.index[0]} only'
         else:
-            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
+            msg = f'{self.ticker_name}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
-        return df
+        return df, all_holidays
 
     def _get_history_cache(self, period="max", interval="1d") -> pd.DataFrame:
         cache_key = (interval, period)
@@ -586,7 +614,7 @@ class PriceHistory:
     def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1):
         # Reconstruct values in df using finer-grained price data. Delimiter marks what to reconstruct
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-reconstruct', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {'yf_cat': 'price-reconstruct', 'yf_interval': interval, 'yf_symbol': self.ticker_name}
 
         if not isinstance(df, pd.DataFrame):
             raise Exception("'df' must be a Pandas DataFrame not", type(df))
@@ -1039,7 +1067,7 @@ class PriceHistory:
 
         # Easy to detect and fix, just look for outliers = ~100x local median
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-repair-100x', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {'yf_cat': 'price-repair-100x', 'yf_interval': interval, 'yf_symbol': self.ticker_name}
 
         if df.shape[0] == 0:
             if "Repaired?" not in df.columns:
@@ -1207,7 +1235,7 @@ class PriceHistory:
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-repair-zeroes', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {'yf_cat': 'price-repair-zeroes', 'yf_interval': interval, 'yf_symbol': self.ticker_name}
 
         intraday = interval[-1] in ("m", 'h')
 
@@ -1239,7 +1267,7 @@ class PriceHistory:
             f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
 
         f_change = df2["High"].to_numpy() != df2["Low"].to_numpy()
-        if self.ticker.endswith("=X"):
+        if self.ticker_name.endswith("=X"):
             # FX, volume always 0
             f_vol_bad = None
         else:
@@ -1307,7 +1335,7 @@ class PriceHistory:
         dts_not_repaired = df2.index[df2_tagged.any(axis=1)]
         n_fixed = n_before - n_after
         if n_fixed > 0:
-            msg = f"{self.ticker}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data"
+            msg = f"{self.ticker_name}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data"
             if n_fixed < 4:
                 dts_repaired = sorted(list(set(dts_tagged).difference(dts_not_repaired)))
                 msg += f": {dts_repaired}"
@@ -1344,7 +1372,7 @@ class PriceHistory:
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'div-adjust-repair-bad', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {'yf_cat': 'div-adjust-repair-bad', 'yf_interval': interval, 'yf_symbol': self.ticker_name}
 
         f_div = (df["Dividends"] != 0.0).to_numpy()
         if not f_div.any():
@@ -2005,7 +2033,7 @@ class PriceHistory:
                 if c == 'adj_exceeds_prices':
                     continue
 
-                if c == 'phantom' and self.ticker in ['KAP.IL', 'SAND']:
+                if c == 'phantom' and self.ticker_name in ['KAP.IL', 'SAND']:
                     # Manually approve, but these are probably safe to assume ok
                     continue
 
@@ -2366,7 +2394,7 @@ class PriceHistory:
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'split-repair', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {'yf_cat': 'split-repair', 'yf_interval': interval, 'yf_symbol': self.ticker_name}
 
         interday = interval in ['1d', '1wk', '1mo', '3mo']
         if not interday:
@@ -2415,7 +2443,7 @@ class PriceHistory:
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-change-repair', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {'yf_cat': 'price-change-repair', 'yf_interval': interval, 'yf_symbol': self.ticker_name}
 
         split = change
         split_rcp = 1.0 / split
