@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.59
+------
+Fix the fix for rate-limit #2452
+
 0.2.58
 ------
 Fix false rate-limit problem #2430
