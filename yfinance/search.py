@@ -27,9 +27,23 @@ from .data import YfData
 
 
 class Search:
-    def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
-                 include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
-                 session=None, proxy=_SENTINEL_, timeout=30, raise_errors=True):
+    def __init__(
+        self,
+        query,
+        max_results=8,
+        news_count=8,
+        lists_count=8,
+        include_cb=True,
+        include_nav_links=False,
+        include_research=False,
+        include_cultural_assets=False,
+        enable_fuzzy_query=False,
+        recommended=8,
+        session=None,
+        proxy=_SENTINEL_,
+        timeout=30,
+        raise_errors=True,
+    ):
         """
         Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.
 
@@ -50,7 +64,7 @@ class Search:
         """
         self.session = session
         self._data = YfData(session=self.session)
-        
+
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
@@ -81,7 +95,7 @@ class Search:
 
         self.search()
 
-    def search(self) -> 'Search':
+    def search(self) -> "Search":
         """Search using the query parameters defined in the constructor."""
         url = f"{_BASE_URL_}/v1/finance/search"
         params = {
@@ -96,16 +110,18 @@ class Search:
             "enableNavLinks": self.nav_links,
             "enableResearchReports": self.enable_research,
             "enableCulturalAssets": self.enable_cultural_assets,
-            "recommendedCount": self.recommended
+            "recommendedCount": self.recommended,
         }
 
-        self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
+        self._logger.debug(f"{self.query}: Yahoo GET parameters: {str(dict(params))}")
 
         data = self._data.cache_get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise RuntimeError(
+                "*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                "Our engineers are working quickly to resolve "
+                "the issue. Thank you for your patience."
+            )
         try:
             data = data.json()
         except _json.JSONDecodeError:
@@ -120,42 +136,47 @@ class Search:
         self._research = data.get("researchReports", [])
         self._nav = data.get("nav", [])
 
-        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research,
-                     "nav": self._nav}
+        self._all = {
+            "quotes": self._quotes,
+            "news": self._news,
+            "lists": self._lists,
+            "research": self._research,
+            "nav": self._nav,
+        }
 
         return self
 
     @property
-    def quotes(self) -> 'list':
+    def quotes(self) -> "list":
         """Get the quotes from the search results."""
         return self._quotes
 
     @property
-    def news(self) -> 'list':
+    def news(self) -> "list":
         """Get the news from the search results."""
         return self._news
 
     @property
-    def lists(self) -> 'list':
+    def lists(self) -> "list":
         """Get the lists from the search results."""
         return self._lists
 
     @property
-    def research(self) -> 'list':
+    def research(self) -> "list":
         """Get the research reports from the search results."""
         return self._research
 
     @property
-    def nav(self) -> 'list':
+    def nav(self) -> "list":
         """Get the navigation links from the search results."""
         return self._nav
 
     @property
-    def all(self) -> 'dict[str,list]':
+    def all(self) -> "dict[str,list]":
         """Get all the results from the search results: filtered down version of response."""
         return self._all
 
     @property
-    def response(self) -> 'dict':
+    def response(self) -> "dict":
         """Get the raw response from the search results."""
         return self._response

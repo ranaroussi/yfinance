@@ -1,5 +1,6 @@
 import yfinance as yf
-spy = yf.Ticker('SPY')
+
+spy = yf.Ticker("SPY")
 data = spy.funds_data
 
 # show fund description

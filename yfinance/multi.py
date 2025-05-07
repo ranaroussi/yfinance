@@ -35,12 +35,30 @@ from .data import YfData
 from . import shared
 from .const import _SENTINEL_
 
+
 @utils.log_indent_decorator
-def download(tickers, start=None, end=None, actions=False, threads=True,
-             ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
-             repair=False, keepna=False, progress=True, period="max", interval="1d",
-             prepost=False, proxy=_SENTINEL_, rounding=False, timeout=10, session=None,
-             multi_level_index=True) -> Union[_pd.DataFrame, None]:
+def download(
+    tickers,
+    start=None,
+    end=None,
+    actions=False,
+    threads=True,
+    ignore_tz=None,
+    group_by="column",
+    auto_adjust=None,
+    back_adjust=False,
+    repair=False,
+    keepna=False,
+    progress=True,
+    period="max",
+    interval="1d",
+    prepost=False,
+    proxy=_SENTINEL_,
+    rounding=False,
+    timeout=10,
+    session=None,
+    multi_level_index=True,
+) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
     :Parameters:
@@ -103,7 +121,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             # With DEBUG, each thread generates a lot of log messages.
             # And with multi-threading, these messages will be interleaved, bad!
             # So disable multi-threading to make log readable.
-            logger.debug('Disabling multithreading because DEBUG logging enabled')
+            logger.debug("Disabling multithreading because DEBUG logging enabled")
             threads = False
         if progress:
             # Disable progress bar, interferes with display of log messages
@@ -111,15 +129,14 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     if ignore_tz is None:
         # Set default value depending on interval
-        if interval[-1] in ['m', 'h']:
+        if interval[-1] in ["m", "h"]:
             # Intraday
             ignore_tz = False
         else:
             ignore_tz = True
 
     # create ticker list
-    tickers = tickers if isinstance(
-        tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
+    tickers = tickers if isinstance(tickers, (list, set, tuple)) else tickers.replace(",", " ").split()
 
     # accept isin as ticker
     shared._ISINS = {}
@@ -136,7 +153,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     tickers = list(set([ticker.upper() for ticker in tickers]))
 
     if progress:
-        shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
+        shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), "completed")
 
     # reset shared._DFS
     shared._DFS = {}
@@ -156,22 +173,42 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             threads = min([len(tickers), _multitasking.cpu_count() * 2])
         _multitasking.set_max_threads(threads)
         for i, ticker in enumerate(tickers):
-            _download_one_threaded(ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust, repair=repair, keepna=keepna,
-                                   progress=(progress and i > 0),
-                                   rounding=rounding, timeout=timeout)
+            _download_one_threaded(
+                ticker,
+                period=period,
+                interval=interval,
+                start=start,
+                end=end,
+                prepost=prepost,
+                actions=actions,
+                auto_adjust=auto_adjust,
+                back_adjust=back_adjust,
+                repair=repair,
+                keepna=keepna,
+                progress=(progress and i > 0),
+                rounding=rounding,
+                timeout=timeout,
+            )
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
     # download synchronously
     else:
         for i, ticker in enumerate(tickers):
-            data = _download_one(ticker, period=period, interval=interval,
-                                 start=start, end=end, prepost=prepost,
-                                 actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, repair=repair, keepna=keepna,
-                                 rounding=rounding, timeout=timeout)
+            data = _download_one(
+                ticker,
+                period=period,
+                interval=interval,
+                start=start,
+                end=end,
+                prepost=prepost,
+                actions=actions,
+                auto_adjust=auto_adjust,
+                back_adjust=back_adjust,
+                repair=repair,
+                keepna=keepna,
+                rounding=rounding,
+                timeout=timeout,
+            )
             if progress:
                 shared._PROGRESS_BAR.animate()
 
@@ -181,32 +218,31 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     if shared._ERRORS:
         # Send errors to logging module
         logger = utils.get_yf_logger()
-        logger.error('\n%.f Failed download%s:' % (
-            len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
+        logger.error("\n%.f Failed download%s:" % (len(shared._ERRORS), "s" if len(shared._ERRORS) > 1 else ""))
 
         # Log each distinct error once, with list of symbols affected
         errors = {}
         for ticker in shared._ERRORS:
             err = shared._ERRORS[ticker]
-            err = err.replace(f'${ticker}: ', '')
+            err = err.replace(f"${ticker}: ", "")
             if err not in errors:
                 errors[err] = [ticker]
             else:
                 errors[err].append(ticker)
         for err in errors.keys():
-            logger.error(f'{errors[err]}: ' + err)
+            logger.error(f"{errors[err]}: " + err)
 
         # Log each distinct traceback once, with list of symbols affected
         tbs = {}
         for ticker in shared._TRACEBACKS:
             tb = shared._TRACEBACKS[ticker]
-            tb = tb.replace(f'${ticker}: ', '')
+            tb = tb.replace(f"${ticker}: ", "")
             if tb not in tbs:
                 tbs[tb] = [ticker]
             else:
                 tbs[tb].append(ticker)
         for tb in tbs.keys():
-            logger.debug(f'{tbs[tb]}: ' + tb)
+            logger.debug(f"{tbs[tb]}: " + tb)
 
     if ignore_tz:
         for tkr in shared._DFS.keys():
@@ -214,22 +250,20 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                 shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
 
     try:
-        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
-                          keys=shared._DFS.keys(), names=['Ticker', 'Price'])
+        data = _pd.concat(shared._DFS.values(), axis=1, sort=True, keys=shared._DFS.keys(), names=["Ticker", "Price"])
     except Exception:
         _realign_dfs()
-        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
-                          keys=shared._DFS.keys(), names=['Ticker', 'Price'])
+        data = _pd.concat(shared._DFS.values(), axis=1, sort=True, keys=shared._DFS.keys(), names=["Ticker", "Price"])
     data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
     # switch names back to isins if applicable
     data.rename(columns=shared._ISINS, inplace=True)
 
-    if group_by == 'column':
+    if group_by == "column":
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
 
     if not multi_level_index and len(tickers) == 1:
-        data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
+        data = data.droplevel(0 if group_by == "ticker" else 1, axis=1).rename_axis(None, axis=1)
 
     return data
 
@@ -245,45 +279,81 @@ def _realign_dfs():
 
     for key in shared._DFS.keys():
         try:
-            shared._DFS[key] = _pd.DataFrame(
-                index=idx, data=shared._DFS[key]).drop_duplicates()
+            shared._DFS[key] = _pd.DataFrame(index=idx, data=shared._DFS[key]).drop_duplicates()
         except Exception:
-            shared._DFS[key] = _pd.concat([
-                utils.empty_df(idx), shared._DFS[key].dropna()
-            ], axis=0, sort=True)
+            shared._DFS[key] = _pd.concat([utils.empty_df(idx), shared._DFS[key].dropna()], axis=0, sort=True)
 
         # remove duplicate index
-        shared._DFS[key] = shared._DFS[key].loc[
-            ~shared._DFS[key].index.duplicated(keep='last')]
+        shared._DFS[key] = shared._DFS[key].loc[~shared._DFS[key].index.duplicated(keep="last")]
 
 
 @_multitasking.task
-def _download_one_threaded(ticker, start=None, end=None,
-                           auto_adjust=False, back_adjust=False, repair=False,
-                           actions=False, progress=True, period="max",
-                           interval="1d", prepost=False,
-                           keepna=False, rounding=False, timeout=10):
-    _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
-                         actions, period, interval, prepost, rounding,
-                         keepna, timeout)
+def _download_one_threaded(
+    ticker,
+    start=None,
+    end=None,
+    auto_adjust=False,
+    back_adjust=False,
+    repair=False,
+    actions=False,
+    progress=True,
+    period="max",
+    interval="1d",
+    prepost=False,
+    keepna=False,
+    rounding=False,
+    timeout=10,
+):
+    _download_one(
+        ticker,
+        start,
+        end,
+        auto_adjust,
+        back_adjust,
+        repair,
+        actions,
+        period,
+        interval,
+        prepost,
+        rounding,
+        keepna,
+        timeout,
+    )
     if progress:
         shared._PROGRESS_BAR.animate()
 
 
-def _download_one(ticker, start=None, end=None,
-                  auto_adjust=False, back_adjust=False, repair=False,
-                  actions=False, period="max", interval="1d",
-                  prepost=False, rounding=False,
-                  keepna=False, timeout=10):
+def _download_one(
+    ticker,
+    start=None,
+    end=None,
+    auto_adjust=False,
+    back_adjust=False,
+    repair=False,
+    actions=False,
+    period="max",
+    interval="1d",
+    prepost=False,
+    rounding=False,
+    keepna=False,
+    timeout=10,
+):
     data = None
     try:
         data = Ticker(ticker).history(
-                period=period, interval=interval,
-                start=start, end=end, prepost=prepost,
-                actions=actions, auto_adjust=auto_adjust,
-                back_adjust=back_adjust, repair=repair,
-                rounding=rounding, keepna=keepna, timeout=timeout,
-                raise_errors=True
+            period=period,
+            interval=interval,
+            start=start,
+            end=end,
+            prepost=prepost,
+            actions=actions,
+            auto_adjust=auto_adjust,
+            back_adjust=back_adjust,
+            repair=repair,
+            rounding=rounding,
+            keepna=keepna,
+            timeout=timeout,
+            raise_errors=True,
         )
     except Exception as e:
         # glob try/except needed as current thead implementation breaks if exception is raised.

@@ -8,6 +8,7 @@ Specific test class:
    python -m unittest tests.cache.TestCache
 
 """
+
 from tests.context import yfinance as yf
 
 import unittest
@@ -26,7 +27,7 @@ class TestCacheNoPermission(unittest.TestCase):
 
     def test_tzCacheRootStore(self):
         # Test that if cache path in read-only filesystem, no exception.
-        tkr = 'AMZN'
+        tkr = "AMZN"
         tz1 = "America/New_York"
 
         # During attempt to store, will discover cannot write
@@ -39,7 +40,7 @@ class TestCacheNoPermission(unittest.TestCase):
 
     def test_tzCacheRootLookup(self):
         # Test that if cache path in read-only filesystem, no exception.
-        tkr = 'AMZN'
+        tkr = "AMZN"
         # During attempt to lookup, will discover cannot write
         yf.cache.get_tz_cache().lookup(tkr)
 
@@ -48,5 +49,6 @@ class TestCacheNoPermission(unittest.TestCase):
         self.assertTrue(cache.dummy)
         cache.lookup(tkr)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -11,13 +11,26 @@ from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
 from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
-info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
-info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyTwoWeekChange", "52WeekChange", "fiftyDayAverage", "twoHundredDayAverage"})
+info_retired_keys_price.update(
+    {"regularMarket" + s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]}
+)
+info_retired_keys_price.update(
+    {
+        "fiftyTwoWeekLow",
+        "fiftyTwoWeekHigh",
+        "fiftyTwoWeekChange",
+        "52WeekChange",
+        "fiftyDayAverage",
+        "twoHundredDayAverage",
+    }
+)
 info_retired_keys_price.update({"averageDailyVolume10Day", "averageVolume10days", "averageVolume"})
 info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName", "quoteType"}
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
-info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
+info_retired_keys = (
+    info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
+)
 
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
@@ -72,14 +85,19 @@ class FastInfo:
         _properties += ["last_price", "previous_close", "open", "day_high", "day_low"]
         _properties += ["regular_market_previous_close"]
         _properties += ["last_volume"]
-        _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
+        _properties += [
+            "fifty_day_average",
+            "two_hundred_day_average",
+            "ten_day_average_volume",
+            "three_month_average_volume",
+        ]
         _properties += ["year_high", "year_low", "year_change"]
 
         # Because released before fixing key case, need to officially support
         # camel-case but also secretly support snake-case
-        base_keys = [k for k in _properties if '_' not in k]
+        base_keys = [k for k in _properties if "_" not in k]
 
-        sc_keys = [k for k in _properties if '_' in k]
+        sc_keys = [k for k in _properties if "_" in k]
 
         self._sc_to_cc_key = {k: utils.snake_case_2_camelCase(k) for k in sc_keys}
         self._cc_to_sc_key = {v: k for k, v in self._sc_to_cc_key.items()}
@@ -134,8 +152,8 @@ class FastInfo:
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
-                self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
-                self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
+                self._today_open = pd.to_datetime(ctp["regular"]["start"], unit="s", utc=True).tz_convert(self.timezone)
+                self._today_close = pd.to_datetime(ctp["regular"]["end"], unit="s", utc=True).tz_convert(self.timezone)
                 self._today_midnight = self._today_close.ceil("D")
             except Exception:
                 self._today_open = None
@@ -152,7 +170,7 @@ class FastInfo:
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
             d1 -= utils._interval_to_timedelta("1d")
-        return self._prices_1y.loc[str(d0):str(d1)]
+        return self._prices_1y.loc[str(d0) : str(d1)]
 
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
@@ -234,7 +252,7 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date() - pd.Timedelta(days=548))
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
@@ -364,7 +382,7 @@ class FastInfo:
             self._50d_day_average = None
         else:
             n = prices.shape[0]
-            a = n-50
+            a = n - 50
             b = n
             if a < 0:
                 a = 0
@@ -382,7 +400,7 @@ class FastInfo:
             self._200d_day_average = None
         else:
             n = prices.shape[0]
-            a = n-200
+            a = n - 200
             b = n
             if a < 0:
                 a = 0
@@ -401,7 +419,7 @@ class FastInfo:
             self._10d_avg_vol = None
         else:
             n = prices.shape[0]
-            a = n-10
+            a = n - 10
             b = n
             if a < 0:
                 a = 0
@@ -516,7 +534,7 @@ class Quote:
     @property
     def sustainability(self) -> pd.DataFrame:
         if self._sustainability is None:
-            result = self._fetch(modules=['esgScores'])
+            result = self._fetch(modules=["esgScores"])
             if result is None:
                 self._sustainability = pd.DataFrame()
             else:
@@ -530,7 +548,7 @@ class Quote:
     @property
     def recommendations(self) -> pd.DataFrame:
         if self._recommendations is None:
-            result = self._fetch(modules=['recommendationTrend'])
+            result = self._fetch(modules=["recommendationTrend"])
             if result is None:
                 self._recommendations = pd.DataFrame()
             else:
@@ -544,7 +562,7 @@ class Quote:
     @property
     def upgrades_downgrades(self) -> pd.DataFrame:
         if self._upgrades_downgrades is None:
-            result = self._fetch(modules=['upgradeDowngradeHistory'])
+            result = self._fetch(modules=["upgradeDowngradeHistory"])
             if result is None:
                 self._upgrades_downgrades = pd.DataFrame()
             else:
@@ -553,9 +571,18 @@ class Quote:
                     if len(data) == 0:
                         raise YFDataException(f"No upgrade/downgrade history found for {self._symbol}")
                     df = pd.DataFrame(data)
-                    df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
-                    df.set_index('GradeDate', inplace=True)
-                    df.index = pd.to_datetime(df.index, unit='s')
+                    df.rename(
+                        columns={
+                            "epochGradeDate": "GradeDate",
+                            "firm": "Firm",
+                            "toGrade": "ToGrade",
+                            "fromGrade": "FromGrade",
+                            "action": "Action",
+                        },
+                        inplace=True,
+                    )
+                    df.set_index("GradeDate", inplace=True)
+                    df.index = pd.to_datetime(df.index, unit="s")
                     self._upgrades_downgrades = df
                 except (KeyError, IndexError):
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
@@ -582,10 +609,15 @@ class Quote:
         if not isinstance(modules, list):
             raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
-        modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
+        modules = ",".join([m for m in modules if m in quote_summary_valid_modules])
         if len(modules) == 0:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
+        params_dict = {
+            "modules": modules,
+            "corsDomain": "finance.yahoo.com",
+            "formatted": "false",
+            "symbol": self._symbol,
+        }
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except requests.exceptions.HTTPError as e:
@@ -606,7 +638,7 @@ class Quote:
         if self._already_fetched:
             return
         self._already_fetched = True
-        modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+        modules = ["financialData", "quoteType", "defaultKeyStatistics", "assetProfile", "summaryDetail"]
         result = self._fetch(modules=modules)
         additional_info = self._fetch_additional_info()
         if additional_info is not None and result is not None:
@@ -619,8 +651,7 @@ class Quote:
             if quote in result and len(result[quote]["result"]) > 0:
                 result[quote]["result"][0]["symbol"] = self._symbol
                 query_info = next(
-                    (info for info in result.get(quote, {}).get("result", [])
-                    if info["symbol"] == self._symbol),
+                    (info for info in result.get(quote, {}).get("result", []) if info["symbol"] == self._symbol),
                     None,
                 )
                 if query_info:
@@ -630,7 +661,6 @@ class Quote:
         # This handles Yahoo Finance API inconsistency where maxAge is sometimes expressed in days instead of seconds.
         processed_info = {}
         for k, v in query1_info.items():
-
             # Handle nested dictionary
             if isinstance(v, dict):
                 for k1, v1 in v.items():
@@ -717,7 +747,7 @@ class Quote:
 
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
-        result = self._fetch(modules=['calendarEvents'])
+        result = self._fetch(modules=["calendarEvents"])
         if result is None:
             self._calendar = {}
             return
@@ -725,26 +755,27 @@ class Quote:
         try:
             self._calendar = dict()
             _events = result["quoteSummary"]["result"][0]["calendarEvents"]
-            if 'dividendDate' in _events:
-                self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
-            if 'exDividendDate' in _events:
-                self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
+            if "dividendDate" in _events:
+                self._calendar["Dividend Date"] = datetime.datetime.fromtimestamp(_events["dividendDate"]).date()
+            if "exDividendDate" in _events:
+                self._calendar["Ex-Dividend Date"] = datetime.datetime.fromtimestamp(_events["exDividendDate"]).date()
             # splits = _events.get('splitDate')  # need to check later, i will add code for this if found data
-            earnings = _events.get('earnings')
+            earnings = _events.get("earnings")
             if earnings is not None:
-                self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
-                self._calendar['Earnings High'] = earnings.get('earningsHigh', None)
-                self._calendar['Earnings Low'] = earnings.get('earningsLow', None)
-                self._calendar['Earnings Average'] = earnings.get('earningsAverage', None)
-                self._calendar['Revenue High'] = earnings.get('revenueHigh', None)
-                self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
-                self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
+                self._calendar["Earnings Date"] = [
+                    datetime.datetime.fromtimestamp(d).date() for d in earnings.get("earningsDate", [])
+                ]
+                self._calendar["Earnings High"] = earnings.get("earningsHigh", None)
+                self._calendar["Earnings Low"] = earnings.get("earningsLow", None)
+                self._calendar["Earnings Average"] = earnings.get("earningsAverage", None)
+                self._calendar["Revenue High"] = earnings.get("revenueHigh", None)
+                self._calendar["Revenue Low"] = earnings.get("revenueLow", None)
+                self._calendar["Revenue Average"] = earnings.get("revenueAverage", None)
         except (KeyError, IndexError):
             raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
 
-
     def _fetch_sec_filings(self):
-        result = self._fetch(modules=['secFilings'])
+        result = self._fetch(modules=["secFilings"])
         if result is None:
             return None
 
@@ -752,9 +783,9 @@ class Quote:
 
         # Improve structure
         for f in filings:
-            if 'exhibits' in f:
-                f['exhibits'] = {e['type']:e['url'] for e in f['exhibits']}
-            f['date'] = datetime.datetime.strptime(f['date'], '%Y-%m-%d').date()
+            if "exhibits" in f:
+                f["exhibits"] = {e["type"]: e["url"] for e in f["exhibits"]}
+            f["date"] = datetime.datetime.strptime(f["date"], "%Y-%m-%d").date()
 
         # Experimental: convert to pandas
         # for i in range(len(filings)):

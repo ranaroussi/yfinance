@@ -34,10 +34,10 @@ class Ticker(TickerBase):
     def __init__(self, ticker, session=None, proxy=_SENTINEL_):
         super(Ticker, self).__init__(ticker, session=session, proxy=proxy)
         self._expirations = {}
-        self._underlying  = {}
+        self._underlying = {}
 
     def __repr__(self):
-        return f'yfinance.Ticker object <{self.ticker}>'
+        return f"yfinance.Ticker object <{self.ticker}>"
 
     def _download_options(self, date=None):
         if date is None:
@@ -46,38 +46,40 @@ class Ticker(TickerBase):
             url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}?date={date}"
 
         r = self._data.get(url=url).json()
-        if len(r.get('optionChain', {}).get('result', [])) > 0:
-            for exp in r['optionChain']['result'][0]['expirationDates']:
-                self._expirations[_pd.Timestamp(exp, unit='s').strftime('%Y-%m-%d')] = exp
+        if len(r.get("optionChain", {}).get("result", [])) > 0:
+            for exp in r["optionChain"]["result"][0]["expirationDates"]:
+                self._expirations[_pd.Timestamp(exp, unit="s").strftime("%Y-%m-%d")] = exp
 
-            self._underlying = r['optionChain']['result'][0].get('quote', {})
+            self._underlying = r["optionChain"]["result"][0].get("quote", {})
 
-            opt = r['optionChain']['result'][0].get('options', [])
+            opt = r["optionChain"]["result"][0].get("options", [])
 
-            return dict(**opt[0],underlying=self._underlying) if len(opt) > 0 else {}
+            return dict(**opt[0], underlying=self._underlying) if len(opt) > 0 else {}
         return {}
 
     def _options2df(self, opt, tz=None):
-        data = _pd.DataFrame(opt).reindex(columns=[
-            'contractSymbol',
-            'lastTradeDate',
-            'strike',
-            'lastPrice',
-            'bid',
-            'ask',
-            'change',
-            'percentChange',
-            'volume',
-            'openInterest',
-            'impliedVolatility',
-            'inTheMoney',
-            'contractSize',
-            'currency'])
+        data = _pd.DataFrame(opt).reindex(
+            columns=[
+                "contractSymbol",
+                "lastTradeDate",
+                "strike",
+                "lastPrice",
+                "bid",
+                "ask",
+                "change",
+                "percentChange",
+                "volume",
+                "openInterest",
+                "impliedVolatility",
+                "inTheMoney",
+                "contractSize",
+                "currency",
+            ]
+        )
 
-        data['lastTradeDate'] = _pd.to_datetime(
-            data['lastTradeDate'], unit='s', utc=True)
+        data["lastTradeDate"] = _pd.to_datetime(data["lastTradeDate"], unit="s", utc=True)
         if tz is not None:
-            data['lastTradeDate'] = data['lastTradeDate'].dt.tz_convert(tz)
+            data["lastTradeDate"] = data["lastTradeDate"].dt.tz_convert(tz)
         return data
 
     def option_chain(self, date=None, tz=None):
@@ -88,21 +90,23 @@ class Ticker(TickerBase):
                 self._download_options()
             if date not in self._expirations:
                 raise ValueError(
-                    f"Expiration `{date}` cannot be found. "
-                    f"Available expirations are: [{', '.join(self._expirations)}]")
+                    f"Expiration `{date}` cannot be found. Available expirations are: [{', '.join(self._expirations)}]"
+                )
             date = self._expirations[date]
             options = self._download_options(date)
 
         if not options:
-            return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
-                "calls": None, "puts": None, "underlying": None
-            })
+            return _namedtuple("Options", ["calls", "puts", "underlying"])(
+                **{"calls": None, "puts": None, "underlying": None}
+            )
 
-        return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
-            "calls": self._options2df(options['calls'], tz=tz),
-            "puts": self._options2df(options['puts'], tz=tz),
-            "underlying": options['underlying']
-        })
+        return _namedtuple("Options", ["calls", "puts", "underlying"])(
+            **{
+                "calls": self._options2df(options["calls"], tz=tz),
+                "puts": self._options2df(options["puts"], tz=tz),
+                "underlying": options["underlying"],
+            }
+        )
 
     # ------------------------
 
@@ -191,7 +195,7 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_earnings(self) -> _pd.DataFrame:
-        return self.get_earnings(freq='quarterly')
+        return self.get_earnings(freq="quarterly")
 
     @property
     def income_stmt(self) -> _pd.DataFrame:
@@ -199,11 +203,11 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(pretty=True, freq='quarterly')
+        return self.get_income_stmt(pretty=True, freq="quarterly")
 
     @property
     def ttm_income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(pretty=True, freq='trailing')
+        return self.get_income_stmt(pretty=True, freq="trailing")
 
     @property
     def incomestmt(self) -> _pd.DataFrame:
@@ -235,7 +239,7 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_balance_sheet(self) -> _pd.DataFrame:
-        return self.get_balance_sheet(pretty=True, freq='quarterly')
+        return self.get_balance_sheet(pretty=True, freq="quarterly")
 
     @property
     def balancesheet(self) -> _pd.DataFrame:
@@ -251,11 +255,11 @@ class Ticker(TickerBase):
 
     @property
     def quarterly_cash_flow(self) -> _pd.DataFrame:
-        return self.get_cash_flow(pretty=True, freq='quarterly')
+        return self.get_cash_flow(pretty=True, freq="quarterly")
 
     @property
     def ttm_cash_flow(self) -> _pd.DataFrame:
-        return self.get_cash_flow(pretty=True, freq='trailing')
+        return self.get_cash_flow(pretty=True, freq="trailing")
 
     @property
     def cashflow(self) -> _pd.DataFrame:

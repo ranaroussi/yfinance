@@ -3,7 +3,7 @@ import yfinance as yf
 dat = yf.Ticker("MSFT")
 
 # get historical market data
-dat.history(period='1mo')
+dat.history(period="1mo")
 
 # options
 dat.option_chain(dat.options[0]).calls

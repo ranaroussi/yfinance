@@ -47,6 +47,7 @@ from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_, _SENTINEL_
 
 _tz_info_fetch_ctr = 0
 
+
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=_SENTINEL_):
         self.ticker = ticker.upper()
@@ -123,7 +124,7 @@ class TickerBase:
                     # ... but limit. If _fetch_ticker_tz() always
                     # failing then bigger problem.
                     _tz_info_fetch_ctr += 1
-                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
+                    for k in ["exchangeTimezoneName", "timeZoneFullName"]:
                         if k in self.info:
                             tz = self.info[k]
                             break
@@ -155,7 +156,7 @@ class TickerBase:
             logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
             return None
         else:
-            error = data.get('chart', {}).get('error', None)
+            error = data.get("chart", {}).get("error", None)
             if error:
                 # explicit error from yahoo API
                 logger.debug(f"Got error from yahoo api for ticker {self.ticker}, Error: {error}")
@@ -304,7 +305,10 @@ class TickerBase:
 
     @property
     def basic_info(self):
-        warnings.warn("'Ticker.basic_info' is deprecated and will be removed in future, Switch to 'Ticker.fast_info'", DeprecationWarning)
+        warnings.warn(
+            "'Ticker.basic_info' is deprecated and will be removed in future, Switch to 'Ticker.fast_info'",
+            DeprecationWarning,
+        )
         return self.fast_info
 
     def get_sustainability(self, proxy=_SENTINEL_, as_dict=False):
@@ -419,8 +423,9 @@ class TickerBase:
         data = self._fundamentals.earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
-                'financialCurrency']
+            dict_data["financialCurrency"] = (
+                "USD" if "financialCurrency" not in self._earnings else self._earnings["financialCurrency"]
+            )
             return dict_data
         return data
 
@@ -445,7 +450,7 @@ class TickerBase:
 
         if pretty:
             data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
+            data.index = utils.camel2title(data.index, sep=" ", acronyms=["EBIT", "EBITDA", "EPS", "NI"])
         if as_dict:
             return data.to_dict()
         return data
@@ -481,12 +486,11 @@ class TickerBase:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
-
         data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq)
 
         if pretty:
             data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
+            data.index = utils.camel2title(data.index, sep=" ", acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
@@ -515,12 +519,11 @@ class TickerBase:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
 
-
         data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq)
 
         if pretty:
             data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
+            data.index = utils.camel2title(data.index, sep=" ", acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
@@ -634,7 +637,7 @@ class TickerBase:
         ticker = self.ticker.upper()
 
         if "-" in ticker or "^" in ticker:
-            self._isin = '-'
+            self._isin = "-"
             return self._isin
 
         q = ticker
@@ -643,9 +646,9 @@ class TickerBase:
             # Don't print error message cause self._quote.info will print one
             return None
         if "shortName" in self._quote.info:
-            q = self._quote.info['shortName']
+            q = self._quote.info["shortName"]
 
-        url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
+        url = f"https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}"
         data = self._data.cache_get(url=url).text
 
         search_str = f'"{ticker}|'
@@ -653,13 +656,13 @@ class TickerBase:
             if q.lower() in data.lower():
                 search_str = '"|'
                 if search_str not in data:
-                    self._isin = '-'
+                    self._isin = "-"
                     return self._isin
             else:
-                self._isin = '-'
+                self._isin = "-"
                 return self._isin
 
-        self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
+        self._isin = data.split(search_str)[1].split('"')[0].split("|")[0]
         return self._isin
 
     def get_news(self, count=10, tab="news", proxy=_SENTINEL_) -> list:
@@ -684,18 +687,15 @@ class TickerBase:
             raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
 
         url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
-        payload = {
-            "serviceConfig": {
-                "snippetCount": count,
-                "s": [self.ticker]
-            }
-        }
+        payload = {"serviceConfig": {"snippetCount": count, "s": [self.ticker]}}
 
         data = self._data.post(url, body=payload)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise RuntimeError(
+                "*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                "Our engineers are working quickly to resolve "
+                "the issue. Thank you for your patience."
+            )
         try:
             data = data.json()
         except _json.JSONDecodeError:
@@ -704,14 +704,14 @@ class TickerBase:
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
 
-        self._news = [article for article in news if not article.get('ad', [])]
+        self._news = [article for article in news if not article.get("ad", [])]
         return self._news
 
     @utils.log_indent_decorator
     def get_earnings_dates(self, limit=12, proxy=_SENTINEL_) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
-        
+
         Args:
             limit (int): max amount of upcoming and recent earnings dates to return.
                 Default value 12 should return next 4 quarters and last 8 quarters.
@@ -739,44 +739,44 @@ class TickerBase:
                 "operator": "and",
                 "operands": [
                     {"operator": "eq", "operands": ["ticker", self.ticker]},
-                    {"operator": "eq", "operands": ["eventtype", "2"]}
-                ]
+                    {"operator": "eq", "operands": ["eventtype", "2"]},
+                ],
             },
             "sortField": "startdatetime",
             "sortType": "DESC",
             "entityIdType": "earnings",
-            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct"]
+            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct"],
         }
         response = self._data.post(url, params=params, body=body)
         json_data = response.json()
 
         # Extract data
-        columns = [row['label'] for row in json_data['finance']['result'][0]['documents'][0]['columns']]
-        rows = json_data['finance']['result'][0]['documents'][0]['rows']
+        columns = [row["label"] for row in json_data["finance"]["result"][0]["documents"][0]["columns"]]
+        rows = json_data["finance"]["result"][0]["documents"][0]["rows"]
         df = pd.DataFrame(rows, columns=columns)
 
         if df.empty:
             _exception = YFEarningsDateMissing(self.ticker)
             err_msg = str(_exception)
-            logger.error(f'{self.ticker}: {err_msg}')
+            logger.error(f"{self.ticker}: {err_msg}")
             return None
 
         # Calculate earnings date
-        df['Earnings Date'] = pd.to_datetime(df['Event Start Date'])
+        df["Earnings Date"] = pd.to_datetime(df["Event Start Date"])
         tz = self._get_ticker_tz(timeout=30)
-        if df['Earnings Date'].dt.tz is None:
-            df['Earnings Date'] = df['Earnings Date'].dt.tz_localize(tz)
+        if df["Earnings Date"].dt.tz is None:
+            df["Earnings Date"] = df["Earnings Date"].dt.tz_localize(tz)
         else:
-            df['Earnings Date'] = df['Earnings Date'].dt.tz_convert(tz)
+            df["Earnings Date"] = df["Earnings Date"].dt.tz_convert(tz)
 
         # Convert types
-        columns_to_update = ['Surprise (%)', 'EPS Estimate', 'Reported EPS']
-        df[columns_to_update] = df[columns_to_update].astype('float64').replace(0.0, np.nan)
+        columns_to_update = ["Surprise (%)", "EPS Estimate", "Reported EPS"]
+        df[columns_to_update] = df[columns_to_update].astype("float64").replace(0.0, np.nan)
 
         # Format the dataframe
-        df.drop(['Event Start Date', 'Timezone short name'], axis=1, inplace=True)
-        df.set_index('Earnings Date', inplace=True)
-        df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)  # Compatibility
+        df.drop(["Event Start Date", "Timezone short name"], axis=1, inplace=True)
+        df.set_index("Earnings Date", inplace=True)
+        df.rename(columns={"Surprise (%)": "Surprise(%)"}, inplace=True)  # Compatibility
 
         self._earnings_dates[clamped_limit] = df
         return df
@@ -795,7 +795,7 @@ class TickerBase:
 
         if not self._funds_data:
             self._funds_data = FundsData(self._data, self.ticker)
-        
+
         return self._funds_data
 
     def live(self, message_handler=None, verbose=True):

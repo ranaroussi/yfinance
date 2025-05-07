@@ -27,7 +27,7 @@ class YFTzMissingError(YFTickerMissingError):
 class YFPricesMissingError(YFTickerMissingError):
     def __init__(self, ticker, debug_info):
         self.debug_info = debug_info
-        if debug_info != '':
+        if debug_info != "":
             super().__init__(ticker, f"no price data found {debug_info}")
         else:
             super().__init__(ticker, "no price data found")
@@ -44,8 +44,9 @@ class YFInvalidPeriodError(YFException):
         self.ticker = ticker
         self.invalid_period = invalid_period
         self.valid_ranges = valid_ranges
-        super().__init__(f"{self.ticker}: Period '{invalid_period}' is invalid, "
-                         f"must be of the format {valid_ranges}, etc.")
+        super().__init__(
+            f"{self.ticker}: Period '{invalid_period}' is invalid, must be of the format {valid_ranges}, etc."
+        )
 
 
 class YFRateLimitError(YFException):

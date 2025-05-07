@@ -30,10 +30,7 @@ class BaseWebSocket:
             self.logger.error("Failed to decode message: %s", e, exc_info=True)
             if self.verbose:
                 print("Failed to decode message: %s", e)
-            return {
-                'error': str(e),
-                'raw_base64': base64_message
-            }
+            return {"error": str(e), "raw_base64": base64_message}
 
 
 class AsyncWebSocket(BaseWebSocket):

@@ -8,6 +8,7 @@ Specific test class:
    python -m unittest tests.cache.TestCache
 
 """
+
 from tests.context import yfinance as yf
 
 import unittest
@@ -28,7 +29,7 @@ class TestCache(unittest.TestCase):
 
     def test_storeTzNoRaise(self):
         # storing TZ to cache should never raise exception
-        tkr = 'AMZN'
+        tkr = "AMZN"
         tz1 = "America/New_York"
         tz2 = "London/Europe"
         cache = yf.cache.get_tz_cache()
@@ -38,7 +39,7 @@ class TestCache(unittest.TestCase):
     def test_setTzCacheLocation(self):
         self.assertEqual(yf.cache._TzDBManager.get_location(), self.tempCacheDir.name)
 
-        tkr = 'AMZN'
+        tkr = "AMZN"
         tz1 = "America/New_York"
         cache = yf.cache.get_tz_cache()
         cache.store(tkr, tz1)
@@ -46,5 +47,5 @@ class TestCache(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.tempCacheDir.name, "tkr-tz.db")))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

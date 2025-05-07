@@ -8,7 +8,7 @@ import yfinance
 from requests_ratelimiter import LimiterSession
 from pyrate_limiter import Duration, RequestRate, Limiter
 
-_parent_dp = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+_parent_dp = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _src_dp = _parent_dp
 sys.path.insert(0, _src_dp)
 
@@ -23,6 +23,7 @@ if os.path.isdir(testing_cache_dirpath):
     mtime = _dt.datetime.fromtimestamp(os.path.getmtime(testing_cache_dirpath))
     if mtime.date() < _dt.date.today():
         import shutil
+
         shutil.rmtree(testing_cache_dirpath)
 
 # Setup a session to only rate-limit

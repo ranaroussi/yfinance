@@ -8,8 +8,8 @@ from yfinance import utils, const
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
-class Fundamentals:
 
+class Fundamentals:
     def __init__(self, data: YfData, symbol: str, proxy=const._SENTINEL_):
         if proxy is not const._SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
@@ -33,13 +33,16 @@ class Fundamentals:
 
     @property
     def earnings(self) -> dict:
-        warnings.warn("'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", DeprecationWarning)
+        warnings.warn(
+            "'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.",
+            DeprecationWarning,
+        )
         return None
 
     @property
     def shares(self) -> pd.DataFrame:
         if self._shares is None:
-            raise YFNotImplementedError('shares')
+            raise YFNotImplementedError("shares")
         return self._shares
 
 
@@ -94,9 +97,8 @@ class Financials:
             raise ValueError(f"Illegal argument: name must be one of: {allowed_names}")
         if timescale not in allowed_timescales:
             raise ValueError(f"Illegal argument: timescale must be one of: {allowed_timescales}")
-        if timescale == "trailing" and name not in ('income', 'cash-flow'):
-            raise ValueError("Illegal argument: frequency 'trailing'" +
-                             " only available for cash-flow or income data.")
+        if timescale == "trailing" and name not in ("income", "cash-flow"):
+            raise ValueError("Illegal argument: frequency 'trailing'" + " only available for cash-flow or income data.")
 
         try:
             statement = self._create_financials_table(name, timescale)
@@ -164,7 +166,7 @@ class Financials:
         df = df[sorted(df.columns, reverse=True)]
 
         # Trailing 12 months return only the first column.
-        if (timescale == "trailing"):
+        if timescale == "trailing":
             df = df.iloc[:, [0]]
 
         return df

@@ -74,16 +74,18 @@ class Lookup:
             "formatted": False,
             "fetchPricingData": True,
             "lang": "en-US",
-            "region": "US"
+            "region": "US",
         }
 
-        self._logger.debug(f'GET Lookup for ticker ({self.query}) with parameters: {str(dict(params))}')
+        self._logger.debug(f"GET Lookup for ticker ({self.query}) with parameters: {str(dict(params))}")
 
         data = self._data.get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise RuntimeError(
+                "*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                "Our engineers are working quickly to resolve "
+                "the issue. Thank you for your patience."
+            )
         try:
             data = data.json()
         except _json.JSONDecodeError:
