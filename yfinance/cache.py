@@ -14,6 +14,7 @@ _cache_init_lock = Lock()
 # TimeZone cache
 # --------------
 
+
 class _TzCacheException(Exception):
     pass
 
@@ -66,7 +67,6 @@ class _TzDBManager:
                 # Must discard exceptions because Python trying to quit.
                 pass
 
-
     @classmethod
     def _initialise(cls, cache_dir=None):
         if cache_dir is not None:
@@ -81,8 +81,7 @@ class _TzDBManager:
             raise _TzCacheException(f"Cannot read and write in TzCache folder: '{cls._cache_dir}'")
 
         cls._db = _peewee.SqliteDatabase(
-            _os.path.join(cls._cache_dir, 'tkr-tz.db'),
-            pragmas={'journal_mode': 'wal', 'cache_size': -64}
+            _os.path.join(cls._cache_dir, "tkr-tz.db"), pragmas={"journal_mode": "wal", "cache_size": -64}
         )
 
         old_cache_file_path = _os.path.join(cls._cache_dir, "tkr-tz.csv")
@@ -100,15 +99,18 @@ class _TzDBManager:
     def get_location(cls):
         return cls._cache_dir
 
+
 # close DB when Python exists
 _atexit.register(_TzDBManager.close_db)
 
 
 tz_db_proxy = _peewee.Proxy()
+
+
 class _KV(_peewee.Model):
     key = _peewee.CharField(primary_key=True)
     value = _peewee.CharField(null=True)
-    
+
     class Meta:
         database = tz_db_proxy
         without_rowid = True
@@ -127,9 +129,11 @@ class _TzCache:
         try:
             self.db = _TzDBManager.get_database()
         except _TzCacheException as err:
-            get_yf_logger().info(f"Failed to create TzCache, reason: {err}. "
-                                 "TzCache will not be used. "
-                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+            get_yf_logger().info(
+                f"Failed to create TzCache, reason: {err}. "
+                "TzCache will not be used. "
+                "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'"
+            )
             self.dummy = True
             return None
         return self.db
@@ -148,7 +152,7 @@ class _TzCache:
         try:
             db.create_tables([_KV])
         except _peewee.OperationalError as e:
-            if 'WITHOUT' in str(e):
+            if "WITHOUT" in str(e):
                 _KV._meta.without_rowid = False
                 db.create_tables([_KV])
             else:
@@ -204,10 +208,10 @@ def get_tz_cache():
     return _TzCacheManager.get_tz_cache()
 
 
-
 # --------------
 # Cookie cache
 # --------------
+
 
 class _CookieCacheException(Exception):
     pass
@@ -261,7 +265,6 @@ class _CookieDBManager:
                 # Must discard exceptions because Python trying to quit.
                 pass
 
-
     @classmethod
     def _initialise(cls, cache_dir=None):
         if cache_dir is not None:
@@ -276,8 +279,7 @@ class _CookieDBManager:
             raise _CookieCacheException(f"Cannot read and write in CookieCache folder: '{cls._cache_dir}'")
 
         cls._db = _peewee.SqliteDatabase(
-            _os.path.join(cls._cache_dir, 'cookies.db'),
-            pragmas={'journal_mode': 'wal', 'cache_size': -64}
+            _os.path.join(cls._cache_dir, "cookies.db"), pragmas={"journal_mode": "wal", "cache_size": -64}
         )
 
     @classmethod
@@ -291,27 +293,33 @@ class _CookieDBManager:
     def get_location(cls):
         return cls._cache_dir
 
+
 # close DB when Python exists
 _atexit.register(_CookieDBManager.close_db)
 
 
 Cookie_db_proxy = _peewee.Proxy()
+
+
 class ISODateTimeField(_peewee.DateTimeField):
-    # Ensure Python datetime is read & written correctly for sqlite, 
+    # Ensure Python datetime is read & written correctly for sqlite,
     # because user discovered peewee allowed an invalid datetime
     # to get written.
     def db_value(self, value):
         if value and isinstance(value, _datetime.datetime):
             return value.isoformat()
         return super().db_value(value)
+
     def python_value(self, value):
-        if value and isinstance(value, str) and 'T' in value:
+        if value and isinstance(value, str) and "T" in value:
             return _datetime.datetime.fromisoformat(value)
         return super().python_value(value)
+
+
 class _CookieSchema(_peewee.Model):
     strategy = _peewee.CharField(primary_key=True)
     fetch_date = ISODateTimeField(default=_datetime.datetime.now)
-    
+
     # Which cookie type depends on strategy
     cookie_bytes = _peewee.BlobField()
 
@@ -333,9 +341,11 @@ class _CookieCache:
         try:
             self.db = _CookieDBManager.get_database()
         except _CookieCacheException as err:
-            get_yf_logger().info(f"Failed to create CookieCache, reason: {err}. "
-                                 "CookieCache will not be used. "
-                                 "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
+            get_yf_logger().info(
+                f"Failed to create CookieCache, reason: {err}. "
+                "CookieCache will not be used. "
+                "Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'"
+            )
             self.dummy = True
             return None
         return self.db
@@ -354,7 +364,7 @@ class _CookieCache:
         try:
             db.create_tables([_CookieSchema])
         except _peewee.OperationalError as e:
-            if 'WITHOUT' in str(e):
+            if "WITHOUT" in str(e):
                 _CookieSchema._meta.without_rowid = False
                 db.create_tables([_CookieSchema])
             else:
@@ -372,9 +382,9 @@ class _CookieCache:
             return None
 
         try:
-            data =  _CookieSchema.get(_CookieSchema.strategy == strategy)
+            data = _CookieSchema.get(_CookieSchema.strategy == strategy)
             cookie = _pkl.loads(data.cookie_bytes)
-            return {'cookie':cookie, 'age':_datetime.datetime.now()-data.fetch_date}
+            return {"cookie": cookie, "age": _datetime.datetime.now() - data.fetch_date}
         except _CookieSchema.DoesNotExist:
             return None
 
@@ -414,7 +424,6 @@ def get_cookie_cache():
     return _CookieCacheManager.get_cookie_cache()
 
 
-
 def set_cache_location(cache_dir: str):
     """
     Sets the path to create the "py-yfinance" cache folder in.
@@ -426,6 +435,6 @@ def set_cache_location(cache_dir: str):
     _TzDBManager.set_location(cache_dir)
     _CookieDBManager.set_location(cache_dir)
 
+
 def set_tz_cache_location(cache_dir: str):
     set_cache_location(cache_dir)
-

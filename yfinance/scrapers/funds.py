@@ -9,14 +9,16 @@ from typing import Dict, Optional
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
 
+
 class FundsData:
     """
     ETF and Mutual Funds Data
     Queried Modules: quoteType, summaryProfile, fundProfile, topHoldings
 
-    Notes: 
+    Notes:
     - fundPerformance module is not implemented as better data is queryable using history
     """
+
     def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
         """
         Args:
@@ -28,7 +30,7 @@ class FundsData:
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
-        
+
         # quoteType
         self._quote_type = None
 
@@ -57,7 +59,7 @@ class FundsData:
         if self._quote_type is None:
             self._fetch_and_parse()
         return self._quote_type
-    
+
     @property
     def description(self) -> str:
         """
@@ -69,7 +71,7 @@ class FundsData:
         if self._description is None:
             self._fetch_and_parse()
         return self._description
-    
+
     @property
     def fund_overview(self) -> Dict[str, Optional[str]]:
         """
@@ -155,7 +157,7 @@ class FundsData:
         return self._bond_ratings
 
     @property
-    def sector_weightings(self) -> Dict[str,float]:
+    def sector_weightings(self) -> Dict[str, float]:
         """
         Returns the sector weightings of the fund.
 
@@ -173,9 +175,14 @@ class FundsData:
         Returns:
             dict: The raw JSON data.
         """
-        modules = ','.join(["quoteType", "summaryProfile", "topHoldings", "fundProfile"])
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol, "formatted": "false"}
-        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_+self._symbol, params=params_dict)
+        modules = ",".join(["quoteType", "summaryProfile", "topHoldings", "fundProfile"])
+        params_dict = {
+            "modules": modules,
+            "corsDomain": "finance.yahoo.com",
+            "symbol": self._symbol,
+            "formatted": "false",
+        }
+        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + self._symbol, params=params_dict)
         return result
 
     def _fetch_and_parse(self) -> None:
@@ -187,7 +194,7 @@ class FundsData:
             data = result["quoteSummary"]["result"][0]
             # check quote type
             self._quote_type = data["quoteType"]["quoteType"]
-            
+
             # parse "summaryProfile", "topHoldings", "fundProfile"
             self._parse_description(data["summaryProfile"])
             self._parse_top_holdings(data["topHoldings"])
@@ -216,7 +223,7 @@ class FundsData:
         """
         if not isinstance(data, dict):
             return data
-        
+
         return data.get("raw", default)
 
     def _parse_description(self, data) -> None:
@@ -242,7 +249,7 @@ class FundsData:
             "bondPosition": self._parse_raw_values(data.get("bondPosition", None)),
             "preferredPosition": self._parse_raw_values(data.get("preferredPosition", None)),
             "convertiblePosition": self._parse_raw_values(data.get("convertiblePosition", None)),
-            "otherPosition": self._parse_raw_values(data.get("otherPosition", None))
+            "otherPosition": self._parse_raw_values(data.get("otherPosition", None)),
         }
 
         # top holdings
@@ -253,57 +260,66 @@ class FundsData:
             _symbol.append(item["symbol"])
             _name.append(item["holdingName"])
             _holding_percent.append(item["holdingPercent"])
-        
-        self._top_holdings = pd.DataFrame({
-            "Symbol": _symbol,
-            "Name": _name,
-            "Holding Percent": _holding_percent
-        }).set_index("Symbol")
+
+        self._top_holdings = pd.DataFrame(
+            {"Symbol": _symbol, "Name": _name, "Holding Percent": _holding_percent}
+        ).set_index("Symbol")
 
         # equity holdings
         _equity_holdings = data.get("equityHoldings", {})
-        self._equity_holdings = pd.DataFrame({
-            "Average": ["Price/Earnings", "Price/Book", "Price/Sales", "Price/Cashflow", "Median Market Cap", "3 Year Earnings Growth"],
-            self._symbol: [
-                self._parse_raw_values(_equity_holdings.get("priceToEarnings", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToBook", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToSales", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToCashflow", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("medianMarketCap", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowth", pd.NA)),
-            ],
-            "Category Average": [
-                self._parse_raw_values(_equity_holdings.get("priceToEarningsCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToBookCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToSalesCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToCashflowCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("medianMarketCapCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowthCat", pd.NA)),
-            ]
-        }).set_index("Average")
-        
+        self._equity_holdings = pd.DataFrame(
+            {
+                "Average": [
+                    "Price/Earnings",
+                    "Price/Book",
+                    "Price/Sales",
+                    "Price/Cashflow",
+                    "Median Market Cap",
+                    "3 Year Earnings Growth",
+                ],
+                self._symbol: [
+                    self._parse_raw_values(_equity_holdings.get("priceToEarnings", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("priceToBook", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("priceToSales", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("priceToCashflow", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("medianMarketCap", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowth", pd.NA)),
+                ],
+                "Category Average": [
+                    self._parse_raw_values(_equity_holdings.get("priceToEarningsCat", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("priceToBookCat", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("priceToSalesCat", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("priceToCashflowCat", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("medianMarketCapCat", pd.NA)),
+                    self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowthCat", pd.NA)),
+                ],
+            }
+        ).set_index("Average")
+
         # bond holdings
         _bond_holdings = data.get("bondHoldings", {})
-        self._bond_holdings = pd.DataFrame({
-            "Average": ["Duration", "Maturity", "Credit Quality"],
-            self._symbol: [
-                self._parse_raw_values(_bond_holdings.get("duration", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("maturity", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("creditQuality", pd.NA)),
-            ],
-            "Category Average": [
-                self._parse_raw_values(_bond_holdings.get("durationCat", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("maturityCat", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("creditQualityCat", pd.NA)),
-            ]
-        }).set_index("Average")
+        self._bond_holdings = pd.DataFrame(
+            {
+                "Average": ["Duration", "Maturity", "Credit Quality"],
+                self._symbol: [
+                    self._parse_raw_values(_bond_holdings.get("duration", pd.NA)),
+                    self._parse_raw_values(_bond_holdings.get("maturity", pd.NA)),
+                    self._parse_raw_values(_bond_holdings.get("creditQuality", pd.NA)),
+                ],
+                "Category Average": [
+                    self._parse_raw_values(_bond_holdings.get("durationCat", pd.NA)),
+                    self._parse_raw_values(_bond_holdings.get("maturityCat", pd.NA)),
+                    self._parse_raw_values(_bond_holdings.get("creditQualityCat", pd.NA)),
+                ],
+            }
+        ).set_index("Average")
 
         # bond ratings
         self._bond_ratings = dict((key, d[key]) for d in data.get("bondRatings", []) for key in d)
 
         # sector weightings
         self._sector_weightings = dict((key, d[key]) for d in data.get("sectorWeightings", []) for key in d)
-        
+
     def _parse_fund_profile(self, data):
         """
         Parses the fund profile from the data.
@@ -312,24 +328,26 @@ class FundsData:
             data: The data to parse.
         """
         self._fund_overview = {
-            "categoryName": data.get("categoryName", None), 
-            "family":       data.get("family", None), 
-            "legalType":    data.get("legalType", None)
+            "categoryName": data.get("categoryName", None),
+            "family": data.get("family", None),
+            "legalType": data.get("legalType", None),
         }
-        
+
         _fund_operations = data.get("feesExpensesInvestment", {})
         _fund_operations_cat = data.get("feesExpensesInvestmentCat", {})
 
-        self._fund_operations = pd.DataFrame({
-            "Attributes": ["Annual Report Expense Ratio", "Annual Holdings Turnover", "Total Net Assets"],
-            self._symbol: [
-                self._parse_raw_values(_fund_operations.get("annualReportExpenseRatio", pd.NA)),
-                self._parse_raw_values(_fund_operations.get("annualHoldingsTurnover", pd.NA)),
-                self._parse_raw_values(_fund_operations.get("totalNetAssets", pd.NA))
-            ],
-            "Category Average": [
-                self._parse_raw_values(_fund_operations_cat.get("annualReportExpenseRatio", pd.NA)),
-                self._parse_raw_values(_fund_operations_cat.get("annualHoldingsTurnover", pd.NA)),
-                self._parse_raw_values(_fund_operations_cat.get("totalNetAssets", pd.NA))
-            ]
-        }).set_index("Attributes")
+        self._fund_operations = pd.DataFrame(
+            {
+                "Attributes": ["Annual Report Expense Ratio", "Annual Holdings Turnover", "Total Net Assets"],
+                self._symbol: [
+                    self._parse_raw_values(_fund_operations.get("annualReportExpenseRatio", pd.NA)),
+                    self._parse_raw_values(_fund_operations.get("annualHoldingsTurnover", pd.NA)),
+                    self._parse_raw_values(_fund_operations.get("totalNetAssets", pd.NA)),
+                ],
+                "Category Average": [
+                    self._parse_raw_values(_fund_operations_cat.get("annualReportExpenseRatio", pd.NA)),
+                    self._parse_raw_values(_fund_operations_cat.get("annualHoldingsTurnover", pd.NA)),
+                    self._parse_raw_values(_fund_operations_cat.get("totalNetAssets", pd.NA)),
+                ],
+            }
+        ).set_index("Attributes")

@@ -1,7 +1,7 @@
 import yfinance as yf
 
-tech = yf.Sector('technology')
-software = yf.Industry('software-infrastructure')
+tech = yf.Sector("technology")
+software = yf.Industry("software-infrastructure")
 
 # Common information
 tech.key
@@ -22,4 +22,3 @@ software.sector_key
 software.sector_name
 software.top_performing_companies
 software.top_growth_companies
-

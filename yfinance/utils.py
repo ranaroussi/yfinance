@@ -40,14 +40,15 @@ from pytz import UnknownTimeZoneError
 
 from yfinance import const
 
+
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
-    disallowed_names = {
-        name for name, value in getmembers(type(obj))
-        if isinstance(value, FunctionType)}
+    disallowed_names = {name for name, value in getmembers(type(obj)) if isinstance(value, FunctionType)}
     return {
-        name: getattr(obj, name) for name in dir(obj)
-        if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
+        name: getattr(obj, name)
+        for name in dir(obj)
+        if name[0] != "_" and name not in disallowed_names and hasattr(obj, name)
+    }
 
 
 @lru_cache(maxsize=20)
@@ -63,10 +64,10 @@ def print_once(msg):
 class IndentLoggerAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         if get_yf_logger().isEnabledFor(logging.DEBUG):
-            i = ' ' * self.extra['indent']
+            i = " " * self.extra["indent"]
             if not isinstance(msg, str):
                 msg = str(msg)
-            msg = '\n'.join([i + m for m in msg.split('\n')])
+            msg = "\n".join([i + m for m in msg.split("\n")])
         return msg, kwargs
 
 
@@ -78,7 +79,7 @@ class IndentationContext:
         self.increment = increment
 
     def __enter__(self):
-        _indentation_level.indent = getattr(_indentation_level, 'indent', 0) + self.increment
+        _indentation_level.indent = getattr(_indentation_level, "indent", 0) + self.increment
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         _indentation_level.indent -= self.increment
@@ -86,19 +87,19 @@ class IndentationContext:
 
 def get_indented_logger(name=None):
     # Never cache the returned value! Will break indentation.
-    return IndentLoggerAdapter(logging.getLogger(name), {'indent': getattr(_indentation_level, 'indent', 0)})
+    return IndentLoggerAdapter(logging.getLogger(name), {"indent": getattr(_indentation_level, "indent", 0)})
 
 
 def log_indent_decorator(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logger = get_indented_logger('yfinance')
-        logger.debug(f'Entering {func.__name__}()')
+        logger = get_indented_logger("yfinance")
+        logger.debug(f"Entering {func.__name__}()")
 
         with IndentationContext():
             result = func(*args, **kwargs)
 
-        logger.debug(f'Exiting {func.__name__}()')
+        logger.debug(f"Exiting {func.__name__}()")
         return result
 
     return wrapper
@@ -111,25 +112,25 @@ class MultiLineFormatter(logging.Formatter):
     def __init__(self, fmt):
         super().__init__(fmt)
         # Extract amount of padding
-        match = _re.search(r'%\(levelname\)-(\d+)s', fmt)
+        match = _re.search(r"%\(levelname\)-(\d+)s", fmt)
         self.level_length = int(match.group(1)) if match else 0
 
     def format(self, record):
         original = super().format(record)
-        lines = original.split('\n')
-        levelname = lines[0].split(' ')[0]
+        lines = original.split("\n")
+        levelname = lines[0].split(" ")[0]
         if len(lines) <= 1:
             return original
         else:
             # Apply padding to all lines below first
             formatted = [lines[0]]
             if self.level_length == 0:
-                padding = ' ' * len(levelname)
+                padding = " " * len(levelname)
             else:
-                padding = ' ' * self.level_length
-            padding += ' '  # +1 for space between level and message
+                padding = " " * self.level_length
+            padding += " "  # +1 for space between level and message
             formatted.extend(padding + line for line in lines[1:])
-            return '\n'.join(formatted)
+            return "\n".join(formatted)
 
 
 yf_logger = None
@@ -140,11 +141,11 @@ class YFLogFormatter(logging.Filter):
     # Help be consistent with structuring YF log messages
     def filter(self, record):
         msg = record.msg
-        if hasattr(record, 'yf_cat'):
+        if hasattr(record, "yf_cat"):
             msg = f"{record.yf_cat}: {msg}"
-        if hasattr(record, 'yf_interval'):
+        if hasattr(record, "yf_interval"):
             msg = f"{record.yf_interval}: {msg}"
-        if hasattr(record, 'yf_symbol'):
+        if hasattr(record, "yf_symbol"):
             msg = f"{record.yf_symbol}: {msg}"
         record.msg = msg
         return True
@@ -154,9 +155,9 @@ def get_yf_logger():
     global yf_logger
     global yf_log_indented
     if yf_log_indented:
-        yf_logger = get_indented_logger('yfinance')
+        yf_logger = get_indented_logger("yfinance")
     elif yf_logger is None:
-        yf_logger = logging.getLogger('yfinance')
+        yf_logger = logging.getLogger("yfinance")
         yf_logger.addFilter(YFLogFormatter())
     return yf_logger
 
@@ -165,12 +166,12 @@ def enable_debug_mode():
     global yf_logger
     global yf_log_indented
     if not yf_log_indented:
-        yf_logger = logging.getLogger('yfinance')
+        yf_logger = logging.getLogger("yfinance")
         yf_logger.setLevel(logging.DEBUG)
         if yf_logger.handlers is None or len(yf_logger.handlers) == 0:
             h = logging.StreamHandler()
             # Ensure different level strings don't interfere with indentation
-            formatter = MultiLineFormatter(fmt='%(levelname)-8s %(message)s')
+            formatter = MultiLineFormatter(fmt="%(levelname)-8s %(message)s")
             h.setFormatter(formatter)
             yf_logger.addHandler(h)
         yf_logger = get_indented_logger()
@@ -199,46 +200,52 @@ def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
     news = search.news
 
     return {
-        'ticker': {
-            'symbol': ticker.get('symbol', ''),
-            'shortname': ticker.get('shortname', ''),
-            'longname': ticker.get('longname', ''),
-            'type': ticker.get('quoteType', ''),
-            'exchange': ticker.get('exchDisp', ''),
+        "ticker": {
+            "symbol": ticker.get("symbol", ""),
+            "shortname": ticker.get("shortname", ""),
+            "longname": ticker.get("longname", ""),
+            "type": ticker.get("quoteType", ""),
+            "exchange": ticker.get("exchDisp", ""),
         },
-        'news': news
+        "news": news,
     }
 
 
 def get_ticker_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
-    return data.get('ticker', {}).get('symbol', '')
+    return data.get("ticker", {}).get("symbol", "")
 
 
 def get_info_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
-    return data.get('ticker', {})
+    return data.get("ticker", {})
 
 
 def get_news_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
-    return data.get('news', {})
+    return data.get("news", {})
 
 
 def empty_df(index=None):
     if index is None:
         index = []
-    empty = _pd.DataFrame(index=index, data={
-        'Open': _np.nan, 'High': _np.nan, 'Low': _np.nan,
-        'Close': _np.nan, 'Adj Close': _np.nan, 'Volume': _np.nan})
-    empty.index.name = 'Date'
+    empty = _pd.DataFrame(
+        index=index,
+        data={
+            "Open": _np.nan,
+            "High": _np.nan,
+            "Low": _np.nan,
+            "Close": _np.nan,
+            "Adj Close": _np.nan,
+            "Volume": _np.nan,
+        },
+    )
+    empty.index.name = "Date"
     return empty
 
 
 def empty_earnings_dates_df():
-    empty = _pd.DataFrame(
-        columns=["Symbol", "Company", "Earnings Date",
-                 "EPS Estimate", "Reported EPS", "Surprise(%)"])
+    empty = _pd.DataFrame(columns=["Symbol", "Company", "Earnings Date", "EPS Estimate", "Reported EPS", "Surprise(%)"])
     return empty
 
 
@@ -272,11 +279,11 @@ def build_template(data):
         template_annual_order.append(f"annual{node['key']}")
         template_order.append(f"{node['key']}")
         level_detail.append(level)
-        if 'children' in node:  # Check if the node has children
-            for child in node['children']:  # If yes, traverse each child
+        if "children" in node:  # Check if the node has children
+            for child in node["children"]:  # If yes, traverse each child
                 traverse(child, level + 1)  # Increment the level by 1 for each child
 
-    for key in data['template']:  # Loop through the data
+    for key in data["template"]:  # Loop through the data
         traverse(key, 0)  # Call the traverse function with initial level being 0
 
     return template_ttm_order, template_annual_order, template_order, level_detail
@@ -295,17 +302,19 @@ def retrieve_financial_details(data):
     TTM_dicts = []  # Save a dictionary object to store the TTM financials.
     Annual_dicts = []  # Save a dictionary object to store the Annual financials.
 
-    for key, timeseries in data.get('timeSeries', {}).items():  # Loop through the time series data to grab the key financial figures.
+    for key, timeseries in data.get(
+        "timeSeries", {}
+    ).items():  # Loop through the time series data to grab the key financial figures.
         try:
             if timeseries:
-                time_series_dict = {'index': key}
+                time_series_dict = {"index": key}
                 for each in timeseries:  # Loop through the years
                     if not each:
                         continue
-                    time_series_dict[each.get('asOfDate')] = each.get('reportedValue')
-                if 'trailing' in key:
+                    time_series_dict[each.get("asOfDate")] = each.get("reportedValue")
+                if "trailing" in key:
                     TTM_dicts.append(time_series_dict)
-                elif 'annual' in key:
+                elif "annual" in key:
                     Annual_dicts.append(time_series_dict)
         except KeyError as e:
             print(f"An error occurred while processing the key: {e}")
@@ -321,24 +330,24 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
     """
     Annual = _pd.DataFrame.from_dict(annual_dicts).set_index("index")
     Annual = Annual.reindex(annual_order)
-    Annual.index = Annual.index.str.replace(r'annual', '')
+    Annual.index = Annual.index.str.replace(r"annual", "")
 
     # Note: balance sheet is the only financial statement with no ttm detail
     if ttm_dicts and ttm_order:
         TTM = _pd.DataFrame.from_dict(ttm_dicts).set_index("index").reindex(ttm_order)
         # Add 'TTM' prefix to all column names, so if combined we can tell
         # the difference between actuals and TTM (similar to yahoo finance).
-        TTM.columns = ['TTM ' + str(col) for col in TTM.columns]
-        TTM.index = TTM.index.str.replace(r'trailing', '')
+        TTM.columns = ["TTM " + str(col) for col in TTM.columns]
+        TTM.index = TTM.index.str.replace(r"trailing", "")
         _statement = Annual.merge(TTM, left_index=True, right_index=True)
     else:
         _statement = Annual
 
     _statement.index = camel2title(_statement.T.index)
-    _statement['level_detail'] = level_detail
-    _statement = _statement.set_index([_statement.index, 'level_detail'])
+    _statement["level_detail"] = level_detail
+    _statement = _statement.set_index([_statement.index, "level_detail"])
     _statement = _statement[sorted(_statement.columns, reverse=True)]
-    _statement = _statement.dropna(how='all')
+    _statement = _statement.dropna(how="all")
     return _statement
 
 
@@ -351,16 +360,16 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
     """
     _statement = _statement.reindex(order)
     _statement.index = camel2title(_statement.T)
-    _statement['level_detail'] = level_detail
-    _statement = _statement.set_index([_statement.index, 'level_detail'])
+    _statement["level_detail"] = level_detail
+    _statement = _statement.set_index([_statement.index, "level_detail"])
     _statement = _statement[sorted(_statement.columns, reverse=True)]
-    _statement = _statement.dropna(how='all')
+    _statement = _statement.dropna(how="all")
     _statement.columns = _pd.to_datetime(_statement.columns).date
     return _statement
 
 
-def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]] = None) -> List[str]:
-    if isinstance(strings, str) or not hasattr(strings, '__iter__'):
+def camel2title(strings: List[str], sep: str = " ", acronyms: Optional[List[str]] = None) -> List[str]:
+    if isinstance(strings, str) or not hasattr(strings, "__iter__"):
         raise TypeError("camel2title() 'strings' argument must be iterable of strings")
     if len(strings) == 0:
         return strings
@@ -370,7 +379,7 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
         raise ValueError(f"camel2title() 'sep' argument = '{sep}' must be single character")
     if _re.match("[a-zA-Z0-9]", sep):
         raise ValueError(f"camel2title() 'sep' argument = '{sep}' cannot be alpha-numeric")
-    if _re.escape(sep) != sep and sep not in {' ', '-'}:
+    if _re.escape(sep) != sep and sep not in {" ", "-"}:
         # Permit some exceptions, I don't understand why they get escaped
         raise ValueError(f"camel2title() 'sep' argument = '{sep}' cannot be special character")
 
@@ -380,7 +389,7 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
         return [_re.sub(pat, rep, s).title() for s in strings]
 
     # Handling acronyms requires more care. Assumes Yahoo returns acronym strings upper-case
-    if isinstance(acronyms, str) or not hasattr(acronyms, '__iter__') or not isinstance(acronyms[0], str):
+    if isinstance(acronyms, str) or not hasattr(acronyms, "__iter__") or not isinstance(acronyms[0], str):
         raise TypeError("camel2title() 'acronyms' argument must be iterable of strings")
     for a in acronyms:
         if not _re.match("^[A-Z]+$", a):
@@ -406,7 +415,7 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
 
 
 def snake_case_2_camelCase(s):
-    sc = s.split('_')[0] + ''.join(x.title() for x in s.split('_')[1:])
+    sc = s.split("_")[0] + "".join(x.title() for x in s.split("_")[1:])
     return sc
 
 
@@ -417,7 +426,7 @@ def _parse_user_dt(dt, exchange_tz):
     else:
         # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
         if isinstance(dt, str):
-            dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
+            dt = _datetime.datetime.strptime(str(dt), "%Y-%m-%d")
         if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
             dt = _datetime.datetime.combine(dt, _datetime.time(0))
         if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
@@ -458,20 +467,15 @@ def auto_adjust(data):
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
 
-    df.drop(
-        ["Open", "High", "Low", "Close"],
-        axis=1, inplace=True)
+    df.drop(["Open", "High", "Low", "Close"], axis=1, inplace=True)
 
-    df.rename(columns={
-        "Adj Open": "Open", "Adj High": "High",
-        "Adj Low": "Low", "Adj Close": "Close"
-    }, inplace=True)
+    df.rename(columns={"Adj Open": "Open", "Adj High": "High", "Adj Low": "Low", "Adj Close": "Close"}, inplace=True)
 
     return df[[c for c in col_order if c in df.columns]]
 
 
 def back_adjust(data):
-    """ back-adjusted data to mimic true historical prices """
+    """back-adjusted data to mimic true historical prices"""
 
     col_order = data.columns
     df = data.copy()
@@ -480,14 +484,9 @@ def back_adjust(data):
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
 
-    df.drop(
-        ["Open", "High", "Low", "Adj Close"],
-        axis=1, inplace=True)
+    df.drop(["Open", "High", "Low", "Adj Close"], axis=1, inplace=True)
 
-    df.rename(columns={
-        "Adj Open": "Open", "Adj High": "High",
-        "Adj Low": "Low"
-    }, inplace=True)
+    df.rename(columns={"Adj Open": "Open", "Adj High": "High", "Adj Low": "Low"}, inplace=True)
 
     return df[[c for c in col_order if c in df.columns]]
 
@@ -505,12 +504,9 @@ def parse_quotes(data):
     if "adjclose" in data["indicators"]:
         adjclose = data["indicators"]["adjclose"][0]["adjclose"]
 
-    quotes = _pd.DataFrame({"Open": opens,
-                            "High": highs,
-                            "Low": lows,
-                            "Close": closes,
-                            "Adj Close": adjclose,
-                            "Volume": volumes})
+    quotes = _pd.DataFrame(
+        {"Open": opens, "High": highs, "Low": lows, "Close": closes, "Adj Close": adjclose, "Volume": volumes}
+    )
 
     quotes.index = _pd.to_datetime(timestamps, unit="s")
     quotes.sort_index(inplace=True)
@@ -524,25 +520,22 @@ def parse_actions(data):
     splits = None
 
     if "events" in data:
-        if "dividends" in data["events"] and len(data["events"]['dividends']) > 0:
-            dividends = _pd.DataFrame(
-                data=list(data["events"]["dividends"].values()))
+        if "dividends" in data["events"] and len(data["events"]["dividends"]) > 0:
+            dividends = _pd.DataFrame(data=list(data["events"]["dividends"].values()))
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
             dividends.columns = ["Dividends"]
 
-        if "capitalGains" in data["events"] and len(data["events"]['capitalGains']) > 0:
-            capital_gains = _pd.DataFrame(
-                data=list(data["events"]["capitalGains"].values()))
+        if "capitalGains" in data["events"] and len(data["events"]["capitalGains"]) > 0:
+            capital_gains = _pd.DataFrame(data=list(data["events"]["capitalGains"].values()))
             capital_gains.set_index("date", inplace=True)
             capital_gains.index = _pd.to_datetime(capital_gains.index, unit="s")
             capital_gains.sort_index(inplace=True)
             capital_gains.columns = ["Capital Gains"]
 
-        if "splits" in data["events"] and len(data["events"]['splits']) > 0:
-            splits = _pd.DataFrame(
-                data=list(data["events"]["splits"].values()))
+        if "splits" in data["events"] and len(data["events"]["splits"]) > 0:
+            splits = _pd.DataFrame(data=list(data["events"]["splits"].values()))
             splits.set_index("date", inplace=True)
             splits.index = _pd.to_datetime(splits.index, unit="s")
             splits.sort_index(inplace=True)
@@ -550,14 +543,11 @@ def parse_actions(data):
             splits = splits[["Stock Splits"]]
 
     if dividends is None:
-        dividends = _pd.DataFrame(
-            columns=["Dividends"], index=_pd.DatetimeIndex([]))
+        dividends = _pd.DataFrame(columns=["Dividends"], index=_pd.DatetimeIndex([]))
     if capital_gains is None:
-        capital_gains = _pd.DataFrame(
-            columns=["Capital Gains"], index=_pd.DatetimeIndex([]))
+        capital_gains = _pd.DataFrame(columns=["Capital Gains"], index=_pd.DatetimeIndex([]))
     if splits is None:
-        splits = _pd.DataFrame(
-            columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
+        splits = _pd.DataFrame(columns=["Stock Splits"], index=_pd.DatetimeIndex([]))
 
     return dividends, splits, capital_gains
 
@@ -600,7 +590,7 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
 def _dts_in_same_interval(dt1, dt2, interval):
     # Check if second date dt2 in interval starting at dt1
 
-    if interval == '1d':
+    if interval == "1d":
         last_rows_same_interval = dt1.date() == dt2.date()
     elif interval == "1wk":
         last_rows_same_interval = (dt2 - dt1).days < 7
@@ -611,7 +601,7 @@ def _dts_in_same_interval(dt1, dt2, interval):
         q1 = (dt1.month - shift - 1) // 3 + 1
         q2 = (dt2.month - shift - 1) // 3 + 1
         year_diff = dt2.year - dt1.year
-        quarter_diff = q2 - q1 + 4*year_diff
+        quarter_diff = q2 - q1 + 4 * year_diff
         last_rows_same_interval = quarter_diff == 0
     else:
         last_rows_same_interval = (dt2 - dt1) < _pd.Timedelta(interval)
@@ -624,7 +614,7 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
     # Seems to depend on what exchange e.g. crypto OK.
     # Fix = merge them together
 
-    if interval[-1] not in ['m', 'h']:
+    if interval[-1] not in ["m", "h"]:
         prepost = False
 
     dropped_row = None
@@ -659,23 +649,23 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
                         # assume post-market interval
                         return quotes, None
 
-                ss = quotes['Stock Splits'].iloc[-2:].replace(0,1).prod()
+                ss = quotes["Stock Splits"].iloc[-2:].replace(0, 1).prod()
                 if repair:
                     # First, check if one row is ~100x the other. A £/pence mixup on LSE.
                     # Avoid if a stock split near 100
-                    if currency == 'KWF':
+                    if currency == "KWF":
                         # Kuwaiti Dinar divided into 1000 not 100
                         currency_divide = 1000
                     else:
                         currency_divide = 100
                     # if ss < 75 or ss > 125:
-                    if abs(ss/currency_divide-1) > 0.25:
+                    if abs(ss / currency_divide - 1) > 0.25:
                         ratio = quotes.loc[idx1, const._PRICE_COLNAMES_] / quotes.loc[idx2, const._PRICE_COLNAMES_]
-                        if ((ratio/currency_divide-1).abs() < 0.05).all():
+                        if ((ratio / currency_divide - 1).abs() < 0.05).all():
                             # newer prices are 100x
                             for c in const._PRICE_COLNAMES_:
                                 quotes.loc[idx2, c] *= 100
-                        elif((ratio*currency_divide-1).abs() < 0.05).all():
+                        elif ((ratio * currency_divide - 1).abs() < 0.05).all():
                             # newer prices are 0.01x
                             for c in const._PRICE_COLNAMES_:
                                 quotes.loc[idx2, c] *= 0.01
@@ -686,12 +676,16 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
                 if not _np.isnan(quotes["High"].iloc[-1]):
                     quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[-1], quotes["High"].iloc[-2]])
                     if "Adj High" in quotes.columns:
-                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[-1], quotes["Adj High"].iloc[-2]])
+                        quotes.loc[idx2, "Adj High"] = _np.nanmax(
+                            [quotes["Adj High"].iloc[-1], quotes["Adj High"].iloc[-2]]
+                        )
 
                 if not _np.isnan(quotes["Low"].iloc[-1]):
                     quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[-1], quotes["Low"].iloc[-2]])
                     if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[-1], quotes["Adj Low"].iloc[-2]])
+                        quotes.loc[idx2, "Adj Low"] = _np.nanmin(
+                            [quotes["Adj Low"].iloc[-1], quotes["Adj Low"].iloc[-2]]
+                        )
 
                 quotes.loc[idx2, "Close"] = quotes["Close"].iloc[-1]
                 if "Adj Close" in quotes.columns:
@@ -718,20 +712,22 @@ def safe_merge_dfs(df_main, df_sub, interval):
     data_col = data_cols[0]
 
     df_main = df_main.sort_index()
-    intraday = interval.endswith('m') or interval.endswith('s')
+    intraday = interval.endswith("m") or interval.endswith("s")
 
     td = _interval_to_timedelta(interval)
     if intraday:
         # On some exchanges the event can occur before market open.
         # Problem when combining with intraday data.
         # Solution = use dates, not datetimes, to map/merge.
-        df_main['_date'] = df_main.index.date
-        df_sub['_date'] = df_sub.index.date
-        indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
-        df_main = df_main.drop('_date', axis=1)
-        df_sub = df_sub.drop('_date', axis=1)
+        df_main["_date"] = df_main.index.date
+        df_sub["_date"] = df_sub.index.date
+        indices = _np.searchsorted(
+            _np.append(df_main["_date"], [df_main["_date"].iloc[-1] + td]), df_sub["_date"], side="left"
+        )
+        df_main = df_main.drop("_date", axis=1)
+        df_sub = df_sub.drop("_date", axis=1)
     else:
-        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
+        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side="right")
         indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
     # Numpy.searchsorted does not handle out-of-range well, so handle manually:
     if intraday:
@@ -753,11 +749,11 @@ def safe_merge_dfs(df_main, df_sub, interval):
             # Discard out-of-range dividends in intraday data, assume user not interested
             df_sub = df_sub[~f_outOfRange]
             if df_sub.empty:
-                df_main['Dividends'] = 0.0
+                df_main["Dividends"] = 0.0
                 return df_main
         else:
-            empty_row_data = {**{c:[_np.nan] for c in const._PRICE_COLNAMES_}, 'Volume':[0]}
-            if interval == '1d':
+            empty_row_data = {**{c: [_np.nan] for c in const._PRICE_COLNAMES_}, "Volume": [0]}
+            if interval == "1d":
                 # For 1d, add all out-of-range event dates
                 for i in _np.where(f_outOfRange)[0]:
                     dt = df_sub.index[i]
@@ -779,7 +775,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             df_main = df_main.sort_index()
 
             # Re-calculate indices
-            indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
+            indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side="right")
             indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
             # Numpy.searchsorted does not handle out-of-range well, so handle manually:
             for i in range(len(df_sub.index)):
@@ -790,9 +786,11 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
     f_outOfRange = indices == -1
     if f_outOfRange.any():
-        if intraday or interval in ['1d', '1wk']:
-            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
-        get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
+        if intraday or interval in ["1d", "1wk"]:
+            raise Exception(
+                f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}"
+            )
+        get_yf_logger().debug(f"Discarding these {data_col} events:" + "\n" + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
         indices = indices[~f_outOfRange]
 
@@ -825,7 +823,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        raise Exception('Data was lost in merge, investigate')
+        raise Exception("Data was lost in merge, investigate")
 
     return df
 
@@ -839,7 +837,7 @@ def fix_Yahoo_dst_issue(df, interval):
         f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22, 23]))
         dst_error_hours = _np.array([0] * df.shape[0])
         dst_error_hours[f_pre_midnight] = 24 - df.index[f_pre_midnight].hour
-        df.index += _pd.to_timedelta(dst_error_hours, 'h')
+        df.index += _pd.to_timedelta(dst_error_hours, "h")
     return df
 
 
@@ -863,14 +861,15 @@ def format_history_metadata(md, tradingPeriodsOnly=True):
         for k in ["firstTradeDate", "regularMarketTime"]:
             if k in md and md[k] is not None:
                 if isinstance(md[k], int):
-                    md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
+                    md[k] = _pd.to_datetime(md[k], unit="s", utc=True).tz_convert(tz)
 
         if "currentTradingPeriod" in md:
             for m in ["regular", "pre", "post"]:
                 if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
                     for t in ["start", "end"]:
-                        md["currentTradingPeriod"][m][t] = \
-                            _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
+                        md["currentTradingPeriod"][m][t] = _pd.to_datetime(
+                            md["currentTradingPeriod"][m][t], unit="s", utc=True
+                        ).tz_convert(tz)
                     del md["currentTradingPeriod"][m]["gmtoffset"]
                     del md["currentTradingPeriod"][m]["timezone"]
 
@@ -884,22 +883,26 @@ def format_history_metadata(md, tradingPeriodsOnly=True):
                 # Only regular times
                 df = _pd.DataFrame.from_records(_np.hstack(tps))
                 df = df.drop(["timezone", "gmtoffset"], axis=1)
-                df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
-                df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
+                df["start"] = _pd.to_datetime(df["start"], unit="s", utc=True).dt.tz_convert(tz)
+                df["end"] = _pd.to_datetime(df["end"], unit="s", utc=True).dt.tz_convert(tz)
             elif isinstance(tps, dict):
                 # Includes pre- and post-market
                 pre_df = _pd.DataFrame.from_records(_np.hstack(tps["pre"]))
                 post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
                 regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
 
-                pre_df = pre_df.rename(columns={"start": "pre_start", "end": "pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
-                post_df = post_df.rename(columns={"start": "post_start", "end": "post_end"}).drop(["timezone", "gmtoffset"], axis=1)
+                pre_df = pre_df.rename(columns={"start": "pre_start", "end": "pre_end"}).drop(
+                    ["timezone", "gmtoffset"], axis=1
+                )
+                post_df = post_df.rename(columns={"start": "post_start", "end": "post_end"}).drop(
+                    ["timezone", "gmtoffset"], axis=1
+                )
                 regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
 
                 cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
                 df = regular_df.join(pre_df).join(post_df)
                 for c in cols:
-                    df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
+                    df[c] = _pd.to_datetime(df[c], unit="s", utc=True).dt.tz_convert(tz)
                 df = df[cols]
 
             df.index = _pd.to_datetime(df["start"].dt.date)
@@ -912,11 +915,11 @@ def format_history_metadata(md, tradingPeriodsOnly=True):
 
 
 class ProgressBar:
-    def __init__(self, iterations, text='completed'):
+    def __init__(self, iterations, text="completed"):
         self.text = text
         self.iterations = iterations
-        self.prog_bar = '[]'
-        self.fill_char = '*'
+        self.prog_bar = "[]"
+        self.fill_char = "*"
         self.width = 50
         self.__update_amount(0)
         self.elapsed = 1
@@ -925,7 +928,7 @@ class ProgressBar:
         if self.elapsed > self.iterations:
             self.elapsed = self.iterations
         self.update_iteration(1)
-        print('\r' + str(self), end='', file=_sys.stderr)
+        print("\r" + str(self), end="", file=_sys.stderr)
         _sys.stderr.flush()
         print("", file=_sys.stderr)
 
@@ -936,7 +939,7 @@ class ProgressBar:
         else:
             self.elapsed += iteration
 
-        print('\r' + str(self), end='', file=_sys.stderr)
+        print("\r" + str(self), end="", file=_sys.stderr)
         _sys.stderr.flush()
         self.update_iteration()
 
@@ -949,21 +952,23 @@ class ProgressBar:
         percent_done = int(round((new_amount / 100.0) * 100.0))
         all_full = self.width - 2
         num_hashes = int(round((percent_done / 100.0) * all_full))
-        self.prog_bar = '[' + self.fill_char * num_hashes + ' ' * (all_full - num_hashes) + ']'
+        self.prog_bar = "[" + self.fill_char * num_hashes + " " * (all_full - num_hashes) + "]"
         pct_place = (len(self.prog_bar) // 2) - len(str(percent_done))
-        pct_string = f'{percent_done}%'
-        self.prog_bar = self.prog_bar[0:pct_place] + (pct_string + self.prog_bar[pct_place + len(pct_string):])
+        pct_string = f"{percent_done}%"
+        self.prog_bar = self.prog_bar[0:pct_place] + (pct_string + self.prog_bar[pct_place + len(pct_string) :])
 
     def __str__(self):
         return str(self.prog_bar)
 
+
 def dynamic_docstring(placeholders: dict):
     """
     A decorator to dynamically update the docstring of a function or method.
-    
+
     Args:
         placeholders (dict): A dictionary where keys are placeholder names and values are the strings to insert.
     """
+
     def decorator(func):
         if func.__doc__:
             docstring = func.__doc__
@@ -972,10 +977,13 @@ def dynamic_docstring(placeholders: dict):
                 docstring = docstring.replace(f"{{{key}}}", value)
             func.__doc__ = docstring
         return func
+
     return decorator
 
-def _generate_table_configurations(title = None) -> str:
+
+def _generate_table_configurations(title=None) -> str:
     import textwrap
+
     if title is None:
         title = "Permitted Keys/Values"
     table = textwrap.dedent(f"""
@@ -989,23 +997,25 @@ def _generate_table_configurations(title = None) -> str:
 
     return table
 
-def generate_list_table_from_dict(data: dict, bullets: bool=True, title: str=None) -> str:
+
+def generate_list_table_from_dict(data: dict, bullets: bool = True, title: str = None) -> str:
     """
     Generate a list-table for the docstring showing permitted keys/values.
     """
     table = _generate_table_configurations(title)
     for k in sorted(data.keys()):
         values = data[k]
-        table += ' '*3 + f"* - {k}\n"
+        table += " " * 3 + f"* - {k}\n"
         lengths = [len(str(v)) for v in values]
         if bullets and max(lengths) > 5:
-            table += ' '*5 + "-\n"
+            table += " " * 5 + "-\n"
             for value in sorted(values):
-                table += ' '*7 + f"- {value}\n"
+                table += " " * 7 + f"- {value}\n"
         else:
-            value_str = ', '.join(sorted(values))
-            table += ' '*5 + f"- {value_str}\n"
+            value_str = ", ".join(sorted(values))
+            table += " " * 5 + f"- {value_str}\n"
     return table
+
 
 # def generate_list_table_from_dict_of_dict(data: dict, bullets: bool=True, title: str=None) -> str:
 #     """
@@ -1024,7 +1034,7 @@ def generate_list_table_from_dict(data: dict, bullets: bool=True, title: str=Non
 #     return table
 
 
-def generate_list_table_from_dict_universal(data: dict, bullets: bool=True, title: str=None, concat_keys=[]) -> str:
+def generate_list_table_from_dict_universal(data: dict, bullets: bool = True, title: str = None, concat_keys=[]) -> str:
     """
     Generate a list-table for the docstring showing permitted keys/values.
     """
@@ -1032,16 +1042,16 @@ def generate_list_table_from_dict_universal(data: dict, bullets: bool=True, titl
     for k in data.keys():
         values = data[k]
 
-        table += ' '*3 + f"* - {k}\n"
+        table += " " * 3 + f"* - {k}\n"
         if isinstance(values, dict):
-            table_add = ''
+            table_add = ""
 
             concat_short_lines = k in concat_keys
 
             if bullets:
                 k_keys = sorted(list(values.keys()))
-                current_line = ''
-                block_format = 'query' in k_keys
+                current_line = ""
+                block_format = "query" in k_keys
                 for i in range(len(k_keys)):
                     k2 = k_keys[i]
                     k2_values = values[k2]
@@ -1061,62 +1071,62 @@ def generate_list_table_from_dict_universal(data: dict, bullets: bool=True, titl
 
                     if len(current_line) > 0 and (len(current_line) + len(k2_values_str) > 40):
                         # new line
-                        table_add += current_line + '\n'
-                        current_line = ''
+                        table_add += current_line + "\n"
+                        current_line = ""
 
                     if concat_short_lines:
-                        if current_line == '':
-                            current_line += ' '*5
+                        if current_line == "":
+                            current_line += " " * 5
                             if i == 0:
                                 # Only add dash to first
                                 current_line += "- "
                             else:
                                 current_line += "  "
                             # Don't draw bullet points:
-                            current_line += '| '
+                            current_line += "| "
                         else:
-                            current_line += '.  '
+                            current_line += ".  "
                         current_line += f"{k2}: " + k2_values_str
                     else:
-                        table_add += ' '*5
+                        table_add += " " * 5
                         if i == 0:
                             # Only add dash to first
                             table_add += "- "
                         else:
                             table_add += "  "
 
-                        if '\n' in k2_values_str:
+                        if "\n" in k2_values_str:
                             # Block format multiple lines
-                            table_add += '| ' + f"{k2}: " + "\n"
-                            k2_values_str_lines = k2_values_str.split('\n')
+                            table_add += "| " + f"{k2}: " + "\n"
+                            k2_values_str_lines = k2_values_str.split("\n")
                             for j in range(len(k2_values_str_lines)):
                                 line = k2_values_str_lines[j]
-                                table_add += ' '*7 + '|' + ' '*5 + line
-                                if j < len(k2_values_str_lines)-1:
+                                table_add += " " * 7 + "|" + " " * 5 + line
+                                if j < len(k2_values_str_lines) - 1:
                                     table_add += "\n"
                         else:
                             if block_format:
-                                table_add += '| '
+                                table_add += "| "
                             else:
-                                table_add += '* '
+                                table_add += "* "
                             table_add += f"{k2}: " + k2_values_str
 
                         table_add += "\n"
-                if current_line != '':
-                    table_add += current_line + '\n'
+                if current_line != "":
+                    table_add += current_line + "\n"
             else:
-                table_add += ' '*5 + f"- {values}\n"
+                table_add += " " * 5 + f"- {values}\n"
 
             table += table_add
 
         else:
             lengths = [len(str(v)) for v in values]
             if bullets and max(lengths) > 5:
-                table += ' '*5 + "-\n"
+                table += " " * 5 + "-\n"
                 for value in sorted(values):
-                    table += ' '*7 + f"- {value}\n"
+                    table += " " * 7 + f"- {value}\n"
             else:
-                value_str = ', '.join(sorted(values))
-                table += ' '*5 + f"- {value_str}\n"
+                value_str = ", ".join(sorted(values))
+                table += " " * 5 + f"- {value_str}\n"
 
     return table

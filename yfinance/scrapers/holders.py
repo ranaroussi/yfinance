@@ -8,8 +8,9 @@ from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
+
 class Holders:
-    _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
+    _SCRAPE_URL_ = "https://finance.yahoo.com/quote"
 
     def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
         self._data = data
@@ -64,8 +65,17 @@ class Holders:
         return self._insider_roster
 
     def _fetch(self):
-        modules = ','.join(
-            ["institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"])
+        modules = ",".join(
+            [
+                "institutionOwnership",
+                "fundOwnership",
+                "majorDirectHolders",
+                "majorHoldersBreakdown",
+                "insiderTransactions",
+                "insiderHolders",
+                "netSharePurchaseActivity",
+            ]
+        )
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false"}
         result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", params=params_dict)
         return result
@@ -114,7 +124,15 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)  # "pctHeld": "% Out"
+            df.rename(
+                columns={
+                    "reportDate": "Date Reported",
+                    "organization": "Holder",
+                    "position": "Shares",
+                    "value": "Value",
+                },
+                inplace=True,
+            )  # "pctHeld": "% Out"
         self._institutional = df
 
     def _parse_fund_ownership(self, data):
@@ -126,7 +144,15 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)
+            df.rename(
+                columns={
+                    "reportDate": "Date Reported",
+                    "organization": "Holder",
+                    "position": "Shares",
+                    "value": "Value",
+                },
+                inplace=True,
+            )
         self._mutualfund = df
 
     def _parse_major_direct_holders(self, data):
@@ -138,7 +164,15 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "positionDirect": "Shares", "valueDirect": "Value"}, inplace=True)
+            df.rename(
+                columns={
+                    "reportDate": "Date Reported",
+                    "organization": "Holder",
+                    "positionDirect": "Shares",
+                    "valueDirect": "Value",
+                },
+                inplace=True,
+            )
         self._major_direct_holders = df
 
     def _parse_major_holders_breakdown(self, data):
@@ -147,7 +181,7 @@ class Holders:
         df = pd.DataFrame.from_dict(data, orient="index")
         if not df.empty:
             df.columns.name = "Breakdown"
-            df.rename(columns={df.columns[0]: 'Value'}, inplace=True)
+            df.rename(columns={df.columns[0]: "Value"}, inplace=True)
         self._major = df
 
     def _parse_insider_transactions(self, data):
@@ -159,17 +193,20 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["startDate"] = pd.to_datetime(df["startDate"], unit="s")
-            df.rename(columns={
-                "startDate": "Start Date",
-                "filerName": "Insider",
-                "filerRelation": "Position",
-                "filerUrl": "URL",
-                "moneyText": "Transaction",
-                "transactionText": "Text",
-                "shares": "Shares",
-                "value": "Value",
-                "ownership": "Ownership"  # ownership flag, direct or institutional
-            }, inplace=True)
+            df.rename(
+                columns={
+                    "startDate": "Start Date",
+                    "filerName": "Insider",
+                    "filerRelation": "Position",
+                    "filerUrl": "URL",
+                    "moneyText": "Transaction",
+                    "transactionText": "Text",
+                    "shares": "Shares",
+                    "value": "Value",
+                    "ownership": "Ownership",  # ownership flag, direct or institutional
+                },
+                inplace=True,
+            )
         self._insider_transactions = df
 
     def _parse_insider_holders(self, data):
@@ -185,17 +222,20 @@ class Holders:
             if "latestTransDate" in df:
                 df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
 
-            df.rename(columns={
-                "name": "Name",
-                "relation": "Position",
-                "url": "URL",
-                "transactionDescription": "Most Recent Transaction",
-                "latestTransDate": "Latest Transaction Date",
-                "positionDirectDate": "Position Direct Date",
-                "positionDirect": "Shares Owned Directly",
-                "positionIndirectDate": "Position Indirect Date",
-                "positionIndirect": "Shares Owned Indirectly"
-            }, inplace=True)
+            df.rename(
+                columns={
+                    "name": "Name",
+                    "relation": "Position",
+                    "url": "URL",
+                    "transactionDescription": "Most Recent Transaction",
+                    "latestTransDate": "Latest Transaction Date",
+                    "positionDirectDate": "Position Direct Date",
+                    "positionDirect": "Shares Owned Directly",
+                    "positionIndirectDate": "Position Indirect Date",
+                    "positionIndirect": "Shares Owned Indirectly",
+                },
+                inplace=True,
+            )
 
             df["Name"] = df["Name"].astype(str)
             df["Position"] = df["Position"].astype(str)
@@ -214,26 +254,26 @@ class Holders:
                     "Total Insider Shares Held",
                     "% Net Shares Purchased (Sold)",
                     "% Buy Shares",
-                    "% Sell Shares"
+                    "% Sell Shares",
                 ],
                 "Shares": [
-                    data.get('buyInfoShares'),
-                    data.get('sellInfoShares'),
-                    data.get('netInfoShares'),
-                    data.get('totalInsiderShares'),
-                    data.get('netPercentInsiderShares'),
-                    data.get('buyPercentInsiderShares'),
-                    data.get('sellPercentInsiderShares')
+                    data.get("buyInfoShares"),
+                    data.get("sellInfoShares"),
+                    data.get("netInfoShares"),
+                    data.get("totalInsiderShares"),
+                    data.get("netPercentInsiderShares"),
+                    data.get("buyPercentInsiderShares"),
+                    data.get("sellPercentInsiderShares"),
                 ],
                 "Trans": [
-                    data.get('buyInfoCount'),
-                    data.get('sellInfoCount'),
-                    data.get('netInfoCount'),
+                    data.get("buyInfoCount"),
+                    data.get("sellInfoCount"),
+                    data.get("netInfoCount"),
                     pd.NA,
                     pd.NA,
                     pd.NA,
-                    pd.NA
-                ]
+                    pd.NA,
+                ],
             }
         ).convert_dtypes()
         self._insider_purchases = df
