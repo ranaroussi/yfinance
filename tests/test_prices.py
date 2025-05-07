@@ -376,6 +376,113 @@ class TestPriceHistory(unittest.TestCase):
             df = yf.download(tickers=TICKERS, period="max", interval=interval, progress=False)
             self.assertTrue(not df.empty, msg=f"Period: max not working with {interval}")
 
+    def test_basicDownloadWithAllCases(self):
+        """Ensure download works with all basic time constraint cases:
+        Time Constraint Cases (in terms of provided args):
+            - <no args> (uses arg defaults - leading to below cases)
+            - period  (implied end=now, implied start = now - period)
+            - period, start (implied end = start + period)
+            - period, end (implied start = end - period)
+            - period, start, end :  Error - overconstraint
+            - start, end
+        """
+        # python -m unittest tests.test_prices.TestPriceHistory.test_basicDownloadWithAllCases
+        # PERIODS = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y", "10y", "ytd", "max"]
+
+        NOW = _dt.datetime.now()
+        _1_DAY_AGO = NOW - _dt.timedelta(days=1)
+        _15_DAYS_AGO = NOW - _dt.timedelta(days=15)
+        _30_DAYS_AGO = NOW - _dt.timedelta(days=30)
+        _60_DAYS_AGO = NOW - _dt.timedelta(days=60)
+        _90_DAYS_AGO = NOW - _dt.timedelta(days=90)
+
+        TICKERS = ["EURUSD=X"]
+
+        # No Time Args
+        interval = "1m"
+        df = yf.download(tickers=TICKERS, interval=interval, progress=False)
+        self.assertTrue(not df.empty, msg=f"Default period (max) with interval: {interval} should've provided results.")
+
+        # Period Arg Only
+        period = "3mo"
+        interval = "1m"
+        df = yf.download(tickers=TICKERS, period=period, interval=interval, progress=False)
+        self.assertTrue(df.empty, msg=f"Period: {period} with interval: {interval} should've broken due to range.")
+
+        period = "1mo"
+        interval = "2m"
+        df = yf.download(tickers=TICKERS, period=period, interval=interval, progress=False)
+        self.assertTrue(not df.empty, msg=f"Period: {period} with interval: {interval} should've provided results.")
+
+        # Using Start And Period Args
+        period = "1mo"
+        interval = "1m"
+        start = _60_DAYS_AGO
+        df = yf.download(tickers=TICKERS, start=start, period=period, interval=interval, progress=False)
+        self.assertTrue(
+            df.empty,
+            msg=f"start: {start} with period:{period}  with interval: {interval} should've broken due to overly large resulting range.",
+        )
+
+        start = _15_DAYS_AGO
+        period = "5d"
+        interval = "1m"
+        df = yf.download(tickers=TICKERS, start=start, period=period, interval=interval, progress=False)
+        self.assertTrue(
+            not df.empty, msg=f"start: {start} with period:{period}  with interval: {interval} was expected to provide  results."
+        )
+
+        # Using End And Period Args
+        end = _30_DAYS_AGO
+        period = "1mo"
+        interval = "1m"
+        df = yf.download(tickers=TICKERS, end=end, period=period, interval=interval, progress=False)
+        self.assertTrue(
+            df.empty,
+            msg=f"End: {end} with period: {period} for interval: {interval} should've broken due to a start outside of allowed range.",
+        )
+
+        end = _15_DAYS_AGO
+        period = "1mo"
+        interval = "2m"
+        df = yf.download(tickers=TICKERS, end=end, period=period, interval=interval, progress=False)
+        self.assertTrue(not df.empty, msg=f"End: {end} with period: {period} for interval: {interval} should've provided results.")
+
+        # Using Start, End And Period Args - should break / produce exception or logging
+        start = _60_DAYS_AGO
+        end = _30_DAYS_AGO
+        period = "5d"
+        df = yf.download(tickers=TICKERS, start=start, end=end, period=period, interval="15m", progress=False)
+        self.assertTrue(
+            df.empty,
+            msg=f"Start: {start} with end:{end}  with period:{period} with interval: {interval}  should've broken due to overconstraint.",
+        )
+
+        # Using Start And End Args
+        #   start after end
+        interval = "15m"
+        start = _15_DAYS_AGO
+        end = _30_DAYS_AGO
+        df = yf.download(tickers=TICKERS, start=start, end=end, interval=interval, progress=False)
+        self.assertTrue(
+            df.empty, msg=f"start: {start}  with end: {end} with interval:{interval} should've broken as the end is before the start."
+        )
+
+        start = _90_DAYS_AGO
+        end = _1_DAY_AGO
+        interval = "2m"
+        df = yf.download(tickers=TICKERS, start=start, end=end, interval=interval, progress=False)
+        self.assertTrue(
+            df.empty, msg=f"start: {start}  with end: {end} with interval:{interval} should've broken due to start outside of allowed."
+        )
+
+        start = _60_DAYS_AGO
+        end = _30_DAYS_AGO
+        interval = "15m"
+        df = yf.download(tickers=TICKERS, start=start, end=end, interval=interval, progress=False)
+        self.assertTrue(not df.empty, msg=f"start: {start}  with end: {end} with interval:{interval} should've provided results.")
+
+
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
         try:
