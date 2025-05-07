@@ -1,0 +1,40 @@
+name: Ruff Linting and Formatting
+
+on:
+  push:
+  pull_request:
+      branches:
+      - master
+      - main
+      - dev
+
+
+jobs:
+  run-ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: astral-sh/ruff-action@v3
+
+      - name: Run Ruff check and auto-fix
+        run: ruff check . --fix
+
+      - name: Format code with Ruff
+        run: ruff format .
+
+      - name: Commit changes with previous-like commit title
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          LAST_COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          git add .
+          git commit -m "$LAST_COMMIT_MSG - formatting" || echo "No changes to commit"
+      
+      - name: Push changes
+        run: git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inform
+        run: echo "Code push has been checked, fixed and formatted with Ruff."
