@@ -1,5 +1,4 @@
 import functools
-import random
 from functools import lru_cache
 
 from curl_cffi import requests
@@ -11,7 +10,6 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
-from .const import USER_AGENTS
 from .exceptions import YFRateLimitError
 
 cache_maxsize = 64
@@ -66,9 +64,6 @@ class YfData(metaclass=SingletonMeta):
     Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations.
     Singleton means one session one cookie shared by all threads.
     """
-    user_agent_headers = {
-        'User-Agent': random.choice(USER_AGENTS)
-    }
 
     def __init__(self, session=None, proxy=None):
         self._crumb = None
@@ -84,8 +79,6 @@ class YfData(metaclass=SingletonMeta):
         self._session, self._proxy = None, None
         self._set_session(session or requests.Session(impersonate="chrome"))
         self._set_proxy(proxy)
-
-        utils.get_yf_logger().debug(f"Using User-Agent: {self.user_agent_headers['User-Agent']}")
 
     def _set_session(self, session):
         if session is None:
@@ -178,7 +171,6 @@ class YfData(metaclass=SingletonMeta):
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         self._session.get(
             url='https://fc.yahoo.com',
-            headers=self.user_agent_headers,
             timeout=timeout,
             allow_redirects=True)
 
@@ -191,7 +183,6 @@ class YfData(metaclass=SingletonMeta):
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         get_args = {
             'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
-            'headers': self.user_agent_headers,
             'timeout': timeout,
             'allow_redirects': True
         }
@@ -225,7 +216,6 @@ class YfData(metaclass=SingletonMeta):
             return True
 
         base_args = {
-            'headers': self.user_agent_headers,
             'timeout': timeout}
 
         get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
@@ -297,7 +287,6 @@ class YfData(metaclass=SingletonMeta):
 
         get_args = {
             'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
-            'headers': self.user_agent_headers,
             'timeout': timeout}
         if self._session_is_caching:
             get_args['expire_after'] = self._expire_after
@@ -337,15 +326,15 @@ class YfData(metaclass=SingletonMeta):
         return crumb, strategy
 
     @utils.log_indent_decorator
-    def get(self, url, user_agent_headers=None, params=None, timeout=30):
-        return self._make_request(url, request_method = self._session.get, user_agent_headers=user_agent_headers, params=params, timeout=timeout)
+    def get(self, url, params=None, timeout=30):
+        return self._make_request(url, request_method = self._session.get, params=params, timeout=timeout)
     
     @utils.log_indent_decorator
-    def post(self, url, body, user_agent_headers=None, params=None, timeout=30):
-        return self._make_request(url, request_method = self._session.post, user_agent_headers=user_agent_headers, body=body, params=params, timeout=timeout)
+    def post(self, url, body, params=None, timeout=30):
+        return self._make_request(url, request_method = self._session.post, body=body, params=params, timeout=timeout)
     
     @utils.log_indent_decorator
-    def _make_request(self, url, request_method, user_agent_headers=None, body=None, params=None, timeout=30):
+    def _make_request(self, url, request_method, body=None, params=None, timeout=30):
         # Important: treat input arguments as immutable.
 
         if len(url) > 200:
@@ -368,8 +357,7 @@ class YfData(metaclass=SingletonMeta):
         request_args = {
             'url': url,
             'params': {**params, **crumbs},
-            'timeout': timeout,
-            'headers': user_agent_headers or self.user_agent_headers
+            'timeout': timeout
         }
 
         if body:
@@ -396,11 +384,11 @@ class YfData(metaclass=SingletonMeta):
 
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
-    def cache_get(self, url, user_agent_headers=None, params=None, timeout=30):
-        return self.get(url, user_agent_headers, params, timeout)
+    def cache_get(self, url, params=None, timeout=30):
+        return self.get(url, params, timeout)
 
-    def get_raw_json(self, url, user_agent_headers=None, params=None, timeout=30):
+    def get_raw_json(self, url, params=None, timeout=30):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
-        response = self.get(url, user_agent_headers=user_agent_headers, params=params, timeout=timeout)
+        response = self.get(url, params=params, timeout=timeout)
         response.raise_for_status()
         return response.json()
