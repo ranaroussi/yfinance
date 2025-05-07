@@ -363,6 +363,19 @@ class TestPriceHistory(unittest.TestCase):
         dfd_divs = dfd[dfd['Dividends'] != 0]
         self.assertEqual(dfm_divs.shape[0], dfd_divs.shape[0])
 
+
+
+    def test_maxPeriodWithAllIntervals(self):
+        """Simply check that using period max works with all intervals with a common ticker."""
+        # python -m unittest tests.test_prices.TestPriceHistory.test_maxPeriodWithAllIntervals
+        INTRADAY_INTERVALS = ["1m", "2m", "5m", "15m", "30m", "60m", "1h", "90m"]
+        DAY_PLUS_INTERVALS = ["1d", "5d", "1wk", "1mo", "3mo"]
+        INTERVALS = [*INTRADAY_INTERVALS, *DAY_PLUS_INTERVALS]
+        TICKERS = ["EURUSD=X"]
+        for interval in INTERVALS:
+            df = yf.download(tickers=TICKERS, period="max", interval=interval, progress=False)
+            self.assertTrue(not df.empty, msg=f"Period: max not working with {interval}")
+
     def test_tz_dst_ambiguous(self):
         # Reproduce issue #1100
         try:
