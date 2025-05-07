@@ -140,7 +140,8 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
 
     post_query = None
-    if isinstance(query, str):
+ 
+    if isinstance(query, str) and offset is None:
         # post_query = PREDEFINED_SCREENER_QUERIES[query]
         # Switch to Yahoo's predefined endpoint
 
@@ -155,7 +156,9 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         for k,v in fields.items():
             if v is not None:
                 params_dict[k] = v
+
         resp = _data.get(url=_PREDEFINED_URL_, params=params_dict)
+
         try:
             resp.raise_for_status()
         except requests.exceptions.HTTPError:
@@ -174,6 +177,10 @@ def screen(query: Union[str, EquityQuery, FundQuery],
 
         post_query = fields
         post_query['query'] = query
+
+    elif isinstance(query, str) and offset is not None:
+        post_query = fields
+        post_query.update(PREDEFINED_SCREENER_QUERIES[query])
 
     else:
         raise ValueError(f'Query must be type str or QueryBase, not "{type(query)}"')
