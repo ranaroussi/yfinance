@@ -190,7 +190,6 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     # Fetch
     response = _data.post(_SCREENER_URL_, 
                             body=post_query, 
-                            user_agent_headers=_data.user_agent_headers, 
                             params=params_dict)
     response.raise_for_status()
     return response.json()['finance']['result'][0]

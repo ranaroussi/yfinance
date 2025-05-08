@@ -587,7 +587,7 @@ class Quote:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
-            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict)
+            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
@@ -596,9 +596,7 @@ class Quote:
     def _fetch_additional_info(self):
         params_dict = {"symbols": self._symbol, "formatted": "false"}
         try:
-            result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?",
-                                             user_agent_headers=self._data.user_agent_headers,
-                                             params=params_dict)
+            result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict)
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
@@ -679,7 +677,7 @@ class Quote:
             # p = _re.compile(r'root\.App\.main = (.*);')
             # url = 'https://finance.yahoo.com/quote/{}/key-statistics?p={}'.format(self._ticker.ticker, self._ticker.ticker)
             # try:
-            #     r = session.get(url, headers=utils.user_agent_headers)
+            #     r = session.get(url)
             #     data = _json.loads(p.findall(r.text)[0])
             #     key_stats = data['context']['dispatcher']['stores']['QuoteTimeSeriesStore']["timeSeries"]
             #     for k in keys:
