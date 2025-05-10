@@ -64,7 +64,7 @@ setup(
                       'platformdirs>=2.0.0', 'pytz>=2022.5',
                       'frozendict>=2.3.4', 'peewee>=3.16.2',
                       'beautifulsoup4>=4.11.1', 'curl_cffi>=0.7',
-                      'protobuf>=5.29.0,<6', 'websockets>=11.0'],
+                      'protobuf>=3.19.0', 'websockets>=13.0'],
     extras_require={
         'nospam': ['requests_cache>=1.0', 'requests_ratelimiter>=0.3.1'],
         'repair': ['scipy>=1.6.3'],
