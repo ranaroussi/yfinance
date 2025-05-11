@@ -1,6 +1,6 @@
-*************************************
-Contribution to the documentation
-*************************************
+*************
+Documentation
+*************
 
 .. contents:: Documentation:
    :local:
@@ -36,15 +36,18 @@ To build the documentation locally, follow these steps:
 
 3. **View Documentation Locally**:
 
-   ..code-block:: bash
+   .. code-block:: bash
+
       python -m http.server -d ./doc/_build/html
 
    Then open "localhost:8000" in browser
 
 
-Building documentation on main
-------------------------------
-The documentation updates are built on merge to ``main`` branch. This is done via GitHub Actions workflow based on ``/yfinance/.github/workflows/deploy_doc.yml``.
+Publishing documentation
+------------------------
+
+Merge into ``main`` branch triggers auto-generating documentation by action ``.github/workflows/deploy_doc.yml``.
+This publishes the generated HTML into branch ``documentation``.
 
 1. Review the changes locally and push to ``dev``.
 

@@ -1,5 +1,6 @@
+********
 Branches
----------
+********
 
 To support rapid development without breaking stable versions, this project uses a two-layer branch model:
 
