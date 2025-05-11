@@ -1,7 +1,7 @@
 import asyncio
 import base64
 import json
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Union
 
 from websockets.sync.client import connect as sync_connect
 from websockets.asyncio.client import connect as async_connect
@@ -84,7 +84,7 @@ class AsyncWebSocket(BaseWebSocket):
                     print(f"Error in heartbeat subscription: {e}")
                 break
 
-    async def subscribe(self, symbols: str | List[str]):
+    async def subscribe(self, symbols: Union[str, List[str]]):
         """
         Subscribe to a stock symbol or a list of stock symbols.
 
@@ -109,7 +109,7 @@ class AsyncWebSocket(BaseWebSocket):
         if self.verbose:
             print(f"Subscribed to symbols: {symbols}")
 
-    async def unsubscribe(self, symbols: str | List[str]):
+    async def unsubscribe(self, symbols: Union[str, List[str]]):
         """
         Unsubscribe from a stock symbol or a list of stock symbols.
 
