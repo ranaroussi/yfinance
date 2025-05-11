@@ -5,12 +5,14 @@ With PIP
 --------
 
 .. code-block:: bash
-    pip install git+https://github.com/{user}/{repo}.git@{branch}
+
+   pip install git+https://github.com/{user}/{repo}.git@{branch}
 
 E.g.:
 
 .. code-block:: bash
-    pip install git+https://github.com/ranaroussi/yfinance.git@feature/name
+
+   pip install git+https://github.com/ranaroussi/yfinance.git@feature/name
 
 With Git
 --------
