@@ -10,7 +10,7 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
-from .exceptions import YFRateLimitError
+from .exceptions import YFRateLimitError, YFDataException
 
 cache_maxsize = 64
 
@@ -83,13 +83,9 @@ class YfData(metaclass=SingletonMeta):
     def _set_session(self, session):
         if session is None:
             return
-        with self._cookie_lock:
-            self._session = session
-            if self._proxy is not None:
-                self._session.proxies = self._proxy
 
         try:
-            self._session.cache
+            session.cache
         except AttributeError:
             # Not caching
             self._session_is_caching = False
@@ -98,8 +94,16 @@ class YfData(metaclass=SingletonMeta):
             # Can't simply use a non-caching session to fetch cookie & crumb,
             # because then the caching-session won't have cookie.
             self._session_is_caching = True
-            from requests_cache import DO_NOT_CACHE
-            self._expire_after = DO_NOT_CACHE
+            # But since switch to curl_cffi, can't use requests_cache with it.
+            raise YFDataException("request_cache sessions don't work with curl_cffi, which is necessary now for Yahoo API. Solution: stop setting session, let YF handle.")
+
+        if not isinstance(session, requests.session.Session):
+            raise YFDataException(f"Yahoo API requires curl_cffi session not {type(session)}. Solution: stop setting session, let YF handle.")
+
+        with self._cookie_lock:
+            self._session = session
+            if self._proxy is not None:
+                self._session.proxies = self._proxy
 
     def _set_proxy(self, proxy=None):
         with self._cookie_lock:
@@ -133,53 +137,80 @@ class YfData(metaclass=SingletonMeta):
         if not have_lock:
             self._cookie_lock.release()
 
-    def _save_session_cookies(self):
-        try:
-            cache.get_cookie_cache().store('csrf', self._session.cookies)
-        except Exception:
+    @utils.log_indent_decorator
+    def _save_cookie_curlCffi(self):
+        if self._session is None:
             return False
+        cookies = self._session.cookies.jar._cookies
+        if len(cookies) == 0:
+            return False
+        yh_domains = [k for k in cookies.keys() if 'yahoo' in k]
+        if len(yh_domains) > 1:
+            # Possible when cookie fetched with CSRF method. Discard consent cookie.
+            yh_domains = [k for k in yh_domains if 'consent' not in k]
+        if len(yh_domains) > 1:
+            utils.get_yf_logger().debug(f'Multiple Yahoo cookies, not sure which to cache: {yh_domains}')
+            return False
+        if len(yh_domains) == 0:
+            return False
+        yh_domain = yh_domains[0]
+        yh_cookie = {yh_domain: cookies[yh_domain]}
+        cache.get_cookie_cache().store('curlCffi', yh_cookie)
         return True
 
-    def _load_session_cookies(self):
-        cookie_dict = cache.get_cookie_cache().lookup('csrf')
-        if cookie_dict is None:
+    @utils.log_indent_decorator
+    def _load_cookie_curlCffi(self):
+        if self._session is None:
             return False
-        # Periodically refresh, 24 hours seems fair.
-        if cookie_dict['age'] > datetime.timedelta(days=1):
+        cookie_dict = cache.get_cookie_cache().lookup('curlCffi')
+        if cookie_dict is None or len(cookie_dict) == 0:
             return False
-        self._session.cookies.update(cookie_dict['cookie'])
-        utils.get_yf_logger().debug('loaded persistent cookie')
-
-    def _save_cookie_basic(self, cookie):
-        try:
-            cache.get_cookie_cache().store('basic', cookie)
-        except Exception:
+        cookies = cookie_dict['cookie']
+        domain = list(cookies.keys())[0]
+        cookie = cookies[domain]['/']['A3']
+        expiry_ts = cookie.expires
+        if expiry_ts > 2e9:
+            # convert ms to s
+            expiry_ts //= 1e3
+        expiry_dt = datetime.datetime.fromtimestamp(expiry_ts, tz=datetime.timezone.utc)
+        expired = expiry_dt < datetime.datetime.now(datetime.timezone.utc)
+        if expired:
+            utils.get_yf_logger().debug('cached cookie expired')
             return False
+        self._session.cookies.jar._cookies.update(cookies)
+        self._cookie = cookie
         return True
-    def _load_cookie_basic(self):
-        cookie_dict = cache.get_cookie_cache().lookup('basic')
-        if cookie_dict is None:
-            return None
-        # Periodically refresh, 24 hours seems fair.
-        if cookie_dict['age'] > datetime.timedelta(days=1):
-            return None
-        utils.get_yf_logger().debug('loaded persistent cookie')
-        return cookie_dict['cookie']
 
+    @utils.log_indent_decorator
     def _get_cookie_basic(self, timeout=30):
+        if self._cookie is not None:
+            utils.get_yf_logger().debug('reusing cookie')
+            return True
+        elif self._load_cookie_curlCffi():
+            utils.get_yf_logger().debug('reusing persistent cookie')
+            return True
+
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
-        self._session.get(
-            url='https://fc.yahoo.com',
-            timeout=timeout,
-            allow_redirects=True)
+        try:
+            self._session.get(
+                url='https://fc.yahoo.com',
+                timeout=timeout,
+                allow_redirects=True)
+        except requests.exceptions.DNSError:
+            # Possible because url on some privacy/ad blocklists
+            return False
+        self._save_cookie_curlCffi()
+        return True
 
+    @utils.log_indent_decorator
     def _get_crumb_basic(self, timeout=30):
         if self._crumb is not None:
             utils.get_yf_logger().debug('reusing crumb')
             return self._crumb
 
-        self._get_cookie_basic()        
+        if not self._get_cookie_basic():
+            return None
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         get_args = {
             'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
@@ -201,16 +232,17 @@ class YfData(metaclass=SingletonMeta):
 
     @utils.log_indent_decorator
     def _get_cookie_and_crumb_basic(self, timeout):
-        self._get_cookie_basic(timeout)
-        crumb = self._get_crumb_basic(timeout)
-        return crumb
+        if not self._get_cookie_basic(timeout):
+            return None
+        return self._get_crumb_basic(timeout)
 
+    @utils.log_indent_decorator
     def _get_cookie_csrf(self, timeout):
         if self._cookie is not None:
             utils.get_yf_logger().debug('reusing cookie')
             return True
 
-        elif self._load_session_cookies():
+        elif self._load_cookie_curlCffi():
             utils.get_yf_logger().debug('reusing persistent cookie')
             self._cookie = True
             return True
@@ -270,7 +302,7 @@ class YfData(metaclass=SingletonMeta):
             # No idea why happens, but handle nicely so can switch to other cookie method.
             utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
         self._cookie = True
-        self._save_session_cookies()
+        self._save_cookie_curlCffi()
         return True
 
     @utils.log_indent_decorator
@@ -362,7 +394,7 @@ class YfData(metaclass=SingletonMeta):
 
         if body:
             request_args['json'] = body
-            
+        
         response = request_method(**request_args)
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
