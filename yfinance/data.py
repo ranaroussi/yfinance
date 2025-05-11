@@ -10,7 +10,7 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
-from .exceptions import YFRateLimitError
+from .exceptions import YFRateLimitError, YFDataException
 
 cache_maxsize = 64
 
@@ -83,13 +83,9 @@ class YfData(metaclass=SingletonMeta):
     def _set_session(self, session):
         if session is None:
             return
-        with self._cookie_lock:
-            self._session = session
-            if self._proxy is not None:
-                self._session.proxies = self._proxy
 
         try:
-            self._session.cache
+            session.cache
         except AttributeError:
             # Not caching
             self._session_is_caching = False
@@ -98,8 +94,16 @@ class YfData(metaclass=SingletonMeta):
             # Can't simply use a non-caching session to fetch cookie & crumb,
             # because then the caching-session won't have cookie.
             self._session_is_caching = True
-            from requests_cache import DO_NOT_CACHE
-            self._expire_after = DO_NOT_CACHE
+            # But since switch to curl_cffi, can't use requests_cache with it.
+            raise YFDataException("request_cache sessions don't work with curl_cffi, which is necessary now for Yahoo API. Solution: stop setting session, let YF handle.")
+
+        if not isinstance(session, requests.session.Session):
+            raise YFDataException(f"Yahoo API requires curl_cffi session not {type(session)}. Solution: stop setting session, let YF handle.")
+
+        with self._cookie_lock:
+            self._session = session
+            if self._proxy is not None:
+                self._session.proxies = self._proxy
 
     def _set_proxy(self, proxy=None):
         with self._cookie_lock:
