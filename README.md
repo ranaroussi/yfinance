@@ -53,6 +53,8 @@ Install `yfinance` from PYPI using `pip`:
 $ pip install yfinance
 ```
 
+### [yfinance relies on the community to investigate bugs and contribute code. Here's how you can help.](CONTRIBUTING.md)
+
 ---
 
 ![Star History Chart](https://api.star-history.com/svg?repos=ranaroussi/yfinance)
