@@ -26,8 +26,7 @@ PricingData = _reflection.GeneratedProtocolMessageType('PricingData', (_message.
   })
 _sym_db.RegisterMessage(PricingData)
 
-if _descriptor._USE_C_DESCRIPTORS == False:
-
+if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._options = None
   _PRICINGDATA._serialized_start=18
   _PRICINGDATA._serialized_end=684
