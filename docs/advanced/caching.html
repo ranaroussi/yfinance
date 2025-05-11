@@ -393,39 +393,6 @@ document.write(`
                   
   <section id="caching">
 <h1>Caching<a class="headerlink" href="#caching" title="Link to this heading">#</a></h1>
-<section id="smarter-scraping">
-<h2>Smarter Scraping<a class="headerlink" href="#smarter-scraping" title="Link to this heading">#</a></h2>
-<p>Install the <cite>nospam</cite> package to cache API calls and reduce spam to Yahoo:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>yfinance<span class="o">[</span>nospam<span class="o">]</span>
-</pre></div>
-</div>
-<p>To use a custom <cite>requests</cite> session, pass a <cite>session=</cite> argument to
-the Ticker constructor. This allows for caching calls to the API as well as a custom way to modify requests via  the <cite>User-agent</cite> header.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">requests_cache</span>
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests_cache</span><span class="o">.</span><span class="n">CachedSession</span><span class="p">(</span><span class="s1">&#39;yfinance.cache&#39;</span><span class="p">)</span>
-<span class="n">session</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;User-agent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;my-program/1.0&#39;</span>
-<span class="n">ticker</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s1">&#39;MSFT&#39;</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
-
-<span class="c1"># The scraped response will be stored in the cache</span>
-<span class="n">ticker</span><span class="o">.</span><span class="n">actions</span>
-</pre></div>
-</div>
-<p>Combine <cite>requests_cache</cite> with rate-limiting to avoid triggering Yahoo’s rate-limiter/blocker that can corrupt data.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">Session</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">requests_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheMixin</span><span class="p">,</span> <span class="n">SQLiteCache</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">requests_ratelimiter</span><span class="w"> </span><span class="kn">import</span> <span class="n">LimiterMixin</span><span class="p">,</span> <span class="n">MemoryQueueBucket</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pyrate_limiter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Duration</span><span class="p">,</span> <span class="n">RequestRate</span><span class="p">,</span> <span class="n">Limiter</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">CachedLimiterSession</span><span class="p">(</span><span class="n">CacheMixin</span><span class="p">,</span> <span class="n">LimiterMixin</span><span class="p">,</span> <span class="n">Session</span><span class="p">):</span>
-   <span class="k">pass</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">CachedLimiterSession</span><span class="p">(</span>
-   <span class="n">limiter</span><span class="o">=</span><span class="n">Limiter</span><span class="p">(</span><span class="n">RequestRate</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">Duration</span><span class="o">.</span><span class="n">SECOND</span><span class="o">*</span><span class="mi">5</span><span class="p">)),</span>  <span class="c1"># max 2 requests per 5 seconds</span>
-   <span class="n">bucket_class</span><span class="o">=</span><span class="n">MemoryQueueBucket</span><span class="p">,</span>
-   <span class="n">backend</span><span class="o">=</span><span class="n">SQLiteCache</span><span class="p">(</span><span class="s2">&quot;yfinance.cache&quot;</span><span class="p">),</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-</section>
 <section id="persistent-cache">
 <h2>Persistent Cache<a class="headerlink" href="#persistent-cache" title="Link to this heading">#</a></h2>
 <p>To reduce Yahoo, yfinance store some data locally: timezones to localize dates, and cookie. Cache location is:</p>
@@ -488,7 +455,6 @@ the Ticker constructor. This allows for caching calls to the API as well as a cu
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#smarter-scraping">Smarter Scraping</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#persistent-cache">Persistent Cache</a></li>
 </ul>
   </nav></div>

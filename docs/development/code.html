@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Reporting a Bug &#8212; yfinance</title>
+    <title>Code &#8212; yfinance</title>
   
   
   
@@ -42,11 +42,11 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'development/reporting_bug';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'development/code';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Branches" href="branches.html" />
-    <link rel="prev" title="Contribution to the documentation" href="documentation.html" />
+    <link rel="next" title="Documentation" href="documentation.html" />
+    <link rel="prev" title="Development" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -330,12 +330,9 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to yfinance</a></li>
-<li class="toctree-l1"><a class="reference internal" href="documentation.html">Contribution to the documentation</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Reporting a Bug</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="branches.html">Branches</a></li>
-
-
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Unit Tests</a></li>
 <li class="toctree-l1"><a class="reference internal" href="running.html">Running a branch</a></li>
 </ul>
@@ -378,7 +375,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Development</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Reporting a Bug</li>
+    <li class="breadcrumb-item active" aria-current="page">Code</li>
   </ul>
 </nav>
 </div>
@@ -395,9 +392,67 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="reporting-a-bug">
-<h1>Reporting a Bug<a class="headerlink" href="#reporting-a-bug" title="Link to this heading">#</a></h1>
-<p>Open a new issue on our <a class="reference external" href="https://github.com/ranaroussi/yfinance/issues">GitHub</a>.</p>
+  <section id="code">
+<h1>Code<a class="headerlink" href="#code" title="Link to this heading">#</a></h1>
+<ol class="arabic">
+<li><p>Fork the repository on GitHub. If already forked, remember to <cite>Sync fork</cite></p></li>
+<li><p>Clone your forked repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/<span class="o">{</span>user<span class="o">}</span>/<span class="o">{</span>repo<span class="o">}</span>.git
+</pre></div>
+</div>
+</li>
+<li><p>Create a new branch for your feature or bug fix, from appropriate base branch:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>checkout<span class="w"> </span><span class="o">{</span>base<span class="w"> </span>e.g.<span class="w"> </span>dev<span class="o">}</span>
+git<span class="w"> </span>pull
+git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
+</pre></div>
+</div>
+</li>
+<li><p>Make your changes, commit them, and push your branch to GitHub. To keep the commit history and <a class="reference external" href="https://github.com/ranaroussi/yfinance/network">network graph</a> compact:</p>
+<ul>
+<li><p>for long commit messages use this format. Your long message can be multiple lines (tip: copy-paste):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;short sentence summary&quot;</span><span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;full commit message&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>git squash</strong> tiny or negligible commits with meaningful ones, or to combine successive related commits. <a class="reference external" href="https://docs.gitlab.com/ee/topics/git/git_rebase.html#interactive-rebase">git squash guide</a></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>rebase<span class="w"> </span>-i<span class="w"> </span>HEAD~2
+git<span class="w"> </span>push<span class="w"> </span>--force-with-lease<span class="w"> </span>origin<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p>If your branch is old and missing important updates in base branch, then instead of merging in, do a git rebase. This keeps your branch history clean. E.g.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>checkout<span class="w"> </span><span class="o">{</span>base<span class="w"> </span>e.g.<span class="w"> </span>dev<span class="o">}</span>
+git<span class="w"> </span>pull
+git<span class="w"> </span>checkout<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
+git<span class="w"> </span>rebase<span class="w"> </span><span class="o">{</span>base<span class="o">}</span>
+git<span class="w"> </span>push<span class="w"> </span>--force-with-lease<span class="w"> </span>origin<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
+</pre></div>
+</div>
+</li>
+<li><p><a class="reference external" href="https://github.com/ranaroussi/yfinance/pulls">Open a pull request on Github</a>.</p></li>
+</ol>
+<section id="more-git-stuff">
+<h2>More Git stuff<a class="headerlink" href="#more-git-stuff" title="Link to this heading">#</a></h2>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">rebase</span></code>. You might be asked to move your branch from <code class="docutils literal notranslate"><span class="pre">main</span></code> to <code class="docutils literal notranslate"><span class="pre">dev</span></code>. Important to update <strong>all</strong> relevant branches.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># update all branches:</span>
+git<span class="w"> </span>checkout<span class="w"> </span>main
+git<span class="w"> </span>pull
+git<span class="w"> </span>checkout<span class="w"> </span>dev
+git<span class="w"> </span>pull
+<span class="c1"># rebase:</span>
+git<span class="w"> </span>checkout<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
+git<span class="w"> </span>pull
+git<span class="w"> </span>rebase<span class="w"> </span>--onto<span class="w"> </span>dev<span class="w"> </span>main<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
+git<span class="w"> </span>push<span class="w"> </span>--force-with-lease<span class="w"> </span>origin<span class="w"> </span><span class="o">{</span>branch<span class="o">}</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
 </section>
 
 
@@ -411,20 +466,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="documentation.html"
+       href="index.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Contribution to the documentation</p>
+        <p class="prev-next-title">Development</p>
       </div>
     </a>
     <a class="right-next"
-       href="branches.html"
+       href="documentation.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Branches</p>
+        <p class="prev-next-title">Documentation</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -439,9 +494,21 @@ document.write(`
 
 
   <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#more-git-stuff">More Git stuff</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/development/reporting_bug.rst.txt">
+    <a href="../_sources/development/code.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

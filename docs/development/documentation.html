@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Contribution to the documentation &#8212; yfinance</title>
+    <title>Documentation &#8212; yfinance</title>
   
   
   
@@ -45,8 +45,8 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'development/documentation';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Reporting a Bug" href="reporting_bug.html" />
-    <link rel="prev" title="Contributing to yfinance" href="contributing.html" />
+    <link rel="next" title="Branches" href="branches.html" />
+    <link rel="prev" title="Code" href="code.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -330,12 +330,9 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to yfinance</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Contribution to the documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="reporting_bug.html">Reporting a Bug</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Code</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="branches.html">Branches</a></li>
-
-
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Unit Tests</a></li>
 <li class="toctree-l1"><a class="reference internal" href="running.html">Running a branch</a></li>
 </ul>
@@ -378,7 +375,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Development</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Contribution...</li>
+    <li class="breadcrumb-item active" aria-current="page">Documentation</li>
   </ul>
 </nav>
 </div>
@@ -395,18 +392,18 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="contribution-to-the-documentation">
-<h1>Contribution to the documentation<a class="headerlink" href="#contribution-to-the-documentation" title="Link to this heading">#</a></h1>
-<nav class="contents local" id="documentation">
+  <section id="documentation">
+<h1>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h1>
+<nav class="contents local" id="id1">
 <p class="topic-title">Documentation:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#about-documentation" id="id1">About documentation</a></p></li>
-<li><p><a class="reference internal" href="#building-documentation-locally" id="id2">Building documentation locally</a></p></li>
-<li><p><a class="reference internal" href="#building-documentation-on-main" id="id3">Building documentation on main</a></p></li>
+<li><p><a class="reference internal" href="#about-documentation" id="id2">About documentation</a></p></li>
+<li><p><a class="reference internal" href="#building-documentation-locally" id="id3">Building documentation locally</a></p></li>
+<li><p><a class="reference internal" href="#publishing-documentation" id="id4">Publishing documentation</a></p></li>
 </ul>
 </nav>
 <section id="about-documentation">
-<h2><a class="toc-backref" href="#id1" role="doc-backlink">About documentation</a><a class="headerlink" href="#about-documentation" title="Link to this heading">#</a></h2>
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">About documentation</a><a class="headerlink" href="#about-documentation" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>yfinance documentation is written in reStructuredText (rst) and built using Sphinx.</p></li>
 <li><p>The documentation file is in <code class="docutils literal notranslate"><span class="pre">doc/source/..</span></code>.</p></li>
@@ -414,7 +411,7 @@ document.write(`
 </ul>
 </section>
 <section id="building-documentation-locally">
-<h2><a class="toc-backref" href="#id2" role="doc-backlink">Building documentation locally</a><a class="headerlink" href="#building-documentation-locally" title="Link to this heading">#</a></h2>
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Building documentation locally</a><a class="headerlink" href="#building-documentation-locally" title="Link to this heading">#</a></h2>
 <p>To build the documentation locally, follow these steps:</p>
 <ol class="arabic">
 <li><p><strong>Install Required Dependencies</strong>:</p>
@@ -436,17 +433,17 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="nv">Sphin
 </div>
 </li>
 <li><p><strong>View Documentation Locally</strong>:</p>
-<dl class="simple">
-<dt>..code-block:: bash</dt><dd><p>python -m http.server -d ./doc/_build/html</p>
-</dd>
-</dl>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span>-d<span class="w"> </span>./doc/_build/html
+</pre></div>
+</div>
 <p>Then open “localhost:8000” in browser</p>
 </li>
 </ol>
 </section>
-<section id="building-documentation-on-main">
-<h2><a class="toc-backref" href="#id3" role="doc-backlink">Building documentation on main</a><a class="headerlink" href="#building-documentation-on-main" title="Link to this heading">#</a></h2>
-<p>The documentation updates are built on merge to <code class="docutils literal notranslate"><span class="pre">main</span></code> branch. This is done via GitHub Actions workflow based on <code class="docutils literal notranslate"><span class="pre">/yfinance/.github/workflows/deploy_doc.yml</span></code>.</p>
+<section id="publishing-documentation">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">Publishing documentation</a><a class="headerlink" href="#publishing-documentation" title="Link to this heading">#</a></h2>
+<p>Merge into <code class="docutils literal notranslate"><span class="pre">main</span></code> branch triggers auto-generating documentation by action <code class="docutils literal notranslate"><span class="pre">.github/workflows/deploy_doc.yml</span></code>.
+This publishes the generated HTML into branch <code class="docutils literal notranslate"><span class="pre">documentation</span></code>.</p>
 <ol class="arabic simple">
 <li><p>Review the changes locally and push to <code class="docutils literal notranslate"><span class="pre">dev</span></code>.</p></li>
 <li><p>When <code class="docutils literal notranslate"><span class="pre">dev</span></code> gets merged to <code class="docutils literal notranslate"><span class="pre">main</span></code>, GitHub Actions workflow is automated to build documentation.</p></li>
@@ -465,20 +462,20 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="nv">Sphin
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="contributing.html"
+       href="code.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Contributing to yfinance</p>
+        <p class="prev-next-title">Code</p>
       </div>
     </a>
     <a class="right-next"
-       href="reporting_bug.html"
+       href="branches.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Reporting a Bug</p>
+        <p class="prev-next-title">Branches</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -502,7 +499,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="nv">Sphin
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#about-documentation">About documentation</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-documentation-locally">Building documentation locally</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-documentation-on-main">Building documentation on main</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#publishing-documentation">Publishing documentation</a></li>
 </ul>
   </nav></div>
 

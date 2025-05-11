@@ -329,12 +329,9 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to yfinance</a></li>
-<li class="toctree-l1"><a class="reference internal" href="documentation.html">Contribution to the documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="reporting_bug.html">Reporting a Bug</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="branches.html">Branches</a></li>
-
-
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Unit Tests</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Running a branch</a></li>
 </ul>
@@ -398,7 +395,13 @@ document.write(`
 <h1>Running a branch<a class="headerlink" href="#running-a-branch" title="Link to this heading">#</a></h1>
 <section id="with-pip">
 <h2>With PIP<a class="headerlink" href="#with-pip" title="Link to this heading">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/<span class="o">{</span>user<span class="o">}</span>/<span class="o">{</span>repo<span class="o">}</span>.git@<span class="o">{</span>branch<span class="o">}</span>
+</pre></div>
+</div>
 <p>E.g.:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/ranaroussi/yfinance.git@feature/name
+</pre></div>
+</div>
 </section>
 <section id="with-git">
 <h2>With Git<a class="headerlink" href="#with-git" title="Link to this heading">#</a></h2>
