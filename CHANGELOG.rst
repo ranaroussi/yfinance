@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.61
+------
+Fix ALL type hints in websocket #2493
+
 0.2.60
 ------
 Fix cookie reuse, and handle DNS blocking fc.yahoo.com #2483
