@@ -89,7 +89,7 @@ class AsyncWebSocket(BaseWebSocket):
         Subscribe to a stock symbol or a list of stock symbols.
 
         Args:
-            symbols (str | List[str]): Stock symbol(s) to subscribe to.
+            symbols (Union[str, List[str]]): Stock symbol(s) to subscribe to.
         """
         await self._connect()
 
@@ -114,7 +114,7 @@ class AsyncWebSocket(BaseWebSocket):
         Unsubscribe from a stock symbol or a list of stock symbols.
 
         Args:
-            symbols (str | List[str]): Stock symbol(s) to unsubscribe from.
+            symbols (Union[str, List[str]]): Stock symbol(s) to unsubscribe from.
         """
         await self._connect()
 
@@ -235,12 +235,12 @@ class WebSocket(BaseWebSocket):
             self._ws = None
             raise
 
-    def subscribe(self, symbols: str | List[str]):
+    def subscribe(self, symbols: Union[str, List[str]]):
         """
         Subscribe to a stock symbol or a list of stock symbols.
 
         Args:
-            symbols (str | List[str]): Stock symbol(s) to subscribe to.
+            symbols (Union[str, List[str]]): Stock symbol(s) to subscribe to.
         """
         self._connect()
 
@@ -256,12 +256,12 @@ class WebSocket(BaseWebSocket):
         if self.verbose:
             print(f"Subscribed to symbols: {symbols}")
 
-    def unsubscribe(self, symbols: str | List[str]):
+    def unsubscribe(self, symbols: Union[str, List[str]]):
         """
         Unsubscribe from a stock symbol or a list of stock symbols.
 
         Args:
-            symbols (str | List[str]): Stock symbol(s) to unsubscribe from.
+            symbols (Union[str, List[str]]): Stock symbol(s) to unsubscribe from.
         """
         self._connect()
 
