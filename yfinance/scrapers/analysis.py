@@ -1,5 +1,5 @@
 import pandas as pd
-import requests
+import curl_cffi
 
 from yfinance import utils
 from yfinance.data import YfData
@@ -178,7 +178,7 @@ class Analysis:
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
-        except requests.exceptions.HTTPError as e:
+        except curl_cffi.requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
         return result

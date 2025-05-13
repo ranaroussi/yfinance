@@ -1,5 +1,5 @@
 import pandas as pd
-import requests
+import curl_cffi
 
 from yfinance import utils
 from yfinance.data import YfData
@@ -73,7 +73,7 @@ class Holders:
     def _fetch_and_parse(self):
         try:
             result = self._fetch()
-        except requests.exceptions.HTTPError as e:
+        except curl_cffi.requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
 
             self._major = pd.DataFrame()

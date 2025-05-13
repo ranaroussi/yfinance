@@ -8,7 +8,7 @@ from yfinance.data import YfData
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal, print_once
 
 from typing import Union
-import requests
+import curl_cffi
 
 _SCREENER_URL_ = f"{_QUERY1_URL_}/v1/finance/screener"
 _PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
@@ -170,7 +170,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         resp = _data.get(url=_PREDEFINED_URL_, params=params_dict)
         try:
             resp.raise_for_status()
-        except requests.exceptions.HTTPError:
+        except curl_cffi.requests.exceptions.HTTPError:
             if query not in PREDEFINED_SCREENER_QUERIES:
                 print(f"yfinance.screen: '{query}' is probably not a predefined query.")
             raise
