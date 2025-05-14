@@ -69,7 +69,7 @@ class TickerBase:
         # accept isin as ticker
         if utils.is_isin(self.ticker):
             isin = self.ticker
-            self.ticker = utils.get_ticker_by_isin(self.ticker, None, session)
+            self.ticker = utils.get_ticker_by_isin(self.ticker, _SENTINEL_, session)
             if self.ticker == "":
                 raise ValueError(f"Invalid ISIN number: {isin}")
 
