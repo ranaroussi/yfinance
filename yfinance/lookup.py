@@ -43,7 +43,7 @@ class Lookup:
     :param raise_errors: Raise exceptions on error (default True).
     """
 
-    def __init__(self, query: str, session=None, proxy=None, timeout=30, raise_errors=True):
+    def __init__(self, query: str, session=None, proxy=_SENTINEL_, timeout=30, raise_errors=True):
         self.session = session
         self._data = YfData(session=self.session)
 
