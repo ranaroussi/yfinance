@@ -18,9 +18,9 @@ from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNo
 
 
 import unittest
-import requests_cache
+# import requests_cache
 from typing import Union, Any, get_args, _GenericAlias
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+# from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
     ("major_holders", pd.DataFrame),
