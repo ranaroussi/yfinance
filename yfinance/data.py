@@ -1,10 +1,9 @@
 import functools
 from functools import lru_cache
 
-# from curl_cffi import requests
+import requests as req
 from curl_cffi import requests as req_cc
 from curl_adapter import CurlCffiAdapter
-# import requests as req
 
 from bs4 import BeautifulSoup
 import datetime
@@ -107,31 +106,12 @@ class YfData(metaclass=SingletonMeta):
             # because then the caching-session won't have cookie.
             self._session_is_caching = True
             # But since switch to curl_cffi, can't use requests_cache with it.
-            # raise YFDataException("request_cache sessions don't work with curl_cffi, which is necessary now for Yahoo API. Solution: stop setting session, let YF handle.")
             from requests_cache import DO_NOT_CACHE
             self._expire_after_DO_NOT_CACHE = DO_NOT_CACHE
 
         self._session_is_requests = False
-        # if isinstance(session, req.Session):
-        #     # It must have curl cffi adapter
-        #     for scheme in ['http://', 'https://']:
-        #         adapter = session.adapters.get(scheme)
-        #         if not isinstance(adapter, CurlCffiAdapter):
-        #             raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
-        #     self._session_is_requests = True
-        # elif not isinstance(session, req_cc.session.Session):
-        #     raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
-        # if isinstance(session, req.Session):
-        #     # It must have curl cffi adapter
-        #     for scheme in ['http://', 'https://']:
-        #         adapter = session.adapters.get(scheme)
-        #         if not isinstance(adapter, CurlCffiAdapter):
-        #             raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
-        #     self._session_is_requests = True
-        #
         if not isinstance(session, req_cc.session.Session):
             # If session not curl_cffi, then it must have curl adapters
-            # try:
             for scheme in ['http://', 'https://']:
                 adapter = session.adapters.get(scheme)
                 if not isinstance(adapter, CurlCffiAdapter):
@@ -140,8 +120,6 @@ class YfData(metaclass=SingletonMeta):
                     session.mount(scheme, CurlCffiAdapter())
                     utils.get_yf_logger().debug(f"Adding CurlCffiAdapter() to session['{scheme}']")
             self._session_is_requests = True
-            # except Exception:
-            #     raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
 
         with self._cookie_lock:
             self._session = session
@@ -194,7 +172,6 @@ class YfData(metaclass=SingletonMeta):
         cookies = self._session.cookies.jar._cookies
         if len(cookies) == 0:
             return False
-
         yh_domains = [k for k in cookies.keys() if 'yahoo' in k]
         if len(yh_domains) == 0:
             return False
@@ -332,7 +309,11 @@ class YfData(metaclass=SingletonMeta):
                 url='https://fc.yahoo.com',
                 timeout=timeout,
                 allow_redirects=True)
+            raise req.exceptions.HTTPError
         except req_cc.exceptions.DNSError:
+            # Possible because url on some privacy/ad blocklists
+            return False
+        except req.exceptions.HTTPError:
             # Possible because url on some privacy/ad blocklists
             return False
 
@@ -357,7 +338,6 @@ class YfData(metaclass=SingletonMeta):
 
         if not self._get_cookie_basic():
             return None
-        # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         get_args = {
             'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
             'timeout': timeout,
@@ -366,10 +346,7 @@ class YfData(metaclass=SingletonMeta):
         if self._session_is_requests:
             # Have to manually add cookie & header
             get_args['cookies'] = {self._cookie.name: self._cookie.value}
-            utils.get_yf_logger().debug(f"Manually added cookie to GET: {get_args['cookies']}")
-            # And add headers?
             get_args['headers'] = self.user_agent_headers
-            utils.get_yf_logger().debug(f"Manually added user-agent to GET: {get_args['headers']}")
 
         if self._session_is_caching:
             get_args['expire_after'] = self._expire_after_DO_NOT_CACHE
@@ -396,6 +373,8 @@ class YfData(metaclass=SingletonMeta):
 
     @utils.log_indent_decorator
     def _get_cookie_csrf(self, timeout):
+        # Credit goes to @bot-unit #1729
+
         if self._cookie is not None:
             utils.get_yf_logger().debug('Reusing memory cookie')
             return True
@@ -413,11 +392,8 @@ class YfData(metaclass=SingletonMeta):
             'timeout': timeout}
 
         get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
-
         if self._session_is_requests:
-            # Have to manually add header
             get_args['headers'] = self.user_agent_headers
-            utils.get_yf_logger().debug(f"Manually added user-agent to GET: {get_args['headers']}")
 
         utils.get_yf_logger().debug(get_args)
         try:
@@ -496,7 +472,6 @@ class YfData(metaclass=SingletonMeta):
         if self._session_is_requests:
             # Have to manually add header
             get_args['headers'] = self.user_agent_headers
-            utils.get_yf_logger().debug(f"Manually added user-agent to GET: {get_args['headers']}")
 
         if self._session_is_caching:
             get_args['expire_after'] = self._expire_after_DO_NOT_CACHE
@@ -575,9 +550,7 @@ class YfData(metaclass=SingletonMeta):
         }
 
         if self._session_is_requests:
-            # Have to manually add header
             request_args['headers'] = self.user_agent_headers
-            utils.get_yf_logger().debug(f"Manually added user-agent to request: {request_args['headers']}")
 
         if body:
             request_args['json'] = body
