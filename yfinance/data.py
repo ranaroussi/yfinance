@@ -137,7 +137,10 @@ class YfData(metaclass=SingletonMeta):
             for scheme in ['http://', 'https://']:
                 adapter = session.adapters.get(scheme)
                 if not isinstance(adapter, CurlCffiAdapter):
-                    raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
+                    # raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
+                    # Add adapters
+                    session.mount(scheme, CurlCffiAdapter())
+                    utils.get_yf_logger().debug(f"Adding CurlCffiAdapter() to session['{scheme}']")
             self._session_is_requests = True
             # except Exception:
             #     raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
