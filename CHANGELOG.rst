@@ -1,9 +1,23 @@
 Change Log
 ===========
 
+0.2.61
+------
+Fix ALL type hints in websocket #2493
+
+0.2.60
+------
+Fix cookie reuse, and handle DNS blocking fc.yahoo.com #2483
+Fixes for websocket:
+- relax protobuf version #2485
+- increase websockets version #2485
+- fix type hints #2488
+Fix predefined screen offset #2440
+
 0.2.59
 ------
 Fix the fix for rate-limit #2452
+Feature: live price data websocket #2201
 
 0.2.58
 ------

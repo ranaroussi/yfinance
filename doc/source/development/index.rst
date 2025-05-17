@@ -8,7 +8,6 @@ yfinance relies on the community to investigate bugs and contribute code. Here's
    :maxdepth: 1
 
    code
-   documentation
-   branches
-   testing
    running
+   documentation
+   testing
