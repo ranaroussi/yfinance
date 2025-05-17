@@ -1,7 +1,11 @@
 import functools
 from functools import lru_cache
 
-from curl_cffi import requests
+# from curl_cffi import requests
+from curl_cffi import requests as req_cc
+from curl_adapter import CurlCffiAdapter
+import requests as req
+
 from bs4 import BeautifulSoup
 import datetime
 
@@ -10,9 +14,14 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
+import random
+from .const import USER_AGENTS
+
 from .exceptions import YFRateLimitError, YFDataException
 
 cache_maxsize = 64
+
+from pprint import pprint
 
 
 def lru_cache_freezeargs(func):
@@ -65,6 +74,10 @@ class YfData(metaclass=SingletonMeta):
     Singleton means one session one cookie shared by all threads.
     """
 
+    user_agent_headers = {
+        'User-Agent': random.choice(USER_AGENTS)
+    }
+
     def __init__(self, session=None, proxy=None):
         self._crumb = None
         self._cookie = None
@@ -73,11 +86,12 @@ class YfData(metaclass=SingletonMeta):
         self._cookie_strategy = 'basic'
         # If it fails, then fallback method is 'csrf'
         # self._cookie_strategy = 'csrf'
+        self._n_strategy_flips = 0
 
         self._cookie_lock = threading.Lock()
 
         self._session, self._proxy = None, None
-        self._set_session(session or requests.Session(impersonate="chrome"))
+        self._set_session(session or req_cc.Session(impersonate="chrome"))
         self._set_proxy(proxy)
 
     def _set_session(self, session):
@@ -95,10 +109,38 @@ class YfData(metaclass=SingletonMeta):
             # because then the caching-session won't have cookie.
             self._session_is_caching = True
             # But since switch to curl_cffi, can't use requests_cache with it.
-            raise YFDataException("request_cache sessions don't work with curl_cffi, which is necessary now for Yahoo API. Solution: stop setting session, let YF handle.")
+            # raise YFDataException("request_cache sessions don't work with curl_cffi, which is necessary now for Yahoo API. Solution: stop setting session, let YF handle.")
+            from requests_cache import DO_NOT_CACHE
+            self._expire_after_DO_NOT_CACHE = DO_NOT_CACHE
 
-        if not isinstance(session, requests.session.Session):
-            raise YFDataException(f"Yahoo API requires curl_cffi session not {type(session)}. Solution: stop setting session, let YF handle.")
+        self._session_is_requests = False
+        # if isinstance(session, req.Session):
+        #     # It must have curl cffi adapter
+        #     for scheme in ['http://', 'https://']:
+        #         adapter = session.adapters.get(scheme)
+        #         if not isinstance(adapter, CurlCffiAdapter):
+        #             raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
+        #     self._session_is_requests = True
+        # elif not isinstance(session, req_cc.session.Session):
+        #     raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
+        # if isinstance(session, req.Session):
+        #     # It must have curl cffi adapter
+        #     for scheme in ['http://', 'https://']:
+        #         adapter = session.adapters.get(scheme)
+        #         if not isinstance(adapter, CurlCffiAdapter):
+        #             raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
+        #     self._session_is_requests = True
+        #
+        if not isinstance(session, req_cc.session.Session):
+            # If session not curl_cffi, then it must have curl adapters
+            # try:
+            for scheme in ['http://', 'https://']:
+                adapter = session.adapters.get(scheme)
+                if not isinstance(adapter, CurlCffiAdapter):
+                    raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
+            self._session_is_requests = True
+            # except Exception:
+            #     raise YFDataException(f"Yahoo API requires requests have TLS fingerprints. Options: leave session=None, attach CurlCffiAdapter to your request, or use curl_cffi session.")
 
         with self._cookie_lock:
             self._session = session
@@ -127,6 +169,8 @@ class YfData(metaclass=SingletonMeta):
                 self._cookie_strategy = 'basic'
             else:
                 utils.get_yf_logger().debug(f'toggling cookie strategy {self._cookie_strategy} -> csrf')
+                if not self._session_is_requests:
+                    self._session.cookies.clear()
                 self._cookie_strategy = 'csrf'
             self._cookie = None
             self._crumb = None
@@ -134,40 +178,123 @@ class YfData(metaclass=SingletonMeta):
             self._cookie_lock.release()
             raise
 
+        self._n_strategy_flips += 1
+
         if not have_lock:
             self._cookie_lock.release()
 
+        if self._n_strategy_flips > 4:
+            raise YFDataException("yfinance stuck in loop trying to get a cookie")
+
     @utils.log_indent_decorator
-    def _save_cookie_curlCffi(self):
+    def _save_cookies_curlCffi(self):
         if self._session is None:
             return False
         cookies = self._session.cookies.jar._cookies
         if len(cookies) == 0:
             return False
+
         yh_domains = [k for k in cookies.keys() if 'yahoo' in k]
-        if len(yh_domains) > 1:
-            # Possible when cookie fetched with CSRF method. Discard consent cookie.
-            yh_domains = [k for k in yh_domains if 'consent' not in k]
-        if len(yh_domains) > 1:
-            utils.get_yf_logger().debug(f'Multiple Yahoo cookies, not sure which to cache: {yh_domains}')
-            return False
         if len(yh_domains) == 0:
             return False
-        yh_domain = yh_domains[0]
-        yh_cookie = {yh_domain: cookies[yh_domain]}
-        cache.get_cookie_cache().store('curlCffi', yh_cookie)
+        yh_cookies = {yh_domain: cookies[yh_domain] for yh_domain in yh_domains}
+        utils.get_yf_logger().debug(f'Saving curlCffi cookies: {yh_cookies}')
+        cache.get_cookie_cache().store('cookies-curlCffi', yh_cookies)
         return True
 
     @utils.log_indent_decorator
-    def _load_cookie_curlCffi(self):
+    def _load_cookies_curlCffi(self):
         if self._session is None:
+            # Need a session to load cookie into
+            utils.get_yf_logger().debug(f'self._session is None')
             return False
-        cookie_dict = cache.get_cookie_cache().lookup('curlCffi')
-        if cookie_dict is None or len(cookie_dict) == 0:
+        cookies = cache.get_cookie_cache().lookup('cookies-curlCffi')
+        if cookies is None:
+            utils.get_yf_logger().debug(f'Cache returned None')
             return False
-        cookies = cookie_dict['cookie']
-        domain = list(cookies.keys())[0]
-        cookie = cookies[domain]['/']['A3']
+        cookies = cookies['data']
+        if len(cookies) == 0:
+            utils.get_yf_logger().debug(f'Cached cookie jar empty')
+            return False
+
+        utils.get_yf_logger().debug(f'Loading cached curlCffi cookies: {cookies}')
+
+        # Check if A3 cookie expired
+        a3_domains = [d for d in cookies.keys() if 'A3' in cookies[d]['/']]
+        if len(a3_domains) == 0:
+            return False
+        a3_domain = a3_domains[0]
+        cookie_a3 = cookies[a3_domain]['/']['A3']
+        expiry_ts = cookie_a3.expires
+        if expiry_ts > 2e9:
+            # convert ms to s
+            expiry_ts //= 1e3
+        expiry_dt = datetime.datetime.fromtimestamp(expiry_ts, tz=datetime.timezone.utc)
+        expired = expiry_dt < datetime.datetime.now(datetime.timezone.utc)
+        if expired:
+            utils.get_yf_logger().debug('Cached cookies expired')
+            return False
+
+        self._session.cookies.jar._cookies.update(cookies)
+        self._cookie = cookie_a3
+        return True
+
+    @utils.log_indent_decorator
+    def _save_cookie_jar_requests(self):
+        try:
+            cookies = self._session.cookies
+            non_yh_domains = [c for c in cookies if 'yahoo' not in c.domain]
+            for d in non_yh_domains:
+                del cookies[d]
+            yh_cookies = cookies
+            utils.get_yf_logger().debug(f'Saving requests cookies: {yh_cookies}')
+            cache.get_cookie_cache().store('cookies-requests', yh_cookies)
+        except Exception as e:
+            utils.get_yf_logger().debug(e)
+            return False
+        return True
+
+    @utils.log_indent_decorator
+    def _load_cookie_jar_requests(self):
+        cookies = cache.get_cookie_cache().lookup('cookies-requests')
+        if cookies is None:
+            return False
+        cookies = cookies['data']
+        if len(cookies) == 0:
+            return False
+        utils.get_yf_logger().debug(f'Loading cached requests cookies: {cookies}')
+
+        # Check A3 cookie not expired
+        for c in cookies:
+            if c.name == 'A3':
+                expiry_ts = c.expires
+                if expiry_ts > 2e9:
+                    # convert ms to s
+                    expiry_ts //= 1e3
+                expiry_dt = datetime.datetime.fromtimestamp(expiry_ts, tz=datetime.timezone.utc)
+                expired = expiry_dt < datetime.datetime.now(datetime.timezone.utc)
+                if expired:
+                    return False
+
+        self._session.cookies.update(cookies)
+        utils.get_yf_logger().debug('Loaded cached cookie')
+
+    @utils.log_indent_decorator
+    def _save_cookie_basic(self):
+        try:
+            utils.get_yf_logger().debug(f"Storing basic cookie: {self._cookie}")
+            cache.get_cookie_cache().store('basic', self._cookie)
+        except Exception:
+            return False
+        return True
+
+    @utils.log_indent_decorator
+    def _load_cookie_basic(self):
+        cookie = cache.get_cookie_cache().lookup('basic')
+        if cookie is None:
+            return False
+        cookie = cookie['data']
+
         expiry_ts = cookie.expires
         if expiry_ts > 2e9:
             # convert ms to s
@@ -177,36 +304,54 @@ class YfData(metaclass=SingletonMeta):
         if expired:
             utils.get_yf_logger().debug('cached cookie expired')
             return False
-        self._session.cookies.jar._cookies.update(cookies)
+
+        utils.get_yf_logger().debug(f'Loaded cached cookie: {cookie}')
         self._cookie = cookie
         return True
 
     @utils.log_indent_decorator
     def _get_cookie_basic(self, timeout=30):
         if self._cookie is not None:
-            utils.get_yf_logger().debug('reusing cookie')
+            utils.get_yf_logger().debug('Reusing memory cookie')
             return True
-        elif self._load_cookie_curlCffi():
-            utils.get_yf_logger().debug('reusing persistent cookie')
-            return True
+
+        if self._session_is_requests:
+            if self._load_cookie_basic():
+                utils.get_yf_logger().debug('Reusing cached cookie')
+                return True
+        else:
+            if self._load_cookies_curlCffi():
+                utils.get_yf_logger().debug('Reusing cached cookie')
+                return True
 
         # To avoid infinite recursion, do NOT use self.get()
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         try:
-            self._session.get(
+            response = self._session.get(
                 url='https://fc.yahoo.com',
                 timeout=timeout,
                 allow_redirects=True)
-        except requests.exceptions.DNSError:
+        except req_cc.exceptions.DNSError:
             # Possible because url on some privacy/ad blocklists
             return False
-        self._save_cookie_curlCffi()
+
+        if self._session_is_requests:
+            if not response.cookies:
+                utils.get_yf_logger().debug("response.cookies = None")
+                return False
+            self._cookie = list(response.cookies)[0]
+            if self._cookie == '':
+                utils.get_yf_logger().debug("list(response.cookies)[0] = ''")
+                return False
+            self._save_cookie_basic()
+        else:
+            self._save_cookies_curlCffi()
         return True
 
     @utils.log_indent_decorator
     def _get_crumb_basic(self, timeout=30):
         if self._crumb is not None:
-            utils.get_yf_logger().debug('reusing crumb')
+            utils.get_yf_logger().debug('Reusing memory crumb')
             return self._crumb
 
         if not self._get_cookie_basic():
@@ -217,8 +362,16 @@ class YfData(metaclass=SingletonMeta):
             'timeout': timeout,
             'allow_redirects': True
         }
+        if self._session_is_requests:
+            # Have to manually add cookie & header
+            get_args['cookies'] = {self._cookie.name: self._cookie.value}
+            utils.get_yf_logger().debug(f"Manually added cookie to GET: {get_args['cookies']}")
+            # And add headers?
+            get_args['headers'] = self.user_agent_headers
+            utils.get_yf_logger().debug(f"Manually added user-agent to GET: {get_args['headers']}")
+
         if self._session_is_caching:
-            get_args['expire_after'] = self._expire_after
+            get_args['expire_after'] = self._expire_after_DO_NOT_CACHE
             crumb_response = self._session.get(**get_args)
         else:
             crumb_response = self._session.get(**get_args)
@@ -243,28 +396,39 @@ class YfData(metaclass=SingletonMeta):
     @utils.log_indent_decorator
     def _get_cookie_csrf(self, timeout):
         if self._cookie is not None:
-            utils.get_yf_logger().debug('reusing cookie')
+            utils.get_yf_logger().debug('Reusing memory cookie')
             return True
 
-        elif self._load_cookie_curlCffi():
-            utils.get_yf_logger().debug('reusing persistent cookie')
-            self._cookie = True
-            return True
+        if self._session_is_requests:
+            if self._load_cookie_jar_requests():
+                utils.get_yf_logger().debug('Reusing cached cookie')
+                return True
+        else:
+            if self._load_cookies_curlCffi():
+                utils.get_yf_logger().debug('Reusing cached cookie')
+                return True
 
         base_args = {
             'timeout': timeout}
 
         get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
+
+        if self._session_is_requests:
+            # Have to manually add header
+            get_args['headers'] = self.user_agent_headers
+            utils.get_yf_logger().debug(f"Manually added user-agent to GET: {get_args['headers']}")
+
+        utils.get_yf_logger().debug(get_args)
         try:
             if self._session_is_caching:
-                get_args['expire_after'] = self._expire_after
+                get_args['expire_after'] = self._expire_after_DO_NOT_CACHE
                 response = self._session.get(**get_args)
             else:
                 response = self._session.get(**get_args)
-        except requests.exceptions.ChunkedEncodingError:
+        except req_cc.exceptions.ChunkedEncodingError as e:
             # No idea why happens, but handle nicely so can switch to other cookie method.
-            utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
-            return False
+            utils.get_yf_logger().debug(f'_get_cookie_csrf() encountered: {e}')
+            return False 
 
         soup = BeautifulSoup(response.content, 'html.parser')
         csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
@@ -295,18 +459,22 @@ class YfData(metaclass=SingletonMeta):
             'data': data}
         try:
             if self._session_is_caching:
-                post_args['expire_after'] = self._expire_after
-                get_args['expire_after'] = self._expire_after
+                post_args['expire_after'] = self._expire_after_DO_NOT_CACHE
+                get_args['expire_after'] = self._expire_after_DO_NOT_CACHE
                 self._session.post(**post_args)
                 self._session.get(**get_args)
             else:
                 self._session.post(**post_args)
                 self._session.get(**get_args)
-        except requests.exceptions.ChunkedEncodingError:
+        except req_cc.exceptions.ChunkedEncodingError:
             # No idea why happens, but handle nicely so can switch to other cookie method.
-            utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
-        self._cookie = True
-        self._save_cookie_curlCffi()
+            utils.get_yf_logger().debug('_get_cookie_csrf() encountering req_cc.exceptions.ChunkedEncodingError, aborting')
+
+        if self._session_is_requests:
+            self._save_cookie_jar_requests()
+        else:
+            self._save_cookies_curlCffi()
+
         return True
 
     @utils.log_indent_decorator
@@ -324,8 +492,13 @@ class YfData(metaclass=SingletonMeta):
         get_args = {
             'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
             'timeout': timeout}
+        if self._session_is_requests:
+            # Have to manually add header
+            get_args['headers'] = self.user_agent_headers
+            utils.get_yf_logger().debug(f"Manually added user-agent to GET: {get_args['headers']}")
+
         if self._session_is_caching:
-            get_args['expire_after'] = self._expire_after
+            get_args['expire_after'] = self._expire_after_DO_NOT_CACHE
             r = self._session.get(**get_args)
         else:
             r = self._session.get(**get_args)
@@ -399,6 +572,11 @@ class YfData(metaclass=SingletonMeta):
             'params': {**params, **crumbs},
             'timeout': timeout
         }
+
+        if self._session_is_requests:
+            # Have to manually add header
+            request_args['headers'] = self.user_agent_headers
+            utils.get_yf_logger().debug(f"Manually added user-agent to request: {request_args['headers']}")
 
         if body:
             request_args['json'] = body
