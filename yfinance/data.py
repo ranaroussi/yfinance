@@ -4,7 +4,7 @@ from functools import lru_cache
 # from curl_cffi import requests
 from curl_cffi import requests as req_cc
 from curl_adapter import CurlCffiAdapter
-import requests as req
+# import requests as req
 
 from bs4 import BeautifulSoup
 import datetime
@@ -20,8 +20,6 @@ from .const import USER_AGENTS
 from .exceptions import YFRateLimitError, YFDataException
 
 cache_maxsize = 64
-
-from pprint import pprint
 
 
 def lru_cache_freezeargs(func):
@@ -209,15 +207,15 @@ class YfData(metaclass=SingletonMeta):
     def _load_cookies_curlCffi(self):
         if self._session is None:
             # Need a session to load cookie into
-            utils.get_yf_logger().debug(f'self._session is None')
+            utils.get_yf_logger().debug('self._session is None')
             return False
         cookies = cache.get_cookie_cache().lookup('cookies-curlCffi')
         if cookies is None:
-            utils.get_yf_logger().debug(f'Cache returned None')
+            utils.get_yf_logger().debug('Cache returned None')
             return False
         cookies = cookies['data']
         if len(cookies) == 0:
-            utils.get_yf_logger().debug(f'Cached cookie jar empty')
+            utils.get_yf_logger().debug('Cached cookie jar empty')
             return False
 
         utils.get_yf_logger().debug(f'Loading cached curlCffi cookies: {cookies}')
