@@ -10,6 +10,8 @@ import requests
 from curl_adapter import CurlCffiAdapter
 
 import unittest
+from unittest.mock import patch
+from requests.exceptions import HTTPError
 
 class TestData(unittest.TestCase):
     session = None
@@ -75,7 +77,7 @@ class TestData(unittest.TestCase):
         session = curl_cffi.requests.Session(impersonate="chrome")
         dat = yf.Ticker(self.ticker, session=session)
         dat._data._set_cookie_strategy('csrf')
-        df = dat.history(period='1mo')
+        dat.history(period='1mo')
         
         session = requests.Session()
         session.mount("http://", CurlCffiAdapter())
@@ -83,7 +85,7 @@ class TestData(unittest.TestCase):
         dat = yf.Ticker(self.ticker, session=session)
         dat._data._n_strategy_flips = 0
         dat._data._set_cookie_strategy('csrf')
-        df = dat.history(period='1mo')
+        dat.history(period='1mo')
 
     def test_requestsWithoutCurlRaise(self):
         session = requests.Session()
@@ -91,7 +93,7 @@ class TestData(unittest.TestCase):
         # One of these functions below should raise this exception:
         with self.assertRaises(YFDataException) as context:
             dat = yf.Ticker(self.ticker, session=session)
-            df = dat.history(period='1mo')
+            dat.history(period='1mo')
 
         self.assertIn("curl", str(context.exception).lower())  # Optional: check message content
 
@@ -118,8 +120,6 @@ class TestData(unittest.TestCase):
         self.assertIsNotNone(df)
         self.assertGreater(len(df), 1)
 
-from unittest.mock import patch
-from requests.exceptions import HTTPError
 class TestDataWithBlock(unittest.TestCase):
     def setUp(self):
         self.blocked_url = "https://fc.yahoo.com"

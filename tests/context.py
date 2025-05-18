@@ -6,6 +6,13 @@ import sys
 import os
 import yfinance
 
+from pyrate_limiter import Duration, RequestRate, Limiter
+from requests_ratelimiter import LimiterSession
+from requests_cache import CacheMixin, SQLiteCache
+from requests_ratelimiter import LimiterMixin
+from requests import Session
+from pyrate_limiter import MemoryQueueBucket
+
 _parent_dp = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 _src_dp = _parent_dp
 sys.path.insert(0, _src_dp)
@@ -24,16 +31,10 @@ if os.path.isdir(testing_cache_dirpath):
         shutil.rmtree(testing_cache_dirpath)
 
 # Setup a session to only rate-limit
-from pyrate_limiter import Duration, RequestRate, Limiter
-from requests_ratelimiter import LimiterSession
 history_rate = RequestRate(1, Duration.SECOND)
 limiter = Limiter(history_rate)
 session_gbl = LimiterSession(limiter=limiter)
 # Use this instead if you also want caching:
-from requests_cache import CacheMixin, SQLiteCache
-from requests_ratelimiter import LimiterMixin
-from requests import Session
-from pyrate_limiter import MemoryQueueBucket
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
     pass
 cache_fp = os.path.join(testing_cache_dirpath, "unittests-cache")
