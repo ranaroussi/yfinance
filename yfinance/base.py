@@ -609,7 +609,6 @@ class TickerBase:
                 raise
             return None
         if 'error' in json_data["finance"]:
-            fail = json_data["finance"]["error"]["code"] == "Bad Request"
             logger.error(f"{self.ticker}: Yahoo web request for share count failed. Reason: 'Bad Request'")
             if not YfConfig.hide_exceptions:
                 raise requests.exceptions.HTTPError("Yahoo API for share-count fetch returned 'Bad Request'")
