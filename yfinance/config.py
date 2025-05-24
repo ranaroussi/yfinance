@@ -1,0 +1,39 @@
+import threading
+
+class SingletonMeta(type):
+    """
+    Metaclass that creates a Singleton instance.
+    """
+    _instances = {}
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls not in cls._instances:
+                instance = super().__call__(*args, **kwargs)
+                cls._instances[cls] = instance
+            else:
+                # Update the existing instance
+                if 'hide_exceptions' in kwargs or (args and len(args) > 0):
+                    hide_exceptions = kwargs.get('hide_exceptions') if 'hide_exceptions' in kwargs else args[0]
+                    cls._instances[cls]._set_mask_exceptions(hide_exceptions)
+            return cls._instances[cls]
+
+
+class YfConfig(metaclass=SingletonMeta):
+    """
+    Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations.
+    Singleton means one session one cookie shared by all threads.
+    """
+
+    # def __init__(self, hide_exceptions=True):
+    def __init__(self, hide_exceptions=False):
+        self._mask_exceptions = hide_exceptions
+
+    def _set_mask_exceptions(self, hide_exceptions):
+        self._mask_exceptions = hide_exceptions
+
+    @property
+    def hide_exceptions(self):
+        return self._mask_exceptions
+    

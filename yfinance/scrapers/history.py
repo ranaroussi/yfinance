@@ -11,6 +11,7 @@ from curl_cffi import requests
 from yfinance import shared, utils
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, _SENTINEL_
 from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
+from yfinance.config import YfConfig
 
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None, proxy=_SENTINEL_):
@@ -79,6 +80,9 @@ class PriceHistory:
         if proxy is not _SENTINEL_:
             utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
             self._data._set_proxy(proxy)
+
+        if raise_errors:
+            utils.print_once("YF deprecation warning: use new config function: yf.set_config(hide_exceptions=False)")
 
         interval_user = interval
         period_user = period
@@ -191,7 +195,7 @@ class PriceHistory:
         except YFRateLimitError:
             raise
         except Exception:
-            if raise_errors:
+            if raise_errors or (not YfConfig.hide_exceptions):
                 raise
 
         # Store the meta data that gets retrieved simultaneously
@@ -296,6 +300,8 @@ class PriceHistory:
                 quotes['Dividends'] = quotes2['Dividends'].max()
                 quotes['Stock Splits'] = quotes2['Stock Splits'].max()
             except Exception:
+                if raise_errors or (not YfConfig.hide_exceptions):
+                    raise
                 pass
 
         # Note: ordering is important. If you change order, run the tests!
@@ -432,8 +438,9 @@ class PriceHistory:
                 err_msg = "back_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if raise_errors:
-                raise Exception('%s: %s' % (self.ticker, err_msg))
+            if raise_errors or (not YfConfig.hide_exceptions):
+                # raise Exception('%s: %s' % (self.ticker, err_msg))
+                raise
             else:
                 logger.error('%s: %s' % (self.ticker, err_msg))
 
