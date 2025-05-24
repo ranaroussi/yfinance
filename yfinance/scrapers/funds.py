@@ -1,9 +1,10 @@
 import pandas as pd
 
-from yfinance.data import YfData
-from yfinance.const import _BASE_URL_, _SENTINEL_
-from yfinance.exceptions import YFDataException
 from yfinance import utils
+from yfinance.config import YfConfig
+from yfinance.const import _BASE_URL_, _SENTINEL_
+from yfinance.data import YfData
+from yfinance.exceptions import YFDataException
 
 from typing import Dict, Optional
 
@@ -193,8 +194,12 @@ class FundsData:
             self._parse_top_holdings(data["topHoldings"])
             self._parse_fund_profile(data["fundProfile"])
         except KeyError:
-            raise YFDataException("No Fund data found.")
+            if not YfConfig().hide_exceptions:
+                raise
+            raise YFDataException(f"{self._symbol}: No Fund data found.")
         except Exception as e:
+            if not YfConfig().hide_exceptions:
+                raise
             logger = utils.get_yf_logger()
             logger.error(f"Failed to get fund data for '{self._symbol}' reason: {e}")
             logger.debug("Got response: ")

@@ -2,8 +2,9 @@ import pandas as pd
 import curl_cffi
 
 from yfinance import utils
-from yfinance.data import YfData
+from yfinance.config import YfConfig
 from yfinance.const import _BASE_URL_, _SENTINEL_
+from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
@@ -74,6 +75,8 @@ class Holders:
         try:
             result = self._fetch()
         except curl_cffi.requests.exceptions.HTTPError as e:
+            if not YfConfig().hide_exceptions:
+                raise
             utils.get_yf_logger().error(str(e))
 
             self._major = pd.DataFrame()
@@ -96,8 +99,10 @@ class Holders:
             self._parse_insider_transactions(data.get("insiderTransactions", {}))
             self._parse_insider_holders(data.get("insiderHolders", {}))
             self._parse_net_share_purchase_activity(data.get("netSharePurchaseActivity", {}))
-        except (KeyError, IndexError):
-            raise YFDataException("Failed to parse holders json data.")
+        except (KeyError, IndexError) as e:
+            if not YfConfig().hide_exceptions:
+                raise
+            raise YFDataException(f"# RESPONSE:\n{result}\n\nFailed to parse 'holders' json response from Yahoo Finance (above): {str(e)}")
 
     @staticmethod
     def _parse_raw_values(data):

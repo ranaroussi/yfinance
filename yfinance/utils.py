@@ -39,6 +39,7 @@ from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
+from yfinance.exceptions import YFException
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
@@ -183,7 +184,7 @@ def is_isin(string):
 
 def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
     if not (is_isin(isin)):
-        raise ValueError("Invalid ISIN number")
+        raise ValueError(f"Invalid ISIN number '{isin}'")
 
     if proxy is not const._SENTINEL_:
         print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
@@ -280,36 +281,6 @@ def build_template(data):
         traverse(key, 0)  # Call the traverse function with initial level being 0
 
     return template_ttm_order, template_annual_order, template_order, level_detail
-
-
-def retrieve_financial_details(data):
-    """
-    retrieve_financial_details returns all of the available financial details under the
-    "QuoteTimeSeriesStore" for any of the following three yahoo finance webpages:
-    "/financials", "/cash-flow" and "/balance-sheet".
-
-    Returns:
-        - TTM_dicts: A dictionary full of all of the available Trailing Twelve Month figures, this can easily be converted to a pandas dataframe.
-        - Annual_dicts: A dictionary full of all of the available Annual figures, this can easily be converted to a pandas dataframe.
-    """
-    TTM_dicts = []  # Save a dictionary object to store the TTM financials.
-    Annual_dicts = []  # Save a dictionary object to store the Annual financials.
-
-    for key, timeseries in data.get('timeSeries', {}).items():  # Loop through the time series data to grab the key financial figures.
-        try:
-            if timeseries:
-                time_series_dict = {'index': key}
-                for each in timeseries:  # Loop through the years
-                    if not each:
-                        continue
-                    time_series_dict[each.get('asOfDate')] = each.get('reportedValue')
-                if 'trailing' in key:
-                    TTM_dicts.append(time_series_dict)
-                elif 'annual' in key:
-                    Annual_dicts.append(time_series_dict)
-        except KeyError as e:
-            print(f"An error occurred while processing the key: {e}")
-    return TTM_dicts, Annual_dicts
 
 
 def format_annual_financial_statement(level_detail, annual_dicts, annual_order, ttm_dicts=None, ttm_order=None):
@@ -707,14 +678,10 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    if df_sub.empty:
-        raise Exception("No data to merge")
     if df_main.empty:
         return df_main
 
     data_cols = [c for c in df_sub.columns if c not in df_main]
-    if len(data_cols) > 1:
-        raise Exception("Expected 1 data col")
     data_col = data_cols[0]
 
     df_main = df_main.sort_index()
@@ -791,7 +758,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_outOfRange = indices == -1
     if f_outOfRange.any():
         if intraday or interval in ['1d', '1wk']:
-            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
+            raise YFException(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
         get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
         indices = indices[~f_outOfRange]
@@ -813,7 +780,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             df = df.groupby("_NewIndex").prod()
             df.index.name = None
         else:
-            raise Exception(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
+            raise YFException(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
@@ -825,7 +792,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        raise Exception('Data was lost in merge, investigate')
+        raise YFException('Data was lost in merge, investigate')
 
     return df
 

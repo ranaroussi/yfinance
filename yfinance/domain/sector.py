@@ -1,13 +1,14 @@
 from __future__ import print_function
 from typing import Dict, Optional
-from ..utils import dynamic_docstring, generate_list_table_from_dict
-from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
 
 import pandas as _pd
 
+from ..utils import dynamic_docstring, generate_list_table_from_dict
+from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
 from .domain import Domain, _QUERY_URL_
 from .. import utils
 from ..data import YfData
+from ..config import YfConfig
 
 class Sector(Domain):
     """
@@ -147,6 +148,8 @@ class Sector(Domain):
             self._industries = self._parse_industries(data.get('industries', {}))
 
         except Exception as e:
+            if not YfConfig().hide_exceptions:
+                raise
             logger = utils.get_yf_logger()
             logger.error(f"Failed to get sector data for '{self._key}' reason: {e}")
             logger.debug("Got response: ")

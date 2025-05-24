@@ -6,6 +6,7 @@ import pandas as _pd
 from .domain import Domain, _QUERY_URL_
 from .. import utils
 from ..data import YfData
+from ..config import YfConfig
 from ..const import _SENTINEL_
 
 class Industry(Domain):
@@ -144,6 +145,8 @@ class Industry(Domain):
 
             return result
         except Exception as e:
+            if not YfConfig().hide_exceptions:
+                raise
             logger = utils.get_yf_logger()
             logger.error(f"Failed to get industry data for '{self._key}' reason: {e}")
             logger.debug("Got response: ")
