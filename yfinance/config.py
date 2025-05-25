@@ -21,7 +21,7 @@ class SingletonMeta(type):
 
 
 class YfConfig(metaclass=SingletonMeta):
-    def __init__(self, hide_exceptions=False):
+    def __init__(self, hide_exceptions=True):
         self._mask_exceptions = hide_exceptions
 
     def _set_mask_exceptions(self, hide_exceptions):
