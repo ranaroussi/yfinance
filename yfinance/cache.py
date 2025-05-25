@@ -3,7 +3,7 @@ from threading import Lock
 import os as _os
 import platformdirs as _ad
 import atexit as _atexit
-import datetime as _datetime
+import datetime as _dt
 import pickle as _pkl
 
 from .utils import get_yf_logger
@@ -303,16 +303,16 @@ class ISODateTimeField(_peewee.DateTimeField):
     # because user discovered peewee allowed an invalid datetime
     # to get written.
     def db_value(self, value):
-        if value and isinstance(value, _datetime.datetime):
+        if value and isinstance(value, _dt.datetime):
             return value.isoformat()
         return super().db_value(value)
     def python_value(self, value):
         if value and isinstance(value, str) and 'T' in value:
-            return _datetime.datetime.fromisoformat(value)
+            return _dt.datetime.fromisoformat(value)
         return super().python_value(value)
 class _CookieSchema(_peewee.Model):
     strategy = _peewee.CharField(primary_key=True)
-    fetch_date = ISODateTimeField(default=_datetime.datetime.now)
+    fetch_date = ISODateTimeField(default=_dt.datetime.now)
     
     # Which cookie type depends on strategy
     cookie_bytes = _peewee.BlobField()
@@ -376,7 +376,7 @@ class _CookieCache:
         try:
             data =  _CookieSchema.get(_CookieSchema.strategy == strategy)
             cookie = _pkl.loads(data.cookie_bytes)
-            return {'cookie':cookie, 'age':_datetime.datetime.now()-data.fetch_date}
+            return {'cookie':cookie, 'age':_dt.datetime.now()-data.fetch_date}
         except _CookieSchema.DoesNotExist:
             return None
 
@@ -511,6 +511,7 @@ isin_db_proxy = _peewee.Proxy()
 class _ISIN_KV(_peewee.Model):
     key = _peewee.CharField(primary_key=True)
     value = _peewee.CharField(null=True)
+    created_at = _peewee.DateTimeField(default=_dt.datetime.now)
     
     class Meta:
         database = isin_db_proxy
@@ -591,15 +592,25 @@ class _ISINCache:
                 q = _ISIN_KV.delete().where(_ISIN_KV.key == key)
                 q.execute()
                 return
+
+            # Remove existing rows with same value that are older than 1 week
+            one_week_ago = _dt.datetime.now() - _dt.timedelta(weeks=1)
+            old_rows_query = _ISIN_KV.delete().where(
+                (_ISIN_KV.value == value) & 
+                (_ISIN_KV.created_at < one_week_ago)
+            )
+            old_rows_query.execute()
+
             with db.atomic():
                 _ISIN_KV.insert(key=key, value=value).execute()
+
         except _peewee.IntegrityError:
             # Integrity error means the key already exists. Try updating the key.
             old_value = self.lookup(key)
             if old_value != value:
                 get_yf_logger().debug(f"Value for key {key} changed from {old_value} to {value}.")
                 with db.atomic():
-                    q = _ISIN_KV.update(value=value).where(_ISIN_KV.key == key)
+                    q = _ISIN_KV.update(value=value, created_at=_dt.datetime.now()).where(_ISIN_KV.key == key)
                     q.execute()
 
 
