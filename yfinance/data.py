@@ -197,7 +197,7 @@ class YfData(metaclass=SingletonMeta):
                 url='https://fc.yahoo.com',
                 timeout=timeout,
                 allow_redirects=True)
-        except requests.exceptions.DNSError:
+        except requests.exceptions.DNSError as e:
             # Possible because url on some privacy/ad blocklists
             utils.get_yf_logger().debug("Handling DNS error on cookie fetch: " + str(e))
             return False
