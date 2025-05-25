@@ -69,9 +69,14 @@ class TickerBase:
         # accept isin as ticker
         if utils.is_isin(self.ticker):
             isin = self.ticker
-            self.ticker = utils.get_ticker_by_isin(self.ticker, _SENTINEL_, session)
+            c = cache.get_isin_cache()
+            self.ticker = c.lookup(isin)
+            if not self.ticker:
+                self.ticker = utils.get_ticker_by_isin(isin, _SENTINEL_, session)
             if self.ticker == "":
                 raise ValueError(f"Invalid ISIN number: {isin}")
+            if self.ticker:
+                c.store(isin, self.ticker)
 
         self._data: YfData = YfData(session=session)
         if proxy is not _SENTINEL_:
