@@ -1,7 +1,7 @@
 import datetime as dt
 
-from ..data import YfData
-from ..data import utils
+from ..data import YfData, utils
+from ..config import YfConfig
 from ..const import _QUERY1_URL_, _SENTINEL_
 import json as _json
 
@@ -31,6 +31,8 @@ class Market:
             return data.json()
         except _json.JSONDecodeError:
             self._logger.error(f"{self.market}: Failed to retrieve market data and recieved faulty data.")
+            if not YfConfig().hide_exceptions:
+                raise
             return {}
         
     def _parse_data(self):
@@ -68,27 +70,30 @@ class Market:
         except Exception as e:
             self._logger.error(f"{self.market}: Failed to parse market summary")
             self._logger.debug(f"{type(e)}: {e}")
-
+            if not YfConfig().hide_exceptions:
+                raise
 
         try:
             # Unpack
             self._status = self._status['finance']['marketTimes'][0]['marketTime'][0]
             self._status['timezone'] = self._status['timezone'][0]
             del self._status['time']  # redundant
-            try:
-                self._status.update({
-                    "open": dt.datetime.fromisoformat(self._status["open"]),
-                    "close": dt.datetime.fromisoformat(self._status["close"]),
-                    "tz": dt.timezone(dt.timedelta(hours=int(self._status["timezone"]["gmtoffset"]))/1000, self._status["timezone"]["short"])
-                })
-            except Exception as e:
-                self._logger.error(f"{self.market}: Failed to update market status")
-                self._logger.debug(f"{type(e)}: {e}")
         except Exception as e:
             self._logger.error(f"{self.market}: Failed to parse market status")
             self._logger.debug(f"{type(e)}: {e}")
-
-
+            if not YfConfig().hide_exceptions:
+                raise
+        try:
+            self._status.update({
+                "open": dt.datetime.fromisoformat(self._status["open"]),
+                "close": dt.datetime.fromisoformat(self._status["close"]),
+                "tz": dt.timezone(dt.timedelta(hours=int(self._status["timezone"]["gmtoffset"]))/1000, self._status["timezone"]["short"])
+            })
+        except Exception as e:
+            self._logger.error(f"{self.market}: Failed to update market status")
+            self._logger.debug(f"{type(e)}: {e}")
+            if not YfConfig().hide_exceptions:
+                raise
 
 
     @property

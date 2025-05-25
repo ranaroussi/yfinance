@@ -199,6 +199,7 @@ class YfData(metaclass=SingletonMeta):
                 allow_redirects=True)
         except requests.exceptions.DNSError:
             # Possible because url on some privacy/ad blocklists
+            utils.get_yf_logger().debug("Handling DNS error on cookie fetch: " + str(e))
             return False
         self._save_cookie_curlCffi()
         return True

@@ -195,7 +195,7 @@ class PriceHistory:
         except YFRateLimitError:
             raise
         except Exception:
-            if raise_errors or (not YfConfig.hide_exceptions):
+            if raise_errors or (not YfConfig().hide_exceptions):
                 raise
 
         # Store the meta data that gets retrieved simultaneously
@@ -248,7 +248,7 @@ class PriceHistory:
             err_msg = str(_exception)
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
-            if raise_errors:
+            if raise_errors or (not YfConfig().hide_exceptions):
                 raise _exception
             else:
                 logger.error(err_msg)
@@ -300,7 +300,7 @@ class PriceHistory:
                 quotes['Dividends'] = quotes2['Dividends'].max()
                 quotes['Stock Splits'] = quotes2['Stock Splits'].max()
             except Exception:
-                if raise_errors or (not YfConfig.hide_exceptions):
+                if raise_errors or (not YfConfig().hide_exceptions):
                     raise
                 pass
 
@@ -438,7 +438,7 @@ class PriceHistory:
                 err_msg = "back_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if raise_errors or (not YfConfig.hide_exceptions):
+            if raise_errors or (not YfConfig().hide_exceptions):
                 # raise Exception('%s: %s' % (self.ticker, err_msg))
                 raise
             else:

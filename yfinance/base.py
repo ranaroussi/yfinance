@@ -154,7 +154,7 @@ class TickerBase:
             raise
         except Exception as e:
             logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
-            if not YfConfig.hide_exceptions:
+            if not YfConfig().hide_exceptions:
                 raise
             return None
         else:
@@ -171,7 +171,7 @@ class TickerBase:
                     logger.debug("-------------")
                     logger.debug(f" {data}")
                     logger.debug("-------------")
-                    if not YfConfig.hide_exceptions:
+                    if not YfConfig().hide_exceptions:
                         raise
         return None
 
@@ -605,12 +605,12 @@ class TickerBase:
             json_data = json_data.json()
         except (_json.JSONDecodeError, requests.exceptions.RequestException):
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
-            if not YfConfig.hide_exceptions:
+            if not YfConfig().hide_exceptions:
                 raise
             return None
         if 'error' in json_data["finance"]:
             logger.error(f"{self.ticker}: Yahoo web request for share count failed. Reason: 'Bad Request'")
-            if not YfConfig.hide_exceptions:
+            if not YfConfig().hide_exceptions:
                 raise requests.exceptions.HTTPError("Yahoo API for share-count fetch returned 'Bad Request'")
             return None
 
@@ -621,7 +621,7 @@ class TickerBase:
             df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except Exception as e:
             logger.error(f"{self.ticker}: Failed to parse shares count data: {e}")
-            if not YfConfig.hide_exceptions:
+            if not YfConfig().hide_exceptions:
                 raise
             return None
 
@@ -707,7 +707,7 @@ class TickerBase:
             data = data.json()
         except _json.JSONDecodeError:
             logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
-            if not YfConfig.hide_exceptions:
+            if not YfConfig().hide_exceptions:
                 raise
             data = {}
 

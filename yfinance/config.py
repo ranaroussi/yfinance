@@ -21,12 +21,6 @@ class SingletonMeta(type):
 
 
 class YfConfig(metaclass=SingletonMeta):
-    """
-    Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations.
-    Singleton means one session one cookie shared by all threads.
-    """
-
-    # def __init__(self, hide_exceptions=True):
     def __init__(self, hide_exceptions=False):
         self._mask_exceptions = hide_exceptions
 

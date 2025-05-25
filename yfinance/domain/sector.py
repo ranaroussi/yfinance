@@ -1,13 +1,14 @@
 from __future__ import print_function
 from typing import Dict, Optional
-from ..utils import dynamic_docstring, generate_list_table_from_dict
-from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
 
 import pandas as _pd
 
+from ..utils import dynamic_docstring, generate_list_table_from_dict
+from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
 from .domain import Domain, _QUERY_URL_
 from .. import utils
 from ..data import YfData
+from ..config import YfConfig
 
 class Sector(Domain):
     """
@@ -153,3 +154,5 @@ class Sector(Domain):
             logger.debug("-------------")
             logger.debug(f" {result}")
             logger.debug("-------------")
+            if not YfConfig().hide_exceptions:
+                raise
