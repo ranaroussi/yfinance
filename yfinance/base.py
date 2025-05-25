@@ -29,12 +29,13 @@ from urllib.parse import quote as urlencode
 import numpy as np
 import pandas as pd
 from curl_cffi import requests
+import curl_cffi
 
 
 from . import utils, cache
 from .data import YfData
 from .config import YfConfig
-from .exceptions import YFEarningsDateMissing, YFRateLimitError
+from .exceptions import YFEarningsDateMissing, YFRateLimitError, YFTickerMissingError
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
@@ -124,10 +125,13 @@ class TickerBase:
                     # ... but limit. If _fetch_ticker_tz() always
                     # failing then bigger problem.
                     _tz_info_fetch_ctr += 1
-                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
-                        if k in self.info:
-                            tz = self.info[k]
-                            break
+                    try:
+                        for k in ['exchangeTimezoneName', 'timeZoneFullName']:
+                            if k in self.info:
+                                tz = self.info[k]
+                                break
+                    except curl_cffi.requests.exceptions.HTTPError:
+                        raise YFTickerMissingError(self.ticker, 'info fetch failed')
             if utils.is_valid_timezone(tz):
                 c.store(self.ticker, tz)
             else:
