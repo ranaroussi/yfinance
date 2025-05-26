@@ -3,6 +3,7 @@ import curl_cffi
 
 from yfinance import utils
 from yfinance.data import YfData
+from yfinance.config import YfConfig
 from yfinance.const import quote_summary_valid_modules, _SENTINEL_
 from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
 from yfinance.exceptions import YFException
@@ -83,6 +84,8 @@ class Analysis:
             data = self._fetch(['financialData'])
             data = data['quoteSummary']['result'][0]['financialData']
         except (TypeError, KeyError):
+            if not YfConfig().hide_exceptions:
+                raise
             self._analyst_price_targets = {}
             return self._analyst_price_targets
 
@@ -106,6 +109,8 @@ class Analysis:
             data = self._fetch(['earningsHistory'])
             data = data['quoteSummary']['result'][0]['earningsHistory']['history']
         except (TypeError, KeyError):
+            if not YfConfig().hide_exceptions:
+                raise
             self._earnings_history = pd.DataFrame()
             return self._earnings_history
 
@@ -142,6 +147,8 @@ class Analysis:
             trends = self._fetch(['industryTrend', 'sectorTrend', 'indexTrend'])
             trends = trends['quoteSummary']['result'][0]
         except (TypeError, KeyError):
+            if not YfConfig().hide_exceptions:
+                raise
             self._growth_estimates = pd.DataFrame()
             return self._growth_estimates
 
@@ -179,6 +186,8 @@ class Analysis:
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
+            if not YfConfig().hide_exceptions:
+                raise
             utils.get_yf_logger().error(str(e))
             return None
         return result
@@ -188,4 +197,6 @@ class Analysis:
             data = self._fetch(['earningsTrend'])
             self._earnings_trend = data['quoteSummary']['result'][0]['earningsTrend']['trend']
         except (TypeError, KeyError):
+            if not YfConfig().hide_exceptions:
+                raise
             self._earnings_trend = []

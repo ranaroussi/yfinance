@@ -10,7 +10,7 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
-from .exceptions import YFRateLimitError, YFDataException
+from .exceptions import YfException, YFDataException, YFRateLimitError
 
 cache_maxsize = 64
 
@@ -198,7 +198,8 @@ class YfData(metaclass=SingletonMeta):
                 timeout=timeout,
                 allow_redirects=True)
         except requests.exceptions.DNSError as e:
-            # Possible because url on some privacy/ad blocklists
+            # Possible because url on some privacy/ad blocklists.
+            # Can ignore because have second strategy.
             utils.get_yf_logger().debug("Handling DNS error on cookie fetch: " + str(e))
             return False
         self._save_cookie_curlCffi()
@@ -387,7 +388,7 @@ class YfData(metaclass=SingletonMeta):
         if params is None:
             params = {}
         if 'crumb' in params:
-            raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
+            raise YfException("Don't manually add 'crumb' to params dict, let data.py handle it")
 
         crumb, strategy = self._get_cookie_and_crumb()
         if crumb is not None:

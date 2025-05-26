@@ -16,18 +16,18 @@ class SingletonMeta(type):
                 # Update the existing instance
                 if 'hide_exceptions' in kwargs or (args and len(args) > 0):
                     hide_exceptions = kwargs.get('hide_exceptions') if 'hide_exceptions' in kwargs else args[0]
-                    cls._instances[cls]._set_mask_exceptions(hide_exceptions)
+                    cls._instances[cls]._set_hide_exceptions(hide_exceptions)
             return cls._instances[cls]
 
 
 class YfConfig(metaclass=SingletonMeta):
     def __init__(self, hide_exceptions=True):
-        self._mask_exceptions = hide_exceptions
+        self._hide_exceptions = hide_exceptions
 
-    def _set_mask_exceptions(self, hide_exceptions):
-        self._mask_exceptions = hide_exceptions
+    def _set_hide_exceptions(self, hide_exceptions):
+        self._hide_exceptions = hide_exceptions
 
     @property
     def hide_exceptions(self):
-        return self._mask_exceptions
+        return self._hide_exceptions
     
