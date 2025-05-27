@@ -22,8 +22,10 @@
 import json as _json
 
 from . import utils
+from .config import YfConfig
 from .const import _BASE_URL_, _SENTINEL_
 from .data import YfData
+from .exceptions import YFDataException
 
 
 class Search:
@@ -103,13 +105,15 @@ class Search:
 
         data = self._data.cache_get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
             data = data.json()
-        except _json.JSONDecodeError:
-            self._logger.error(f"{self.query}: Failed to retrieve search results and received faulty response instead.")
+        except _json.JSONDecodeError as e:
+            # msg = f"{self.query}: Failed to retrieve search results and received faulty response instead."
+            msg = f"{self.query}: 'search' fetch received faulty data"
+            self._logger.error(msg)
+            if not YfConfig().hide_exceptions:
+                raise YFDataException(msg + ":\n> " + str(e))
             data = {}
 
         self._response = data

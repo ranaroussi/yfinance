@@ -6,6 +6,7 @@ import pandas as _pd
 from .domain import Domain, _QUERY_URL_
 from .. import utils
 from ..data import YfData
+from ..config import YfConfig
 from ..const import _SENTINEL_
 
 class Industry(Domain):
@@ -150,3 +151,5 @@ class Industry(Domain):
             logger.debug("-------------")
             logger.debug(f" {result}")
             logger.debug("-------------")
+            if not YfConfig().hide_exceptions:
+                raise

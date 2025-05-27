@@ -29,11 +29,13 @@ from urllib.parse import quote as urlencode
 import numpy as np
 import pandas as pd
 from curl_cffi import requests
+import curl_cffi
 
 
 from . import utils, cache
 from .data import YfData
-from .exceptions import YFEarningsDateMissing, YFRateLimitError
+from .config import YfConfig
+from .exceptions import YFEarningsDateMissing, YFRateLimitError, YFTickerMissingError
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
@@ -123,10 +125,18 @@ class TickerBase:
                     # ... but limit. If _fetch_ticker_tz() always
                     # failing then bigger problem.
                     _tz_info_fetch_ctr += 1
-                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
-                        if k in self.info:
-                            tz = self.info[k]
-                            break
+                    try:
+                        for k in ['exchangeTimezoneName', 'timeZoneFullName']:
+                            if k in self.info:
+                                tz = self.info[k]
+                                break
+                    except curl_cffi.requests.exceptions.HTTPError as e:
+                        # Hide this error because might confuse user why 
+                        # fetching info for price data / shares / etc.
+                        #
+                        # Logic: only in this code path if price-history fetch failed.
+                        # As info also failing, then problem with ticker.
+                        raise YFTickerMissingError(self.ticker, f'info fetch failed (for timezone)')
             if utils.is_valid_timezone(tz):
                 c.store(self.ticker, tz)
             else:
@@ -153,6 +163,8 @@ class TickerBase:
             raise
         except Exception as e:
             logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
+            if not YfConfig().hide_exceptions:
+                raise
             return None
         else:
             error = data.get('chart', {}).get('error', None)
@@ -168,6 +180,8 @@ class TickerBase:
                     logger.debug("-------------")
                     logger.debug(f" {data}")
                     logger.debug("-------------")
+                    if not YfConfig().hide_exceptions:
+                        raise
         return None
 
     def get_recommendations(self, proxy=_SENTINEL_, as_dict=False):
@@ -600,6 +614,8 @@ class TickerBase:
             json_data = json_data.json()
         except (_json.JSONDecodeError, requests.exceptions.RequestException):
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
+            if not YfConfig().hide_exceptions:
+                raise
             return None
         try:
             fail = json_data["finance"]["error"]["code"] == "Bad Request"
@@ -607,6 +623,8 @@ class TickerBase:
             fail = False
         if fail:
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
+            if not YfConfig().hide_exceptions:
+                raise requests.exceptions.HTTPError("Yahoo web request for share count returned 'Bad Request'")
             return None
 
         shares_data = json_data["timeseries"]["result"]
@@ -616,6 +634,8 @@ class TickerBase:
             df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except Exception as e:
             logger.error(f"{self.ticker}: Failed to parse shares count data: {e}")
+            if not YfConfig().hide_exceptions:
+                raise
             return None
 
         df.index = df.index.tz_localize(tz)
@@ -693,13 +713,13 @@ class TickerBase:
 
         data = self._data.post(url, body=payload)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
             data = data.json()
         except _json.JSONDecodeError:
-            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+            logger.error(f"{self.ticker}: news fetch received faulty data.")
+            if not YfConfig().hide_exceptions:
+                raise YFDataException(f"{self.ticker}: news fetch received faulty data.")
             data = {}
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
