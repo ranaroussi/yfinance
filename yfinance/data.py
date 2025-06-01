@@ -309,7 +309,6 @@ class YfData(metaclass=SingletonMeta):
                 url='https://fc.yahoo.com',
                 timeout=timeout,
                 allow_redirects=True)
-            raise req.exceptions.HTTPError
         except req_cc.exceptions.DNSError:
             # Possible because url on some privacy/ad blocklists
             return False
