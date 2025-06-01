@@ -372,9 +372,9 @@ class _CookieCache:
             return None
 
         try:
-            data =  _CookieSchema.get(_CookieSchema.strategy == strategy)
-            cookie = _pkl.loads(data.cookie_bytes)
-            return {'cookie':cookie, 'age':_datetime.datetime.now()-data.fetch_date}
+            row = _CookieSchema.get(_CookieSchema.strategy == strategy)
+            cookie = _pkl.loads(row.cookie_bytes)
+            return {'data':cookie, 'age':_datetime.datetime.now()-row.fetch_date}
         except _CookieSchema.DoesNotExist:
             return None
 
