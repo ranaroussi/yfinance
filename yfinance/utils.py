@@ -27,7 +27,7 @@ import re
 import re as _re
 import sys as _sys
 import threading
-from functools import lru_cache, wraps
+from functools import wraps
 from inspect import getmembers
 from types import FunctionType
 from typing import List, Optional
@@ -48,13 +48,6 @@ def attributes(obj):
     return {
         name: getattr(obj, name) for name in dir(obj)
         if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
-
-
-@lru_cache(maxsize=20)
-def print_once(msg):
-    # 'warnings' module suppression of repeat messages does not work.
-    # This function replicates correct behaviour
-    print(msg)
 
 
 # Logging
