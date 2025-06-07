@@ -51,13 +51,6 @@ def attributes(obj):
         if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
 
 
-@lru_cache(maxsize=20)
-def print_once(msg):
-    # 'warnings' module suppression of repeat messages does not work.
-    # This function replicates correct behaviour
-    print(msg)
-
-
 # Logging
 # Note: most of this logic is adding indentation with function depth,
 #       so that DEBUG log is readable.
