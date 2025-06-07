@@ -7,6 +7,7 @@ from websockets.sync.client import connect as sync_connect
 from websockets.asyncio.client import connect as async_connect
 
 from yfinance import utils
+from yfinance.config import YfConfig
 from yfinance.pricing_pb2 import PricingData
 from google.protobuf.json_format import MessageToDict
 
@@ -30,6 +31,8 @@ class BaseWebSocket:
             self.logger.error("Failed to decode message: %s", e, exc_info=True)
             if self.verbose:
                 print("Failed to decode message: %s", e)
+            if not YfConfig().hide_exceptions:
+                raise
             return {
                 'error': str(e),
                 'raw_base64': base64_message
@@ -64,6 +67,8 @@ class AsyncWebSocket(BaseWebSocket):
             self.logger.error("Failed to connect to WebSocket: %s", e, exc_info=True)
             if self.verbose:
                 print(f"Failed to connect to WebSocket: {e}")
+            if not YfConfig().hide_exceptions:
+                raise
             self._ws = None
             raise
 
@@ -82,6 +87,8 @@ class AsyncWebSocket(BaseWebSocket):
                 self.logger.error("Error in heartbeat subscription: %s", e, exc_info=True)
                 if self.verbose:
                     print(f"Error in heartbeat subscription: {e}")
+            if not YfConfig().hide_exceptions:
+                raise
                 break
 
     async def subscribe(self, symbols: Union[str, List[str]]):
@@ -165,6 +172,8 @@ class AsyncWebSocket(BaseWebSocket):
                             self.logger.error("Error in message handler: %s", handler_exception, exc_info=True)
                             if self.verbose:
                                 print("Error in message handler:", handler_exception)
+                            if not YfConfig().hide_exceptions:
+                                raise
                     else:
                         print(decoded_message)
 
@@ -179,6 +188,8 @@ class AsyncWebSocket(BaseWebSocket):
                 self.logger.error("Error while listening to messages: %s", e, exc_info=True)
                 if self.verbose:
                     print("Error while listening to messages: %s", e)
+                if not YfConfig().hide_exceptions:
+                    raise
 
                 # Attempt to reconnect if connection drops
                 self.logger.info("Attempting to reconnect...")
@@ -304,6 +315,8 @@ class WebSocket(BaseWebSocket):
                         self.logger.error("Error in message handler: %s", handler_exception, exc_info=True)
                         if self.verbose:
                             print("Error in message handler:", handler_exception)
+                        if not YfConfig().hide_exceptions:
+                            raise
                 else:
                     print(decoded_message)
 
@@ -317,6 +330,8 @@ class WebSocket(BaseWebSocket):
                 self.logger.error("Error while listening to messages: %s", e, exc_info=True)
                 if self.verbose:
                     print("Error while listening to messages: %s", e)
+                if not YfConfig().hide_exceptions:
+                    raise
                 break
 
     def close(self):

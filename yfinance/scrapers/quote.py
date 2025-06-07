@@ -7,6 +7,7 @@ import curl_cffi
 
 from yfinance import utils
 from yfinance.data import YfData
+from yfinance.config import YfConfig
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_, _SENTINEL_
 from yfinance.exceptions import YFDataException, YFException
 
@@ -106,7 +107,7 @@ class FastInfo:
 
     def __getitem__(self, k):
         if not isinstance(k, str):
-            raise KeyError("key must be a string")
+            raise KeyError(f"key must be a string not '{type(k)}'")
         if k not in self._keys:
             raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
         if k in self._cc_to_sc_key:
@@ -467,8 +468,6 @@ class FastInfo:
         except Exception as e:
             if "Cannot retrieve share count" in str(e):
                 shares = None
-            elif "failed to decrypt Yahoo" in str(e):
-                shares = None
             else:
                 raise
 
@@ -522,8 +521,8 @@ class Quote:
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]
-                except (KeyError, IndexError):
-                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                except (KeyError, IndexError) as e:
+                    raise YFDataException(f"# RESPONSE:\n{result}\n\nFailed to parse json response from Yahoo Finance (above): {str(e)}")
                 self._sustainability = pd.DataFrame(data)
         return self._sustainability
 
@@ -536,8 +535,8 @@ class Quote:
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
-                except (KeyError, IndexError):
-                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                except (KeyError, IndexError) as e:
+                    raise YFDataException(f"# RESPONSE:\n{result}\n\nFailed to parse json response from Yahoo Finance (above): {str(e)}")
                 self._recommendations = pd.DataFrame(data)
         return self._recommendations
 
@@ -551,14 +550,14 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
                     if len(data) == 0:
-                        raise YFDataException(f"No upgrade/downgrade history found for {self._symbol}")
+                        raise YFDataException(f"{self._symbol}: No upgrade/downgrade history found")
                     df = pd.DataFrame(data)
                     df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
                     df.set_index('GradeDate', inplace=True)
                     df.index = pd.to_datetime(df.index, unit='s')
                     self._upgrades_downgrades = df
-                except (KeyError, IndexError):
-                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                except (KeyError, IndexError) as e:
+                    raise YFDataException(f"# RESPONSE:\n{result}\n\nFailed to parse json response from Yahoo Finance (above): {str(e)}")
         return self._upgrades_downgrades
 
     @property
@@ -589,6 +588,8 @@ class Quote:
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
+            if not YfConfig().hide_exceptions:
+                raise
             utils.get_yf_logger().error(str(e))
             return None
         return result
@@ -598,6 +599,8 @@ class Quote:
         try:
             result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
+            if not YfConfig().hide_exceptions:
+                raise
             utils.get_yf_logger().error(str(e))
             return None
         return result
@@ -739,8 +742,8 @@ class Quote:
                 self._calendar['Revenue High'] = earnings.get('revenueHigh', None)
                 self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
                 self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
-        except (KeyError, IndexError):
-            raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+        except (KeyError, IndexError) as e:
+            raise YFDataException(f"# RESPONSE:\n{result}\n\nFailed to parse json response from Yahoo Finance (above): {str(e)}")
 
 
     def _fetch_sec_filings(self):
