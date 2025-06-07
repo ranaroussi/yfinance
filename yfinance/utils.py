@@ -39,7 +39,7 @@ from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
-from yfinance.exceptions import YfException
+from yfinance.exceptions import YFException
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
@@ -758,7 +758,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_outOfRange = indices == -1
     if f_outOfRange.any():
         if intraday or interval in ['1d', '1wk']:
-            raise YfException(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
+            raise YFException(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
         get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
         indices = indices[~f_outOfRange]
@@ -780,7 +780,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             df = df.groupby("_NewIndex").prod()
             df.index.name = None
         else:
-            raise YfException(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
+            raise YFException(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
@@ -792,7 +792,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        raise YfException('Data was lost in merge, investigate')
+        raise YFException('Data was lost in merge, investigate')
 
     return df
 

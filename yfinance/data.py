@@ -10,7 +10,7 @@ from frozendict import frozendict
 from . import utils, cache
 import threading
 
-from .exceptions import YfException, YFDataException, YFRateLimitError
+from .exceptions import YFException, YFDataException, YFRateLimitError
 
 cache_maxsize = 64
 
@@ -388,7 +388,7 @@ class YfData(metaclass=SingletonMeta):
         if params is None:
             params = {}
         if 'crumb' in params:
-            raise YfException("Don't manually add 'crumb' to params dict, let data.py handle it")
+            raise YFException("Don't manually add 'crumb' to params dict, let data.py handle it")
 
         crumb, strategy = self._get_cookie_and_crumb()
         if crumb is not None:
