@@ -21,9 +21,10 @@
 
 from __future__ import print_function
 
+import warnings
+
 from . import Ticker, multi
 from .live import WebSocket
-from .utils import print_once
 from .data import YfData
 from .const import _SENTINEL_
 
@@ -56,8 +57,9 @@ class Tickers:
                 timeout=10, **kwargs):
 
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._data._set_proxy(proxy)
+            proxy = _SENTINEL_
 
         return self.download(
             period, interval,
@@ -75,8 +77,9 @@ class Tickers:
                  timeout=10, **kwargs):
 
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._data._set_proxy(proxy)
+            proxy = _SENTINEL_
 
         data = multi.download(self.symbols,
                               start=start, end=end,
