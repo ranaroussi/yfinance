@@ -25,6 +25,7 @@ import logging
 import time as _time
 import traceback
 from typing import Union
+import warnings
 
 import multitasking as _multitasking
 import pandas as _pd
@@ -95,7 +96,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     if auto_adjust is None:
         # Warn users that default has changed to True
-        utils.print_once("YF.download() has changed argument auto_adjust default to True")
+        warnings.warn("YF.download() has changed argument auto_adjust default to True", FutureWarning, stacklevel=3)
         auto_adjust = True
 
     if logger.isEnabledFor(logging.DEBUG):
@@ -145,10 +146,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
 
     # Ensure data initialised with session.
     if proxy is not _SENTINEL_:
-        utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
-        YfData(session=session, proxy=proxy)
-    else:
-        YfData(session=session)
+        warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
+        YfData(proxy=proxy)
+    YfData(session=session)
 
     # download using threads
     if threads:

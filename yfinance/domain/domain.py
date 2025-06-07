@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from ..ticker import Ticker
+import pandas as _pd
+from typing import Dict, List, Optional
+import warnings
+
 from ..const import _QUERY1_URL_, _SENTINEL_
 from ..data import YfData
-from ..utils import print_once
-from typing import Dict, List, Optional
-import pandas as _pd
+from ..ticker import Ticker
 
 _QUERY_URL_ = f'{_QUERY1_URL_}/v1/finance'
 
@@ -26,7 +27,7 @@ class Domain(ABC):
         self.session = session
         self._data: YfData = YfData(session=session)
         if proxy is not _SENTINEL_:
-            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._data._set_proxy(proxy)
 
         self._name: Optional[str] = None
