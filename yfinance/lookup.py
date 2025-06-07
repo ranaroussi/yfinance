@@ -20,8 +20,8 @@
 #
 
 import json as _json
-
 import pandas as pd
+import warnings
 
 from . import utils
 from .const import _QUERY1_URL_, _SENTINEL_
@@ -48,7 +48,7 @@ class Lookup:
         self._data = YfData(session=self.session)
 
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._data._set_proxy(proxy)
 
         self.query = query
