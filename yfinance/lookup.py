@@ -24,9 +24,10 @@ import pandas as pd
 import warnings
 
 from . import utils
+from .config import YfConfig
 from .const import _QUERY1_URL_, _SENTINEL_
 from .data import YfData
-from .exceptions import YFException
+from .exceptions import YFDataException
 
 LOOKUP_TYPES = ["all", "equity", "mutualfund", "etf", "index", "future", "currency", "cryptocurrency"]
 
@@ -81,18 +82,19 @@ class Lookup:
 
         data = self._data.get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
             data = data.json()
         except _json.JSONDecodeError:
-            self._logger.error(f"{self.query}: Failed to retrieve lookup results and received faulty response instead.")
+            if not YfConfig().hide_exceptions:
+                raise
+            self._logger.error(f"{self.ticker}: 'lookup' fetch received faulty data")
             data = {}
 
         # Error returned
         if data.get("finance", {}).get("error", {}):
-            raise YFException(data.get("finance", {}).get("error", {}))
+            error = data.get("finance", {}).get("error", {})
+            raise YFDataException(f"{self.ticker}: 'lookup' fetch returned error: {error}")
 
         self._cache[cache_key] = data
         return data
