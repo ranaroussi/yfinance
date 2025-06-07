@@ -5,6 +5,7 @@ import warnings
 import pandas as pd
 
 from yfinance import utils, const
+from yfinance.config import YfConfig
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
@@ -104,6 +105,8 @@ class Financials:
             if statement is not None:
                 return statement
         except YFException as e:
+            if not YfConfig().hide_exceptions:
+                raise
             utils.get_yf_logger().error(f"{self._symbol}: Failed to create {name} financials table for reason: {e}")
         return pd.DataFrame()
 
@@ -117,6 +120,8 @@ class Financials:
         try:
             return self._get_financials_time_series(timescale, keys)
         except Exception:
+            if not YfConfig().hide_exceptions:
+                raise
             pass
 
     def _get_financials_time_series(self, timescale, keys: list) -> pd.DataFrame:

@@ -4,6 +4,7 @@ import pandas as _pd
 from typing import Dict, Optional
 import warnings
 
+from ..config import YfConfig
 from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
 from ..data import YfData
 from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_logger
@@ -148,7 +149,9 @@ class Sector(Domain):
             self._industries = self._parse_industries(data.get('industries', {}))
 
         except Exception as e:
-            logger = get_yf_logger()
+            if not YfConfig().hide_exceptions:
+                raise
+            logger = utils.get_yf_logger()
             logger.error(f"Failed to get sector data for '{self._key}' reason: {e}")
             logger.debug("Got response: ")
             logger.debug("-------------")
