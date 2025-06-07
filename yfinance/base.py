@@ -34,7 +34,7 @@ from curl_cffi import requests
 from . import utils, cache
 from .data import YfData
 from .config import YfConfig
-from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError, YFTickerMissingError
+from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals

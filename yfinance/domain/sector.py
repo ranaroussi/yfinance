@@ -151,7 +151,7 @@ class Sector(Domain):
         except Exception as e:
             if not YfConfig().hide_exceptions:
                 raise
-            logger = utils.get_yf_logger()
+            logger = get_yf_logger()
             logger.error(f"Failed to get sector data for '{self._key}' reason: {e}")
             logger.debug("Got response: ")
             logger.debug("-------------")
