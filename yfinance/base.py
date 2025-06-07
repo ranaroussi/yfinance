@@ -66,22 +66,22 @@ class TickerBase:
         if self.ticker == "":
             raise ValueError("Empty ticker name")
 
+        self._data: YfData = YfData(session=session)
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
         # accept isin as ticker
         if utils.is_isin(self.ticker):
             isin = self.ticker
             c = cache.get_isin_cache()
             self.ticker = c.lookup(isin)
             if not self.ticker:
-                self.ticker = utils.get_ticker_by_isin(isin, _SENTINEL_, session)
+                self.ticker = utils.get_ticker_by_isin(isin)
             if self.ticker == "":
                 raise ValueError(f"Invalid ISIN number: {isin}")
             if self.ticker:
                 c.store(isin, self.ticker)
-
-        self._data: YfData = YfData(session=session)
-        if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
-            self._data._set_proxy(proxy)
 
         # self._price_history = PriceHistory(self._data, self.ticker)
         self._price_history = None  # lazy-load
