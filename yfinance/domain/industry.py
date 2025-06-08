@@ -5,20 +5,24 @@ import pandas as _pd
 
 from .domain import Domain, _QUERY_URL_
 from .. import utils
+from ..data import YfData
+from ..const import _SENTINEL_
 
 class Industry(Domain):
     """
     Represents an industry within a sector.
     """
 
-    def __init__(self, key, session=None, proxy=None):
+    def __init__(self, key, session=None, proxy=_SENTINEL_):
         """
         Args:
             key (str): The key identifier for the industry.
             session (optional): The session to use for requests.
-            proxy (optional): The proxy to use for requests.
         """
-        super(Industry, self).__init__(key, session, proxy)
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            YfData(session=session, proxy=proxy)
+        super(Industry, self).__init__(key, session)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
 
         self._sector_key = None
@@ -129,7 +133,7 @@ class Industry(Domain):
         result = None
         
         try:
-            result = self._fetch(self._query_url, self.proxy)
+            result = self._fetch(self._query_url)
             data = result['data']
             self._parse_and_assign_common(data)
 

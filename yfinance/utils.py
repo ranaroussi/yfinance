@@ -35,15 +35,10 @@ from typing import List, Optional
 import numpy as _np
 import pandas as _pd
 import pytz as _tz
-import requests as _requests
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
-
-user_agent_headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
-
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
@@ -186,14 +181,17 @@ def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9])$", string))
 
 
-def get_all_by_isin(isin, proxy=None, session=None):
+def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
     if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
+
+    if proxy is not const._SENTINEL_:
+        print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+        proxy = None
 
     # Deferred this to prevent circular imports
     from .search import Search
 
-    session = session or _requests
     search = Search(query=isin, max_results=1, session=session, proxy=proxy)
 
     # Extract the first quote and news
@@ -212,17 +210,17 @@ def get_all_by_isin(isin, proxy=None, session=None):
     }
 
 
-def get_ticker_by_isin(isin, proxy=None, session=None):
+def get_ticker_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
     return data.get('ticker', {}).get('symbol', '')
 
 
-def get_info_by_isin(isin, proxy=None, session=None):
+def get_info_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
     return data.get('ticker', {})
 
 
-def get_news_by_isin(isin, proxy=None, session=None):
+def get_news_by_isin(isin, proxy=const._SENTINEL_, session=None):
     data = get_all_by_isin(isin, proxy, session)
     return data.get('news', {})
 
@@ -526,7 +524,7 @@ def parse_actions(data):
     splits = None
 
     if "events" in data:
-        if "dividends" in data["events"]:
+        if "dividends" in data["events"] and len(data["events"]['dividends']) > 0:
             dividends = _pd.DataFrame(
                 data=list(data["events"]["dividends"].values()))
             dividends.set_index("date", inplace=True)
@@ -534,7 +532,7 @@ def parse_actions(data):
             dividends.sort_index(inplace=True)
             dividends.columns = ["Dividends"]
 
-        if "capitalGains" in data["events"]:
+        if "capitalGains" in data["events"] and len(data["events"]['capitalGains']) > 0:
             capital_gains = _pd.DataFrame(
                 data=list(data["events"]["capitalGains"].values()))
             capital_gains.set_index("date", inplace=True)
@@ -542,7 +540,7 @@ def parse_actions(data):
             capital_gains.sort_index(inplace=True)
             capital_gains.columns = ["Capital Gains"]
 
-        if "splits" in data["events"]:
+        if "splits" in data["events"] and len(data["events"]['splits']) > 0:
             splits = _pd.DataFrame(
                 data=list(data["events"]["splits"].values()))
             splits.set_index("date", inplace=True)
@@ -599,15 +597,40 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     return quotes
 
 
-def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, repair=False, currency=None):
+def _dts_in_same_interval(dt1, dt2, interval):
+    # Check if second date dt2 in interval starting at dt1
+
+    if interval == '1d':
+        last_rows_same_interval = dt1.date() == dt2.date()
+    elif interval == "1wk":
+        last_rows_same_interval = (dt2 - dt1).days < 7
+    elif interval == "1mo":
+        last_rows_same_interval = dt1.month == dt2.month
+    elif interval == "3mo":
+        shift = (dt1.month % 3) - 1
+        q1 = (dt1.month - shift - 1) // 3 + 1
+        q2 = (dt2.month - shift - 1) // 3 + 1
+        year_diff = dt2.year - dt1.year
+        quarter_diff = q2 - q1 + 4*year_diff
+        last_rows_same_interval = quarter_diff == 0
+    else:
+        last_rows_same_interval = (dt2 - dt1) < _pd.Timedelta(interval)
+    return last_rows_same_interval
+
+
+def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, repair=False, currency=None):
     # Yahoo bug fix. If market is open today then Yahoo normally returns
     # todays data as a separate row from rest-of week/month interval in above row.
     # Seems to depend on what exchange e.g. crypto OK.
     # Fix = merge them together
-    n = quotes.shape[0]
-    if n > 1:
-        dt1 = quotes.index[n - 1]
-        dt2 = quotes.index[n - 2]
+
+    if interval[-1] not in ['m', 'h']:
+        prepost = False
+
+    dropped_row = None
+    if len(quotes) > 1:
+        dt1 = quotes.index[-1]
+        dt2 = quotes.index[-2]
         if quotes.index.tz is None:
             dt1 = dt1.tz_localize("UTC")
             dt2 = dt2.tz_localize("UTC")
@@ -618,25 +641,23 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, repair=Fals
             # - exception is volume, *slightly* greater on final row (and matches website)
             if dt1.date() == dt2.date():
                 # Last two rows are on same day. Drop second-to-last row
+                dropped_row = quotes.iloc[-2]
                 quotes = _pd.concat([quotes.iloc[:-2], quotes.iloc[-1:]])
         else:
-            if interval == "1wk":
-                last_rows_same_interval = dt1.year == dt2.year and dt1.week == dt2.week
-            elif interval == "1mo":
-                last_rows_same_interval = dt1.month == dt2.month
-            elif interval == "3mo":
-                last_rows_same_interval = dt1.year == dt2.year and dt1.quarter == dt2.quarter
-            else:
-                last_rows_same_interval = (dt1 - dt2) < _pd.Timedelta(interval)
-
-            if last_rows_same_interval:
+            if _dts_in_same_interval(dt2, dt1, interval):
                 # Last two rows are within same interval
-                idx1 = quotes.index[n - 1]
-                idx2 = quotes.index[n - 2]
+                idx1 = quotes.index[-1]
+                idx2 = quotes.index[-2]
                 if idx1 == idx2:
                     # Yahoo returning last interval duplicated, which means
                     # Yahoo is not returning live data (phew!)
-                    return quotes
+                    return quotes, None
+
+                if prepost:
+                    # Possibly dt1 is just start of post-market
+                    if dt1.second == 0:
+                        # assume post-market interval
+                        return quotes, None
 
                 ss = quotes['Stock Splits'].iloc[-2:].replace(0,1).prod()
                 if repair:
@@ -659,31 +680,30 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, repair=Fals
                             for c in const._PRICE_COLNAMES_:
                                 quotes.loc[idx2, c] *= 0.01
 
-                # quotes.loc[idx2, 'Stock Splits'] = 2  # wtf? why doing this?
-
                 if _np.isnan(quotes.loc[idx2, "Open"]):
-                    quotes.loc[idx2, "Open"] = quotes["Open"].iloc[n - 1]
+                    quotes.loc[idx2, "Open"] = quotes["Open"].iloc[-1]
                 # Note: nanmax() & nanmin() ignores NaNs, but still need to check not all are NaN to avoid warnings
-                if not _np.isnan(quotes["High"].iloc[n - 1]):
-                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[n - 1], quotes["High"].iloc[n - 2]])
+                if not _np.isnan(quotes["High"].iloc[-1]):
+                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[-1], quotes["High"].iloc[-2]])
                     if "Adj High" in quotes.columns:
-                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[n - 1], quotes["Adj High"].iloc[n - 2]])
+                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[-1], quotes["Adj High"].iloc[-2]])
 
-                if not _np.isnan(quotes["Low"].iloc[n - 1]):
-                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[n - 1], quotes["Low"].iloc[n - 2]])
+                if not _np.isnan(quotes["Low"].iloc[-1]):
+                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[-1], quotes["Low"].iloc[-2]])
                     if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[n - 1], quotes["Adj Low"].iloc[n - 2]])
+                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[-1], quotes["Adj Low"].iloc[-2]])
 
-                quotes.loc[idx2, "Close"] = quotes["Close"].iloc[n - 1]
+                quotes.loc[idx2, "Close"] = quotes["Close"].iloc[-1]
                 if "Adj Close" in quotes.columns:
-                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[n - 1]
-                quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[n - 1]
-                quotes.loc[idx2, "Dividends"] += quotes["Dividends"].iloc[n - 1]
+                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[-1]
+                quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[-1]
+                quotes.loc[idx2, "Dividends"] += quotes["Dividends"].iloc[-1]
                 if ss != 1.0:
                     quotes.loc[idx2, "Stock Splits"] = ss
-                quotes = quotes.drop(quotes.index[n - 1])
+                dropped_row = quotes.iloc[-1]
+                quotes = quotes.drop(quotes.index[-1])
 
-    return quotes
+    return quotes, dropped_row
 
 
 def safe_merge_dfs(df_main, df_sub, interval):

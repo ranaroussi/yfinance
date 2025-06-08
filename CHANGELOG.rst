@@ -1,6 +1,44 @@
 Change Log
 ===========
 
+0.2.61
+------
+Fix ALL type hints in websocket #2493
+
+0.2.60
+------
+Fix cookie reuse, and handle DNS blocking fc.yahoo.com #2483
+Fixes for websocket:
+- relax protobuf version #2485
+- increase websockets version #2485
+- fix type hints #2488
+Fix predefined screen offset #2440
+
+0.2.59
+------
+Fix the fix for rate-limit #2452
+Feature: live price data websocket #2201
+
+0.2.58
+------
+Fix false rate-limit problem #2430
+Fix predefined screen size/count #2425
+
+0.2.57
+------
+Fix proxy msg & pass-thru #2418
+
+0.2.56
+------
+Features:
+- Ticker lookups #2364
+- Config #2391
+Fixes:
+- converting end epoch to localized dt #2378
+- info IndexError #2382
+- AttributeError: module 'requests.cookies' has no attribute 'update' #2388
+- fix_Yahoo_returning_live_separate() #2389
+
 0.2.55
 ------
 Features

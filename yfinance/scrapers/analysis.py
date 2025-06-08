@@ -3,17 +3,19 @@ import requests
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import quote_summary_valid_modules
+from yfinance.const import quote_summary_valid_modules, _SENTINEL_
 from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
 from yfinance.exceptions import YFException
 
-
 class Analysis:
 
-    def __init__(self, data: YfData, symbol: str, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            data._set_proxy(proxy)
+
         self._data = data
         self._symbol = symbol
-        self.proxy = proxy
 
         # In quoteSummary the 'earningsTrend' module contains most of the data below.
         # The format of data is not optimal so each function will process it's part of the data.
@@ -175,7 +177,7 @@ class Analysis:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
-            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=self.proxy)
+            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None

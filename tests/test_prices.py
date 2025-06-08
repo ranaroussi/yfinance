@@ -66,7 +66,7 @@ class TestPriceHistory(unittest.TestCase):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(timeout=None)
 
             dt_utc = _pd.Timestamp.utcnow()
             dt = dt_utc.astimezone(_tz.timezone(tz))
@@ -86,7 +86,7 @@ class TestPriceHistory(unittest.TestCase):
         test_run = False
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(timeout=None)
 
             dt_utc = _pd.Timestamp.utcnow()
             dt = dt_utc.astimezone(_tz.timezone(tz))
@@ -112,7 +112,7 @@ class TestPriceHistory(unittest.TestCase):
         test_run = False
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
-            tz = dat._get_ticker_tz(proxy=None, timeout=None)
+            tz = dat._get_ticker_tz(timeout=None)
 
             dt = _tz.timezone(tz).localize(_dt.datetime.now())
             if dt.date().weekday() not in [1, 2, 3, 4]:

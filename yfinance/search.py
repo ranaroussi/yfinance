@@ -22,14 +22,14 @@
 import json as _json
 
 from . import utils
-from .const import _BASE_URL_
+from .const import _BASE_URL_, _SENTINEL_
 from .data import YfData
 
 
 class Search:
     def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
                  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
-                 session=None, proxy=None, timeout=30, raise_errors=True):
+                 session=None, proxy=_SENTINEL_, timeout=30, raise_errors=True):
         """
         Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.
 
@@ -45,16 +45,20 @@ class Search:
             enable_fuzzy_query: Enable fuzzy search for typos (default False).
             recommended: Recommended number of results to return (default 8).
             session: Custom HTTP session for requests (default None).
-            proxy: Proxy settings for requests (default None).
             timeout: Request timeout in seconds (default 30).
             raise_errors: Raise exceptions on error (default True).
         """
+        self.session = session
+        self._data = YfData(session=self.session)
+        
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
         self.query = query
         self.max_results = max_results
         self.enable_fuzzy_query = enable_fuzzy_query
         self.news_count = news_count
-        self.session = session
-        self.proxy = proxy
         self.timeout = timeout
         self.raise_errors = raise_errors
 
@@ -65,7 +69,6 @@ class Search:
         self.enable_cultural_assets = include_cultural_assets
         self.recommended = recommended
 
-        self._data = YfData(session=self.session)
         self._logger = utils.get_yf_logger()
 
         self._response = {}
@@ -98,7 +101,7 @@ class Search:
 
         self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
 
-        data = self._data.cache_get(url=url, params=params, proxy=self.proxy, timeout=self.timeout)
+        data = self._data.cache_get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
             raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
                                "Our engineers are working quickly to resolve "

@@ -1,12 +1,13 @@
 from __future__ import print_function
 from typing import Dict, Optional
 from ..utils import dynamic_docstring, generate_list_table_from_dict
-from ..const import SECTOR_INDUSTY_MAPPING
+from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
 
 import pandas as _pd
 
 from .domain import Domain, _QUERY_URL_
 from .. import utils
+from ..data import YfData
 
 class Sector(Domain):
     """
@@ -14,7 +15,7 @@ class Sector(Domain):
     such as top ETFs, top mutual funds, and industry data.
     """
 
-    def __init__(self, key, session=None, proxy=None):
+    def __init__(self, key, session=None, proxy=_SENTINEL_):
         """
         Args:
             key (str): The key representing the sector.
@@ -26,7 +27,11 @@ class Sector(Domain):
             :attr:`Sector.industries <yfinance.Sector.industries>`
                 Map of sector and industry
         """
-        super(Sector, self).__init__(key, session, proxy)
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            YfData(session=session, proxy=proxy)
+
+        super(Sector, self).__init__(key, session)
         self._query_url: str = f'{_QUERY_URL_}/sectors/{self._key}'
         self._top_etfs: Optional[Dict] = None
         self._top_mutual_funds: Optional[Dict] = None
@@ -133,7 +138,7 @@ class Sector(Domain):
         result = None
         
         try:
-            result = self._fetch(self._query_url, self.proxy)
+            result = self._fetch(self._query_url)
             data = result['data']
             self._parse_and_assign_common(data)
 

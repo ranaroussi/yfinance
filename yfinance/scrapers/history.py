@@ -6,18 +6,21 @@ import pandas as pd
 from math import isclose
 import time as _time
 import bisect
+from curl_cffi import requests
 
 from yfinance import shared, utils
-from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
+from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, _SENTINEL_
 from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
 
 class PriceHistory:
-    def __init__(self, data, ticker, tz, session=None, proxy=None):
+    def __init__(self, data, ticker, tz, session=None, proxy=_SENTINEL_):
         self._data = data
         self.ticker = ticker.upper()
         self.tz = tz
-        self.proxy = proxy
-        self.session = session
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+        self.session = session or requests.Session(impersonate="chrome")
 
         self._history_cache = {}
         self._history_metadata = None
@@ -30,7 +33,7 @@ class PriceHistory:
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
-                proxy=None, rounding=False, timeout=10,
+                proxy=_SENTINEL_, rounding=False, timeout=10,
                 raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
@@ -61,8 +64,6 @@ class PriceHistory:
             keepna: bool
                 Keep NaN rows returned by Yahoo?
                 Default is False
-            proxy: str
-                Optional. Proxy server URL scheme. Default is None
             rounding: bool
                 Round values to 2 decimal places?
                 Optional. Default is False = precision suggested by Yahoo!
@@ -74,7 +75,10 @@ class PriceHistory:
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
-        proxy = proxy or self.proxy
+
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
 
         interval_user = interval
         period_user = period
@@ -129,13 +133,14 @@ class PriceHistory:
                 end = utils._parse_user_dt(end, tz)
             if start is None:
                 if interval == "1m":
-                    start = end - 604800   # 7 days
-                elif interval in ("5m", "15m", "30m", "90m"):
+                    start = end - 691200  # 8 days
+                elif interval in ("2m", "5m", "15m", "30m", "90m"):
                     start = end - 5184000  # 60 days
-                elif interval in ("1h", '60m'):
+                elif interval in ("1h", "60m"):
                     start = end - 63072000  # 730 days
                 else:
                     start = end - 3122064000  # 99 years
+                start += 5 # allow for processing time
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}
@@ -175,7 +180,6 @@ class PriceHistory:
             data = get_fn(
                 url=url,
                 params=params,
-                proxy=proxy,
                 timeout=timeout
             )
             if "Will be right back" in data.text or data is None:
@@ -249,9 +253,16 @@ class PriceHistory:
                 self._reconstruct_start_interval = None
             return utils.empty_df()
 
+        # Select useful info from metadata
+        quote_type = self._history_metadata["instrumentType"]
+        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
+        tz_exchange = self._history_metadata["exchangeTimezoneName"]
+        currency = self._history_metadata["currency"]
+
         # Process custom periods
         if period and period not in self._history_metadata.get("validRanges", []):
             end = int(_time.time())
+            end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
             start = _datetime.date.fromtimestamp(end)
             start -= utils._interval_to_timedelta(period)
             start -= _datetime.timedelta(days=4)
@@ -260,9 +271,8 @@ class PriceHistory:
         quotes = utils.parse_quotes(data["chart"]["result"][0])
         # Yahoo bug fix - it often appends latest price even if after end date
         if end and not quotes.empty:
-            endDt = pd.to_datetime(end, unit='s')
-            if quotes.index[quotes.shape[0] - 1] >= endDt:
-                quotes = quotes.iloc[0:quotes.shape[0] - 1]
+            if quotes.index[-1] >= end_dt.tz_convert('UTC').tz_localize(None):
+                quotes = quotes.drop(quotes.index[-1])
         if quotes.empty:
             msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
         elif len(quotes) == 1:
@@ -288,12 +298,6 @@ class PriceHistory:
                 quotes['Stock Splits'] = quotes2['Stock Splits'].max()
             except Exception:
                 pass
-
-        # Select useful info from metadata
-        quote_type = self._history_metadata["instrumentType"]
-        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
-        tz_exchange = self._history_metadata["exchangeTimezoneName"]
-        currency = self._history_metadata["currency"]
 
         # Note: ordering is important. If you change order, run the tests!
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
@@ -327,21 +331,22 @@ class PriceHistory:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
         if start is not None:
             if not quotes.empty:
-                startDt = quotes.index[0].floor('D')
+                start_d = quotes.index[0].floor('D')
                 if dividends is not None:
-                    dividends = dividends.loc[startDt:]
+                    dividends = dividends.loc[start_d:]
                 if capital_gains is not None:
-                    capital_gains = capital_gains.loc[startDt:]
+                    capital_gains = capital_gains.loc[start_d:]
                 if splits is not None:
-                    splits = splits.loc[startDt:]
+                    splits = splits.loc[start_d:]
         if end is not None:
-            endDt = pd.Timestamp(end, unit='s').tz_localize(tz)
+            # -1 because date-slice end is inclusive
+            end_dt_sub1 = end_dt - pd.Timedelta(1)
             if dividends is not None:
-                dividends = dividends[dividends.index < endDt]
+                dividends = dividends[:end_dt_sub1]
             if capital_gains is not None:
-                capital_gains = capital_gains[capital_gains.index < endDt]
+                capital_gains = capital_gains[:end_dt_sub1]
             if splits is not None:
-                splits = splits[splits.index < endDt]
+                splits = splits[:end_dt_sub1]
 
         # Prepare for combine
         intraday = params["interval"][-1] in ("m", 'h')
@@ -383,7 +388,9 @@ class PriceHistory:
             msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
-        df = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, repair=repair, currency=currency)
+        df, last_trade = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, prepost, repair=repair, currency=currency)
+        if last_trade is not None:
+            self._history_metadata['lastTrade'] = {'Price':last_trade['Close'], "Time":last_trade.name}
 
         df = df[~df.index.duplicated(keep='first')]  # must do before repair
 
@@ -401,10 +408,11 @@ class PriceHistory:
             df = self._fix_bad_div_adjust(df, interval, currency)
 
             # Need the latest/last row to be repaired before 100x/split repair:
-            df_last = self._fix_zeroes(df.iloc[-1:], interval, tz_exchange, prepost)
-            if 'Repaired?' not in df.columns:
-                df['Repaired?'] = False
-            df = pd.concat([df.drop(df.index[-1]), df_last])
+            if not df.empty:
+                df_last = self._fix_zeroes(df.iloc[-1:], interval, tz_exchange, prepost)
+                if 'Repaired?' not in df.columns:
+                    df['Repaired?'] = False
+                df = pd.concat([df.drop(df.index[-1]), df_last])
 
             df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
             df = self._fix_bad_stock_splits(df, interval, tz_exchange)
@@ -463,19 +471,23 @@ class PriceHistory:
             self._reconstruct_start_interval = None
         return df
 
-    def _get_history_cache(self, period="max", interval="1d", proxy=None) -> pd.DataFrame:
+    def _get_history_cache(self, period="max", interval="1d") -> pd.DataFrame:
         cache_key = (interval, period)
         if cache_key in self._history_cache:
             return self._history_cache[cache_key]
 
-        df = self.history(period=period, interval=interval, prepost=True, proxy=proxy)
+        df = self.history(period=period, interval=interval, prepost=True)
         self._history_cache[cache_key] = df
         return df
 
-    def get_history_metadata(self, proxy=None) -> dict:
+    def get_history_metadata(self, proxy=_SENTINEL_) -> dict:
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
         if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
             # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            self._get_history_cache(period="5d", interval="1h", proxy=proxy)
+            self._get_history_cache(period="5d", interval="1h")
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
@@ -483,29 +495,45 @@ class PriceHistory:
 
         return self._history_metadata
 
-    def get_dividends(self, period="max", proxy=None) -> pd.Series:
-        df = self._get_history_cache(period=period, proxy=proxy)
+    def get_dividends(self, period="max", proxy=_SENTINEL_) -> pd.Series:
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
+        df = self._get_history_cache(period=period)
         if "Dividends" in df.columns:
             dividends = df["Dividends"]
             return dividends[dividends != 0]
         return pd.Series()
 
-    def get_capital_gains(self, period="max", proxy=None) -> pd.Series:
-        df = self._get_history_cache(period=period, proxy=proxy)
+    def get_capital_gains(self, period="max", proxy=_SENTINEL_) -> pd.Series:
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
+        df = self._get_history_cache(period=period)
         if "Capital Gains" in df.columns:
             capital_gains = df["Capital Gains"]
             return capital_gains[capital_gains != 0]
         return pd.Series()
 
-    def get_splits(self, period="max", proxy=None) -> pd.Series:
-        df = self._get_history_cache(period=period, proxy=proxy)
+    def get_splits(self, period="max", proxy=_SENTINEL_) -> pd.Series:
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
+        df = self._get_history_cache(period=period)
         if "Stock Splits" in df.columns:
             splits = df["Stock Splits"]
             return splits[splits != 0]
         return pd.Series()
 
-    def get_actions(self, period="max", proxy=None) -> pd.Series:
-        df = self._get_history_cache(period=period, proxy=proxy)
+    def get_actions(self, period="max", proxy=_SENTINEL_) -> pd.Series:
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
+        df = self._get_history_cache(period=period)
 
         action_columns = []
         if "Dividends" in df.columns:
