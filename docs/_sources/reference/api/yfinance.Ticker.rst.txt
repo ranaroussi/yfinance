@@ -20,8 +20,6 @@ Ticker
       :noindex:
    .. autoattribute:: balancesheet
       :noindex:
-   .. autoattribute:: basic_info
-      :noindex:
    .. autoattribute:: calendar
       :noindex:
    .. autoattribute:: capital_gains
