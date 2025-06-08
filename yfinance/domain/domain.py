@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from ..ticker import Ticker
-from ..const import _QUERY1_URL_
+from ..const import _QUERY1_URL_, _SENTINEL_
 from ..data import YfData
+from ..utils import print_once
 from typing import Dict, List, Optional
 import pandas as _pd
 
@@ -13,20 +14,21 @@ class Domain(ABC):
     and methods for fetching and parsing data. Derived classes must implement the `_fetch_and_parse()` method.
     """
 
-    def __init__(self, key: str, session=None, proxy=None):
+    def __init__(self, key: str, session=None, proxy=_SENTINEL_):
         """
         Initializes the Domain object with a key, session, and proxy.
 
         Args:
             key (str): Unique key identifying the domain entity.
             session (Optional[requests.Session]): Session object for HTTP requests. Defaults to None.
-            proxy (Optional[Dict]): Proxy settings. Defaults to None.
         """
         self._key: str = key
-        self.proxy = proxy
         self.session = session
         self._data: YfData = YfData(session=session)
-        
+        if proxy is not _SENTINEL_:
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
         self._name: Optional[str] = None
         self._symbol: Optional[str] = None
         self._overview: Optional[Dict] = None
@@ -109,19 +111,18 @@ class Domain(ABC):
         self._ensure_fetched(self._research_reports)
         return self._research_reports
 
-    def _fetch(self, query_url, proxy) -> Dict:
+    def _fetch(self, query_url) -> Dict:
         """
         Fetches data from the given query URL.
 
         Args:
             query_url (str): The URL used for the data query.
-            proxy (Dict): Proxy settings for the request.
 
         Returns:
             Dict: The JSON response data from the request.
         """
         params_dict = {"formatted": "true", "withReturns": "true", "lang": "en-US", "region": "US"}
-        result = self._data.get_raw_json(query_url, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        result = self._data.get_raw_json(query_url, params=params_dict)
         return result
 
     def _parse_and_assign_common(self, data) -> None:

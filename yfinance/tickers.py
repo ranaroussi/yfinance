@@ -22,9 +22,10 @@
 from __future__ import print_function
 
 from . import Ticker, multi
-
-
-# from collections import namedtuple as _namedtuple
+from .live import WebSocket
+from .utils import print_once
+from .data import YfData
+from .const import _SENTINEL_
 
 
 class Tickers:
@@ -38,6 +39,11 @@ class Tickers:
         self.symbols = [ticker.upper() for ticker in tickers]
         self.tickers = {ticker: Ticker(ticker, session=session) for ticker in self.symbols}
 
+        self._data = YfData(session=session)
+
+        self._message_handler = None
+        self.ws = None
+
         # self.tickers = _namedtuple(
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
@@ -45,9 +51,13 @@ class Tickers:
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, repair=False,
-                proxy=None,
+                proxy=_SENTINEL_,
                 threads=True, group_by='column', progress=True,
                 timeout=10, **kwargs):
+
+        if proxy is not _SENTINEL_:
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
 
         return self.download(
             period, interval,
@@ -60,9 +70,13 @@ class Tickers:
     def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, repair=False, 
-                 proxy=None,
+                 proxy=_SENTINEL_,
                  threads=True, group_by='column', progress=True,
                  timeout=10, **kwargs):
+
+        if proxy is not _SENTINEL_:
+            print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
 
         data = multi.download(self.symbols,
                               start=start, end=end,
@@ -72,7 +86,6 @@ class Tickers:
                               period=period,
                               interval=interval,
                               prepost=prepost,
-                              proxy=proxy,
                               group_by='ticker',
                               threads=threads,
                               progress=progress,
@@ -90,3 +103,10 @@ class Tickers:
 
     def news(self):
         return {ticker: [item for item in Ticker(ticker).news] for ticker in self.symbols}
+
+    def live(self, message_handler=None, verbose=True):
+        self._message_handler = message_handler
+
+        self.ws = WebSocket(verbose=verbose)
+        self.ws.subscribe(self.symbols)
+        self.ws.listen(self._message_handler)

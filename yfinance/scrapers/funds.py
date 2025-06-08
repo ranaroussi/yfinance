@@ -1,7 +1,7 @@
 import pandas as pd
 
 from yfinance.data import YfData
-from yfinance.const import _BASE_URL_
+from yfinance.const import _BASE_URL_, _SENTINEL_
 from yfinance.exceptions import YFDataException
 from yfinance import utils
 
@@ -17,16 +17,17 @@ class FundsData:
     Notes: 
     - fundPerformance module is not implemented as better data is queryable using history
     """
-    def __init__(self, data: YfData, symbol: str, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
         """
         Args:
             data (YfData): The YfData object for fetching data.
             symbol (str): The symbol of the fund.
-            proxy (optional): Proxy settings for fetching data.
         """
         self._data = data
         self._symbol = symbol
-        self.proxy = proxy
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
         
         # quoteType
         self._quote_type = None
@@ -165,26 +166,23 @@ class FundsData:
             self._fetch_and_parse()
         return self._sector_weightings
 
-    def _fetch(self, proxy):
+    def _fetch(self):
         """
         Fetches the raw JSON data from the API.
-
-        Args:
-            proxy: Proxy settings for fetching data.
 
         Returns:
             dict: The raw JSON data.
         """
         modules = ','.join(["quoteType", "summaryProfile", "topHoldings", "fundProfile"])
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "symbol": self._symbol, "formatted": "false"}
-        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_+self._symbol, user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_+self._symbol, params=params_dict)
         return result
 
     def _fetch_and_parse(self) -> None:
         """
         Fetches and parses the data from the API.
         """
-        result = self._fetch(self.proxy)
+        result = self._fetch()
         try:
             data = result["quoteSummary"]["result"][0]
             # check quote type

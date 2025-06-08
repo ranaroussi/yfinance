@@ -10,10 +10,13 @@ from yfinance.exceptions import YFException, YFNotImplementedError
 
 class Fundamentals:
 
-    def __init__(self, data: YfData, symbol: str, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=const._SENTINEL_):
+        if proxy is not const._SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            data._set_proxy(proxy)
+
         self._data = data
         self._symbol = symbol
-        self.proxy = proxy
 
         self._earnings = None
         self._financials = None
@@ -48,26 +51,38 @@ class Financials:
         self._balance_sheet_time_series = {}
         self._cash_flow_time_series = {}
 
-    def get_income_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
+    def get_income_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
+        if proxy is not const._SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
         res = self._income_time_series
         if freq not in res:
-            res[freq] = self._fetch_time_series("income", freq, proxy)
+            res[freq] = self._fetch_time_series("income", freq)
         return res[freq]
 
-    def get_balance_sheet_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
+    def get_balance_sheet_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
+        if proxy is not const._SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
         res = self._balance_sheet_time_series
         if freq not in res:
-            res[freq] = self._fetch_time_series("balance-sheet", freq, proxy)
+            res[freq] = self._fetch_time_series("balance-sheet", freq)
         return res[freq]
 
-    def get_cash_flow_time_series(self, freq="yearly", proxy=None) -> pd.DataFrame:
+    def get_cash_flow_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
+        if proxy is not const._SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            self._data._set_proxy(proxy)
+
         res = self._cash_flow_time_series
         if freq not in res:
-            res[freq] = self._fetch_time_series("cash-flow", freq, proxy)
+            res[freq] = self._fetch_time_series("cash-flow", freq)
         return res[freq]
 
     @utils.log_indent_decorator
-    def _fetch_time_series(self, name, timescale, proxy=None):
+    def _fetch_time_series(self, name, timescale):
         # Fetching time series preferred over scraping 'QuoteSummaryStore',
         # because it matches what Yahoo shows. But for some tickers returns nothing,
         # despite 'QuoteSummaryStore' containing valid data.
@@ -84,7 +99,7 @@ class Financials:
                              " only available for cash-flow or income data.")
 
         try:
-            statement = self._create_financials_table(name, timescale, proxy)
+            statement = self._create_financials_table(name, timescale)
 
             if statement is not None:
                 return statement
@@ -92,7 +107,7 @@ class Financials:
             utils.get_yf_logger().error(f"{self._symbol}: Failed to create {name} financials table for reason: {e}")
         return pd.DataFrame()
 
-    def _create_financials_table(self, name, timescale, proxy):
+    def _create_financials_table(self, name, timescale):
         if name == "income":
             # Yahoo stores the 'income' table internally under 'financials' key
             name = "financials"
@@ -100,11 +115,11 @@ class Financials:
         keys = const.fundamentals_keys[name]
 
         try:
-            return self.get_financials_time_series(timescale, keys, proxy)
+            return self._get_financials_time_series(timescale, keys)
         except Exception:
             pass
 
-    def get_financials_time_series(self, timescale, keys: list, proxy=None) -> pd.DataFrame:
+    def _get_financials_time_series(self, timescale, keys: list) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly", "trailing": "trailing"}
         timescale = timescale_translation[timescale]
 
@@ -117,7 +132,7 @@ class Financials:
         url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
         # Step 3: fetch and reshape data
-        json_str = self._data.cache_get(url=url, proxy=proxy).text
+        json_str = self._data.cache_get(url=url).text
         json_data = json.loads(json_str)
         data_raw = json_data["timeseries"]["result"]
         # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data

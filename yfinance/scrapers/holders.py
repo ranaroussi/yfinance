@@ -3,19 +3,20 @@ import requests
 
 from yfinance import utils
 from yfinance.data import YfData
-from yfinance.const import _BASE_URL_
+from yfinance.const import _BASE_URL_, _SENTINEL_
 from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
-
 class Holders:
     _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
-    def __init__(self, data: YfData, symbol: str, proxy=None):
+    def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
         self._data = data
         self._symbol = symbol
-        self.proxy = proxy
+        if proxy is not _SENTINEL_:
+            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            data._set_proxy(proxy)
 
         self._major = None
         self._major_direct_holders = None
@@ -62,16 +63,16 @@ class Holders:
             self._fetch_and_parse()
         return self._insider_roster
 
-    def _fetch(self, proxy):
+    def _fetch(self):
         modules = ','.join(
             ["institutionOwnership", "fundOwnership", "majorDirectHolders", "majorHoldersBreakdown", "insiderTransactions", "insiderHolders", "netSharePurchaseActivity"])
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false"}
-        result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", user_agent_headers=self._data.user_agent_headers, params=params_dict, proxy=proxy)
+        result = self._data.get_raw_json(f"{_QUOTE_SUMMARY_URL_}/{self._symbol}", params=params_dict)
         return result
 
     def _fetch_and_parse(self):
         try:
-            result = self._fetch(self.proxy)
+            result = self._fetch()
         except requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
 
