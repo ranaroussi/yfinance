@@ -1,17 +1,18 @@
+import curl_cffi
 import pandas as pd
-import requests
+import warnings
 
 from yfinance import utils
-from yfinance.data import YfData
 from yfinance.const import quote_summary_valid_modules, _SENTINEL_
-from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
+from yfinance.data import YfData
 from yfinance.exceptions import YFException
+from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
 
 class Analysis:
 
     def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             data._set_proxy(proxy)
 
         self._data = data
@@ -178,7 +179,7 @@ class Analysis:
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
-        except requests.exceptions.HTTPError as e:
+        except curl_cffi.requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
         return result

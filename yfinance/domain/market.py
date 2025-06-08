@@ -1,9 +1,9 @@
 import datetime as dt
-
-from ..data import YfData
-from ..data import utils
-from ..const import _QUERY1_URL_, _SENTINEL_
 import json as _json
+import warnings
+
+from ..const import _QUERY1_URL_, _SENTINEL_
+from ..data import utils, YfData
 
 class Market:
     def __init__(self, market:'str', session=None, proxy=_SENTINEL_, timeout=30):
@@ -13,7 +13,7 @@ class Market:
 
         self._data = YfData(session=self.session)
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._data._set_proxy(proxy)
 
         self._logger = utils.get_yf_logger()

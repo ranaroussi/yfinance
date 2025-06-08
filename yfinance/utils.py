@@ -27,7 +27,7 @@ import re
 import re as _re
 import sys as _sys
 import threading
-from functools import lru_cache, wraps
+from functools import wraps
 from inspect import getmembers
 from types import FunctionType
 from typing import List, Optional
@@ -48,13 +48,6 @@ def attributes(obj):
     return {
         name: getattr(obj, name) for name in dir(obj)
         if name[0] != '_' and name not in disallowed_names and hasattr(obj, name)}
-
-
-@lru_cache(maxsize=20)
-def print_once(msg):
-    # 'warnings' module suppression of repeat messages does not work.
-    # This function replicates correct behaviour
-    print(msg)
 
 
 # Logging
@@ -181,18 +174,14 @@ def is_isin(string):
     return bool(_re.match("^([A-Z]{2})([A-Z0-9]{9})([0-9])$", string))
 
 
-def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
+def get_all_by_isin(isin):
     if not (is_isin(isin)):
         raise ValueError("Invalid ISIN number")
-
-    if proxy is not const._SENTINEL_:
-        print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
-        proxy = None
 
     # Deferred this to prevent circular imports
     from .search import Search
 
-    search = Search(query=isin, max_results=1, session=session, proxy=proxy)
+    search = Search(query=isin, max_results=1)
 
     # Extract the first quote and news
     ticker = search.quotes[0] if search.quotes else {}
@@ -210,18 +199,18 @@ def get_all_by_isin(isin, proxy=const._SENTINEL_, session=None):
     }
 
 
-def get_ticker_by_isin(isin, proxy=const._SENTINEL_, session=None):
-    data = get_all_by_isin(isin, proxy, session)
+def get_ticker_by_isin(isin):
+    data = get_all_by_isin(isin)
     return data.get('ticker', {}).get('symbol', '')
 
 
-def get_info_by_isin(isin, proxy=const._SENTINEL_, session=None):
-    data = get_all_by_isin(isin, proxy, session)
+def get_info_by_isin(isin):
+    data = get_all_by_isin(isin)
     return data.get('ticker', {})
 
 
-def get_news_by_isin(isin, proxy=const._SENTINEL_, session=None):
-    data = get_all_by_isin(isin, proxy, session)
+def get_news_by_isin(isin):
+    data = get_all_by_isin(isin)
     return data.get('news', {})
 
 

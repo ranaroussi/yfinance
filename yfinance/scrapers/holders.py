@@ -1,9 +1,10 @@
+import curl_cffi
 import pandas as pd
-import requests
+import warnings
 
 from yfinance import utils
-from yfinance.data import YfData
 from yfinance.const import _BASE_URL_, _SENTINEL_
+from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
@@ -15,7 +16,7 @@ class Holders:
         self._data = data
         self._symbol = symbol
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             data._set_proxy(proxy)
 
         self._major = None
@@ -73,7 +74,7 @@ class Holders:
     def _fetch_and_parse(self):
         try:
             result = self._fetch()
-        except requests.exceptions.HTTPError as e:
+        except curl_cffi.requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
 
             self._major = pd.DataFrame()

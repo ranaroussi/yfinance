@@ -5,8 +5,8 @@ import datetime as _dt
 import sys
 import os
 import yfinance
-from requests_ratelimiter import LimiterSession
-from pyrate_limiter import Duration, RequestRate, Limiter
+# from requests_ratelimiter import LimiterSession
+# from pyrate_limiter import Duration, RequestRate, Limiter
 
 _parent_dp = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 _src_dp = _parent_dp
@@ -25,12 +25,15 @@ if os.path.isdir(testing_cache_dirpath):
         import shutil
         shutil.rmtree(testing_cache_dirpath)
 
-# Setup a session to only rate-limit
-history_rate = RequestRate(1, Duration.SECOND)
-limiter = Limiter(history_rate)
-session_gbl = LimiterSession(limiter=limiter)
+# Since switching to curl_cffi, the requests_ratelimiter|cache won't work.
+session_gbl = None
 
-# Use this instead if you also want caching:
+# # Setup a session to only rate-limit
+# history_rate = RequestRate(1, Duration.SECOND)
+# limiter = Limiter(history_rate)
+# session_gbl = LimiterSession(limiter=limiter)
+
+# # Use this instead if you also want caching:
 # from requests_cache import CacheMixin, SQLiteCache
 # from requests_ratelimiter import LimiterMixin
 # from requests import Session
