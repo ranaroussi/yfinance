@@ -1,6 +1,18 @@
 Change Log
 ===========
 
+0.2.62
+------
+Fix prices 'period=max' sometimes failing  # 2509
+ISIN cache  #2516
+Proxy:
+- fix false 'proxy deprecated' messages
+- fix ISIN + proxy  #2514
+- replace print_once with warnings  #2523
+Error handling:
+- detect rate-limit during crumb fetch  #2491
+- replace requests.HTTPError with curl_cffi
+
 0.2.61
 ------
 Fix ALL type hints in websocket #2493
