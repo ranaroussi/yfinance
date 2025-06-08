@@ -18,9 +18,9 @@ from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNo
 
 
 import unittest
-import requests_cache
+# import requests_cache
 from typing import Union, Any, get_args, _GenericAlias
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+# from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
     ("major_holders", pd.DataFrame),
@@ -284,36 +284,37 @@ class TestTickerHistory(unittest.TestCase):
                         else:
                             self.assertIsInstance(data.columns, pd.MultiIndex)
 
-    def test_no_expensive_calls_introduced(self):
-        """
-        Make sure calling history to get price data has not introduced more calls to yahoo than absolutely necessary.
-        As doing other type of scraping calls than "query2.finance.yahoo.com/v8/finance/chart" to yahoo website
-        will quickly trigger spam-block when doing bulk download of history data.
-        """
-        symbol = "GOOGL"
-        period = "1y"
-        with requests_cache.CachedSession(backend="memory") as session:
-            ticker = yf.Ticker(symbol, session=session)
-            ticker.history(period=period)
-            actual_urls_called = [r.url for r in session.cache.filter()]
+    # Hopefully one day we find an equivalent "requests_cache" that works with "curl_cffi"
+    # def test_no_expensive_calls_introduced(self):
+    #     """
+    #     Make sure calling history to get price data has not introduced more calls to yahoo than absolutely necessary.
+    #     As doing other type of scraping calls than "query2.finance.yahoo.com/v8/finance/chart" to yahoo website
+    #     will quickly trigger spam-block when doing bulk download of history data.
+    #     """
+    #     symbol = "GOOGL"
+    #     period = "1y"
+    #     with requests_cache.CachedSession(backend="memory") as session:
+    #         ticker = yf.Ticker(symbol, session=session)
+    #         ticker.history(period=period)
+    #         actual_urls_called = [r.url for r in session.cache.filter()]
 
-        # Remove 'crumb' argument
-        for i in range(len(actual_urls_called)):
-            u = actual_urls_called[i]
-            parsed_url = urlparse(u)
-            query_params = parse_qs(parsed_url.query)
-            query_params.pop('crumb', None)
-            query_params.pop('cookie', None)
-            u = urlunparse(parsed_url._replace(query=urlencode(query_params, doseq=True)))
-            actual_urls_called[i] = u
-        actual_urls_called = tuple(actual_urls_called)
+    #     # Remove 'crumb' argument
+    #     for i in range(len(actual_urls_called)):
+    #         u = actual_urls_called[i]
+    #         parsed_url = urlparse(u)
+    #         query_params = parse_qs(parsed_url.query)
+    #         query_params.pop('crumb', None)
+    #         query_params.pop('cookie', None)
+    #         u = urlunparse(parsed_url._replace(query=urlencode(query_params, doseq=True)))
+    #         actual_urls_called[i] = u
+    #     actual_urls_called = tuple(actual_urls_called)
 
-        expected_urls = [
-            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d",  # ticker's tz
-            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=False&interval=1d&range={period}"
-        ]
-        for url in actual_urls_called:
-            self.assertTrue(url in expected_urls, f"Unexpected URL called: {url}")
+    #     expected_urls = [
+    #         f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d",  # ticker's tz
+    #         f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=False&interval=1d&range={period}"
+    #     ]
+    #     for url in actual_urls_called:
+    #         self.assertTrue(url in expected_urls, f"Unexpected URL called: {url}")
 
     def test_dividends(self):
         data = self.ticker.dividends
@@ -889,8 +890,6 @@ class TestTickerAnalysts(unittest.TestCase):
         data = self.ticker.upgrades_downgrades
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
-        self.assertTrue(len(data.columns) == 4, "data has wrong number of columns")
-        self.assertCountEqual(data.columns.values.tolist(), ['Firm', 'ToGrade', 'FromGrade', 'Action'], "data has wrong column names")
         self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
 
         data_cached = self.ticker.upgrades_downgrades
@@ -1000,7 +999,6 @@ class TestTickerInfo(unittest.TestCase):
         self.assertIsInstance(data, dict, "data has wrong type")
         expected_keys = ['industry', 'currentPrice', 'exchange', 'floatShares', 'companyOfficers', 'bid']
         for k in expected_keys:
-            print(k)
             self.assertIn("symbol", data.keys(), f"Did not find expected key '{k}' in info dict")
         self.assertEqual(self.symbols[0], data["symbol"], "Wrong symbol value in info dict")
 

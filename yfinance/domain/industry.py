@@ -1,12 +1,14 @@
 from __future__ import print_function
-from typing import Dict, Optional
 
 import pandas as _pd
+from typing import Dict, Optional
+import warnings
+
+from .. import utils
+from ..const import _SENTINEL_
+from ..data import YfData
 
 from .domain import Domain, _QUERY_URL_
-from .. import utils
-from ..data import YfData
-from ..const import _SENTINEL_
 
 class Industry(Domain):
     """
@@ -20,8 +22,9 @@ class Industry(Domain):
             session (optional): The session to use for requests.
         """
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
-            YfData(session=session, proxy=proxy)
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
+            YfData(proxy=proxy)
+        YfData(session=session)
         super(Industry, self).__init__(key, session)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
 

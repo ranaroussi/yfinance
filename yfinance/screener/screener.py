@@ -1,14 +1,14 @@
-from .query import EquityQuery as EqyQy
-from .query import FundQuery as FndQy
-from .query import QueryBase, EquityQuery, FundQuery
+import curl_cffi
+from typing import Union
+import warnings
 
 from yfinance.const import _QUERY1_URL_, _SENTINEL_
 from yfinance.data import YfData
+from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
-from ..utils import dynamic_docstring, generate_list_table_from_dict_universal, print_once
-
-from typing import Union
-import requests
+from .query import EquityQuery as EqyQy
+from .query import FundQuery as FndQy
+from .query import QueryBase, EquityQuery, FundQuery
 
 _SCREENER_URL_ = f"{_QUERY1_URL_}/v1/finance/screener"
 _PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
@@ -112,7 +112,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     """
 
     if proxy is not _SENTINEL_:
-        print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+        warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
         _data = YfData(session=session, proxy=proxy)
     else:
         _data = YfData(session=session)
@@ -157,7 +157,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         # Switch to Yahoo's predefined endpoint
 
         if size is not None:
-            print_once("YF deprecation warning: 'size' argument is deprecated for predefined screens, set 'count' instead.")
+            warnings.warn("Screen 'size' argument is deprecated for predefined screens, set 'count' instead.", DeprecationWarning, stacklevel=2)
             count = size
             size = None
             fields['count'] = fields['size']
@@ -170,7 +170,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         resp = _data.get(url=_PREDEFINED_URL_, params=params_dict)
         try:
             resp.raise_for_status()
-        except requests.exceptions.HTTPError:
+        except curl_cffi.requests.exceptions.HTTPError:
             if query not in PREDEFINED_SCREENER_QUERIES:
                 print(f"yfinance.screen: '{query}' is probably not a predefined query.")
             raise

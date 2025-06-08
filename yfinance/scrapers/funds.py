@@ -1,11 +1,11 @@
 import pandas as pd
-
-from yfinance.data import YfData
-from yfinance.const import _BASE_URL_, _SENTINEL_
-from yfinance.exceptions import YFDataException
-from yfinance import utils
-
 from typing import Dict, Optional
+import warnings
+
+from yfinance import utils
+from yfinance.const import _BASE_URL_, _SENTINEL_
+from yfinance.data import YfData
+from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
 
@@ -26,7 +26,7 @@ class FundsData:
         self._data = data
         self._symbol = symbol
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._data._set_proxy(proxy)
         
         # quoteType

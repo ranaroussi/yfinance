@@ -1,13 +1,13 @@
+import curl_cffi
 import datetime
 import json
-
 import numpy as _np
 import pandas as pd
-import requests
+import warnings
 
 from yfinance import utils
-from yfinance.data import YfData
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_, _SENTINEL_
+from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
@@ -29,7 +29,7 @@ class FastInfo:
     def __init__(self, tickerBaseObject, proxy=_SENTINEL_):
         self._tkr = tickerBaseObject
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._tkr._data._set_proxy(proxy)
 
         self._prices_1y = None
@@ -490,7 +490,7 @@ class Quote:
         self._data = data
         self._symbol = symbol
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             self._data._set_proxy(proxy)
 
         self._info = None
@@ -588,7 +588,7 @@ class Quote:
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
-        except requests.exceptions.HTTPError as e:
+        except curl_cffi.requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
         return result
@@ -597,7 +597,7 @@ class Quote:
         params_dict = {"symbols": self._symbol, "formatted": "false"}
         try:
             result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict)
-        except requests.exceptions.HTTPError as e:
+        except curl_cffi.requests.exceptions.HTTPError as e:
             utils.get_yf_logger().error(str(e))
             return None
         return result

@@ -1,13 +1,14 @@
 from __future__ import print_function
-from typing import Dict, Optional
-from ..utils import dynamic_docstring, generate_list_table_from_dict
-from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
 
 import pandas as _pd
+from typing import Dict, Optional
+import warnings
+
+from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
+from ..data import YfData
+from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_logger
 
 from .domain import Domain, _QUERY_URL_
-from .. import utils
-from ..data import YfData
 
 class Sector(Domain):
     """
@@ -28,7 +29,7 @@ class Sector(Domain):
                 Map of sector and industry
         """
         if proxy is not _SENTINEL_:
-            utils.print_once("YF deprecation warning: set proxy via new config function: yf.set_config(proxy=proxy)")
+            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
             YfData(session=session, proxy=proxy)
 
         super(Sector, self).__init__(key, session)
@@ -147,7 +148,7 @@ class Sector(Domain):
             self._industries = self._parse_industries(data.get('industries', {}))
 
         except Exception as e:
-            logger = utils.get_yf_logger()
+            logger = get_yf_logger()
             logger.error(f"Failed to get sector data for '{self._key}' reason: {e}")
             logger.debug("Got response: ")
             logger.debug("-------------")
