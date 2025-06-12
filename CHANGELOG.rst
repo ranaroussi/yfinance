@@ -1,6 +1,10 @@
 Change Log
 ===========
 
+0.2.63
+------
+Fix download(ISIN)  # 2531
+
 0.2.62
 ------
 Fix prices 'period=max' sometimes failing  # 2509
