@@ -134,13 +134,14 @@ class PriceHistory:
                 end = utils._parse_user_dt(end, tz)
             if start is None:
                 if interval == "1m":
-                    start = end - 604800   # 7 days
-                elif interval in ("5m", "15m", "30m", "90m"):
+                    start = end - 691200  # 8 days
+                elif interval in ("2m", "5m", "15m", "30m", "90m"):
                     start = end - 5184000  # 60 days
-                elif interval in ("1h", '60m'):
+                elif interval in ("1h", "60m"):
                     start = end - 63072000  # 730 days
                 else:
                     start = end - 3122064000  # 99 years
+                start += 5 # allow for processing time
             else:
                 start = utils._parse_user_dt(start, tz)
             params = {"period1": start, "period2": end}

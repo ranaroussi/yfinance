@@ -94,6 +94,12 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     logger = utils.get_yf_logger()
     session = session or requests.Session(impersonate="chrome")
 
+    # Ensure data initialised with session.
+    if proxy is not _SENTINEL_:
+        warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
+        YfData(proxy=proxy)
+    YfData(session=session)
+
     if auto_adjust is None:
         # Warn users that default has changed to True
         warnings.warn("YF.download() has changed argument auto_adjust default to True", FutureWarning, stacklevel=3)
@@ -128,7 +134,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     for ticker in tickers:
         if utils.is_isin(ticker):
             isin = ticker
-            ticker = utils.get_ticker_by_isin(ticker, session=session)
+            ticker = utils.get_ticker_by_isin(ticker)
             shared._ISINS[ticker] = isin
         _tickers_.append(ticker)
 
@@ -143,12 +149,6 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     shared._DFS = {}
     shared._ERRORS = {}
     shared._TRACEBACKS = {}
-
-    # Ensure data initialised with session.
-    if proxy is not _SENTINEL_:
-        warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
-        YfData(proxy=proxy)
-    YfData(session=session)
 
     # download using threads
     if threads:
