@@ -4,6 +4,10 @@ from functools import lru_cache
 from curl_cffi import requests
 from bs4 import BeautifulSoup
 import datetime
+import tempfile
+import shutil
+import os
+import certifi
 
 from frozendict import frozendict
 
@@ -59,6 +63,59 @@ class SingletonMeta(type):
             return cls._instances[cls]
 
 
+def _get_safe_session(**kwargs):
+    """
+    Create a curl_cffi session with SSL certificate path that works with non-ASCII characters.
+    
+    On Windows, curl_cffi may fail with SSL certificate verification when the certificate path
+    contains non-ASCII characters (e.g., Turkish, Chinese, etc.). This function creates a 
+    temporary certificate file in a safe path to work around this issue.
+    
+    Args:
+        **kwargs: Arguments to pass to requests.Session()
+        
+    Returns:
+        requests.Session: A curl_cffi session with working SSL verification
+    """
+    try:
+        # First try creating session normally
+        session = requests.Session(**kwargs)
+        
+        # Test if SSL works with current certificate path
+        original_cert_path = certifi.where()
+        
+        # Check if path contains non-ASCII characters
+        try:
+            original_cert_path.encode('ascii')
+            # Path is ASCII-safe, return session as-is
+            return session
+        except UnicodeEncodeError:
+            # Path contains non-ASCII characters, need workaround
+            utils.get_yf_logger().debug(f"SSL certificate path contains non-ASCII characters: {original_cert_path}")
+            
+            # Create temporary certificate file in safe location
+            temp_dir = tempfile.mkdtemp(prefix="yfinance_ssl_")
+            temp_cert_path = os.path.join(temp_dir, "cacert.pem")
+            shutil.copy2(original_cert_path, temp_cert_path)
+            
+            utils.get_yf_logger().debug(f"Created temporary SSL certificate: {temp_cert_path}")
+            
+            # Create new session with safe certificate path
+            kwargs['verify'] = temp_cert_path
+            session = requests.Session(**kwargs)
+            
+            # Store temp path for cleanup (if needed)
+            session._yf_temp_cert_path = temp_cert_path
+            session._yf_temp_cert_dir = temp_dir
+            
+            return session
+            
+    except Exception as e:
+        utils.get_yf_logger().debug(f"Error creating safe session: {e}")
+        # Fallback to normal session
+        return requests.Session(**kwargs)
+
+
 class YfData(metaclass=SingletonMeta):
     """
     Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations.
@@ -77,7 +134,7 @@ class YfData(metaclass=SingletonMeta):
         self._cookie_lock = threading.Lock()
 
         self._session, self._proxy = None, None
-        self._set_session(session or requests.Session(impersonate="chrome"))
+        self._set_session(session or _get_safe_session(impersonate="chrome"))
         self._set_proxy(proxy)
 
     def _set_session(self, session):
