@@ -1,0 +1,36 @@
+name: Auto-close issues using default template
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  check-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if issue uses custom template
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            
+            // Check for specific fields from your custom form
+            // Adjust these patterns based on your form structure
+            const hasCustomFields = body.includes('### Describe bug') || 
+                                   body.includes('### Simple code that reproduces');
+            
+            if (!hasCustomFields) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: 'This issue appears to use the default template. Stop that. Use our custom bug report form.'
+              });
+              
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              });
+            }
