@@ -31,7 +31,7 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
-    def history(self, period="1mo", interval="1d",
+    def history(self, period=None, interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=_SENTINEL_, rounding=False, timeout=10,
@@ -40,6 +40,7 @@ class PriceHistory:
         :Parameters:
             period : str
                 Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                Default: 1mo
                 Either Use period parameter or use start and end
             interval : str
                 Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
@@ -113,7 +114,7 @@ class PriceHistory:
 
         start_user = start
         end_user = end
-        if start or period is None or period.lower() == "max":
+        if start or end or (period and period.lower() == "max"):
             # Check can get TZ. Fail => probably delisted
             tz = self.tz
             if tz is None:
@@ -128,22 +129,33 @@ class PriceHistory:
                     logger.error(err_msg)
                 return utils.empty_df()
 
-            if end is None:
-                end = int(_time.time())
+        if start:
+            start = utils._parse_user_dt(start, tz)
+        if end:
+            end = utils._parse_user_dt(end, tz)
+
+        if period is None:
+            if not (start or end):
+                period = '1mo'  # default
+            elif not start:
+                # set start = end - period
+                start = int((pd.Timestamp(end, unit='s') - utils._interval_to_timedelta('1mo')).timestamp())  # -1mo
+            elif not end:
+                # set end = start + period
+                end = int((pd.Timestamp(start, unit='s') + utils._interval_to_timedelta('1mo')).timestamp())  # +1mo
+        elif period and period.lower() == "max":
+            end = int(_time.time())
+            if interval == "1m":
+                start = end - 691200  # 8 days
+            elif interval in ("2m", "5m", "15m", "30m", "90m"):
+                start = end - 5184000  # 60 days
+            elif interval in ("1h", "60m"):
+                start = end - 63072000  # 730 days
             else:
-                end = utils._parse_user_dt(end, tz)
-            if start is None:
-                if interval == "1m":
-                    start = end - 691200  # 8 days
-                elif interval in ("2m", "5m", "15m", "30m", "90m"):
-                    start = end - 5184000  # 60 days
-                elif interval in ("1h", "60m"):
-                    start = end - 63072000  # 730 days
-                else:
-                    start = end - 3122064000  # 99 years
-                start += 5 # allow for processing time
-            else:
-                start = utils._parse_user_dt(start, tz)
+                start = end - 3122064000  # 99 years
+            start += 5 # allow for processing time
+
+        if start or end:
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
