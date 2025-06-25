@@ -328,6 +328,24 @@ class PriceHistory:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
+            if 'currency' in dividends.columns:
+                # Rare, only seen with Vietnam market
+                price_currency = self._history_metadata['currency']
+                if price_currency is None:
+                    price_currency = ''
+                f_currency_mismatch = dividends['currency'] != price_currency
+                if f_currency_mismatch.any():
+                    if not repair or price_currency == '':
+                        # Append currencies to values, let user decide action.
+                        dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
+                    else:
+                        # Attempt repair = currency conversion
+                        dividends = self._dividends_convert_fx(dividends, price_currency, repair)
+                        if (dividends['currency'] != price_currency).any():
+                            # FX conversion failed
+                            dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
+                dividends = dividends.drop('currency', axis=1)
+
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
         if start is not None:
@@ -1018,6 +1036,45 @@ class PriceHistory:
                 df['Dividends'] *= m
 
         return df, currency2
+
+    def _dividends_convert_fx(self, dividends, fx, repair=False):
+        bad_div_currencies = [c for c in dividends['currency'].unique() if c != fx]
+        major_currencies = ['USD', 'JPY', 'EUR', 'CNY', 'GBP', 'CAD']
+        for c in bad_div_currencies:
+            fx2_tkr = None
+            if c == 'USD':
+                # Simple convert from USD to target FX
+                fx_tkr = f'{fx}=X'
+                reverse = False
+            elif fx == 'USD':
+                # Use same USD FX but reversed
+                fx_tkr = f'{fx}=X'
+                reverse = True
+            elif c in major_currencies and fx in major_currencies:
+                # Simple convert
+                fx_tkr = f'{c}{fx}=X'
+                reverse = False
+            else:
+                # No guarantee that Yahoo has direct FX conversion, so
+                # convert via USD
+                # - step 1: -> USD
+                fx_tkr = f'{c}=X'
+                reverse = True
+                # - step 2: USD -> FX
+                fx2_tkr = f'{fx}=X'
+
+            fx_dat = PriceHistory(self._data, fx_tkr, self.session)
+            fx_rate = fx_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
+            if reverse:
+                fx_rate = 1/fx_rate
+            dividends.loc[dividends['currency']==c, 'Dividends'] *= fx_rate
+            if fx2_tkr is not None:
+                fx2_dat = PriceHistory(self._data, fx2_tkr, self.session)
+                fx2_rate = fx2_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
+                dividends.loc[dividends['currency']==c, 'Dividends'] *= fx2_rate
+
+        dividends['currency'] = fx
+        return dividends
 
     @utils.log_indent_decorator
     def _fix_unit_mixups(self, df, interval, tz_exchange, prepost):

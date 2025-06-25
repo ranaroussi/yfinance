@@ -519,7 +519,10 @@ def parse_actions(data):
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
-            dividends.columns = ["Dividends"]
+            if 'currency' in dividends.columns and (dividends['currency'] == '').all():
+                # Currency column useless, drop it.
+                dividends = dividends.drop('currency', axis=1)
+            dividends = dividends.rename(columns={'amount': 'Dividends'})
 
         if "capitalGains" in data["events"] and len(data["events"]['capitalGains']) > 0:
             capital_gains = _pd.DataFrame(
