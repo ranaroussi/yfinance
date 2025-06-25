@@ -9,3 +9,4 @@ Advanced
    config
    caching
    multi_level_columns
+   price_repair
