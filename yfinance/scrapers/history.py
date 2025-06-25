@@ -60,8 +60,9 @@ class PriceHistory:
             back_adjust: bool
                 Back-adjusted data to mimic true historical prices
             repair: bool
-                Detect currency unit 100x mixups and attempt repair.
-                Default is False
+                Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
+                Default is False.
+                Full details at: :doc:`../advanced/price_repair`.
             keepna: bool
                 Keep NaN rows returned by Yahoo?
                 Default is False

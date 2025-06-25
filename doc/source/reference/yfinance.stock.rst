@@ -20,6 +20,9 @@ Ticker stock methods
    :meth:`yfinance.scrapers.history.PriceHistory.history`
       Documentation for history
 
+   :doc:`../advanced/price_repair`
+      Documentation for price repair
+
 .. autosummary::
    :toctree: api/
    :recursive:
