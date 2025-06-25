@@ -45,7 +45,7 @@ class YFInvalidPeriodError(YFException):
         self.invalid_period = invalid_period
         self.valid_ranges = valid_ranges
         super().__init__(f"{self.ticker}: Period '{invalid_period}' is invalid, "
-                         f"must be of the format {valid_ranges}, etc.")
+                         f"must be one of: {valid_ranges}")
 
 
 class YFRateLimitError(YFException):
