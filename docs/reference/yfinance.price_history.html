@@ -545,11 +545,12 @@ document.write(`
 
 <dl class="py method">
 <dt class="sig sig-object py" id="yfinance.scrapers.history.PriceHistory.history">
-<span class="sig-name descname"><span class="pre">history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period='1mo'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval='1d'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepost=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_adjust=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">back_adjust=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repair=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keepna=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rounding=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout=10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors=False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.scrapers.history.PriceHistory.history" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval='1d'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepost=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_adjust=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">back_adjust=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repair=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keepna=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rounding=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout=10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors=False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.scrapers.history.PriceHistory.history" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>period<span class="classifier">str</span></dt><dd><p>Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+Default: 1mo
 Either Use period parameter or use start and end</p>
 </dd>
 <dt>interval<span class="classifier">str</span></dt><dd><p>Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
@@ -570,8 +571,9 @@ Default is False</p>
 </dd>
 <dt>back_adjust: bool</dt><dd><p>Back-adjusted data to mimic true historical prices</p>
 </dd>
-<dt>repair: bool</dt><dd><p>Detect currency unit 100x mixups and attempt repair.
-Default is False</p>
+<dt>repair: bool</dt><dd><p>Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
+Default is False.
+Full details at: <a class="reference internal" href="../advanced/price_repair.html"><span class="doc">Price Repair</span></a>.</p>
 </dd>
 <dt>keepna: bool</dt><dd><p>Keep NaN rows returned by Yahoo?
 Default is False</p>

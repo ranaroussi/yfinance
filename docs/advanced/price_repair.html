@@ -1,0 +1,763 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Price Repair &#8212; yfinance</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/yfinance.css?v=6f22274e" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'advanced/price_repair';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API Reference" href="../reference/index.html" />
+    <link rel="prev" title="Multi-Level Column Index" href="multi_level_columns.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo-light.webp" class="logo__image only-light" alt="yfinance - Home"/>
+    <script>document.write(`<img src="../_static/logo-dark.webp" class="logo__image only-dark" alt="yfinance - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    Advanced
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../development/index.html">
+    Development
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ranaroussi/yfinance" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    Advanced
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../development/index.html">
+    Development
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ranaroussi/yfinance" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="caching.html">Caching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_level_columns.html">Multi-Level Column Index</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Price Repair</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Advanced</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Price Repair</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="price-repair">
+<h1>Price Repair<a class="headerlink" href="#price-repair" title="Link to this heading">#</a></h1>
+<p>The new argument <code class="docutils literal notranslate"><span class="pre">repair=True</span></code> in <code class="docutils literal notranslate"><span class="pre">history()</span></code> and <code class="docutils literal notranslate"><span class="pre">download()</span></code> will attempt to fix a variety of price errors caused by Yahoo. Only US market data appears perfect, I guess Yahoo doesn’t care much about rest of world?</p>
+<p>The returned table will have a new column <code class="docutils literal notranslate"><span class="pre">Repaired?</span></code> that specifies if row was repaired.</p>
+<section id="id1">
+<h2>Price repair<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<section id="missing-dividend-adjustment">
+<h3>Missing dividend adjustment<a class="headerlink" href="#missing-dividend-adjustment" title="Link to this heading">#</a></h3>
+<p>If dividend in data but preceding <code class="docutils literal notranslate"><span class="pre">Adj</span> <span class="pre">Close</span></code> = <code class="docutils literal notranslate"><span class="pre">Close</span></code>, then manually apply dividend-adjustment to <code class="docutils literal notranslate"><span class="pre">Adj</span> <span class="pre">Close</span></code>.
+Note: <code class="docutils literal notranslate"><span class="pre">Repaired?</span></code> is NOT set to <code class="docutils literal notranslate"><span class="pre">True</span></code> because fix only changes <code class="docutils literal notranslate"><span class="pre">Adj</span> <span class="pre">Close</span></code></p>
+<figure class="align-left" id="id2">
+<a class="reference internal image-reference" href="../_images/repair-prices-missing-div-adjust.png"><img alt="8TRA.DE: repair missing dividend adjustment" src="../_images/repair-prices-missing-div-adjust.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">8TRA.DE</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<div class="clearer docutils container">
+</div>
+</section>
+<section id="missing-split-adjustment">
+<h3>Missing split adjustment<a class="headerlink" href="#missing-split-adjustment" title="Link to this heading">#</a></h3>
+<p>If stock split in data but preceding price data is not adjusted, then manually apply stock split.
+Requires date range include 1 day after stock split for calibration - sometimes Yahoo fails to adjust prices on stock split day.</p>
+<figure class="align-left" id="id3">
+<a class="reference internal image-reference" href="../_images/repair-prices-missing-split-adjust.png"><img alt="MOB.ST: repair missing split adjustment" src="../_images/repair-prices-missing-split-adjust.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">MOB.ST</span><a class="headerlink" href="#id3" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<div class="clearer docutils container">
+</div>
+</section>
+<section id="missing-data">
+<h3>Missing data<a class="headerlink" href="#missing-data" title="Link to this heading">#</a></h3>
+<p>If price data is clearly missing or corrupt, then reconstructed using smaller interval e.g. <code class="docutils literal notranslate"><span class="pre">1h</span></code> to fix <code class="docutils literal notranslate"><span class="pre">1d</span></code> data.</p>
+<figure class="align-left" id="id4">
+<a class="reference internal image-reference" href="../_images/repair-prices-missing-row.png"><img alt="1COV.DE: repair missing row" src="../_images/repair-prices-missing-row.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">1COV.DE missing row</span><a class="headerlink" href="#id4" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<div class="clearer docutils container">
+</div>
+<figure class="align-left" id="id5">
+<a class="reference internal image-reference" href="../_images/repair-prices-missing-volume-intraday.png"><img alt="1COV.DE: repair missing Volume, but intraday price changed" src="../_images/repair-prices-missing-volume-intraday.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">1COV.DE missing Volume, but intraday price changed</span><a class="headerlink" href="#id5" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<div class="clearer docutils container">
+</div>
+<figure class="align-left" id="id6">
+<a class="reference internal image-reference" href="../_images/repair-prices-missing-volume-daily.png"><img alt="0316.HK: repair missing Volume, but daily price changed" src="../_images/repair-prices-missing-volume-daily.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">0316.HK missing Volume, but daily price changed</span><a class="headerlink" href="#id6" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<div class="clearer docutils container">
+</div>
+</section>
+<section id="x-errors">
+<h3>100x errors<a class="headerlink" href="#x-errors" title="Link to this heading">#</a></h3>
+<p>Sometimes Yahoo mixes up currencies e.g. $/cents or £/pence. So some prices are 100x wrong.
+Sometimes they are spread randomly through data - these detected with <code class="docutils literal notranslate"><span class="pre">scipy</span></code> module.
+Other times they are in a block, because Yahoo decided one day to permanently switch currency.</p>
+<figure class="align-left" id="id7">
+<a class="reference internal image-reference" href="../_images/repair-prices-100x.png"><img alt="AET.L: repair 100x" src="../_images/repair-prices-100x.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">AET.L</span><a class="headerlink" href="#id7" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="price-reconstruction-algorithm-notes">
+<h3>Price reconstruction - algorithm notes<a class="headerlink" href="#price-reconstruction-algorithm-notes" title="Link to this heading">#</a></h3>
+<p>Spam minimised by grouping fetches. Tries to be aware of data limits e.g. <code class="docutils literal notranslate"><span class="pre">1h</span></code> cannot be fetched beyond 2 years.</p>
+<p>If Yahoo eventually does fix the bad data that required reconstruction, you will see it’s slightly different to reconstructed prices and volume often significantly different. Best I can do, and beats missing data.</p>
+</section>
+</section>
+<section id="dividend-repair-new">
+<h2>Dividend repair (new)<a class="headerlink" href="#dividend-repair-new" title="Link to this heading">#</a></h2>
+<p>Fix errors in dividends:</p>
+<ol class="arabic simple">
+<li><p>adjustment missing or 100x too small/big for the dividend</p></li>
+<li><p>duplicate dividend (within 7 days)</p></li>
+<li><p>dividend 100x too big/small for the ex-dividend price drop</p></li>
+<li><p>ex-div date wrong (price drop is few days/weeks after)</p></li>
+</ol>
+<p>Most errors I’ve seen are on London stock exchange (£/pence mixup), but no exchange is safe.</p>
+<section id="important-false-positives">
+<h3>IMPORTANT - false positives<a class="headerlink" href="#important-false-positives" title="Link to this heading">#</a></h3>
+<p>Because fixing (3) relies on price action, there is a chance of a “false positive” (FP) - thinking an error exists when data is good.
+FP rate increases with longer intervals, so only 1d intervals are repaired. If you request repair on multiday intervals (weekly etc), then: 1d is fetched from Yahoo, repaired, then resampled - <strong>this has nice side-effect of solving Yahoo’s flawed way of div-adjusting multiday intervals.</strong></p>
+<p>FP rate on 1d is tiny. They tend to happen with tiny dividends e.g. 0.5%, mistaking normal price volatility for an ex-div drop 100x bigger than the dividend, causing repair of the “too small” dividend (repair logic already tries to account for normal volatility by subtracting median). Either accept the risk, or fetch 6-12 months of prices with at least 2 dividends - then can analyse the dividends together to identify false positives.</p>
+</section>
+<section id="adjustment-missing">
+<h3>Adjustment missing<a class="headerlink" href="#adjustment-missing" title="Link to this heading">#</a></h3>
+<p>1398.HK</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                           Close  Adj Close  Dividends
+2024-07-08 00:00:00+08:00   4.33       4.33   0.335715
+2024-07-04 00:00:00+08:00   4.83       4.83   0.000000
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># REPAIRED:
+                           Close  Adj Close  Dividends
+2024-07-08 00:00:00+08:00   4.33   4.330000   0.335715
+2024-07-04 00:00:00+08:00   4.83   4.494285   0.000000
+</pre></div>
+</div>
+</section>
+<section id="adjustment-too-small">
+<h3>Adjustment too small<a class="headerlink" href="#adjustment-too-small" title="Link to this heading">#</a></h3>
+<p>3IN.L</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                           Close  Adj Close  Dividends
+2024-06-13 00:00:00+01:00  3.185   3.185000    0.05950
+2024-06-12 00:00:00+01:00  3.270   3.269405    0.00000
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># REPAIRED:
+                           Close  Adj Close  Dividends
+2024-06-13 00:00:00+01:00  3.185   3.185000    0.05950
+2024-06-12 00:00:00+01:00  3.270   3.210500    0.00000
+</pre></div>
+</div>
+</section>
+<section id="duplicate-within-7-days">
+<h3>Duplicate (within 7 days)<a class="headerlink" href="#duplicate-within-7-days" title="Link to this heading">#</a></h3>
+<p>ALC.SW</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                               Close  Adj Close  Dividends
+2023-05-10 00:00:00+02:00  70.580002  70.352142       0.21
+2023-05-09 00:00:00+02:00  65.739998  65.318443       0.21
+2023-05-08 00:00:00+02:00  66.379997  65.745682       0.00
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># REPAIRED:
+                               Close  Adj Close  Dividends
+2023-05-10 00:00:00+02:00  70.580002  70.352142       0.00
+2023-05-09 00:00:00+02:00  65.739998  65.527764       0.21
+2023-05-08 00:00:00+02:00  66.379997  65.956371       0.00
+</pre></div>
+</div>
+</section>
+<section id="dividend-too-big">
+<h3>Dividend too big<a class="headerlink" href="#dividend-too-big" title="Link to this heading">#</a></h3>
+<p>HLCL.L</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                           Close  Adj Close  Dividends
+2024-06-27 00:00:00+01:00  2.360     2.3600       1.78
+2024-06-26 00:00:00+01:00  2.375     2.3572       0.00
+
+# REPAIRED:
+                           Close  Adj Close  Dividends
+2024-06-27 00:00:00+01:00  2.360     2.3600     0.0178
+2024-06-26 00:00:00+01:00  2.375     2.3572     0.0000
+</pre></div>
+</div>
+</section>
+<section id="dividend-adjust-too-big">
+<h3>Dividend &amp; adjust too big<a class="headerlink" href="#dividend-adjust-too-big" title="Link to this heading">#</a></h3>
+<p>LTI.L</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                           Close  Adj Close     Adj  Dividends
+2024-08-08 00:00:00+01:00  768.0      768.0  1.0000     5150.0
+2024-08-07 00:00:00+01:00  819.0    -4331.0 -5.2882        0.0
+                           Close  Adj Close     Adj  Dividends
+2024-08-08 00:00:00+01:00  768.0      768.0  1.0000       51.5
+2024-08-07 00:00:00+01:00  819.0      767.5  0.9371        0.0
+</pre></div>
+</div>
+</section>
+<section id="dividend-too-small">
+<h3>Dividend too small<a class="headerlink" href="#dividend-too-small" title="Link to this heading">#</a></h3>
+<p>BVT.L</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                            Close  Adj Close     Adj  Dividends
+2022-02-03 00:00:00+00:00  0.7534   0.675197  0.8962    0.00001
+2022-02-01 00:00:00+00:00  0.7844   0.702970  0.8962    0.00000
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># REPAIRED:
+                            Close  Adj Close     Adj  Dividends
+2022-02-03 00:00:00+00:00  0.7534   0.675197  0.8962      0.001
+2022-02-01 00:00:00+00:00  0.7844   0.702075  0.8950      0.000
+</pre></div>
+</div>
+</section>
+<section id="adjusted-2x-on-day-before">
+<h3>Adjusted 2x on day before<a class="headerlink" href="#adjusted-2x-on-day-before" title="Link to this heading">#</a></h3>
+<p>clue: Close &lt; Low</p>
+<p>2020.OL</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                                  Low       Close   Adj Close  Dividends
+2023-12-21 00:00:00+01:00  120.199997  121.099998  118.868782       0.18
+2023-12-20 00:00:00+01:00  122.000000  121.900002  119.477371       0.00
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># REPAIRED:
+                                  Low       Close   Adj Close  Dividends
+2023-12-21 00:00:00+01:00  120.199997  121.099998  118.868782       0.18
+2023-12-20 00:00:00+01:00  122.000000  122.080002  119.654045       0.00
+</pre></div>
+</div>
+</section>
+<section id="ex-div-date-wrong">
+<h3>ex-div date wrong<a class="headerlink" href="#ex-div-date-wrong" title="Link to this heading">#</a></h3>
+<p>TETY.ST</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                               Close  Adj Close  Dividends
+2022-06-22 00:00:00+02:00  66.699997  60.085415        0.0
+2022-06-21 00:00:00+02:00  71.599998  64.499489        0.0
+2022-06-20 00:00:00+02:00  71.800003  64.679657        5.0
+2022-06-17 00:00:00+02:00  71.000000  59.454838        0.0
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># REPAIRED:
+                               Close  Adj Close  Dividends
+2022-06-22 00:00:00+02:00  66.699997  60.085415        5.0
+2022-06-21 00:00:00+02:00  71.599998  60.007881        0.0
+2022-06-20 00:00:00+02:00  71.800003  60.175503        0.0
+2022-06-17 00:00:00+02:00  71.000000  59.505021        0.0
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="multi_level_columns.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Multi-Level Column Index</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../reference/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">API Reference</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Price repair</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-dividend-adjustment">Missing dividend adjustment</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-split-adjustment">Missing split adjustment</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-data">Missing data</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#x-errors">100x errors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#price-reconstruction-algorithm-notes">Price reconstruction - algorithm notes</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dividend-repair-new">Dividend repair (new)</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#important-false-positives">IMPORTANT - false positives</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adjustment-missing">Adjustment missing</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adjustment-too-small">Adjustment too small</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#duplicate-within-7-days">Duplicate (within 7 days)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dividend-too-big">Dividend too big</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dividend-adjust-too-big">Dividend &amp; adjust too big</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dividend-too-small">Dividend too small</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adjusted-2x-on-day-before">Adjusted 2x on day before</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ex-div-date-wrong">ex-div date wrong</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/advanced/price_repair.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2017-2025 Ran Aroussi.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
