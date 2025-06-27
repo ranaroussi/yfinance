@@ -735,17 +735,11 @@ class TickerBase:
         params = {"lang": "en-US", "region": "US"}
         body = {
             "size": clamped_limit,
-            "query": {
-                "operator": "and",
-                "operands": [
-                    {"operator": "eq", "operands": ["ticker", self.ticker]},
-                    {"operator": "eq", "operands": ["eventtype", "2"]}
-                ]
-            },
+            "query": { "operator": "eq", "operands": ["ticker", self.ticker] },
             "sortField": "startdatetime",
             "sortType": "DESC",
             "entityIdType": "earnings",
-            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct"]
+            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct", "eventtype"]
         }
         response = self._data.post(url, params=params, body=body)
         json_data = response.json()
@@ -760,6 +754,14 @@ class TickerBase:
             err_msg = str(_exception)
             logger.error(f'{self.ticker}: {err_msg}')
             return None
+
+        # Convert eventtype
+        # - 1 = earnings call (manually confirmed)
+        # - 2 = earnings report
+        # - 11 = stockholders meeting (manually confirmed)
+        df['Event Type'] = df['Event Type'].replace('^1$', 'Call', regex=True)
+        df['Event Type'] = df['Event Type'].replace('^2$', 'Earnings', regex=True)
+        df['Event Type'] = df['Event Type'].replace('^11$', 'Meeting', regex=True)
 
         # Calculate earnings date
         df['Earnings Date'] = pd.to_datetime(df['Event Start Date'])
