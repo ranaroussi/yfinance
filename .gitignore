@@ -9,7 +9,6 @@ yfinance.egg-info
 build/
 *.html
 *.css
-*.png
 test.ipynb
 
 # Environments
