@@ -436,6 +436,7 @@ class PriceHistory:
             # First make currency consistent. On some exchanges, dividends often in different currency
             # to prices, e.g. £ vs pence.
             df, currency = self._standardise_currency(df, currency)
+            self._history_metadata['currency'] = currency
 
             df = self._fix_bad_div_adjust(df, interval, currency)
 
