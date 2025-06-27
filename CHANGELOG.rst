@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+0.2.64
+------
+Prices:
+- handle dividends with FX, convert if repair=True  #2549
+- fix 'period' arg when start or end set  #2550
+earnings_dates: handle 'Event Type' properly  #2555
+
 0.2.63
 ------
 Fix download(ISIN)  # 2531
