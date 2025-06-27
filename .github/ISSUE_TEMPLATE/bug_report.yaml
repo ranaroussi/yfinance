@@ -18,7 +18,15 @@ body:
 
         Are you spelling symbol *exactly* same as Yahoo?
 
-        Then visit `finance.yahoo.com` and confirm they have the data you want. Maybe your symbol was delisted, or your expectations of `yfinance` are wrong.
+        Then visit `finance.yahoo.com` and confirm they have the data you want. Maybe your symbol was delisted.
+
+        ### Data is wrong
+
+        **yfinance is not affiliated with Yahoo**. If Yahoo Finance website data is bad, tell Yahoo: https://help.yahoo.com/kb/finance-for-web/report-problems-feedback-ideas-yahoo-finance-sln28397.html.
+
+        But if yfinance is creating error during processing, then finish this form.
+
+        For price errors, try price repair: https://ranaroussi.github.io/yfinance/advanced/price_repair.html
 
         ### Are you spamming Yahoo?
 
@@ -63,7 +71,7 @@ body:
     id: bad-data-proof
     attributes:
       label: "Bad data proof"
-      description: "If `yfinance` returning bad data, show proof of good data here. Best proof is screenshot of finance.yahoo.com"
+      description: "If yfinance returning bad data, show proof of good data on Yahoo Finance website here."
     validations:
       required: false
 
