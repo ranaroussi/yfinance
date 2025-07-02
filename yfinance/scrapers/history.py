@@ -139,11 +139,10 @@ class PriceHistory:
             if not (start or end):
                 period = '1mo'  # default
             elif not start:
-                # set start = end - period
-                start = int((pd.Timestamp(end, unit='s') - utils._interval_to_timedelta('1mo')).timestamp())  # -1mo
+                # start = end - 1 month
+                start = int((pd.Timestamp(end, unit='s') - utils._interval_to_timedelta('1mo')).timestamp())
             elif not end:
-                # set end = start + period
-                end = int((pd.Timestamp(start, unit='s') + utils._interval_to_timedelta('1mo')).timestamp())  # +1mo
+                end = int(_time.time())
         elif period and period.lower() == "max":
             end = int(_time.time())
             if interval == "1m":
