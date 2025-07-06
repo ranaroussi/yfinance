@@ -1,6 +1,19 @@
 Change Log
 ===========
 
+0.2.65
+------
+Financials: ensure dtype float #2563
+Prices: fix handling arguments start/end/period #2561 #2562
+Price repair: when changing FX, update metadata #2558
+
+0.2.64
+------
+Prices:
+- handle dividends with FX, convert if repair=True  #2549
+- fix 'period' arg when start or end set  #2550
+earnings_dates: handle 'Event Type' properly  #2555
+
 0.2.63
 ------
 Fix download(ISIN)  # 2531
