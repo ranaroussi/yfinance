@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+0.2.65
+------
+Financials: ensure dtype float #2563
+Prices: fix handling arguments start/end/period #2561 #2562
+Price repair: when changing FX, update metadata #2558
+
 0.2.64
 ------
 Prices:
