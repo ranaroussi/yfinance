@@ -402,17 +402,19 @@ def snake_case_2_camelCase(s):
 def _parse_user_dt(dt, exchange_tz):
     if isinstance(dt, int):
         # Should already be epoch, test with conversion:
-        _datetime.datetime.fromtimestamp(dt)
+        dt = _pd.Timestamp(_datetime.datetime.fromtimestamp(dt)).tz_localize("UTC").tz_convert(exchange_tz)
     else:
         # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
         if isinstance(dt, str):
             dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
         if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
             dt = _datetime.datetime.combine(dt, _datetime.time(0))
-        if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
-            # Assume user is referring to exchange's timezone
-            dt = _tz.timezone(exchange_tz).localize(dt)
-        dt = int(dt.timestamp())
+        if isinstance(dt, _datetime.datetime):
+            if dt.tzinfo is None:
+                # Assume user is referring to exchange's timezone
+                dt = _pd.Timestamp(dt).tz_localize(exchange_tz)
+            else:
+                dt = _pd.Timestamp(dt).tz_convert(exchange_tz)
     return dt
 
 

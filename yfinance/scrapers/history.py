@@ -39,42 +39,42 @@ class PriceHistory:
         """
         :Parameters:
             period : str
-                Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-                Default: 1mo
-                Either Use period parameter or use start and end
+              | Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+              | Default: 1mo
+              | Can combine with start/end e.g. end = start + period
             interval : str
-                Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
-                Intraday data cannot extend last 60 days
-            start: str
-                Download start date string (YYYY-MM-DD) or _datetime, inclusive.
-                Default is 99 years ago
-                E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
-            end: str
-                Download end date string (YYYY-MM-DD) or _datetime, exclusive.
-                Default is now
-                E.g. for end="2023-01-01", the last data point will be on "2022-12-31"
+              | Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+              | Intraday data cannot extend last 60 days
+            start : str
+              | Download start date string (YYYY-MM-DD) or _datetime, inclusive.
+              | Default: 99 years ago
+              | E.g. for start="2020-01-01", first data point = "2020-01-01"
+            end : str
+              | Download end date string (YYYY-MM-DD) or _datetime, exclusive.
+              | Default: now
+              | E.g. for end="2023-01-01", last data point = "2022-12-31"
             prepost : bool
-                Include Pre and Post market data in results?
-                Default is False
-            auto_adjust: bool
-                Adjust all OHLC automatically? Default is True
-            back_adjust: bool
-                Back-adjusted data to mimic true historical prices
-            repair: bool
-                Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
-                Default is False.
-                Full details at: :doc:`../advanced/price_repair`.
-            keepna: bool
-                Keep NaN rows returned by Yahoo?
-                Default is False
-            rounding: bool
-                Round values to 2 decimal places?
-                Optional. Default is False = precision suggested by Yahoo!
-            timeout: None or float
-                If not None stops waiting for a response after given number of
-                seconds. (Can also be a fraction of a second e.g. 0.01)
-                Default is 10 seconds.
-            raise_errors: bool
+              | Include Pre and Post market data in results?
+              | Default: False
+            auto_adjust : bool
+              | Adjust all OHLC automatically?
+              | Default: True
+            back_adjust : bool
+              | Back-adjusted data to mimic true historical prices
+            repair : bool
+              | Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
+              | Default: False
+              | Full details at: :doc:`../advanced/price_repair`.
+            keepna : bool
+              | Keep NaN rows returned by Yahoo?
+              | Default: False
+            rounding : bool
+              | Optional: Round values to 2 decimal places?
+              | Default: False = use precision suggested by Yahoo!
+            timeout : None or float
+              | Optional: timeout fetches after N seconds
+              | Default: 10 seconds
+            raise_errors : bool
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
@@ -131,30 +131,46 @@ class PriceHistory:
                 return utils.empty_df()
 
         if start:
-            start = utils._parse_user_dt(start, tz)
+            start_dt = utils._parse_user_dt(start, tz)
+            start = int(start_dt.timestamp())
         if end:
-            end = utils._parse_user_dt(end, tz)
+            end_dt = utils._parse_user_dt(end, tz)
+            end = int(end_dt.timestamp())
 
         if period is None:
             if not (start or end):
                 period = '1mo'  # default
             elif not start:
-                # set start = end - period
-                start = int((pd.Timestamp(end, unit='s') - utils._interval_to_timedelta('1mo')).timestamp())  # -1mo
+                start_dt = end_dt - utils._interval_to_timedelta('1mo')
+                start = int(start_dt.timestamp())
             elif not end:
-                # set end = start + period
-                end = int((pd.Timestamp(start, unit='s') + utils._interval_to_timedelta('1mo')).timestamp())  # +1mo
-        elif period and period.lower() == "max":
-            end = int(_time.time())
-            if interval == "1m":
-                start = end - 691200  # 8 days
-            elif interval in ("2m", "5m", "15m", "30m", "90m"):
-                start = end - 5184000  # 60 days
-            elif interval in ("1h", "60m"):
-                start = end - 63072000  # 730 days
-            else:
-                start = end - 3122064000  # 99 years
-            start += 5 # allow for processing time
+                end_dt = pd.Timestamp.utcnow().tz_convert(tz)
+                end = int(end_dt.timestamp())
+        else:
+            if period.lower() == "max":
+                if end is None:
+                    end = int(_time.time())
+                if start is None:
+                    if interval == "1m":
+                        start = end - 691200  # 8 days
+                    elif interval in ("2m", "5m", "15m", "30m", "90m"):
+                        start = end - 5184000  # 60 days
+                    elif interval in ("1h", "60m"):
+                        start = end - 63072000  # 730 days
+                    else:
+                        start = end - 3122064000  # 99 years
+                    start += 5 # allow for processing time
+            elif start and end:
+                raise ValueError("Setting period, start and end is nonsense. Set maximum 2 of them.")
+            elif start or end:
+                period_td = utils._interval_to_timedelta(period)
+                if end is None:
+                    end_dt = start_dt + period_td
+                    end = int(end_dt.timestamp())
+                if start is None:
+                    start_dt = end_dt - period_td
+                    start = int(start_dt.timestamp())
+                period = None
 
         if start or end:
             params = {"period1": start, "period2": end}
@@ -436,6 +452,7 @@ class PriceHistory:
             # First make currency consistent. On some exchanges, dividends often in different currency
             # to prices, e.g. £ vs pence.
             df, currency = self._standardise_currency(df, currency)
+            self._history_metadata['currency'] = currency
 
             df = self._fix_bad_div_adjust(df, interval, currency)
 
