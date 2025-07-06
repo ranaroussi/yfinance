@@ -546,46 +546,68 @@ document.write(`
 <dl class="py method">
 <dt class="sig sig-object py" id="yfinance.scrapers.history.PriceHistory.history">
 <span class="sig-name descname"><span class="pre">history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval='1d'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepost=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_adjust=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">back_adjust=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repair=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keepna=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rounding=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout=10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors=False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.scrapers.history.PriceHistory.history" title="Link to this definition">#</a></dt>
-<dd><dl class="field-list simple">
+<dd><dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt>period<span class="classifier">str</span></dt><dd><p>Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-Default: 1mo
-Either Use period parameter or use start and end</p>
+<dd class="field-odd"><dl>
+<dt>period<span class="classifier">str</span></dt><dd><div class="line-block">
+<div class="line">Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max</div>
+<div class="line">Default: 1mo</div>
+<div class="line">Can combine with start/end e.g. end = start + period</div>
+</div>
 </dd>
-<dt>interval<span class="classifier">str</span></dt><dd><p>Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
-Intraday data cannot extend last 60 days</p>
+<dt>interval<span class="classifier">str</span></dt><dd><div class="line-block">
+<div class="line">Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo</div>
+<div class="line">Intraday data cannot extend last 60 days</div>
+</div>
 </dd>
-<dt>start: str</dt><dd><p>Download start date string (YYYY-MM-DD) or _datetime, inclusive.
-Default is 99 years ago
-E.g. for start=”2020-01-01”, the first data point will be on “2020-01-01”</p>
+<dt>start<span class="classifier">str</span></dt><dd><div class="line-block">
+<div class="line">Download start date string (YYYY-MM-DD) or _datetime, inclusive.</div>
+<div class="line">Default: 99 years ago</div>
+<div class="line">E.g. for start=”2020-01-01”, first data point = “2020-01-01”</div>
+</div>
 </dd>
-<dt>end: str</dt><dd><p>Download end date string (YYYY-MM-DD) or _datetime, exclusive.
-Default is now
-E.g. for end=”2023-01-01”, the last data point will be on “2022-12-31”</p>
+<dt>end<span class="classifier">str</span></dt><dd><div class="line-block">
+<div class="line">Download end date string (YYYY-MM-DD) or _datetime, exclusive.</div>
+<div class="line">Default: now</div>
+<div class="line">E.g. for end=”2023-01-01”, last data point = “2022-12-31”</div>
+</div>
 </dd>
-<dt>prepost<span class="classifier">bool</span></dt><dd><p>Include Pre and Post market data in results?
-Default is False</p>
+<dt>prepost<span class="classifier">bool</span></dt><dd><div class="line-block">
+<div class="line">Include Pre and Post market data in results?</div>
+<div class="line">Default: False</div>
+</div>
 </dd>
-<dt>auto_adjust: bool</dt><dd><p>Adjust all OHLC automatically? Default is True</p>
+<dt>auto_adjust<span class="classifier">bool</span></dt><dd><div class="line-block">
+<div class="line">Adjust all OHLC automatically?</div>
+<div class="line">Default: True</div>
+</div>
 </dd>
-<dt>back_adjust: bool</dt><dd><p>Back-adjusted data to mimic true historical prices</p>
+<dt>back_adjust<span class="classifier">bool</span></dt><dd><div class="line-block">
+<div class="line">Back-adjusted data to mimic true historical prices</div>
+</div>
 </dd>
-<dt>repair: bool</dt><dd><p>Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
-Default is False.
-Full details at: <a class="reference internal" href="../advanced/price_repair.html"><span class="doc">Price Repair</span></a>.</p>
+<dt>repair<span class="classifier">bool</span></dt><dd><div class="line-block">
+<div class="line">Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.</div>
+<div class="line">Default: False</div>
+<div class="line">Full details at: <a class="reference internal" href="../advanced/price_repair.html"><span class="doc">Price Repair</span></a>.</div>
+</div>
 </dd>
-<dt>keepna: bool</dt><dd><p>Keep NaN rows returned by Yahoo?
-Default is False</p>
+<dt>keepna<span class="classifier">bool</span></dt><dd><div class="line-block">
+<div class="line">Keep NaN rows returned by Yahoo?</div>
+<div class="line">Default: False</div>
+</div>
 </dd>
-<dt>rounding: bool</dt><dd><p>Round values to 2 decimal places?
-Optional. Default is False = precision suggested by Yahoo!</p>
+<dt>rounding<span class="classifier">bool</span></dt><dd><div class="line-block">
+<div class="line">Optional: Round values to 2 decimal places?</div>
+<div class="line">Default: False = use precision suggested by Yahoo!</div>
+</div>
 </dd>
-<dt>timeout: None or float</dt><dd><p>If not None stops waiting for a response after given number of
-seconds. (Can also be a fraction of a second e.g. 0.01)
-Default is 10 seconds.</p>
+<dt>timeout<span class="classifier">None or float</span></dt><dd><div class="line-block">
+<div class="line">Optional: timeout fetches after N seconds</div>
+<div class="line">Default: 10 seconds</div>
+</div>
 </dd>
-<dt>raise_errors: bool</dt><dd><p>If True, then raise errors as Exceptions instead of logging.</p>
+<dt>raise_errors<span class="classifier">bool</span></dt><dd><p>If True, then raise errors as Exceptions instead of logging.</p>
 </dd>
 </dl>
 </dd>
