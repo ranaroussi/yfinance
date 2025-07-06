@@ -577,11 +577,9 @@ class TickerBase:
         tz = self._get_ticker_tz(timeout=10)
         dt_now = pd.Timestamp.utcnow().tz_convert(tz)
         if start is not None:
-            start_ts = utils._parse_user_dt(start, tz)
-            start = pd.Timestamp.fromtimestamp(start_ts).tz_localize("UTC").tz_convert(tz)
+            start = utils._parse_user_dt(start, tz)
         if end is not None:
-            end_ts = utils._parse_user_dt(end, tz)
-            end = pd.Timestamp.fromtimestamp(end_ts).tz_localize("UTC").tz_convert(tz)
+            end = utils._parse_user_dt(end, tz)
         if end is None:
             end = dt_now
         if start is None:
