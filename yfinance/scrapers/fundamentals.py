@@ -159,6 +159,10 @@ class Financials:
 
         df.index = df.index.str.replace("^" + timescale, "", regex=True)
 
+        # Ensure float type, not object
+        for d in df.columns:
+            df[d] = df[d].astype('float')
+
         # Reorder table to match order on Yahoo website
         df = df.reindex([k for k in keys if k in df.index])
         df = df[sorted(df.columns, reverse=True)]
