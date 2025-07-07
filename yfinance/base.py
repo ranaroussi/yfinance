@@ -98,16 +98,17 @@ class TickerBase:
 
     @utils.log_indent_decorator
     def history(self, *args, **kwargs) -> pd.DataFrame:
-        return self._lazy_load_price_history().history(*args, **kwargs)
+        raise_errors = kwargs.get('raise_errors', False)
+        return self._lazy_load_price_history(raise_errors).history(*args, **kwargs)
 
     # ------------------------
 
-    def _lazy_load_price_history(self):
+    def _lazy_load_price_history(self, raise_errors=False):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10, raise_errors=raise_errors))
         return self._price_history
 
-    def _get_ticker_tz(self, timeout):
+    def _get_ticker_tz(self, timeout, raise_errors=False):
         if self._tz is not None:
             return self._tz
         c = cache.get_tz_cache()
@@ -119,7 +120,7 @@ class TickerBase:
             tz = None
 
         if tz is None:
-            tz = self._fetch_ticker_tz(timeout)
+            tz = self._fetch_ticker_tz(timeout, raise_errors)
             if tz is None:
                 # _fetch_ticker_tz works in 99.999% of cases.
                 # For rare fail get from info.
@@ -141,7 +142,7 @@ class TickerBase:
         return tz
 
     @utils.log_indent_decorator
-    def _fetch_ticker_tz(self, timeout):
+    def _fetch_ticker_tz(self, timeout, raise_errors=False):
         # Query Yahoo for fast price data just to get returned timezone
         logger = utils.get_yf_logger()
 
@@ -157,8 +158,11 @@ class TickerBase:
             # Must propagate this
             raise
         except Exception as e:
-            logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
-            return None
+            if raise_errors:
+                raise e
+            else:
+                logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
+                return None
         else:
             error = data.get('chart', {}).get('error', None)
             if error:
