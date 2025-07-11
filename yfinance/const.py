@@ -380,6 +380,7 @@ EQUITY_SCREENER_EQ_MAP = {
         'se': {'STO'},
         'sg': {'SES'},
         'sr': {},
+        'sw': {'EBS'},
         'th': {'SET'},
         'tr': {'IST'},
         'tw': {'TAI', 'TWO'},
