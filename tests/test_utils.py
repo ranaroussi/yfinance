@@ -15,7 +15,7 @@ import pandas as pd
 
 import unittest
 
-from yfinance.utils import is_valid_period_format, _dts_in_same_interval
+from yfinance.utils import is_valid_period_format, _dts_in_same_interval, _parse_user_dt
 
 
 class TestPandas(unittest.TestCase):
@@ -168,6 +168,19 @@ class TestDateIntervalCheck(unittest.TestCase):
         
         dt3 = pd.Timestamp("2024-10-15 10:31:00")
         self.assertFalse(_dts_in_same_interval(dt1, dt3, "1min"))
+
+    def test_parse_user_dt(self):
+        exchange_tz = "US/Eastern"
+        dtstr = "2024-01-04"
+        epoch = 1704344400  # output of `pd.Timestamp("2024-01-04", tz="US/Eastern").timestamp()`
+        expected = pd.Timestamp(dtstr, tz=exchange_tz)
+
+        self.assertEqual(_parse_user_dt(epoch, exchange_tz), expected)
+        self.assertEqual(_parse_user_dt(dtstr, exchange_tz), expected)
+        self.assertEqual(_parse_user_dt(datetime(year=2024, month=1, day=4).date(), exchange_tz), expected)
+        self.assertEqual(_parse_user_dt(datetime(year=2024, month=1, day=4), exchange_tz), expected)
+        with self.assertRaises(ValueError):
+            self.assertEqual(_parse_user_dt(float(epoch), exchange_tz), expected)
 
 if __name__ == "__main__":
     unittest.main()
