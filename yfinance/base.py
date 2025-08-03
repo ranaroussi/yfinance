@@ -41,6 +41,7 @@ from .scrapers.holders import Holders
 from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
+from .mic import yahoo_ticker
 
 from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_, _SENTINEL_
 
@@ -49,6 +50,24 @@ _tz_info_fetch_ctr = 0
 
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=_SENTINEL_):
+        """
+        Initialize a Yahoo Finance Ticker object.
+
+        Args:
+            ticker (str | tuple[str, str]):
+                Yahoo Finance symbol (e.g. "AAPL") or a tuple of (base_symbol, mic_code).
+                If a tuple is provided, the MIC code is mapped to the Yahoo Finance suffix
+                using `market_suffix()`.
+
+            session (requests.Session, optional):
+                Custom requests session.
+        """        
+        if isinstance(ticker, tuple):
+            if len(ticker) != 2:
+                raise ValueError("Ticker tuple must be (symbol, mic_code)")
+            base_symbol, mic_code = ticker
+            ticker = yahoo_ticker(base_symbol, mic_code)
+
         self.ticker = ticker.upper()
         self.session = session or requests.Session(impersonate="chrome")
         self._tz = None
