@@ -401,8 +401,7 @@ def snake_case_2_camelCase(s):
 
 def _parse_user_dt(dt, exchange_tz):
     if isinstance(dt, int):
-        # Should already be epoch, test with conversion:
-        dt = _pd.Timestamp(_datetime.datetime.fromtimestamp(dt)).tz_localize("UTC").tz_convert(exchange_tz)
+        dt = _pd.Timestamp(dt, unit="s", tz=exchange_tz)
     else:
         # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
         if isinstance(dt, str):
@@ -415,6 +414,8 @@ def _parse_user_dt(dt, exchange_tz):
                 dt = _pd.Timestamp(dt).tz_localize(exchange_tz)
             else:
                 dt = _pd.Timestamp(dt).tz_convert(exchange_tz)
+        else: # if we reached here, then it hasn't been any known type
+            raise ValueError(f"Unable to parse input dt {dt} of type {type(dt)}")
     return dt
 
 
