@@ -234,6 +234,18 @@ class TestTicker(unittest.TestCase):
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)
 
+    def test_ticker_with_symbol_mic(self):
+        equities = [
+            ("OR", "XPAR"),      # L'Oréal on Euronext Paris
+            ("AAPL", "XNYS"),    # Apple on NYSE
+            ("GOOGL", "XNAS"),   # Alphabet on NASDAQ
+            ("BMW", "XETR"),     # BMW on XETRA
+        ]
+        for eq in  equities:
+            ticker = yf.Ticker(eq)
+            info = ticker.info
+            self.assertIn('longName', info, f"longName not found for {eq}")
+
 
 class TestTickerHistory(unittest.TestCase):
     session = None
