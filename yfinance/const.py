@@ -308,6 +308,69 @@ SECTOR_INDUSTY_MAPPING = {
                     'utilities-regulated-water'}
 }
 
+# _MIC_TO_YAHOO_SUFFIX maps Market Identifier Codes (MIC) to Yahoo Finance market suffixes.
+# c.f. :
+# https://help.yahoo.com/kb/finance-for-web/SLN2310.html;_ylt=AwrJKiCZFo9g3Y8AsDWPAwx.;_ylu=Y29sbwMEcG9zAzEEdnRpZAMEc2VjA3Ny?locale=en_US
+# https://www.iso20022.org/market-identifier-codes
+
+_MIC_TO_YAHOO_SUFFIX = {
+    'XCBT': 'CBT', 'XCME': 'CME', 'IFUS': 'NYB', 'CECS': 'CMX', 'XNYM': 'NYM', 'XNYS': '', 'XNAS': '',  # United States
+    'XBUE': 'BA',  # Argentina
+    'XVIE': 'VI',  # Austria
+    'XASX': 'AX', 'XAUS': 'XA',  # Australia
+    'XBRU': 'BR',  # Belgium
+    'BVMF': 'SA',  # Brazil
+    'CNSX': 'CN', 'NEOE': 'NE', 'XTSE': 'TO', 'XTSX': 'V',  # Canada
+    'XSGO': 'SN',  # Chile
+    'XSHG': 'SS', 'XSHE': 'SZ',  # China
+    'XBOG': 'CL',  # Colombia
+    'XPRA': 'PR',  # Czech Republic
+    'XCSE': 'CO',  # Denmark
+    'XCAI': 'CA',  # Egypt
+    'XTAL': 'TL',  # Estonia
+    'CEUX': 'XD', 'XEUR': 'NX',  # Europe (Cboe Europe, Euronext)
+    'XHEL': 'HE',  # Finland
+    'XPAR': 'PA',  # France
+    'XBER': 'BE', 'XBMS': 'BM', 'XDUS': 'DU', 'XFRA': 'F', 'XHAM': 'HM', 'XHAN': 'HA', 'XMUN': 'MU', 'XSTU': 'SG', 'XETR': 'DE',  # Germany
+    'XATH': 'AT',  # Greece
+    'XHKG': 'HK',  # Hong Kong
+    'XBUD': 'BD',  # Hungary
+    'XICE': 'IC',  # Iceland
+    'XBOM': 'BO', 'XNSE': 'NS',  # India
+    'XIDX': 'JK',  # Indonesia
+    'XDUB': 'IR',  # Ireland
+    'XTAE': 'TA',  # Israel
+    'MTAA': 'MI', 'EUTL': 'TI',  # Italy
+    'XTKS': 'T',  # Japan
+    'XKFE': 'KW',  # Kuwait
+    'XRIS': 'RG',  # Latvia
+    'XVIL': 'VS',  # Lithuania
+    'XKLS': 'KL',  # Malaysia
+    'XMEX': 'MX',  # Mexico
+    'XAMS': 'AS',  # Netherlands
+    'XNZE': 'NZ',  # New Zealand
+    'XOSL': 'OL',  # Norway
+    'XPHS': 'PS',  # Philippines
+    'XWAR': 'WA',  # Poland
+    'XLIS': 'LS',  # Portugal
+    'XQAT': 'QA',  # Qatar
+    'XBSE': 'RO',  # Romania
+    'XSES': 'SI',  # Singapore
+    'XJSE': 'JO',  # South Africa
+    'XKRX': 'KS', 'KQKS': 'KQ',  # South Korea
+    'BMEX': 'MC',  # Spain
+    'XTAD': 'SAU',  # Saudi Arabia
+    'XSTO': 'ST',  # Sweden
+    'XSWX': 'SW',  # Switzerland
+    'ROCO': 'TWO', 'XTAI': 'TW',  # Taiwan
+    'XBKK': 'BK',  # Thailand
+    'XIST': 'IS',  # Turkey
+    'XDFM': 'AE',  # UAE
+    'AQXE': 'AQ', 'XCHI': 'XC', 'XLON': 'L', 'ILSE': 'IL',  # United Kingdom
+    'XCAR': 'CR',  # Venezuela
+    'XSTC': 'VN'  # Vietnam
+}
+
 def merge_two_level_dicts(dict1, dict2):
     result = dict1.copy()
     for key, value in dict2.items():

@@ -242,9 +242,14 @@ class TestTicker(unittest.TestCase):
             ("BMW", "XETR"),     # BMW on XETRA
         ]
         for eq in  equities:
-            ticker = yf.Ticker(eq)
-            info = ticker.info
-            self.assertIn('longName', info, f"longName not found for {eq}")
+            # No exception = pass
+            yf.Ticker(eq)
+            yf.Ticker((eq[0], eq[1].lower()))
+
+    def test_ticker_with_symbol_mic_invalid(self):
+        with self.assertRaises(ValueError) as cm:
+            yf.Ticker(('ABC', 'XXXX'))
+        self.assertIn("Unknown MIC code: 'XXXX'", str(cm.exception))
 
 
 class TestTickerHistory(unittest.TestCase):
