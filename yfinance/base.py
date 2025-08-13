@@ -55,9 +55,9 @@ class TickerBase:
 
         Args:
             ticker (str | tuple[str, str]):
-                Yahoo Finance symbol (e.g. "AAPL") or a tuple of (base_symbol, mic_code).
-                If a tuple is provided, the MIC code is mapped to the Yahoo Finance suffix
-                using `market_suffix()`.
+                Yahoo Finance symbol (e.g. "AAPL")
+                or a tuple of (symbol, MIC) e.g. ('OR','XPAR')
+                (MIC = market identifier code)
 
             session (requests.Session, optional):
                 Custom requests session.
