@@ -32,6 +32,7 @@ from curl_cffi import requests
 
 
 from . import utils, cache
+from .const import _MIC_TO_YAHOO_SUFFIX
 from .data import YfData
 from .exceptions import YFEarningsDateMissing, YFRateLimitError
 from .live import WebSocket
@@ -49,6 +50,33 @@ _tz_info_fetch_ctr = 0
 
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=_SENTINEL_):
+        """
+        Initialize a Yahoo Finance Ticker object.
+
+        Args:
+            ticker (str | tuple[str, str]):
+                Yahoo Finance symbol (e.g. "AAPL")
+                or a tuple of (symbol, MIC) e.g. ('OR','XPAR')
+                (MIC = market identifier code)
+
+            session (requests.Session, optional):
+                Custom requests session.
+        """        
+        if isinstance(ticker, tuple):
+            if len(ticker) != 2:
+                raise ValueError("Ticker tuple must be (symbol, mic_code)")
+            base_symbol, mic_code = ticker
+            # ticker = yahoo_ticker(base_symbol, mic_code)
+            if mic_code.startswith('.'):
+                mic_code = mic_code[1:]
+            if mic_code.upper() not in _MIC_TO_YAHOO_SUFFIX:
+                raise ValueError(f"Unknown MIC code: '{mic_code}'")
+            sfx = _MIC_TO_YAHOO_SUFFIX[mic_code.upper()]
+            if sfx != '':
+                ticker = f'{base_symbol}.{sfx}'
+            else:
+                ticker = base_symbol
+
         self.ticker = ticker.upper()
         self.session = session or requests.Session(impersonate="chrome")
         self._tz = None
