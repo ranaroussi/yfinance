@@ -351,7 +351,17 @@ class _CookieCache:
             self.initialised = 0  # failure
             return
 
-        db.connect()
+        try:
+            db.connect()
+        except _peewee.DatabaseError as err:
+            if str(err) == "database disk image is malformed":
+                # I don't understand how this is possible when
+                # self.get_db() was successful. But 1 user
+                # reported.
+                self.initialised = 0  # failure
+                return
+            else:
+                raise
         Cookie_db_proxy.initialize(db)
         try:
             db.create_tables([_CookieSchema])
