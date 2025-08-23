@@ -23,7 +23,6 @@ The following are the publicly available classes, and functions exposed by the `
 - :class:`AsyncWebSocket <yfinance.AsyncWebSocket>`: Class for asynchronously streaming live market data.
 - :attr:`Sector <yfinance.Sector>`: Domain class for accessing sector information.
 - :attr:`Industry <yfinance.Industry>`: Domain class for accessing industry information.
-- :attr:`Market <yfinance.Market>`: Class for accessing market status & summary.
 - :attr:`EquityQuery <yfinance.EquityQuery>`: Class to build equity query filters.
 - :attr:`FundQuery <yfinance.FundQuery>`: Class to build fund query filters.
 - :attr:`screen <yfinance.screen>`: Run equity/fund queries.
@@ -40,7 +39,6 @@ The following are the publicly available classes, and functions exposed by the `
    yfinance.market
    yfinance.financials
    yfinance.analysis
-   yfinance.market
    yfinance.search
    yfinance.lookup
    yfinance.websocket
