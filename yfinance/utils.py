@@ -1021,6 +1021,36 @@ def generate_list_table_from_dict(data: dict, bullets: bool=True, title: str=Non
 def generate_list_table_from_dict_universal(data: dict, bullets: bool=True, title: str=None, concat_keys=[]) -> str:
     """
     Generate a list-table for the docstring showing permitted keys/values.
+
+    Parameters
+    ----------
+    data : dict
+        Dictionary containing keys and their possible values.
+    bullets : bool, optional
+        If True, formats values as bullet points. Default is True.
+    title : str, optional
+        Title for the table. Default is None.
+    concat_keys : list, optional
+        Keys for which short lines should be concatenated. Default is [].
+
+    Returns
+    -------
+    str
+        A formatted string representing the list-table for documentation.
+
+    Example
+    -------
+    >>> data = {'color': ['red', 'blue'], 'size': ['S', 'M', 'L']}
+    >>> print(generate_list_table_from_dict_universal(data))
+    * - color
+        -
+            - blue
+            - red
+      - size
+        -
+            - L
+            - M
+            - S
     """
     table = _generate_table_configurations(title)
     for k in data.keys():
