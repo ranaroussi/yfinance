@@ -13,3 +13,4 @@ scipy>=1.6.3
 curl_cffi>=0.7
 protobuf>=3.19.0
 websockets>=13.0
+selenium>=4.35.0
