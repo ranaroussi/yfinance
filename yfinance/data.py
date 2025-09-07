@@ -368,7 +368,17 @@ class YfData(metaclass=SingletonMeta):
 
     @utils.log_indent_decorator
     def get(self, url, params=None, timeout=30):
-        return self._make_request(url, request_method = self._session.get, params=params, timeout=timeout)
+        response = self._make_request(url, request_method = self._session.get, params=params, timeout=timeout)
+
+        # Accept cookie-consent if redirected to consent page
+        if not self._is_this_consent_url(response.url):
+            # "Consent Page not detected"
+            pass
+        else:
+            # "Consent Page detected"
+            response = self._accept_consent_form(response, timeout)
+
+        return response
 
     @utils.log_indent_decorator
     def post(self, url, body, params=None, timeout=30):
@@ -426,18 +436,7 @@ class YfData(metaclass=SingletonMeta):
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
     def cache_get(self, url, params=None, timeout=30):
-
-        response = self.get(url, params, timeout)
-
-        # Accept cookie-consent if redirected to consent page
-        if not self._is_this_consent_url(response.url):
-            # "Consent Page not detected"
-            pass
-        else:
-            # "Consent Page detected"
-            response = self._accept_consent_form(response, timeout)
-
-        return response
+        return self.get(url, params, timeout)
 
     def get_raw_json(self, url, params=None, timeout=30):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')

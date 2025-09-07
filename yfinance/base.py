@@ -47,8 +47,6 @@ from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_, _SENTINEL_
 
 from io import StringIO
 from bs4 import BeautifulSoup
-from dateutil import parser
-from zoneinfo import ZoneInfo
 
 
 _tz_info_fetch_ctr = 0
@@ -738,8 +736,11 @@ class TickerBase:
         self._news = [article for article in news if not article.get('ad', [])]
         return self._news
 
+    def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+        return self._get_earnings_dates_using_scrape(limit, offset)
+
     @utils.log_indent_decorator
-    def get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+    def _get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
         """
         Uses YfData.cache_get() to scrape earnings data from YahooFinance.
         (https://finance.yahoo.com/calendar/earnings?symbol=INTC)
@@ -804,34 +805,42 @@ class TickerBase:
             html_stringio = StringIO(table_html)
     
             # Pass the StringIO object to pd.read_html()
-            df = pd.read_html(html_stringio)[0]
-            df = df.dropna(subset=["Symbol", "Company", "Earnings Date"])
+            df = pd.read_html(html_stringio, na_values=['-'])[0]
     
-            # praser.parse doesn't understand "EDT", "EST"
-            tzinfos = {
-                "EDT": ZoneInfo("America/New_York"),
-                "EST": ZoneInfo("America/New_York"),
-            }
-            df.index = df["Earnings Date"].apply(
-                lambda date_str: parser.parse(date_str, tzinfos=tzinfos).strftime(
-                    "%Y-%m-%d"
-                )
-            )
-            df.index.name = "Date"
-            # Remove "+" sign from Surprise(%)
-            df["Surprise (%)"] = df["Surprise (%)"].apply(
-                lambda x: str(x[1:]) if x[0] == "+" else str(x)
-            )
-            df = df.drop(["Earnings Date", "Company", "Symbol"], axis=1)
-    
+            # Drop redundant columns
+            df = df.drop(["Symbol", "Company"], axis=1)
+
+            # Backwards compatibility
+            df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)
+
+            df = df.dropna(subset="Earnings Date")
+
+            # Parse earnings date
+            # - Pandas doesn't like EDT, EST
+            df['Earnings Date'] = df['Earnings Date'].str.replace('EDT', 'America/New_York')
+            df['Earnings Date'] = df['Earnings Date'].str.replace('EST', 'America/New_York')
+            # - separate timezone string (last word)
+            dt_parts = df['Earnings Date'].str.rsplit(' ', n=1, expand=True)
+            dts = dt_parts[0]
+            tzs = dt_parts[1]
+            df['Earnings Date'] = pd.to_datetime(dts, format='%B %d, %Y at %I %p')
+            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)])
+            df = df.set_index("Earnings Date")
+
         else:
-            raise ValueError("Table not found on the page.")
+            err_msg = "No earnings dates found, symbol may be delisted"
+            logger = utils.get_yf_logger()
+            logger.error(f'{self.ticker}: {err_msg}')
+            return None
         return df
 
     @utils.log_indent_decorator
-    def get_earnings_dates_using_screener(self, limit=12, proxy=_SENTINEL_) -> Optional[pd.DataFrame]:
+    def _get_earnings_dates_using_screener(self, limit=12, proxy=_SENTINEL_) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
+
+        In Summer 2025, Yahoo stopped updating the data at this endpoint.
+        So reverting to scraping HTML.
         
         Args:
             limit (int): max amount of upcoming and recent earnings dates to return.
