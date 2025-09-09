@@ -529,7 +529,8 @@ EQUITY_SCREENER_FIELDS = {
     "eq_fields": {
         "region",
         "sector",
-        "peer_group"}, 
+        "peer_group",
+        "industry"}, 
     "price":{
         "lastclosemarketcap.lasttwelvemonths",
         "percentchange",
