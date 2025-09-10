@@ -31,7 +31,13 @@ autosummary_generate = True
 autodoc_default_options = {
     'exclude-members': '__init__',
     'members': True,
+    # # trying to stop Sphinx duplicating property funcs in methods section
+    # 'undoc-members': True,
+    # 'show-inheritance': True,
+    # 'special-members': False,
 }
+# # Add this line to treat properties as attributes only
+# autodoc_member_order = 'bysource'
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
