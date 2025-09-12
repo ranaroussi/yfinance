@@ -750,6 +750,13 @@ def safe_merge_dfs(df_main, df_sub, interval):
             if df_sub.empty:
                 df_main['Dividends'] = 0.0
                 return df_main
+
+            # df_sub changed so recalc indices:
+            df_main['_date'] = df_main.index.date
+            df_sub['_date'] = df_sub.index.date
+            indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
+            df_main = df_main.drop('_date', axis=1)
+            df_sub = df_sub.drop('_date', axis=1)
         else:
             empty_row_data = {**{c:[_np.nan] for c in const._PRICE_COLNAMES_}, 'Volume':[0]}
             if interval == '1d':
