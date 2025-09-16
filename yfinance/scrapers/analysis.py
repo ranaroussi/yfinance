@@ -180,7 +180,7 @@ class Analysis:
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
-            utils.get_yf_logger().error(str(e))
+            utils.get_yf_logger().error(str(e) + e.response.text)
             return None
         return result
 
