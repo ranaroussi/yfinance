@@ -5,6 +5,7 @@
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
+   :exclude-members: {% for item in attributes %}{{ item }}{% if not loop.last %}, {% endif %}{% endfor %}
 
    {% block attributes %}
    {% if attributes %}
