@@ -1,6 +1,16 @@
 Change Log
 ===========
 
+0.2.66
+------
+Screener: add Swiss exchange and industry field
+Support MIC #2579
+Fixes:
+- parse epoch dt #2573
+- earnings_dates #2591
+- merge intraday prices with divs/splits #2595
+- exceptions missing detail #2599
+
 0.2.65
 ------
 Financials: ensure dtype float #2563
