@@ -6,6 +6,7 @@ AsyncWebSocket
 .. currentmodule:: yfinance
 
 .. autoclass:: AsyncWebSocket
+   :exclude-members: 
 
    
    

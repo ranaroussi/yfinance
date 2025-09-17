@@ -6,6 +6,7 @@ Lookup
 .. currentmodule:: yfinance
 
 .. autoclass:: Lookup
+   :exclude-members: all, cryptocurrency, currency, etf, future, index, mutualfund, stock
 
    
    

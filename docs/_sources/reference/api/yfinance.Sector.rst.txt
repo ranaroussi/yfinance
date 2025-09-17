@@ -6,6 +6,7 @@ Sector
 .. currentmodule:: yfinance
 
 .. autoclass:: Sector
+   :exclude-members: industries, key, name, overview, research_reports, symbol, ticker, top_companies, top_etfs, top_mutual_funds
 
    
    

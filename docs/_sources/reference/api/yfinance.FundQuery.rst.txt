@@ -6,6 +6,7 @@ FundQuery
 .. currentmodule:: yfinance
 
 .. autoclass:: FundQuery
+   :exclude-members: valid_fields, valid_values
 
    
    

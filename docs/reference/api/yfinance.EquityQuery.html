@@ -550,6 +550,7 @@ document.write(`
 <tr class="row-even"><td><p>eq_fields</p></td>
 <td><ul class="simple">
 <li><p>exchange</p></li>
+<li><p>industry</p></li>
 <li><p>peer_group</p></li>
 <li><p>region</p></li>
 <li><p>sector</p></li>
@@ -718,7 +719,7 @@ document.write(`
 </thead>
 <tbody>
 <tr class="row-even"><td><p>region</p></td>
-<td><p>ar, at, au, be, br, ca, ch, cl, cn, co, cz, de, dk, ee, eg, es, fi, fr, gb, gr, hk, hu, id, ie, il, in, is, it, jp, kr, kw, lk, lt, lv, mx, my, nl, no, nz, pe, ph, pk, pl, pt, qa, ro, ru, sa, se, sg, sr, th, tr, tw, us, ve, vn, za</p></td>
+<td><p>ar, at, au, be, br, ca, ch, cl, cn, co, cz, de, dk, ee, eg, es, fi, fr, gb, gr, hk, hu, id, ie, il, in, is, it, jp, kr, kw, lk, lt, lv, mx, my, nl, no, nz, pe, ph, pk, pl, pt, qa, ro, ru, sa, se, sg, sr, sw, th, tr, tw, us, ve, vn, za</p></td>
 </tr>
 <tr class="row-odd"><td><p>exchange</p></td>
 <td><div class="line-block">
@@ -738,7 +739,8 @@ document.write(`
 <div class="line">ph: PHP, PHS.  pk: .  pl: WSE</div>
 <div class="line">pt: LIS.  qa: DOH.  ro: BVB.  ru:</div>
 <div class="line">sa: SAU.  se: STO.  sg: SES.  sr:</div>
-<div class="line">th: SET.  tr: IST.  tw: TAI, TWO</div>
+<div class="line">sw: EBS.  th: SET.  tr: IST</div>
+<div class="line">tw: TAI, TWO</div>
 <div class="line">us: ASE, BTS, CXI, NCM, NGM, NMS, NYQ, OEM, OQB, OQX, PCX, PNK, YHD</div>
 <div class="line">ve: CCS.  vn: .  za: JNB</div>
 </div>
@@ -760,7 +762,23 @@ document.write(`
 </ul>
 </td>
 </tr>
-<tr class="row-odd"><td><p>peer_group</p></td>
+<tr class="row-odd"><td><p>industry</p></td>
+<td><div class="line-block">
+<div class="line">Basic Materials: Agricultural Inputs, Aluminum, Building Materials, Chemicals, Coking Coal, Copper, Gold, Lumber &amp; Wood Production, Other Industrial Metals &amp; Mining, Other Precious Metals &amp; Mining, Paper &amp; Paper Products, Silver, Specialty Chemicals, Steel</div>
+<div class="line">Communication Services: Advertising Agencies, Broadcasting, Electronic Gaming &amp; Multimedia, Entertainment, Internet Content &amp; Information, Publishing, Telecom Services</div>
+<div class="line">Consumer Cyclical: Apparel Manufacturing, Apparel Retail, Auto &amp; Truck Dealerships, Auto Manufacturers, Auto Parts, Department Stores, Footwear &amp; Accessories, Furnishings, Fixtures &amp; Appliances, Gambling, Home Improvement Retail, Internet Retail, Leisure, Lodging, Luxury Goods, Packaging &amp; Containers, Personal Services, Recreational Vehicles, Residential Construction, Resorts &amp; Casinos, Restaurants, Specialty Retail, Textile Manufacturing, Travel Services</div>
+<div class="line">Consumer Defensive: Beverages - Brewers, Beverages - Non-Alcoholic, Beverages - Wineries &amp; Distilleries, Confectioners, Discount Stores, Education &amp; Training Services, Farm Products, Food Distribution, Grocery Stores, Household &amp; Personal Products, Packaged Foods, Tobacco</div>
+<div class="line">Energy: Oil Gas Drilling, Oil Gas E P, Oil Gas Equipment Services, Oil Gas Integrated, Oil Gas Midstream, Oil Gas Refining Marketing, Thermal Coal, Uranium</div>
+<div class="line">Financial Services: Asset Management, Banks Diversified, Banks Regional, Capital Markets, Credit Services, Financial Conglomerates, Financial Data Stock Exchanges, Insurance Brokers, Insurance Diversified, Insurance Life, Insurance Property Casualty, Insurance Reinsurance, Insurance Specialty, Mortgage Finance, Shell Companies</div>
+<div class="line">Healthcare: Biotechnology, Diagnostics Research, Drug Manufacturers General, Drug Manufacturers Specialty Generic, Health Information Services, Healthcare Plans, Medical Care Facilities, Medical Devices, Medical Distribution, Medical Instruments Supplies, Pharmaceutical Retailers</div>
+<div class="line">Industrials: Aerospace Defense, Airlines, Airports Air Services, Building Products Equipment, Business Equipment Supplies, Conglomerates, Consulting Services, Electrical Equipment Parts, Engineering Construction, Farm Heavy Construction Machinery, Industrial Distribution, Infrastructure Operations, Integrated Freight Logistics, Marine Shipping, Metal Fabrication, Pollution Treatment Controls, Railroads, Rental Leasing Services, Security Protection Services, Specialty Business Services, Specialty Industrial Machinery, Staffing Employment Services, Tools Accessories, Trucking, Waste Management</div>
+<div class="line">Real Estate: Real Estate Development, Real Estate Diversified, Real Estate Services, Reit Diversified, Reit Healthcare Facilities, Reit Hotel Motel, Reit Industrial, Reit Mortgage, Reit Office, Reit Residential, Reit Retail, Reit Specialty</div>
+<div class="line">Technology: Communication Equipment, Computer Hardware, Consumer Electronics, Electronic Components, Electronics Computer Distribution, Information Technology Services, Scientific Technical Instruments, Semiconductor Equipment Materials, Semiconductors, Software Application, Software Infrastructure, Solar</div>
+<div class="line">Utilities: Utilities Diversified, Utilities Independent Power Producers, Utilities Regulated Electric, Utilities Regulated Gas, Utilities Regulated Water, Utilities Renewable</div>
+</div>
+</td>
+</tr>
+<tr class="row-even"><td><p>peer_group</p></td>
 <td><ul class="simple">
 <li><p>Aerospace &amp; Defense</p></li>
 <li><p>Auto Components</p></li>
@@ -884,348 +902,6 @@ document.write(`
 <span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span></dt>
 <dd></dd></dl>
 
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.EquityQuery.valid_fields">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">valid_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span></em><a class="headerlink" href="#yfinance.EquityQuery.valid_fields" title="Link to this definition">#</a></dt>
-<dd><p>Valid operands, grouped by category.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id3">
-<caption><span class="caption-text">Permitted Keys/Values</span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
-<colgroup>
-<col style="width: 25.0%" />
-<col style="width: 75.0%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Key</p></th>
-<th class="head"><p>Values</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>eq_fields</p></td>
-<td><ul class="simple">
-<li><p>exchange</p></li>
-<li><p>peer_group</p></li>
-<li><p>region</p></li>
-<li><p>sector</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-odd"><td><p>price</p></td>
-<td><ul class="simple">
-<li><p>eodprice</p></li>
-<li><p>fiftytwowkpercentchange</p></li>
-<li><p>intradaymarketcap</p></li>
-<li><p>intradayprice</p></li>
-<li><p>intradaypricechange</p></li>
-<li><p>lastclose52weekhigh.lasttwelvemonths</p></li>
-<li><p>lastclose52weeklow.lasttwelvemonths</p></li>
-<li><p>lastclosemarketcap.lasttwelvemonths</p></li>
-<li><p>percentchange</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-even"><td><p>trading</p></td>
-<td><ul class="simple">
-<li><p>avgdailyvol3m</p></li>
-<li><p>beta</p></li>
-<li><p>dayvolume</p></li>
-<li><p>eodvolume</p></li>
-<li><p>pctheldinsider</p></li>
-<li><p>pctheldinst</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-odd"><td><p>short_interest</p></td>
-<td><ul class="simple">
-<li><p>days_to_cover_short.value</p></li>
-<li><p>short_interest.value</p></li>
-<li><p>short_interest_percentage_change.value</p></li>
-<li><p>short_percentage_of_float.value</p></li>
-<li><p>short_percentage_of_shares_outstanding.value</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-even"><td><p>valuation</p></td>
-<td><ul class="simple">
-<li><p>bookvalueshare.lasttwelvemonths</p></li>
-<li><p>lastclosemarketcaptotalrevenue.lasttwelvemonths</p></li>
-<li><p>lastclosepriceearnings.lasttwelvemonths</p></li>
-<li><p>lastclosepricetangiblebookvalue.lasttwelvemonths</p></li>
-<li><p>lastclosetevtotalrevenue.lasttwelvemonths</p></li>
-<li><p>pegratio_5y</p></li>
-<li><p>peratio.lasttwelvemonths</p></li>
-<li><p>pricebookratio.quarterly</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-odd"><td><p>profitability</p></td>
-<td><ul class="simple">
-<li><p>consecutive_years_of_dividend_growth_count</p></li>
-<li><p>forward_dividend_per_share</p></li>
-<li><p>forward_dividend_yield</p></li>
-<li><p>returnonassets.lasttwelvemonths</p></li>
-<li><p>returnonequity.lasttwelvemonths</p></li>
-<li><p>returnontotalcapital.lasttwelvemonths</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-even"><td><p>leverage</p></td>
-<td><ul class="simple">
-<li><p>ebitdainterestexpense.lasttwelvemonths</p></li>
-<li><p>ebitinterestexpense.lasttwelvemonths</p></li>
-<li><p>lastclosetevebit.lasttwelvemonths</p></li>
-<li><p>lastclosetevebitda.lasttwelvemonths</p></li>
-<li><p>ltdebtequity.lasttwelvemonths</p></li>
-<li><p>netdebtebitda.lasttwelvemonths</p></li>
-<li><p>totaldebtebitda.lasttwelvemonths</p></li>
-<li><p>totaldebtequity.lasttwelvemonths</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-odd"><td><p>liquidity</p></td>
-<td><ul class="simple">
-<li><p>altmanzscoreusingtheaveragestockinformationforaperiod.lasttwelvemonths</p></li>
-<li><p>currentratio.lasttwelvemonths</p></li>
-<li><p>operatingcashflowtocurrentliabilities.lasttwelvemonths</p></li>
-<li><p>quickratio.lasttwelvemonths</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-even"><td><p>income_statement</p></td>
-<td><ul class="simple">
-<li><p>basicepscontinuingoperations.lasttwelvemonths</p></li>
-<li><p>dilutedeps1yrgrowth.lasttwelvemonths</p></li>
-<li><p>dilutedepscontinuingoperations.lasttwelvemonths</p></li>
-<li><p>ebit.lasttwelvemonths</p></li>
-<li><p>ebitda.lasttwelvemonths</p></li>
-<li><p>ebitda1yrgrowth.lasttwelvemonths</p></li>
-<li><p>ebitdamargin.lasttwelvemonths</p></li>
-<li><p>epsgrowth.lasttwelvemonths</p></li>
-<li><p>grossprofit.lasttwelvemonths</p></li>
-<li><p>grossprofitmargin.lasttwelvemonths</p></li>
-<li><p>netepsbasic.lasttwelvemonthsnetepsdiluted.lasttwelvemonths</p></li>
-<li><p>netincome1yrgrowth.lasttwelvemonths</p></li>
-<li><p>netincomeis.lasttwelvemonths</p></li>
-<li><p>netincomemargin.lasttwelvemonths</p></li>
-<li><p>operatingincome.lasttwelvemonths</p></li>
-<li><p>quarterlyrevenuegrowth.quarterly</p></li>
-<li><p>totalrevenues.lasttwelvemonths</p></li>
-<li><p>totalrevenues1yrgrowth.lasttwelvemonths</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-odd"><td><p>balance_sheet</p></td>
-<td><ul class="simple">
-<li><p>totalassets.lasttwelvemonths</p></li>
-<li><p>totalcashandshortterminvestments.lasttwelvemonths</p></li>
-<li><p>totalcommonequity.lasttwelvemonths</p></li>
-<li><p>totalcommonsharesoutstanding.lasttwelvemonths</p></li>
-<li><p>totalcurrentassets.lasttwelvemonths</p></li>
-<li><p>totalcurrentliabilities.lasttwelvemonths</p></li>
-<li><p>totaldebt.lasttwelvemonths</p></li>
-<li><p>totalequity.lasttwelvemonths</p></li>
-<li><p>totalsharesoutstanding</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-even"><td><p>cash_flow</p></td>
-<td><ul class="simple">
-<li><p>capitalexpenditure.lasttwelvemonths</p></li>
-<li><p>cashfromoperations.lasttwelvemonths</p></li>
-<li><p>cashfromoperations1yrgrowth.lasttwelvemonths</p></li>
-<li><p>forward_dividend_yield</p></li>
-<li><p>leveredfreecashflow.lasttwelvemonths</p></li>
-<li><p>leveredfreecashflow1yrgrowth.lasttwelvemonths</p></li>
-<li><p>unleveredfreecashflow.lasttwelvemonths</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-odd"><td><p>esg</p></td>
-<td><ul class="simple">
-<li><p>environmental_score</p></li>
-<li><p>esg_score</p></li>
-<li><p>governance_score</p></li>
-<li><p>highest_controversy</p></li>
-<li><p>social_score</p></li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.EquityQuery.valid_values">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">valid_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span></em><a class="headerlink" href="#yfinance.EquityQuery.valid_values" title="Link to this definition">#</a></dt>
-<dd><p>Most operands take number values, but some have a restricted set of valid values.</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id4">
-<caption><span class="caption-text">Permitted Keys/Values</span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
-<colgroup>
-<col style="width: 25.0%" />
-<col style="width: 75.0%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Key</p></th>
-<th class="head"><p>Values</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>region</p></td>
-<td><p>ar, at, au, be, br, ca, ch, cl, cn, co, cz, de, dk, ee, eg, es, fi, fr, gb, gr, hk, hu, id, ie, il, in, is, it, jp, kr, kw, lk, lt, lv, mx, my, nl, no, nz, pe, ph, pk, pl, pt, qa, ro, ru, sa, se, sg, sr, th, tr, tw, us, ve, vn, za</p></td>
-</tr>
-<tr class="row-odd"><td><p>exchange</p></td>
-<td><div class="line-block">
-<div class="line">ar: BUE.  at: VIE.  au: ASX.  be: BRU</div>
-<div class="line">br: SAO.  ca: CNQ, NEO, TOR, VAN</div>
-<div class="line">ch: EBS.  cl: SGO.  cn: SHH, SHZ</div>
-<div class="line">co: BVC.  cz: PRA</div>
-<div class="line">de: BER, DUS, FRA, GER, HAM, MUN, STU</div>
-<div class="line">dk: CPH.  ee: TAL.  eg: CAI.  es: MCE</div>
-<div class="line">fi: HEL.  fr: PAR.  gb: AQS, IOB, LSE</div>
-<div class="line">gr: ATH.  hk: HKG.  hu: BUD.  id: JKT</div>
-<div class="line">ie: ISE.  il: TLV.  in: BSE, NSI</div>
-<div class="line">is: ICE.  it: MIL.  jp: FKA, JPX, SAP</div>
-<div class="line">kr: KOE, KSC.  kw: KUW.  lk:</div>
-<div class="line">lt: LIT.  lv: RIS.  mx: MEX.  my: KLS</div>
-<div class="line">nl: AMS.  no: OSL.  nz: NZE.  pe:</div>
-<div class="line">ph: PHP, PHS.  pk: .  pl: WSE</div>
-<div class="line">pt: LIS.  qa: DOH.  ro: BVB.  ru:</div>
-<div class="line">sa: SAU.  se: STO.  sg: SES.  sr:</div>
-<div class="line">th: SET.  tr: IST.  tw: TAI, TWO</div>
-<div class="line">us: ASE, BTS, CXI, NCM, NGM, NMS, NYQ, OEM, OQB, OQX, PCX, PNK, YHD</div>
-<div class="line">ve: CCS.  vn: .  za: JNB</div>
-</div>
-</td>
-</tr>
-<tr class="row-even"><td><p>sector</p></td>
-<td><ul class="simple">
-<li><p>Basic Materials</p></li>
-<li><p>Communication Services</p></li>
-<li><p>Consumer Cyclical</p></li>
-<li><p>Consumer Defensive</p></li>
-<li><p>Energy</p></li>
-<li><p>Financial Services</p></li>
-<li><p>Healthcare</p></li>
-<li><p>Industrials</p></li>
-<li><p>Real Estate</p></li>
-<li><p>Technology</p></li>
-<li><p>Utilities</p></li>
-</ul>
-</td>
-</tr>
-<tr class="row-odd"><td><p>peer_group</p></td>
-<td><ul class="simple">
-<li><p>Aerospace &amp; Defense</p></li>
-<li><p>Auto Components</p></li>
-<li><p>Automobiles</p></li>
-<li><p>Banks</p></li>
-<li><p>Building Products</p></li>
-<li><p>Chemicals</p></li>
-<li><p>China Fund Aggressive Allocation Fund</p></li>
-<li><p>China Fund Equity Funds</p></li>
-<li><p>China Fund QDII Greater China Equity</p></li>
-<li><p>China Fund QDII Sector Equity</p></li>
-<li><p>China Fund Sector Equity Financial and Real Estate</p></li>
-<li><p>Commercial Services</p></li>
-<li><p>Construction &amp; Engineering</p></li>
-<li><p>Construction Materials</p></li>
-<li><p>Consumer Durables</p></li>
-<li><p>Consumer Services</p></li>
-<li><p>Containers &amp; Packaging</p></li>
-<li><p>Diversified Financials</p></li>
-<li><p>Diversified Metals</p></li>
-<li><p>EAA CE Global Large-Cap Blend Equity</p></li>
-<li><p>EAA CE Other</p></li>
-<li><p>EAA CE Sector Equity Biotechnology</p></li>
-<li><p>EAA CE UK Large-Cap Equity</p></li>
-<li><p>EAA CE UK Small-Cap Equity</p></li>
-<li><p>EAA Fund Asia ex-Japan Equity</p></li>
-<li><p>EAA Fund China Equity</p></li>
-<li><p>EAA Fund China Equity - A Shares</p></li>
-<li><p>EAA Fund Denmark Equity</p></li>
-<li><p>EAA Fund EUR Aggressive Allocation - Global</p></li>
-<li><p>EAA Fund EUR Corporate Bond</p></li>
-<li><p>EAA Fund EUR Moderate Allocation - Global</p></li>
-<li><p>EAA Fund Emerging Europe ex-Russia Equity</p></li>
-<li><p>EAA Fund Europe Large-Cap Blend Equity</p></li>
-<li><p>EAA Fund Eurozone Large-Cap Equity</p></li>
-<li><p>EAA Fund Germany Equity</p></li>
-<li><p>EAA Fund Global Emerging Markets Equity</p></li>
-<li><p>EAA Fund Global Equity Income</p></li>
-<li><p>EAA Fund Global Flex-Cap Equity</p></li>
-<li><p>EAA Fund Global Large-Cap Blend Equity</p></li>
-<li><p>EAA Fund Global Large-Cap Growth Equity</p></li>
-<li><p>EAA Fund Hong Kong Equity</p></li>
-<li><p>EAA Fund Japan Large-Cap Equity</p></li>
-<li><p>EAA Fund Other Bond</p></li>
-<li><p>EAA Fund Other Equity</p></li>
-<li><p>EAA Fund RMB Bond - Onshore</p></li>
-<li><p>EAA Fund Sector Equity Consumer Goods &amp; Services</p></li>
-<li><p>EAA Fund Sector Equity Financial Services</p></li>
-<li><p>EAA Fund Sector Equity Industrial Materials</p></li>
-<li><p>EAA Fund Sector Equity Technology</p></li>
-<li><p>EAA Fund South Africa &amp; Namibia Equity</p></li>
-<li><p>EAA Fund Switzerland Equity</p></li>
-<li><p>EAA Fund US Large-Cap Blend Equity</p></li>
-<li><p>EAA Fund USD Corporate Bond</p></li>
-<li><p>Electrical Equipment</p></li>
-<li><p>Energy Services</p></li>
-<li><p>Food Products</p></li>
-<li><p>Food Retailers</p></li>
-<li><p>Healthcare</p></li>
-<li><p>Homebuilders</p></li>
-<li><p>Household Products</p></li>
-<li><p>India CE Multi-Cap</p></li>
-<li><p>India Fund Large-Cap</p></li>
-<li><p>India Fund Sector - Financial Services</p></li>
-<li><p>Industrial Conglomerates</p></li>
-<li><p>Insurance</p></li>
-<li><p>Machinery</p></li>
-<li><p>Media</p></li>
-<li><p>Mexico Fund Mexico Equity</p></li>
-<li><p>Oil &amp; Gas Producers</p></li>
-<li><p>Paper &amp; Forestry</p></li>
-<li><p>Pharmaceuticals</p></li>
-<li><p>Precious Metals</p></li>
-<li><p>Real Estate</p></li>
-<li><p>Refiners &amp; Pipelines</p></li>
-<li><p>Retailing</p></li>
-<li><p>Semiconductors</p></li>
-<li><p>Software &amp; Services</p></li>
-<li><p>Steel</p></li>
-<li><p>Technology Hardware</p></li>
-<li><p>Telecommunication Services</p></li>
-<li><p>Textiles &amp; Apparel</p></li>
-<li><p>Traders &amp; Distributors</p></li>
-<li><p>Transportation</p></li>
-<li><p>Transportation Infrastructure</p></li>
-<li><p>US CE Convertibles</p></li>
-<li><p>US CE Options-based</p></li>
-<li><p>US CE Preferred Stock</p></li>
-<li><p>US Fund China Region</p></li>
-<li><p>US Fund Consumer Cyclical</p></li>
-<li><p>US Fund Diversified Emerging Mkts</p></li>
-<li><p>US Fund Equity Energy</p></li>
-<li><p>US Fund Equity Precious Metals</p></li>
-<li><p>US Fund Financial</p></li>
-<li><p>US Fund Foreign Large Blend</p></li>
-<li><p>US Fund Health</p></li>
-<li><p>US Fund Large Blend</p></li>
-<li><p>US Fund Large Growth</p></li>
-<li><p>US Fund Large Value</p></li>
-<li><p>US Fund Miscellaneous Region</p></li>
-<li><p>US Fund Natural Resources</p></li>
-<li><p>US Fund Technology</p></li>
-<li><p>US Fund Trading–Leveraged Equity</p></li>
-<li><p>Utilities</p></li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</dd></dl>
-
 </dd></dl>
 
 </section>
@@ -1276,11 +952,7 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.EquityQuery"><code class="docutils literal notranslate"><span class="pre">EquityQuery</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.EquityQuery.valid_fields"><code class="docutils literal notranslate"><span class="pre">EquityQuery.valid_fields</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.EquityQuery.valid_values"><code class="docutils literal notranslate"><span class="pre">EquityQuery.valid_values</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.EquityQuery"><code class="docutils literal notranslate"><span class="pre">EquityQuery</span></code></a></li>
 </ul>
   </nav></div>
 

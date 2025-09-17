@@ -517,7 +517,18 @@ document.write(`
 <dl class="py class">
 <dt class="sig sig-object py" id="yfinance.Ticker">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Ticker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Ticker" title="Link to this definition">#</a></dt>
-<dd><p class="rubric">Attributes</p>
+<dd><p>Initialize a Yahoo Finance Ticker object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ticker</strong> (<em>str</em><em> | </em><em>tuple</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>) – Yahoo Finance symbol (e.g. “AAPL”)
+or a tuple of (symbol, MIC) e.g. (‘OR’,’XPAR’)
+(MIC = market identifier code)</p></li>
+<li><p><strong>session</strong> (<em>requests.Session</em><em>, </em><em>optional</em>) – Custom requests session.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Attributes</p>
 <dl class="py attribute">
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">actions</span></span></dt>
@@ -788,7 +799,18 @@ document.write(`
 <dl class="py method">
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span></dt>
-<dd></dd></dl>
+<dd><p>Initialize a Yahoo Finance Ticker object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ticker</strong> (<em>str</em><em> | </em><em>tuple</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>) – Yahoo Finance symbol (e.g. “AAPL”)
+or a tuple of (symbol, MIC) e.g. (‘OR’,’XPAR’)
+(MIC = market identifier code)</p></li>
+<li><p><strong>session</strong> (<em>requests.Session</em><em>, </em><em>optional</em>) – Custom requests session.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -884,19 +906,8 @@ Default is “yearly”</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_earnings_dates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limit=12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
-<dd><p>Get earning dates (future and historic)</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>limit</strong> (<em>int</em>) – max amount of upcoming and recent earnings dates to return.
-Default value 12 should return next 4 quarters and last 8 quarters.
-Increase if more history is needed.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
-</dd></dl>
+<span class="sig-name descname"><span class="pre">get_earnings_dates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -1085,12 +1096,6 @@ Columns: firm toGrade fromGrade action</p>
 <span class="sig-name descname"><span class="pre">option_chain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.Ticker.calendar">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">calendar</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></em><a class="headerlink" href="#yfinance.Ticker.calendar" title="Link to this definition">#</a></dt>
-<dd><p>Returns a dictionary of events, earnings, and dividends for the ticker</p>
-</dd></dl>
-
 </dd></dl>
 
 </section>
@@ -1141,10 +1146,7 @@ Columns: firm toGrade fromGrade action</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Ticker"><code class="docutils literal notranslate"><span class="pre">Ticker</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Ticker.calendar"><code class="docutils literal notranslate"><span class="pre">Ticker.calendar</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Ticker"><code class="docutils literal notranslate"><span class="pre">Ticker</span></code></a></li>
 </ul>
   </nav></div>
 

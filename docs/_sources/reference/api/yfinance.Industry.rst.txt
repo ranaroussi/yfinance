@@ -6,6 +6,7 @@ Industry
 .. currentmodule:: yfinance
 
 .. autoclass:: Industry
+   :exclude-members: key, name, overview, research_reports, sector_key, sector_name, symbol, ticker, top_companies, top_growth_companies, top_performing_companies
 
    
    

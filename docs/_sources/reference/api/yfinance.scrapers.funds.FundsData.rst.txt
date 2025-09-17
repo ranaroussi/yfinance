@@ -6,6 +6,7 @@ FundsData
 .. currentmodule:: yfinance.scrapers.funds
 
 .. autoclass:: FundsData
+   :exclude-members: asset_classes, bond_holdings, bond_ratings, description, equity_holdings, fund_operations, fund_overview, sector_weightings, top_holdings
 
    
    

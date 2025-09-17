@@ -6,6 +6,7 @@ EquityQuery
 .. currentmodule:: yfinance
 
 .. autoclass:: EquityQuery
+   :exclude-members: valid_fields, valid_values
 
    
    

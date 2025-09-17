@@ -6,6 +6,7 @@ Ticker
 .. currentmodule:: yfinance
 
 .. autoclass:: Ticker
+   :exclude-members: actions, analyst_price_targets, balance_sheet, balancesheet, calendar, capital_gains, cash_flow, cashflow, dividends, earnings, earnings_dates, earnings_estimate, earnings_history, eps_revisions, eps_trend, fast_info, financials, funds_data, growth_estimates, history_metadata, income_stmt, incomestmt, info, insider_purchases, insider_roster_holders, insider_transactions, institutional_holders, isin, major_holders, mutualfund_holders, news, options, quarterly_balance_sheet, quarterly_balancesheet, quarterly_cash_flow, quarterly_cashflow, quarterly_earnings, quarterly_financials, quarterly_income_stmt, quarterly_incomestmt, recommendations, recommendations_summary, revenue_estimate, sec_filings, shares, splits, sustainability, ttm_cash_flow, ttm_cashflow, ttm_financials, ttm_income_stmt, ttm_incomestmt, upgrades_downgrades
 
    
    

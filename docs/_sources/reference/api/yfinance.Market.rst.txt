@@ -6,6 +6,7 @@ Market
 .. currentmodule:: yfinance
 
 .. autoclass:: Market
+   :exclude-members: status, summary
 
    
    
