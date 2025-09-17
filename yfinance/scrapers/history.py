@@ -875,37 +875,39 @@ class PriceHistory:
                     # But in case are repairing a chunk of bad 1d data, back/forward-fill the
                     # good div-adjustments - not perfect, but a good backup.
                     div_adjusts[f_tag] = np.nan
-                    div_adjusts = div_adjusts.ffill().bfill()
-                    for idx in np.where(f_tag)[0]:
-                        dt = df_new_calib.index[idx]
-                        n = len(div_adjusts)
-                        if df_new.loc[dt, "Dividends"] != 0:
-                            if idx < n - 1:
-                                # Easy, take div-adjustment from next-day
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
+                    if not div_adjusts.isna().all():
+                        # Need some real values to calibrate
+                        div_adjusts = div_adjusts.ffill().bfill()
+                        for idx in np.where(f_tag)[0]:
+                            dt = df_new_calib.index[idx]
+                            n = len(div_adjusts)
+                            if df_new.loc[dt, "Dividends"] != 0:
+                                if idx < n - 1:
+                                    # Easy, take div-adjustment from next-day
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
+                                else:
+                                    # Take previous-day div-adjustment and reverse todays adjustment
+                                    div_adj = 1.0 - df_new_calib["Dividends"].iloc[idx] / df_new_calib['Close'].iloc[
+                                        idx - 1]
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1] / div_adj
                             else:
-                                # Take previous-day div-adjustment and reverse todays adjustment
-                                div_adj = 1.0 - df_new_calib["Dividends"].iloc[idx] / df_new_calib['Close'].iloc[
-                                    idx - 1]
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1] / div_adj
-                        else:
-                            if idx > 0:
-                                # Easy, take div-adjustment from previous-day
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1]
-                            else:
-                                # Must take next-day div-adjustment
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
-                                if df_new_calib["Dividends"].iloc[idx + 1] != 0:
-                                    div_adjusts.iloc[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx + 1] / \
-                                                        df_new_calib['Close'].iloc[idx]
-                    f_close_bad = df_block_calib['Close'] == tag
-                    div_adjusts = div_adjusts.reindex(df_block.index, fill_value=np.nan).ffill().bfill()
-                    df_new['Adj Close'] = df_block['Close'] * div_adjusts
-                    if f_close_bad.any():
-                        f_close_bad_new = f_close_bad.reindex(df_new.index, fill_value=False)
-                        div_adjusts_new = div_adjusts.reindex(df_new.index, fill_value=np.nan).ffill().bfill()
-                        div_adjusts_new_np = f_close_bad_new.to_numpy()
-                        df_new.loc[div_adjusts_new_np, 'Adj Close'] = df_new['Close'][div_adjusts_new_np] * div_adjusts_new[div_adjusts_new_np]
+                                if idx > 0:
+                                    # Easy, take div-adjustment from previous-day
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1]
+                                else:
+                                    # Must take next-day div-adjustment
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
+                                    if df_new_calib["Dividends"].iloc[idx + 1] != 0:
+                                        div_adjusts.iloc[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx + 1] / \
+                                                            df_new_calib['Close'].iloc[idx]
+                        f_close_bad = df_block_calib['Close'] == tag
+                        div_adjusts = div_adjusts.reindex(df_block.index, fill_value=np.nan).ffill().bfill()
+                        df_new['Adj Close'] = df_block['Close'] * div_adjusts
+                        if f_close_bad.any():
+                            f_close_bad_new = f_close_bad.reindex(df_new.index, fill_value=False)
+                            div_adjusts_new = div_adjusts.reindex(df_new.index, fill_value=np.nan).ffill().bfill()
+                            div_adjusts_new_np = f_close_bad_new.to_numpy()
+                            df_new.loc[div_adjusts_new_np, 'Adj Close'] = df_new['Close'][div_adjusts_new_np] * div_adjusts_new[div_adjusts_new_np]
 
             # Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
