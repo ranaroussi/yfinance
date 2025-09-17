@@ -32,6 +32,7 @@ from curl_cffi import requests
 
 
 from . import utils, cache
+from .const import _MIC_TO_YAHOO_SUFFIX
 from .data import YfData
 from .exceptions import YFEarningsDateMissing, YFRateLimitError
 from .live import WebSocket
@@ -44,11 +45,41 @@ from .scrapers.funds import FundsData
 
 from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_, _SENTINEL_
 
+from io import StringIO
+from bs4 import BeautifulSoup
+
 
 _tz_info_fetch_ctr = 0
 
 class TickerBase:
     def __init__(self, ticker, session=None, proxy=_SENTINEL_):
+        """
+        Initialize a Yahoo Finance Ticker object.
+
+        Args:
+            ticker (str | tuple[str, str]):
+                Yahoo Finance symbol (e.g. "AAPL")
+                or a tuple of (symbol, MIC) e.g. ('OR','XPAR')
+                (MIC = market identifier code)
+
+            session (requests.Session, optional):
+                Custom requests session.
+        """        
+        if isinstance(ticker, tuple):
+            if len(ticker) != 2:
+                raise ValueError("Ticker tuple must be (symbol, mic_code)")
+            base_symbol, mic_code = ticker
+            # ticker = yahoo_ticker(base_symbol, mic_code)
+            if mic_code.startswith('.'):
+                mic_code = mic_code[1:]
+            if mic_code.upper() not in _MIC_TO_YAHOO_SUFFIX:
+                raise ValueError(f"Unknown MIC code: '{mic_code}'")
+            sfx = _MIC_TO_YAHOO_SUFFIX[mic_code.upper()]
+            if sfx != '':
+                ticker = f'{base_symbol}.{sfx}'
+            else:
+                ticker = base_symbol
+
         self.ticker = ticker.upper()
         self.session = session or requests.Session(impersonate="chrome")
         self._tz = None
@@ -705,10 +736,111 @@ class TickerBase:
         self._news = [article for article in news if not article.get('ad', [])]
         return self._news
 
+    def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+        return self._get_earnings_dates_using_scrape(limit, offset)
+
     @utils.log_indent_decorator
-    def get_earnings_dates(self, limit=12, proxy=_SENTINEL_) -> Optional[pd.DataFrame]:
+    def _get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+        """
+        Uses YfData.cache_get() to scrape earnings data from YahooFinance.
+        (https://finance.yahoo.com/calendar/earnings?symbol=INTC)
+    
+        Args:
+            limit (int): Number of rows to extract (max=100)
+            offset (int): if 0, search from future EPS estimates. 
+                          if 1, search from the most recent EPS. 
+                          if x, search from x'th recent EPS. 
+    
+        Returns:
+            pd.DataFrame in the following format.
+    
+                       EPS Estimate Reported EPS Surprise(%)
+            Date
+            2025-10-30         2.97            -           -
+            2025-07-22         1.73         1.54      -10.88
+            2025-05-06         2.63          2.7        2.57
+            2025-02-06         2.09         2.42       16.06
+            2024-10-31         1.92         1.55      -19.36
+            ...                 ...          ...         ...
+            2014-07-31         0.61         0.65        7.38
+            2014-05-01         0.55         0.68       22.92
+            2014-02-13         0.55         0.58        6.36
+            2013-10-31         0.51         0.54        6.86
+            2013-08-01         0.46          0.5        7.86
+        """
+        #####################################################
+        # Define Constants
+        #####################################################
+        if limit > 0 and limit <= 25:
+            size = 25
+        elif limit > 25 and limit <= 50:
+            size = 50
+        elif limit > 50 and limit <= 100:
+            size = 100
+        else:
+            raise ValueError("Please use limit <= 100")
+    
+        # Define the URL
+        url = "https://finance.yahoo.com/calendar/earnings?symbol={}&offset={}&size={}".format(
+            self.ticker, offset, size
+        )
+        #####################################################
+        # Get data
+        #####################################################
+        response = self._data.cache_get(url)
+    
+        #####################################################
+        # Response -> pd.DataFrame
+        #####################################################
+        # Parse the HTML content using BeautifulSoup
+        soup = BeautifulSoup(response.text, "html.parser")
+        # This page should have only one <table>
+        table = soup.find("table")
+        # If the table is found
+        if table:
+            # Get the HTML string of the table
+            table_html = str(table)
+    
+            # Wrap the HTML string in a StringIO object
+            html_stringio = StringIO(table_html)
+    
+            # Pass the StringIO object to pd.read_html()
+            df = pd.read_html(html_stringio, na_values=['-'])[0]
+    
+            # Drop redundant columns
+            df = df.drop(["Symbol", "Company"], axis=1)
+
+            # Backwards compatibility
+            df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)
+
+            df = df.dropna(subset="Earnings Date")
+
+            # Parse earnings date
+            # - Pandas doesn't like EDT, EST
+            df['Earnings Date'] = df['Earnings Date'].str.replace('EDT', 'America/New_York')
+            df['Earnings Date'] = df['Earnings Date'].str.replace('EST', 'America/New_York')
+            # - separate timezone string (last word)
+            dt_parts = df['Earnings Date'].str.rsplit(' ', n=1, expand=True)
+            dts = dt_parts[0]
+            tzs = dt_parts[1]
+            df['Earnings Date'] = pd.to_datetime(dts, format='%B %d, %Y at %I %p')
+            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)])
+            df = df.set_index("Earnings Date")
+
+        else:
+            err_msg = "No earnings dates found, symbol may be delisted"
+            logger = utils.get_yf_logger()
+            logger.error(f'{self.ticker}: {err_msg}')
+            return None
+        return df
+
+    @utils.log_indent_decorator
+    def _get_earnings_dates_using_screener(self, limit=12, proxy=_SENTINEL_) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
+
+        In Summer 2025, Yahoo stopped updating the data at this endpoint.
+        So reverting to scraping HTML.
         
         Args:
             limit (int): max amount of upcoming and recent earnings dates to return.

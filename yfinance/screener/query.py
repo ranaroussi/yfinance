@@ -165,7 +165,7 @@ class EquityQuery(QueryBase):
         """
         return EQUITY_SCREENER_FIELDS
     
-    @dynamic_docstring({"valid_values_table": generate_list_table_from_dict_universal(EQUITY_SCREENER_EQ_MAP, concat_keys=['exchange'])})
+    @dynamic_docstring({"valid_values_table": generate_list_table_from_dict_universal(EQUITY_SCREENER_EQ_MAP, concat_keys=['exchange', 'industry'])})
     @property
     def valid_values(self) -> Dict:
         """
