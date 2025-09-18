@@ -24,7 +24,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: 'This issue appears to use the default template. Stop that. Use our custom bug report form.'
+                body: 'This issue appears to use the default template. If you are reporting a bug, then use our custom bug report form. If a feature request, then wait and we will revert the auto-close.'
               });
               
               await github.rest.issues.update({
