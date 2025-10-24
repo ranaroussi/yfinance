@@ -399,7 +399,7 @@ def snake_case_2_camelCase(s):
     return sc
 
 
-def _parse_user_dt(dt, exchange_tz):
+def _parse_user_dt(dt, exchange_tz=_tz.utc):
     if isinstance(dt, int):
         dt = _pd.Timestamp(dt, unit="s", tz=exchange_tz)
     else:
