@@ -96,7 +96,7 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top performing companies data.
         """
-        compnaies_column = ['symbol','name','ytd return',' last price','target price']
+        compnaies_column = ['symbol','name','ytd return','last price','target price']
         compnaies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
@@ -118,7 +118,7 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top growth companies data.
         """
-        compnaies_column = ['symbol','name','ytd return',' growth estimate']
+        compnaies_column = ['symbol','name','ytd return','growth estimate']
         compnaies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
