@@ -2,6 +2,8 @@ from tests.context import yfinance as yf
 from tests.context import session_gbl
 
 import unittest
+from unittest.mock import patch, MagicMock
+import socket
 
 import datetime as _dt
 import pytz as _tz
@@ -455,6 +457,60 @@ class TestPriceHistory(unittest.TestCase):
         interval = "3mo"
 
         dat.history(start=start, end=end, interval=interval)
+
+    @patch('yfinance.multi.Ticker')
+    @patch('yfinance.multi._time.sleep')
+    def test_download_retry_on_transient_error(self, mock_sleep, mock_ticker_class):
+        """Test that transient errors (network/timeout) trigger retries"""
+        mock_ticker_instance = MagicMock()
+        mock_ticker_class.return_value = mock_ticker_instance
+
+        # Create proper DataFrame with DatetimeIndex
+        dates = _pd.date_range('2023-01-01', periods=2, tz='UTC')
+        success_df = _pd.DataFrame(
+            {'Close': [100, 101]},
+            index=dates
+        )
+
+        # Fail with socket error (transient) 2 times, then succeed
+        mock_ticker_instance.history.side_effect = [
+            *[socket.error("Network error")] * 2,
+            success_df
+        ]
+
+        # Call download with retries=2
+        result = yf.download('AAPL', period='1y', retries=2, threads=False)
+
+        # Verify that history() was called 3 times (1 initial + 2 retries)
+        self.assertEqual(mock_ticker_instance.history.call_count, 3)
+
+        # Verify exponential backoff was used: sleep(1), sleep(2)
+        self.assertEqual(mock_sleep.call_count, 2)
+        mock_sleep.assert_any_call(1)
+        mock_sleep.assert_any_call(2)
+
+        # Verify data was returned successfully
+        self.assertIsNotNone(result)
+
+    @patch('yfinance.multi.Ticker')
+    @patch('yfinance.multi._time.sleep')
+    def test_download_no_retry_on_permanent_error(self, mock_sleep, mock_ticker_class):
+        """Test that permanent errors (invalid ticker) don't trigger retries"""
+        mock_ticker_instance = MagicMock()
+        mock_ticker_class.return_value = mock_ticker_instance
+
+        # Fail with permanent error (not a network/timeout error)
+        from yfinance.exceptions import YFPricesMissingError
+        mock_ticker_instance.history.side_effect = YFPricesMissingError('INVALID', '')
+
+        # Call download with retries=2
+        yf.download('INVALID', period='1y', retries=2)
+
+        # Verify that history() was called only once (no retries)
+        self.assertEqual(mock_ticker_instance.history.call_count, 1)
+
+        # Verify no sleep was called (no retries)
+        self.assertEqual(mock_sleep.call_count, 0)
 
 
 if __name__ == '__main__':
