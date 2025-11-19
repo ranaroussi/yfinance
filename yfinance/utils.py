@@ -402,18 +402,21 @@ def snake_case_2_camelCase(s):
 
 def _parse_user_dt(dt, exchange_tz):
     if isinstance(dt, int):
-        # Should already be epoch, test with conversion:
-        _datetime.datetime.fromtimestamp(dt)
+        dt = _pd.Timestamp(dt, unit="s", tz=exchange_tz)
     else:
         # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
         if isinstance(dt, str):
             dt = _datetime.datetime.strptime(str(dt), '%Y-%m-%d')
         if isinstance(dt, _datetime.date) and not isinstance(dt, _datetime.datetime):
             dt = _datetime.datetime.combine(dt, _datetime.time(0))
-        if isinstance(dt, _datetime.datetime) and dt.tzinfo is None:
-            # Assume user is referring to exchange's timezone
-            dt = _tz.timezone(exchange_tz).localize(dt)
-        dt = int(dt.timestamp())
+        if isinstance(dt, _datetime.datetime):
+            if dt.tzinfo is None:
+                # Assume user is referring to exchange's timezone
+                dt = _pd.Timestamp(dt).tz_localize(exchange_tz)
+            else:
+                dt = _pd.Timestamp(dt).tz_convert(exchange_tz)
+        else: # if we reached here, then it hasn't been any known type
+            raise ValueError(f"Unable to parse input dt {dt} of type {type(dt)}")
     return dt
 
 
@@ -520,7 +523,10 @@ def parse_actions(data):
             dividends.set_index("date", inplace=True)
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
             dividends.sort_index(inplace=True)
-            dividends.columns = ["Dividends"]
+            if 'currency' in dividends.columns and (dividends['currency'] == '').all():
+                # Currency column useless, drop it.
+                dividends = dividends.drop('currency', axis=1)
+            dividends = dividends.rename(columns={'amount': 'Dividends'})
 
         if "capitalGains" in data["events"] and len(data["events"]['capitalGains']) > 0:
             capital_gains = _pd.DataFrame(
@@ -741,6 +747,13 @@ def safe_merge_dfs(df_main, df_sub, interval):
             if df_sub.empty:
                 df_main['Dividends'] = 0.0
                 return df_main
+
+            # df_sub changed so recalc indices:
+            df_main['_date'] = df_main.index.date
+            df_sub['_date'] = df_sub.index.date
+            indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
+            df_main = df_main.drop('_date', axis=1)
+            df_sub = df_sub.drop('_date', axis=1)
         else:
             empty_row_data = {**{c:[_np.nan] for c in const._PRICE_COLNAMES_}, 'Volume':[0]}
             if interval == '1d':

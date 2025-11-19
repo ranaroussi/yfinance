@@ -596,7 +596,7 @@ class Quote:
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig().hide_exceptions:
                 raise
-            utils.get_yf_logger().error(str(e))
+            utils.get_yf_logger().error(str(e) + e.response.text)
             return None
         return result
 
@@ -607,7 +607,7 @@ class Quote:
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig().hide_exceptions:
                 raise
-            utils.get_yf_logger().error(str(e))
+            utils.get_yf_logger().error(str(e) + e.response.text)
             return None
         return result
 

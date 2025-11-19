@@ -224,7 +224,7 @@ class TestPriceHistory(unittest.TestCase):
         start_d = _dt.date(2022, 1, 1)
         end_d = _dt.date(2023, 1, 1)
 
-        tkr_div_dates = {'BHP.AX': [_dt.date(2022, 9, 1), _dt.date(2022, 2, 24)],  # Yahoo claims 23-Feb but wrong because DST
+        tkr_div_dates = {'BHP.AX': [_dt.date(2022, 9, 1), _dt.date(2022, 2, 24)],
                          'IMP.JO': [_dt.date(2022, 9, 21), _dt.date(2022, 3, 16)],
                          'BP.L': [_dt.date(2022, 11, 10), _dt.date(2022, 8, 11), _dt.date(2022, 5, 12),
                                   _dt.date(2022, 2, 17)],

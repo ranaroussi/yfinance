@@ -1,6 +1,35 @@
 Change Log
 ===========
 
+0.2.65
+------
+Financials: ensure dtype float #2563
+Prices: fix handling arguments start/end/period #2561 #2562
+Price repair: when changing FX, update metadata #2558
+
+0.2.64
+------
+Prices:
+- handle dividends with FX, convert if repair=True  #2549
+- fix 'period' arg when start or end set  #2550
+earnings_dates: handle 'Event Type' properly  #2555
+
+0.2.63
+------
+Fix download(ISIN)  # 2531
+
+0.2.62
+------
+Fix prices 'period=max' sometimes failing  # 2509
+ISIN cache  #2516
+Proxy:
+- fix false 'proxy deprecated' messages
+- fix ISIN + proxy  #2514
+- replace print_once with warnings  #2523
+Error handling:
+- detect rate-limit during crumb fetch  #2491
+- replace requests.HTTPError with curl_cffi
+
 0.2.61
 ------
 Fix ALL type hints in websocket #2493
