@@ -78,7 +78,7 @@ class Holders:
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig().hide_exceptions:
                 raise
-            utils.get_yf_logger().error(str(e))
+            utils.get_yf_logger().error(str(e) + e.response.text)
 
             self._major = pd.DataFrame()
             self._major_direct_holders = pd.DataFrame()

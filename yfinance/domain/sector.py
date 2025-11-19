@@ -5,7 +5,7 @@ from typing import Dict, Optional
 import warnings
 
 from ..config import YfConfig
-from ..const import SECTOR_INDUSTY_MAPPING, _SENTINEL_
+from ..const import SECTOR_INDUSTY_MAPPING_LC, _SENTINEL_
 from ..data import YfData
 from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_logger
 
@@ -70,7 +70,7 @@ class Sector(Domain):
         self._ensure_fetched(self._top_mutual_funds)
         return self._top_mutual_funds
 
-    @dynamic_docstring({"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING,bullets=True)})
+    @dynamic_docstring({"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING_LC,bullets=True)})
     @property
     def industries(self) -> _pd.DataFrame:
         """

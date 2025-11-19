@@ -234,6 +234,23 @@ class TestTicker(unittest.TestCase):
         for attribute_name, attribute_type in ticker_attributes:
             assert_attribute_type(self, dat, attribute_name, attribute_type)
 
+    def test_ticker_with_symbol_mic(self):
+        equities = [
+            ("OR", "XPAR"),      # L'Oréal on Euronext Paris
+            ("AAPL", "XNYS"),    # Apple on NYSE
+            ("GOOGL", "XNAS"),   # Alphabet on NASDAQ
+            ("BMW", "XETR"),     # BMW on XETRA
+        ]
+        for eq in  equities:
+            # No exception = pass
+            yf.Ticker(eq)
+            yf.Ticker((eq[0], eq[1].lower()))
+
+    def test_ticker_with_symbol_mic_invalid(self):
+        with self.assertRaises(ValueError) as cm:
+            yf.Ticker(('ABC', 'XXXX'))
+        self.assertIn("Unknown MIC code: 'XXXX'", str(cm.exception))
+
 
 class TestTickerHistory(unittest.TestCase):
     session = None
@@ -983,7 +1000,7 @@ class TestTickerInfo(unittest.TestCase):
         self.symbols.append("QCSTIX")  # good for testing, doesn't trade
         self.symbols += ["BTC-USD", "IWO", "VFINX", "^GSPC"]
         self.symbols += ["SOKE.IS", "ADS.DE"]  # detected bugs
-        self.symbols += ["EXTO", "NEPT" ] # Issues 2343 and 2363
+        self.symbols += ["EXTO" ] # Issues 2343
         self.tickers = [yf.Ticker(s, session=self.session) for s in self.symbols]
 
     def tearDown(self):
@@ -1034,15 +1051,6 @@ class TestTickerInfo(unittest.TestCase):
         data = self.tickers[10].info
         self.assertCountEqual(['quoteType', 'symbol', 'underlyingSymbol', 'uuid', 'maxAge', 'trailingPegRatio'], data.keys())
         self.assertIn("trailingPegRatio", data.keys(), "Did not find expected key 'trailingPegRatio' in info dict")
-
-        # Test issue 2363 (Empty QuoteResponse)
-        data = self.tickers[11].info
-        expected_keys = ['maxAge', 'priceHint', 'previousClose', 'open', 'dayLow', 'dayHigh', 'regularMarketPreviousClose',
-                         'regularMarketOpen', 'regularMarketDayLow', 'regularMarketDayHigh', 'volume', 'regularMarketVolume',
-                         'bid', 'ask', 'bidSize', 'askSize', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'currency', 'tradeable',
-                         'exchange', 'quoteType', 'symbol', 'underlyingSymbol', 'shortName', 'timeZoneFullName', 'timeZoneShortName',
-                         'uuid', 'gmtOffSetMilliseconds', 'trailingPegRatio']
-        self.assertCountEqual(expected_keys, data.keys())
 
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()

@@ -161,151 +161,221 @@ quote_summary_valid_modules = (
 
 # map last updated as of 2024.09.18
 SECTOR_INDUSTY_MAPPING = {
-    'basic-materials': {'specialty-chemicals',
-                        'gold',
-                        'building-materials',
-                        'copper',
-                        'steel',
-                        'agricultural-inputs',
-                        'chemicals',
-                        'other-industrial-metals-mining',
-                        'lumber-wood-production',
-                        'aluminum',
-                        'other-precious-metals-mining',
-                        'coking-coal',
-                        'paper-paper-products',
-                        'silver'},
-    'communication-services': {'internet-content-information',
-                                'telecom-services',
-                                'entertainment',
-                                'electronic-gaming-multimedia',
-                                'advertising-agencies',
-                                'broadcasting',
-                                'publishing'},
-    'consumer-cyclical': {'internet-retail',
-                            'auto-manufacturers',
-                            'restaurants',
-                            'home-improvement-retail',
-                            'travel-services',
-                            'specialty-retail',
-                            'apparel-retail',
-                            'residential-construction',
-                            'footwear-accessories',
-                            'packaging-containers',
-                            'lodging',
-                            'auto-parts',
-                            'auto-truck-dealerships',
-                            'gambling',
-                            'resorts-casinos',
-                            'leisure',
-                            'apparel-manufacturing',
-                            'personal-services',
-                            'furnishings-fixtures-appliances',
-                            'recreational-vehicles',
-                            'luxury-goods',
-                            'department-stores',
-                            'textile-manufacturing'},
-    'consumer-defensive': {'discount-stores',
-                            'beverages-non-alcoholic',
-                            'household-personal-products',
-                            'packaged-foods',
-                            'tobacco',
-                            'confectioners',
-                            'farm-products',
-                            'food-distribution',
-                            'grocery-stores',
-                            'beverages-brewers',
-                            'education-training-services',
-                            'beverages-wineries-distilleries'},
-    'energy': {'oil-gas-integrated',
-                'oil-gas-midstream',
-                'oil-gas-e-p',
-                'oil-gas-equipment-services',
-                'oil-gas-refining-marketing',
-                'uranium',
-                'oil-gas-drilling',
-                'thermal-coal'},
-    'financial-services': {'banks-diversified',
-                            'credit-services',
-                            'asset-management',
-                            'insurance-diversified',
-                            'banks-regional',
-                            'capital-markets',
-                            'financial-data-stock-exchanges',
-                            'insurance-property-casualty',
-                            'insurance-brokers',
-                            'insurance-life',
-                            'insurance-specialty',
-                            'mortgage-finance',
-                            'insurance-reinsurance',
-                            'shell-companies',
-                            'financial-conglomerates'},
-    'healthcare': {'drug-manufacturers-general',
-                    'healthcare-plans',
-                    'biotechnology',
-                    'medical-devices',
-                    'diagnostics-research',
-                    'medical-instruments-supplies',
-                    'medical-care-facilities',
-                    'drug-manufacturers-specialty-generic',
-                    'health-information-services',
-                    'medical-distribution',
-                    'pharmaceutical-retailers'},
-    'industrials': {'aerospace-defense',
-                    'specialty-industrial-machinery',
-                    'railroads',
-                    'building-products-equipment',
-                    'farm-heavy-construction-machinery',
-                    'specialty-business-services',
-                    'integrated-freight-logistics',
-                    'waste-management',
-                    'conglomerates',
-                    'industrial-distribution',
-                    'engineering-construction',
-                    'rental-leasing-services',
-                    'consulting-services',
-                    'trucking',
-                    'electrical-equipment-parts',
-                    'airlines',
-                    'tools-accessories',
-                    'pollution-treatment-controls',
-                    'security-protection-services',
-                    'marine-shipping',
-                    'metal-fabrication',
-                    'infrastructure-operations',
-                    'staffing-employment-services',
-                    'airports-air-services',
-                    'business-equipment-supplies'},
-    'real-estate': {'reit-specialty',
-                    'reit-industrial',
-                    'reit-retail',
-                    'reit-residential',
-                    'reit-healthcare-facilities',
-                    'real-estate-services',
-                    'reit-office',
-                    'reit-diversified',
-                    'reit-mortgage',
-                    'reit-hotel-motel',
-                    'real-estate-development',
-                    'real-estate-diversified'},
-    'technology': {'software-infrastructure',
-                    'semiconductors',
-                    'consumer-electronics',
-                    'software-application',
-                    'information-technology-services',
-                    'semiconductor-equipment-materials',
-                    'communication-equipment',
-                    'computer-hardware',
-                    'electronic-components',
-                    'scientific-technical-instruments',
-                    'solar',
-                    'electronics-computer-distribution'},
-    'utilities': {'utilities-regulated-electric',
-                    'utilities-renewable',
-                    'utilities-diversified',
-                    'utilities-regulated-gas',
-                    'utilities-independent-power-producers',
-                    'utilities-regulated-water'}
+    'Basic Materials': {'Specialty Chemicals',
+                        'Gold',
+                        'Building Materials',
+                        'Copper',
+                        'Steel',
+                        'Agricultural Inputs',
+                        'Chemicals',
+                        'Other Industrial Metals & Mining',
+                        'Lumber & Wood Production',
+                        'Aluminum',
+                        'Other Precious Metals & Mining',
+                        'Coking Coal',
+                        'Paper & Paper Products',
+                        'Silver'},
+    'Communication Services': {'Advertising Agencies',
+                                'Broadcasting',
+                                'Electronic Gaming & Multimedia',
+                                'Entertainment',
+                                'Internet Content & Information',
+                                'Publishing',
+                                'Telecom Services'},
+    'Consumer Cyclical': {'Apparel Manufacturing',
+                            'Apparel Retail',
+                            'Auto & Truck Dealerships',
+                            'Auto Manufacturers',
+                            'Auto Parts',
+                            'Department Stores',
+                            'Footwear & Accessories',
+                            'Furnishings, Fixtures & Appliances',
+                            'Gambling',
+                            'Home Improvement Retail',
+                            'Internet Retail',
+                            'Leisure',
+                            'Lodging',
+                            'Luxury Goods',
+                            'Packaging & Containers',
+                            'Personal Services',
+                            'Recreational Vehicles',
+                            'Residential Construction',
+                            'Resorts & Casinos',
+                            'Restaurants',
+                            'Specialty Retail',
+                            'Textile Manufacturing',
+                            'Travel Services'},
+    'Consumer Defensive': {'Beverages - Brewers',
+                            'Beverages - Non-Alcoholic',
+                            'Beverages - Wineries & Distilleries',
+                            'Confectioners',
+                            'Discount Stores',
+                            'Education & Training Services',
+                            'Farm Products',
+                            'Food Distribution',
+                            'Grocery Stores',
+                            'Household & Personal Products',
+                            'Packaged Foods',
+                            'Tobacco'},
+    'Energy': {'Oil Gas Drilling',
+                'Oil Gas E P',
+                'Oil Gas Equipment Services',
+                'Oil Gas Integrated',
+                'Oil Gas Midstream',
+                'Oil Gas Refining Marketing',
+                'Thermal Coal',
+                'Uranium'},
+    'Financial Services': {'Asset Management',
+                            'Banks Diversified',
+                            'Banks Regional',
+                            'Capital Markets',
+                            'Credit Services',
+                            'Financial Conglomerates',
+                            'Financial Data Stock Exchanges',
+                            'Insurance Brokers',
+                            'Insurance Diversified',
+                            'Insurance Life',
+                            'Insurance Property Casualty',
+                            'Insurance Reinsurance',
+                            'Insurance Specialty',
+                            'Mortgage Finance',
+                            'Shell Companies'},
+    'Healthcare': {'Biotechnology',
+                    'Diagnostics Research',
+                    'Drug Manufacturers General',
+                    'Drug Manufacturers Specialty Generic',
+                    'Health Information Services',
+                    'Healthcare Plans',
+                    'Medical Care Facilities',
+                    'Medical Devices',
+                    'Medical Distribution',
+                    'Medical Instruments Supplies',
+                    'Pharmaceutical Retailers'},
+    'Industrials': {'Aerospace Defense',
+                    'Airlines',
+                    'Airports Air Services',
+                    'Building Products Equipment',
+                    'Business Equipment Supplies',
+                    'Conglomerates',
+                    'Consulting Services',
+                    'Electrical Equipment Parts',
+                    'Engineering Construction',
+                    'Farm Heavy Construction Machinery',
+                    'Industrial Distribution',
+                    'Infrastructure Operations',
+                    'Integrated Freight Logistics',
+                    'Marine Shipping',
+                    'Metal Fabrication',
+                    'Pollution Treatment Controls',
+                    'Railroads',
+                    'Rental Leasing Services',
+                    'Security Protection Services',
+                    'Specialty Business Services',
+                    'Specialty Industrial Machinery',
+                    'Staffing Employment Services',
+                    'Tools Accessories',
+                    'Trucking',
+                    'Waste Management'},
+    'Real Estate': {'Real Estate Development',
+                    'Real Estate Diversified',
+                    'Real Estate Services',
+                    'Reit Diversified',
+                    'Reit Healthcare Facilities',
+                    'Reit Hotel Motel',
+                    'Reit Industrial',
+                    'Reit Mortgage',
+                    'Reit Office',
+                    'Reit Residential',
+                    'Reit Retail',
+                    'Reit Specialty'},
+    'Technology': {'Communication Equipment',
+                    'Computer Hardware',
+                    'Consumer Electronics',
+                    'Electronic Components',
+                    'Electronics Computer Distribution',
+                    'Information Technology Services',
+                    'Scientific Technical Instruments',
+                    'Semiconductor Equipment Materials',
+                    'Semiconductors',
+                    'Software Application',
+                    'Software Infrastructure',
+                    'Solar'},
+    'Utilities': {'Utilities Diversified',
+                    'Utilities Independent Power Producers',
+                    'Utilities Regulated Electric',
+                    'Utilities Regulated Gas',
+                    'Utilities Regulated Water',
+                    'Utilities Renewable'},
+}
+SECTOR_INDUSTY_MAPPING_LC = {}
+for k in SECTOR_INDUSTY_MAPPING.keys():
+    k2 = k.lower().replace('& ', '').replace('- ', '').replace(', ', ' ').replace(' ', '-')
+    SECTOR_INDUSTY_MAPPING_LC[k2] = []
+    for v in SECTOR_INDUSTY_MAPPING[k]:
+        v2 = v.lower().replace('& ', '').replace('- ', '').replace(', ', ' ').replace(' ', '-')
+        SECTOR_INDUSTY_MAPPING_LC[k2].append(v2)
+
+# _MIC_TO_YAHOO_SUFFIX maps Market Identifier Codes (MIC) to Yahoo Finance market suffixes.
+# c.f. :
+# https://help.yahoo.com/kb/finance-for-web/SLN2310.html;_ylt=AwrJKiCZFo9g3Y8AsDWPAwx.;_ylu=Y29sbwMEcG9zAzEEdnRpZAMEc2VjA3Ny?locale=en_US
+# https://www.iso20022.org/market-identifier-codes
+
+_MIC_TO_YAHOO_SUFFIX = {
+    'XCBT': 'CBT', 'XCME': 'CME', 'IFUS': 'NYB', 'CECS': 'CMX', 'XNYM': 'NYM', 'XNYS': '', 'XNAS': '',  # United States
+    'XBUE': 'BA',  # Argentina
+    'XVIE': 'VI',  # Austria
+    'XASX': 'AX', 'XAUS': 'XA',  # Australia
+    'XBRU': 'BR',  # Belgium
+    'BVMF': 'SA',  # Brazil
+    'CNSX': 'CN', 'NEOE': 'NE', 'XTSE': 'TO', 'XTSX': 'V',  # Canada
+    'XSGO': 'SN',  # Chile
+    'XSHG': 'SS', 'XSHE': 'SZ',  # China
+    'XBOG': 'CL',  # Colombia
+    'XPRA': 'PR',  # Czech Republic
+    'XCSE': 'CO',  # Denmark
+    'XCAI': 'CA',  # Egypt
+    'XTAL': 'TL',  # Estonia
+    'CEUX': 'XD', 'XEUR': 'NX',  # Europe (Cboe Europe, Euronext)
+    'XHEL': 'HE',  # Finland
+    'XPAR': 'PA',  # France
+    'XBER': 'BE', 'XBMS': 'BM', 'XDUS': 'DU', 'XFRA': 'F', 'XHAM': 'HM', 'XHAN': 'HA', 'XMUN': 'MU', 'XSTU': 'SG', 'XETR': 'DE',  # Germany
+    'XATH': 'AT',  # Greece
+    'XHKG': 'HK',  # Hong Kong
+    'XBUD': 'BD',  # Hungary
+    'XICE': 'IC',  # Iceland
+    'XBOM': 'BO', 'XNSE': 'NS',  # India
+    'XIDX': 'JK',  # Indonesia
+    'XDUB': 'IR',  # Ireland
+    'XTAE': 'TA',  # Israel
+    'MTAA': 'MI', 'EUTL': 'TI',  # Italy
+    'XTKS': 'T',  # Japan
+    'XKFE': 'KW',  # Kuwait
+    'XRIS': 'RG',  # Latvia
+    'XVIL': 'VS',  # Lithuania
+    'XKLS': 'KL',  # Malaysia
+    'XMEX': 'MX',  # Mexico
+    'XAMS': 'AS',  # Netherlands
+    'XNZE': 'NZ',  # New Zealand
+    'XOSL': 'OL',  # Norway
+    'XPHS': 'PS',  # Philippines
+    'XWAR': 'WA',  # Poland
+    'XLIS': 'LS',  # Portugal
+    'XQAT': 'QA',  # Qatar
+    'XBSE': 'RO',  # Romania
+    'XSES': 'SI',  # Singapore
+    'XJSE': 'JO',  # South Africa
+    'XKRX': 'KS', 'KQKS': 'KQ',  # South Korea
+    'BMEX': 'MC',  # Spain
+    'XTAD': 'SAU',  # Saudi Arabia
+    'XSTO': 'ST',  # Sweden
+    'XSWX': 'SW',  # Switzerland
+    'ROCO': 'TWO', 'XTAI': 'TW',  # Taiwan
+    'XBKK': 'BK',  # Thailand
+    'XIST': 'IS',  # Turkey
+    'XDFM': 'AE',  # UAE
+    'AQXE': 'AQ', 'XCHI': 'XC', 'XLON': 'L', 'ILSE': 'IL',  # United Kingdom
+    'XCAR': 'CR',  # Venezuela
+    'XSTC': 'VN'  # Vietnam
 }
 
 def merge_two_level_dicts(dict1, dict2):
@@ -380,6 +450,7 @@ EQUITY_SCREENER_EQ_MAP = {
         'se': {'STO'},
         'sg': {'SES'},
         'sr': {},
+        'sw': {'EBS'},
         'th': {'SET'},
         'tr': {'IST'},
         'tw': {'TAI', 'TWO'},
@@ -393,6 +464,7 @@ EQUITY_SCREENER_EQ_MAP = {
         "Real Estate", "Technology", "Energy", "Utilities", "Financial Services",
         "Consumer Defensive", "Consumer Cyclical"
     },
+    "industry": SECTOR_INDUSTY_MAPPING,
     "peer_group": {
         "US Fund Equity Energy",
         "US CE Convertibles",
@@ -529,7 +601,8 @@ EQUITY_SCREENER_FIELDS = {
     "eq_fields": {
         "region",
         "sector",
-        "peer_group"}, 
+        "peer_group",
+        "industry"}, 
     "price":{
         "lastclosemarketcap.lasttwelvemonths",
         "percentchange",

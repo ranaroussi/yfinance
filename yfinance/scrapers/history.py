@@ -32,7 +32,7 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
-    def history(self, period="1mo", interval="1d",
+    def history(self, period=None, interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 proxy=_SENTINEL_, rounding=False, timeout=10,
@@ -40,40 +40,42 @@ class PriceHistory:
         """
         :Parameters:
             period : str
-                Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-                Either Use period parameter or use start and end
+              | Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+              | Default: 1mo
+              | Can combine with start/end e.g. end = start + period
             interval : str
-                Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
-                Intraday data cannot extend last 60 days
-            start: str
-                Download start date string (YYYY-MM-DD) or _datetime, inclusive.
-                Default is 99 years ago
-                E.g. for start="2020-01-01", the first data point will be on "2020-01-01"
-            end: str
-                Download end date string (YYYY-MM-DD) or _datetime, exclusive.
-                Default is now
-                E.g. for end="2023-01-01", the last data point will be on "2022-12-31"
+              | Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+              | Intraday data cannot extend last 60 days
+            start : str
+              | Download start date string (YYYY-MM-DD) or _datetime, inclusive.
+              | Default: 99 years ago
+              | E.g. for start="2020-01-01", first data point = "2020-01-01"
+            end : str
+              | Download end date string (YYYY-MM-DD) or _datetime, exclusive.
+              | Default: now
+              | E.g. for end="2023-01-01", last data point = "2022-12-31"
             prepost : bool
-                Include Pre and Post market data in results?
-                Default is False
-            auto_adjust: bool
-                Adjust all OHLC automatically? Default is True
-            back_adjust: bool
-                Back-adjusted data to mimic true historical prices
-            repair: bool
-                Detect currency unit 100x mixups and attempt repair.
-                Default is False
-            keepna: bool
-                Keep NaN rows returned by Yahoo?
-                Default is False
-            rounding: bool
-                Round values to 2 decimal places?
-                Optional. Default is False = precision suggested by Yahoo!
-            timeout: None or float
-                If not None stops waiting for a response after given number of
-                seconds. (Can also be a fraction of a second e.g. 0.01)
-                Default is 10 seconds.
-            raise_errors: bool
+              | Include Pre and Post market data in results?
+              | Default: False
+            auto_adjust : bool
+              | Adjust all OHLC automatically?
+              | Default: True
+            back_adjust : bool
+              | Back-adjusted data to mimic true historical prices
+            repair : bool
+              | Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
+              | Default: False
+              | Full details at: :doc:`../advanced/price_repair`.
+            keepna : bool
+              | Keep NaN rows returned by Yahoo?
+              | Default: False
+            rounding : bool
+              | Optional: Round values to 2 decimal places?
+              | Default: False = use precision suggested by Yahoo!
+            timeout : None or float
+              | Optional: timeout fetches after N seconds
+              | Default: 10 seconds
+            raise_errors : bool
                 If True, then raise errors as Exceptions instead of logging.
         """
         logger = utils.get_yf_logger()
@@ -117,7 +119,7 @@ class PriceHistory:
 
         start_user = start
         end_user = end
-        if start or period is None or period.lower() == "max":
+        if start or end or (period and period.lower() == "max"):
             # Check can get TZ. Fail => probably delisted
             tz = self.tz
             if tz is None:
@@ -132,21 +134,49 @@ class PriceHistory:
                     logger.error(err_msg)
                 return utils.empty_df()
 
-            if end is None:
-                end = int(_time.time())
-            else:
-                end = utils._parse_user_dt(end, tz)
-            if start is None:
-                if interval == "1m":
-                    start = end - 604800   # 7 days
-                elif interval in ("5m", "15m", "30m", "90m"):
-                    start = end - 5184000  # 60 days
-                elif interval in ("1h", '60m'):
-                    start = end - 63072000  # 730 days
-                else:
-                    start = end - 3122064000  # 99 years
-            else:
-                start = utils._parse_user_dt(start, tz)
+        if start:
+            start_dt = utils._parse_user_dt(start, tz)
+            start = int(start_dt.timestamp())
+        if end:
+            end_dt = utils._parse_user_dt(end, tz)
+            end = int(end_dt.timestamp())
+
+        if period is None:
+            if not (start or end):
+                period = '1mo'  # default
+            elif not start:
+                start_dt = end_dt - utils._interval_to_timedelta('1mo')
+                start = int(start_dt.timestamp())
+            elif not end:
+                end_dt = pd.Timestamp.utcnow().tz_convert(tz)
+                end = int(end_dt.timestamp())
+        else:
+            if period.lower() == "max":
+                if end is None:
+                    end = int(_time.time())
+                if start is None:
+                    if interval == "1m":
+                        start = end - 691200  # 8 days
+                    elif interval in ("2m", "5m", "15m", "30m", "90m"):
+                        start = end - 5184000  # 60 days
+                    elif interval in ("1h", "60m"):
+                        start = end - 63072000  # 730 days
+                    else:
+                        start = end - 3122064000  # 99 years
+                    start += 5 # allow for processing time
+            elif start and end:
+                raise ValueError("Setting period, start and end is nonsense. Set maximum 2 of them.")
+            elif start or end:
+                period_td = utils._interval_to_timedelta(period)
+                if end is None:
+                    end_dt = start_dt + period_td
+                    end = int(end_dt.timestamp())
+                if start is None:
+                    start_dt = end_dt - period_td
+                    start = int(start_dt.timestamp())
+                period = None
+
+        if start or end:
             params = {"period1": start, "period2": end}
         else:
             period = period.lower()
@@ -333,6 +363,24 @@ class PriceHistory:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
+            if 'currency' in dividends.columns:
+                # Rare, only seen with Vietnam market
+                price_currency = self._history_metadata['currency']
+                if price_currency is None:
+                    price_currency = ''
+                f_currency_mismatch = dividends['currency'] != price_currency
+                if f_currency_mismatch.any():
+                    if not repair or price_currency == '':
+                        # Append currencies to values, let user decide action.
+                        dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
+                    else:
+                        # Attempt repair = currency conversion
+                        dividends = self._dividends_convert_fx(dividends, price_currency, repair)
+                        if (dividends['currency'] != price_currency).any():
+                            # FX conversion failed
+                            dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
+                dividends = dividends.drop('currency', axis=1)
+
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
         if start is not None:
@@ -410,6 +458,7 @@ class PriceHistory:
             # First make currency consistent. On some exchanges, dividends often in different currency
             # to prices, e.g. £ vs pence.
             df, currency = self._standardise_currency(df, currency)
+            self._history_metadata['currency'] = currency
 
             df = self._fix_bad_div_adjust(df, interval, currency)
 
@@ -831,37 +880,39 @@ class PriceHistory:
                     # But in case are repairing a chunk of bad 1d data, back/forward-fill the
                     # good div-adjustments - not perfect, but a good backup.
                     div_adjusts[f_tag] = np.nan
-                    div_adjusts = div_adjusts.ffill().bfill()
-                    for idx in np.where(f_tag)[0]:
-                        dt = df_new_calib.index[idx]
-                        n = len(div_adjusts)
-                        if df_new.loc[dt, "Dividends"] != 0:
-                            if idx < n - 1:
-                                # Easy, take div-adjustment from next-day
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
+                    if not div_adjusts.isna().all():
+                        # Need some real values to calibrate
+                        div_adjusts = div_adjusts.ffill().bfill()
+                        for idx in np.where(f_tag)[0]:
+                            dt = df_new_calib.index[idx]
+                            n = len(div_adjusts)
+                            if df_new.loc[dt, "Dividends"] != 0:
+                                if idx < n - 1:
+                                    # Easy, take div-adjustment from next-day
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
+                                else:
+                                    # Take previous-day div-adjustment and reverse todays adjustment
+                                    div_adj = 1.0 - df_new_calib["Dividends"].iloc[idx] / df_new_calib['Close'].iloc[
+                                        idx - 1]
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1] / div_adj
                             else:
-                                # Take previous-day div-adjustment and reverse todays adjustment
-                                div_adj = 1.0 - df_new_calib["Dividends"].iloc[idx] / df_new_calib['Close'].iloc[
-                                    idx - 1]
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1] / div_adj
-                        else:
-                            if idx > 0:
-                                # Easy, take div-adjustment from previous-day
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1]
-                            else:
-                                # Must take next-day div-adjustment
-                                div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
-                                if df_new_calib["Dividends"].iloc[idx + 1] != 0:
-                                    div_adjusts.iloc[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx + 1] / \
-                                                        df_new_calib['Close'].iloc[idx]
-                    f_close_bad = df_block_calib['Close'] == tag
-                    div_adjusts = div_adjusts.reindex(df_block.index, fill_value=np.nan).ffill().bfill()
-                    df_new['Adj Close'] = df_block['Close'] * div_adjusts
-                    if f_close_bad.any():
-                        f_close_bad_new = f_close_bad.reindex(df_new.index, fill_value=False)
-                        div_adjusts_new = div_adjusts.reindex(df_new.index, fill_value=np.nan).ffill().bfill()
-                        div_adjusts_new_np = f_close_bad_new.to_numpy()
-                        df_new.loc[div_adjusts_new_np, 'Adj Close'] = df_new['Close'][div_adjusts_new_np] * div_adjusts_new[div_adjusts_new_np]
+                                if idx > 0:
+                                    # Easy, take div-adjustment from previous-day
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1]
+                                else:
+                                    # Must take next-day div-adjustment
+                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
+                                    if df_new_calib["Dividends"].iloc[idx + 1] != 0:
+                                        div_adjusts.iloc[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx + 1] / \
+                                                            df_new_calib['Close'].iloc[idx]
+                        f_close_bad = df_block_calib['Close'] == tag
+                        div_adjusts = div_adjusts.reindex(df_block.index, fill_value=np.nan).ffill().bfill()
+                        df_new['Adj Close'] = df_block['Close'] * div_adjusts
+                        if f_close_bad.any():
+                            f_close_bad_new = f_close_bad.reindex(df_new.index, fill_value=False)
+                            div_adjusts_new = div_adjusts.reindex(df_new.index, fill_value=np.nan).ffill().bfill()
+                            div_adjusts_new_np = f_close_bad_new.to_numpy()
+                            df_new.loc[div_adjusts_new_np, 'Adj Close'] = df_new['Close'][div_adjusts_new_np] * div_adjusts_new[div_adjusts_new_np]
 
             # Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
@@ -1024,6 +1075,45 @@ class PriceHistory:
                 df['Dividends'] *= m
 
         return df, currency2
+
+    def _dividends_convert_fx(self, dividends, fx, repair=False):
+        bad_div_currencies = [c for c in dividends['currency'].unique() if c != fx]
+        major_currencies = ['USD', 'JPY', 'EUR', 'CNY', 'GBP', 'CAD']
+        for c in bad_div_currencies:
+            fx2_tkr = None
+            if c == 'USD':
+                # Simple convert from USD to target FX
+                fx_tkr = f'{fx}=X'
+                reverse = False
+            elif fx == 'USD':
+                # Use same USD FX but reversed
+                fx_tkr = f'{fx}=X'
+                reverse = True
+            elif c in major_currencies and fx in major_currencies:
+                # Simple convert
+                fx_tkr = f'{c}{fx}=X'
+                reverse = False
+            else:
+                # No guarantee that Yahoo has direct FX conversion, so
+                # convert via USD
+                # - step 1: -> USD
+                fx_tkr = f'{c}=X'
+                reverse = True
+                # - step 2: USD -> FX
+                fx2_tkr = f'{fx}=X'
+
+            fx_dat = PriceHistory(self._data, fx_tkr, self.session)
+            fx_rate = fx_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
+            if reverse:
+                fx_rate = 1/fx_rate
+            dividends.loc[dividends['currency']==c, 'Dividends'] *= fx_rate
+            if fx2_tkr is not None:
+                fx2_dat = PriceHistory(self._data, fx2_tkr, self.session)
+                fx2_rate = fx2_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
+                dividends.loc[dividends['currency']==c, 'Dividends'] *= fx2_rate
+
+        dividends['currency'] = fx
+        return dividends
 
     @utils.log_indent_decorator
     def _fix_unit_mixups(self, df, interval, tz_exchange, prepost):
