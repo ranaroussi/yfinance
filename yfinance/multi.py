@@ -41,7 +41,7 @@ from .const import _SENTINEL_
 def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
              repair=False, keepna=False, progress=True, period=None, interval="1d",
-             prepost=False, proxy=_SENTINEL_, rounding=False, timeout=10, retries=0, session=None,
+             prepost=False, proxy=_SENTINEL_, rounding=False, timeout=10, session=None,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
@@ -88,9 +88,6 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)
-        retries: int
-            Optional. Number of retries for failed downloads. Default is 0
-            Each retry uses exponential backoff (1s, 2s, 4s...)
         session: None or Session
             Optional. Pass your own session object to be used for all requests
         multi_level_index: bool
@@ -166,7 +163,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0),
-                                   rounding=rounding, timeout=timeout, retries=retries)
+                                   rounding=rounding, timeout=timeout)
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
     # download synchronously
@@ -176,7 +173,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
                                  back_adjust=back_adjust, repair=repair, keepna=keepna,
-                                 rounding=rounding, timeout=timeout, retries=retries)
+                                 rounding=rounding, timeout=timeout)
             if progress:
                 shared._PROGRESS_BAR.animate()
 
@@ -283,10 +280,10 @@ def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period="max",
                            interval="1d", prepost=False,
-                           keepna=False, rounding=False, timeout=10, retries=0):
+                           keepna=False, rounding=False, timeout=10):
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
                          actions, period, interval, prepost, rounding,
-                         keepna, timeout, retries)
+                         keepna, timeout)
     if progress:
         shared._PROGRESS_BAR.animate()
 
@@ -295,12 +292,12 @@ def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period="max", interval="1d",
                   prepost=False, rounding=False,
-                  keepna=False, timeout=10, retries=0):
+                  keepna=False, timeout=10):
     data = None
     last_exception = None
     logger = utils.get_yf_logger()
 
-    for attempt in range(retries + 1):
+    for attempt in range(YfData()._retries + 1):
         try:
             data = Ticker(ticker).history(
                     period=period, interval=interval,
@@ -315,7 +312,7 @@ def _download_one(ticker, start=None, end=None,
         except Exception as e:
             last_exception = e
             # Retry only for transient errors (network/timeout)
-            if _is_transient_error(e) and attempt < retries:
+            if _is_transient_error(e) and attempt < YfData()._retries:
                 # Exponential backoff: 1s, 2s, 4s, etc.
                 wait_time = 2 ** attempt
                 logger.debug(f"{ticker}: Network error, retrying in {wait_time}s...")

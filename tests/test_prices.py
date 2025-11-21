@@ -479,7 +479,8 @@ class TestPriceHistory(unittest.TestCase):
         ]
 
         # Call download with retries=2
-        result = yf.download('AAPL', period='1y', retries=2, threads=False)
+        yf.set_config(retries=2)
+        result = yf.download('AAPL', period='1y', threads=False)
 
         # Verify that history() was called 3 times (1 initial + 2 retries)
         self.assertEqual(mock_ticker_instance.history.call_count, 3)
@@ -504,7 +505,8 @@ class TestPriceHistory(unittest.TestCase):
         mock_ticker_instance.history.side_effect = YFPricesMissingError('INVALID', '')
 
         # Call download with retries=2
-        yf.download('INVALID', period='1y', retries=2)
+        yf.set_config(retries=2)
+        yf.download('INVALID', period='1y')
 
         # Verify that history() was called only once (no retries)
         self.assertEqual(mock_ticker_instance.history.call_count, 1)
