@@ -10,8 +10,9 @@ import time as _time
 import warnings
 
 from yfinance import shared, utils
+from yfinance.config import YfConfig
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, _SENTINEL_
-from yfinance.exceptions import YFInvalidPeriodError, YFPricesMissingError, YFTzMissingError, YFRateLimitError
+from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
 
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None, proxy=_SENTINEL_):
@@ -83,13 +84,16 @@ class PriceHistory:
             warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=5)
             self._data._set_proxy(proxy)
 
+        if raise_errors:
+            warnings.warn("'raise_errors' deprecated, use yf.set_config(hide_exceptions=False)", DeprecationWarning, stacklevel=5)
+
         interval_user = interval
         period_user = period
         if repair and interval in ["5d", "1wk", "1mo", "3mo"]:
             # Yahoo's way of adjusting mutiday intervals is fundamentally broken.
             # Have to fetch 1d, adjust, then resample.
             if interval == '5d':
-                raise Exception("Yahoo's interval '5d' is nonsense, not supported with repair")
+                raise ValueError("Yahoo's interval '5d' is nonsense, not supported with repair")
             if start is None and end is None and period is not None:
                 tz = self.tz
                 if tz is None:
@@ -98,7 +102,7 @@ class PriceHistory:
                     err_msg = str(_exception)
                     shared._DFS[self.ticker] = utils.empty_df()
                     shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
-                    if raise_errors:
+                    if raise_errors or (not YfConfig().hide_exceptions):
                         raise _exception
                     else:
                         logger.error(err_msg)
@@ -124,7 +128,7 @@ class PriceHistory:
                 err_msg = str(_exception)
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
-                if raise_errors:
+                if raise_errors or (not YfConfig().hide_exceptions):
                     raise _exception
                 else:
                     logger.error(err_msg)
@@ -213,22 +217,22 @@ class PriceHistory:
                 timeout=timeout
             )
             if "Will be right back" in data.text or data is None:
-                raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                                   "Our engineers are working quickly to resolve "
-                                   "the issue. Thank you for your patience.")
+                raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
 
             data = data.json()
         # Special case for rate limits
         except YFRateLimitError:
             raise
         except Exception:
-            if raise_errors:
+            if raise_errors or (not YfConfig().hide_exceptions):
                 raise
 
         # Store the meta data that gets retrieved simultaneously
         try:
             self._history_metadata = data["chart"]["result"][0]["meta"]
         except Exception:
+            if not YfConfig().hide_exceptions:
+                raise
             self._history_metadata = {}
 
         intraday = params["interval"][-1] in ("m", 'h')
@@ -275,7 +279,7 @@ class PriceHistory:
             err_msg = str(_exception)
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
-            if raise_errors:
+            if raise_errors or (not YfConfig().hide_exceptions):
                 raise _exception
             else:
                 logger.error(err_msg)
@@ -327,6 +331,8 @@ class PriceHistory:
                 quotes['Dividends'] = quotes2['Dividends'].max()
                 quotes['Stock Splits'] = quotes2['Stock Splits'].max()
             except Exception:
+                if raise_errors or (not YfConfig().hide_exceptions):
+                    raise
                 pass
 
         # Note: ordering is important. If you change order, run the tests!
@@ -476,16 +482,15 @@ class PriceHistory:
             elif back_adjust:
                 df = utils.back_adjust(df)
         except Exception as e:
+            if raise_errors or (not YfConfig().hide_exceptions):
+                raise
             if auto_adjust:
                 err_msg = "auto_adjust failed with %s" % e
             else:
                 err_msg = "back_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            if raise_errors:
-                raise Exception('%s: %s' % (self.ticker, err_msg))
-            else:
-                logger.error('%s: %s' % (self.ticker, err_msg))
+            logger.error('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
             df = np.round(df, data["chart"]["result"][0]["meta"]["priceHint"])
@@ -616,7 +621,7 @@ class PriceHistory:
                 align_month = _datetime.datetime.now().strftime('%b').upper()
             resample_period = f"QS-{align_month}"
         else:
-            raise Exception(f"Not implemented resampling to interval '{target_interval}'")
+            raise ValueError(f"Not implemented resampling to interval '{target_interval}'")
         resample_map = {
             'Open': 'first', 'Low': 'min', 'High': 'max', 'Close': 'last',
             'Volume': 'sum', 'Dividends': 'sum', 'Stock Splits': 'prod'
@@ -639,7 +644,7 @@ class PriceHistory:
         log_extras = {'yf_cat': 'price-reconstruct', 'yf_interval': interval, 'yf_symbol': self.ticker}
 
         if not isinstance(df, pd.DataFrame):
-            raise Exception("'df' must be a Pandas DataFrame not", type(df))
+            raise ValueError("'df' must be a Pandas DataFrame not", type(df))
         if interval == "1m":
             # Can't go smaller than 1m so can't reconstruct
             return df
@@ -1046,6 +1051,8 @@ class PriceHistory:
                     prices_in_subunits = False
             except Exception:
                 # Should never happen but just-in-case
+                if not YfConfig().hide_exceptions:
+                    raise
                 pass
         if prices_in_subunits:
             for c in _PRICE_COLNAMES_:
@@ -1736,7 +1743,7 @@ class PriceHistory:
                     # elif k == 'div_true_date':
                     #     div_status_df[k] = pd.Series(dtype='datetime64[ns, UTC]')
                     else:
-                        raise Exception(k,v,type(v))
+                        raise ValueError(k,v,type(v))
                 div_status_df.loc[dt, k] = v
         checks += ['adj_missing', 'adj_exceeds_div', 'div_exceeds_adj']
 
@@ -1976,7 +1983,7 @@ class PriceHistory:
                     elif k == 'div_true_date':
                         div_status_df[k] = pd.Series(dtype='datetime64[ns, UTC]')
                     else:
-                        raise Exception(k,v,type(v))
+                        raise ValueError(k,v,type(v))
                 div_status_df.loc[dt, k] = v
             if 'div_too_big' in div_status_df.columns and 'div_date_wrong' in div_status_df.columns:
                 # Where div_date_wrong = True, discard div_too_big. Helps with false-positive handling later.
@@ -2430,9 +2437,6 @@ class PriceHistory:
         for k in div_repairs:
             msg = f"Repaired {k}: {[str(dt.date()) for dt in sorted(div_repairs[k])]}"
             logger.info(msg, extra=log_extras)
-
-        if 'Adj' in df2.columns:
-            raise Exception('"Adj" has snuck in df2')
 
         if not df2_nan.empty:
             df2 = pd.concat([df2, df2_nan]).sort_index()

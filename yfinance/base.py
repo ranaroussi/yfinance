@@ -34,7 +34,8 @@ from curl_cffi import requests
 from . import utils, cache
 from .const import _MIC_TO_YAHOO_SUFFIX
 from .data import YfData
-from .exceptions import YFEarningsDateMissing, YFRateLimitError
+from .config import YfConfig
+from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
@@ -188,6 +189,8 @@ class TickerBase:
             # Must propagate this
             raise
         except Exception as e:
+            if not YfConfig().hide_exceptions:
+                raise
             logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
             return None
         else:
@@ -199,6 +202,8 @@ class TickerBase:
                 try:
                     return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
                 except Exception as err:
+                    if not YfConfig().hide_exceptions:
+                        raise
                     logger.error(f"Could not get exchangeTimezoneName for ticker '{self.ticker}' reason: {err}")
                     logger.debug("Got response: ")
                     logger.debug("-------------")
@@ -628,6 +633,8 @@ class TickerBase:
             json_data = self._data.cache_get(url=shares_url)
             json_data = json_data.json()
         except (_json.JSONDecodeError, requests.exceptions.RequestException):
+            if not YfConfig().hide_exceptions:
+                raise
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
         try:
@@ -635,6 +642,8 @@ class TickerBase:
         except KeyError:
             fail = False
         if fail:
+            if not YfConfig().hide_exceptions:
+                raise requests.exceptions.HTTPError("Yahoo web request for share count returned 'Bad Request'")
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
 
@@ -644,6 +653,8 @@ class TickerBase:
         try:
             df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except Exception as e:
+            if not YfConfig().hide_exceptions:
+                raise
             logger.error(f"{self.ticker}: Failed to parse shares count data: {e}")
             return None
 
@@ -722,12 +733,12 @@ class TickerBase:
 
         data = self._data.post(url, body=payload)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
             data = data.json()
         except _json.JSONDecodeError:
+            if not YfConfig().hide_exceptions:
+                raise
             logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
             data = {}
 
