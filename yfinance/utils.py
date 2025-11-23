@@ -39,6 +39,7 @@ from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
+from yfinance.exceptions import YFException
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
@@ -702,14 +703,10 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    if df_sub.empty:
-        raise Exception("No data to merge")
     if df_main.empty:
         return df_main
 
     data_cols = [c for c in df_sub.columns if c not in df_main]
-    if len(data_cols) > 1:
-        raise Exception("Expected 1 data col")
     data_col = data_cols[0]
 
     df_main = df_main.sort_index()
@@ -793,7 +790,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_outOfRange = indices == -1
     if f_outOfRange.any():
         if intraday or interval in ['1d', '1wk']:
-            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
+            raise YFException(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
         get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
         indices = indices[~f_outOfRange]
@@ -815,7 +812,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             df = df.groupby("_NewIndex").prod()
             df.index.name = None
         else:
-            raise Exception(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
+            raise YFException(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
@@ -827,7 +824,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        raise Exception('Data was lost in merge, investigate')
+        raise YFException('Data was lost in merge, investigate')
 
     return df
 
