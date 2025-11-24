@@ -57,9 +57,6 @@ class SingletonMeta(type):
                 if 'proxy' in kwargs or (args and len(args) > 1):
                     proxy = kwargs.get('proxy') if 'proxy' in kwargs else args[1]
                     cls._instances[cls]._set_proxy(proxy)
-                if 'retries' in kwargs or (args and len(args) > 2):
-                    retries = kwargs.get('retries') if 'retries' in kwargs else args[2]
-                    cls._instances[cls]._retries = retries
             return cls._instances[cls]
 
 
@@ -69,7 +66,7 @@ class YfData(metaclass=SingletonMeta):
     Singleton means one session one cookie shared by all threads.
     """
 
-    def __init__(self, session=None, proxy=None, retries=0):
+    def __init__(self, session=None, proxy=None):
         self._crumb = None
         self._cookie = None
 
@@ -83,7 +80,6 @@ class YfData(metaclass=SingletonMeta):
         self._session, self._proxy = None, None
         self._set_session(session or requests.Session(impersonate="chrome"))
         self._set_proxy(proxy)
-        self._retries = retries
 
     def _set_session(self, session):
         if session is None:

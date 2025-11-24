@@ -34,6 +34,7 @@ from curl_cffi import requests
 
 from . import Ticker, utils
 from .data import YfData
+from .config import YfConfig
 from . import shared
 from .const import _SENTINEL_
 
@@ -297,7 +298,7 @@ def _download_one(ticker, start=None, end=None,
     last_exception = None
     logger = utils.get_yf_logger()
 
-    for attempt in range(YfData()._retries + 1):
+    for attempt in range(YfConfig().retries + 1):
         try:
             data = Ticker(ticker).history(
                     period=period, interval=interval,
@@ -312,7 +313,7 @@ def _download_one(ticker, start=None, end=None,
         except Exception as e:
             last_exception = e
             # Retry only for transient errors (network/timeout)
-            if _is_transient_error(e) and attempt < YfData()._retries:
+            if _is_transient_error(e) and attempt < YfConfig().retries:
                 # Exponential backoff: 1s, 2s, 4s, etc.
                 wait_time = 2 ** attempt
                 logger.debug(f"{ticker}: Network error, retrying in {wait_time}s...")

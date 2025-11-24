@@ -17,17 +17,28 @@ class SingletonMeta(type):
                 if 'hide_exceptions' in kwargs or (args and len(args) > 0):
                     hide_exceptions = kwargs.get('hide_exceptions') if 'hide_exceptions' in kwargs else args[0]
                     cls._instances[cls]._set_hide_exceptions(hide_exceptions)
+                if 'retries' in kwargs or (args and len(args) > 1):
+                    retries = kwargs.get('retries') if 'retries' in kwargs else args[1]
+                    cls._instances[cls]._set_retries(retries)
             return cls._instances[cls]
 
 
 class YfConfig(metaclass=SingletonMeta):
-    def __init__(self, hide_exceptions=True):
+    def __init__(self, hide_exceptions=True, retries=0):
         self._hide_exceptions = hide_exceptions
+        self._retries = retries
 
     def _set_hide_exceptions(self, hide_exceptions):
         self._hide_exceptions = hide_exceptions
 
+    def _set_retries(self, retries):
+        self._retries = retries
+
     @property
     def hide_exceptions(self):
         return self._hide_exceptions
+
+    @property
+    def retries(self):
+        return self._retries
     
