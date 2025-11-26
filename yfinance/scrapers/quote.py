@@ -611,6 +611,26 @@ class Quote:
             return None
         return result
 
+    def _sanitize_price_to_book(self):
+        """
+        Sanitize priceToBook when currencies don't match.
+        
+        Some tickers (e.g., INFY.NS) have mismatched currencies where currentPrice is in one
+        currency (e.g., INR) while bookValue is in another (e.g., USD). This causes Yahoo's
+        priceToBook calculation to be meaningless. This method detects such cases and sets
+        priceToBook to None to prevent propagating invalid data.
+        """
+        if self._info is None:
+            return
+        
+        currency = self._info.get("currency")
+        financial_currency = self._info.get("financialCurrency")
+        
+        # If both currencies are present and differ, clear the priceToBook
+        if (currency is not None and financial_currency is not None and 
+            currency != financial_currency and "priceToBook" in self._info):
+            self._info["priceToBook"] = None
+
     def _fetch_info(self):
         if self._already_fetched:
             return
@@ -667,6 +687,9 @@ class Quote:
             return v2
 
         self._info = {k: _format(k, v) for k, v in query1_info.items()}
+        
+        # Sanitize priceToBook if currencies don't match
+        self._sanitize_price_to_book()
 
     def _fetch_complementary(self):
         if self._already_fetched_complementary:
