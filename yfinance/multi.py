@@ -22,7 +22,6 @@
 from __future__ import print_function
 
 import logging
-import socket
 import time as _time
 import traceback
 from typing import Union
@@ -34,7 +33,6 @@ from curl_cffi import requests
 
 from . import Ticker, utils
 from .data import YfData
-from .config import YfConfig
 from . import shared
 from .const import _SENTINEL_
 
@@ -260,22 +258,6 @@ def _realign_dfs():
             ~shared._DFS[key].index.duplicated(keep='last')]
 
 
-def _is_transient_error(exception):
-    """Check if error is transient (network/timeout) and should be retried."""
-    # Check by exception type
-    if isinstance(exception, (TimeoutError, socket.error, OSError)):
-        return True
-
-    # Check by exception class name (handles requests library exceptions)
-    error_type_name = type(exception).__name__
-    transient_error_types = {
-        'Timeout', 'TimeoutError',
-        'ConnectionError', 'ConnectTimeout', 'ReadTimeout',
-        'ChunkedEncodingError', 'RemoteDisconnected',
-    }
-    return error_type_name in transient_error_types
-
-
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
@@ -295,40 +277,19 @@ def _download_one(ticker, start=None, end=None,
                   prepost=False, rounding=False,
                   keepna=False, timeout=10):
     data = None
-    last_exception = None
-    logger = utils.get_yf_logger()
-
-    for attempt in range(YfConfig().retries + 1):
-        try:
-            data = Ticker(ticker).history(
-                    period=period, interval=interval,
-                    start=start, end=end, prepost=prepost,
-                    actions=actions, auto_adjust=auto_adjust,
-                    back_adjust=back_adjust, repair=repair,
-                    rounding=rounding, keepna=keepna, timeout=timeout,
-                    raise_errors=True
-            )
-            last_exception = None  # Reset if success
-            break  # Success
-        except Exception as e:
-            last_exception = e
-            # Retry only for transient errors (network/timeout)
-            if _is_transient_error(e) and attempt < YfConfig().retries:
-                # Exponential backoff: 1s, 2s, 4s, etc.
-                wait_time = 2 ** attempt
-                logger.debug(f"{ticker}: Network error, retrying in {wait_time}s...")
-                _time.sleep(wait_time)
-            else:
-                # Don't retry for permanent errors
-                break
-
-    if last_exception is None:
-        # Success - all attempts passed
+    try:
+        data = Ticker(ticker).history(
+                period=period, interval=interval,
+                start=start, end=end, prepost=prepost,
+                actions=actions, auto_adjust=auto_adjust,
+                back_adjust=back_adjust, repair=repair,
+                rounding=rounding, keepna=keepna, timeout=timeout,
+                raise_errors=True
+        )
         shared._DFS[ticker.upper()] = data
-    else:
-        # Failed - save empty df and error info
+    except Exception as e:
         shared._DFS[ticker.upper()] = utils.empty_df()
-        shared._ERRORS[ticker.upper()] = repr(last_exception)
+        shared._ERRORS[ticker.upper()] = repr(e)
         shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
 
     return data
