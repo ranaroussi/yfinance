@@ -2,6 +2,7 @@ from tests.context import yfinance as yf
 from tests.context import session_gbl
 
 import unittest
+import socket
 
 import datetime as _dt
 import pytz as _tz
@@ -455,6 +456,21 @@ class TestPriceHistory(unittest.TestCase):
         interval = "3mo"
 
         dat.history(start=start, end=end, interval=interval)
+
+    def test_transient_error_detection(self):
+        """Test that _is_transient_error correctly identifies transient vs permanent errors"""
+        from yfinance.data import _is_transient_error
+        from yfinance.exceptions import YFPricesMissingError
+
+        # Transient errors (should retry)
+        self.assertTrue(_is_transient_error(socket.error("Network error")))
+        self.assertTrue(_is_transient_error(TimeoutError("Timeout")))
+        self.assertTrue(_is_transient_error(OSError("OS error")))
+
+        # Permanent errors (should NOT retry)
+        self.assertFalse(_is_transient_error(ValueError("Invalid")))
+        self.assertFalse(_is_transient_error(YFPricesMissingError('INVALID', '')))
+        self.assertFalse(_is_transient_error(KeyError("key")))
 
 
 if __name__ == '__main__':

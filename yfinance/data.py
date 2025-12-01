@@ -1,5 +1,7 @@
 import functools
 from functools import lru_cache
+import socket
+import time as _time
 
 from curl_cffi import requests
 from urllib.parse import urlsplit, urljoin
@@ -9,9 +11,22 @@ import datetime
 from frozendict import frozendict
 
 from . import utils, cache
+from .config import YfConfig
 import threading
 
 from .exceptions import YFException, YFDataException, YFRateLimitError
+
+
+def _is_transient_error(exception):
+    """Check if error is transient (network/timeout) and should be retried."""
+    if isinstance(exception, (TimeoutError, socket.error, OSError)):
+        return True
+    error_type_name = type(exception).__name__
+    transient_error_types = {
+        'Timeout', 'TimeoutError', 'ConnectionError', 'ConnectTimeout',
+        'ReadTimeout', 'ChunkedEncodingError', 'RemoteDisconnected',
+    }
+    return error_type_name in transient_error_types
 
 cache_maxsize = 64
 
@@ -416,7 +431,15 @@ class YfData(metaclass=SingletonMeta):
         if body:
             request_args['json'] = body
 
-        response = request_method(**request_args)
+        for attempt in range(YfConfig().retries + 1):
+            try:
+                response = request_method(**request_args)
+                break
+            except Exception as e:
+                if _is_transient_error(e) and attempt < YfConfig().retries:
+                    _time.sleep(2 ** attempt)
+                else:
+                    raise
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
             # Retry with other cookie strategy
