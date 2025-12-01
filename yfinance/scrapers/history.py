@@ -228,12 +228,10 @@ class PriceHistory:
                 raise
 
         # Store the meta data that gets retrieved simultaneously
-        try:
-            self._history_metadata = data["chart"]["result"][0]["meta"]
-        except Exception:
-            if not YfConfig().hide_exceptions:
-                raise
+        if data['chart']['result'] is None:
             self._history_metadata = {}
+        else:
+            self._history_metadata = data["chart"]["result"][0]["meta"]
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
@@ -327,13 +325,6 @@ class PriceHistory:
                 'Adj Close': quotes2['Adj Close'].last(),
                 'Volume': quotes2['Volume'].sum()
             })
-            try:
-                quotes['Dividends'] = quotes2['Dividends'].max()
-                quotes['Stock Splits'] = quotes2['Stock Splits'].max()
-            except Exception:
-                if raise_errors or (not YfConfig().hide_exceptions):
-                    raise
-                pass
 
         # Note: ordering is important. If you change order, run the tests!
         quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
