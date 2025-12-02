@@ -286,12 +286,10 @@ def _download_one(ticker, start=None, end=None,
                 rounding=rounding, keepna=keepna, timeout=timeout,
                 raise_errors=True
         )
+        shared._DFS[ticker.upper()] = data
     except Exception as e:
-        # glob try/except needed as current thead implementation breaks if exception is raised.
         shared._DFS[ticker.upper()] = utils.empty_df()
         shared._ERRORS[ticker.upper()] = repr(e)
         shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
-    else:
-        shared._DFS[ticker.upper()] = data
 
     return data
