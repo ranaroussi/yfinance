@@ -64,6 +64,13 @@ class FastInfo:
         self._10d_avg_vol = None
         self._3mo_avg_vol = None
 
+        self._overnight_price = None
+        self._overnight_time = None
+        self._overnight_high = None
+        self._overnight_low = None
+        self._overnight_open = None
+        self._overnight_volume = None
+
         # attrs = utils.attributes(self)
         # self.keys = attrs.keys()
         # utils.attributes is calling each method, bad! Have to hardcode
@@ -74,6 +81,7 @@ class FastInfo:
         _properties += ["last_volume"]
         _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
         _properties += ["year_high", "year_low", "year_change"]
+        _properties += ["overnight_price", "overnight_time", "overnight_high", "overnight_low", "overnight_open", "overnight_volume"]
 
         # Because released before fixing key case, need to officially support
         # camel-case but also secretly support snake-case
@@ -163,6 +171,19 @@ class FastInfo:
         if self._prices_1wk_1h_reg is None:
             self._prices_1wk_1h_reg = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=False)
         return self._prices_1wk_1h_reg
+
+    def _get_overnight_prices(self):
+        """Extract overnight trading data (midnight to 7AM) from prepost prices."""
+        prices = self._get_1wk_1h_prepost_prices()
+
+        if prices.empty:
+            return prices
+
+        # Filter for overnight window: 00:00 - 06:59 (hour < 7)
+        overnight_mask = (prices.index.hour >= 0) & (prices.index.hour < 7)
+        overnight_prices = prices[overnight_mask]
+
+        return overnight_prices
 
     def _get_exchange_metadata(self):
         if self._md is not None:
@@ -456,6 +477,106 @@ class FastInfo:
             self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
             self._year_change = float(self._year_change)
         return self._year_change
+
+    @property
+    def overnight_price(self):
+        """Most recent close price during overnight trading (12AM-7AM)"""
+        if self._overnight_price is not None:
+            return self._overnight_price
+
+        overnight_prices = self._get_overnight_prices()
+        if overnight_prices.empty:
+            self._overnight_price = None
+        else:
+            self._overnight_price = float(overnight_prices['Close'].iloc[-1])
+            if _np.isnan(self._overnight_price):
+                self._overnight_price = None
+
+        return self._overnight_price
+
+    @property
+    def overnight_time(self):
+        """Timestamp of most recent overnight quote"""
+        if self._overnight_time is not None:
+            return self._overnight_time
+
+        overnight_prices = self._get_overnight_prices()
+        self._overnight_time = None if overnight_prices.empty else overnight_prices.index[-1]
+
+        return self._overnight_time
+
+    @property
+    def overnight_high(self):
+        """Highest price during most recent overnight session"""
+        if self._overnight_high is not None:
+            return self._overnight_high
+
+        overnight_prices = self._get_overnight_prices()
+        if overnight_prices.empty:
+            self._overnight_high = None
+        else:
+            # Filter to most recent date only
+            last_date = overnight_prices.index[-1].date()
+            session_prices = overnight_prices[overnight_prices.index.date == last_date]
+            self._overnight_high = float(session_prices['High'].max())
+            if _np.isnan(self._overnight_high):
+                self._overnight_high = None
+
+        return self._overnight_high
+
+    @property
+    def overnight_low(self):
+        """Lowest price during most recent overnight session"""
+        if self._overnight_low is not None:
+            return self._overnight_low
+
+        overnight_prices = self._get_overnight_prices()
+        if overnight_prices.empty:
+            self._overnight_low = None
+        else:
+            # Filter to most recent date only
+            last_date = overnight_prices.index[-1].date()
+            session_prices = overnight_prices[overnight_prices.index.date == last_date]
+            self._overnight_low = float(session_prices['Low'].min())
+            if _np.isnan(self._overnight_low):
+                self._overnight_low = None
+
+        return self._overnight_low
+
+    @property
+    def overnight_open(self):
+        """Opening price of most recent overnight session"""
+        if self._overnight_open is not None:
+            return self._overnight_open
+
+        overnight_prices = self._get_overnight_prices()
+        if overnight_prices.empty:
+            self._overnight_open = None
+        else:
+            # Filter to most recent date only
+            last_date = overnight_prices.index[-1].date()
+            session_prices = overnight_prices[overnight_prices.index.date == last_date]
+            self._overnight_open = float(session_prices['Open'].iloc[0])
+            if _np.isnan(self._overnight_open):
+                self._overnight_open = None
+
+        return self._overnight_open
+
+    @property
+    def overnight_volume(self):
+        """Total volume during most recent overnight session"""
+        if self._overnight_volume is not None:
+            return self._overnight_volume
+
+        overnight_prices = self._get_overnight_prices()
+        if overnight_prices.empty:
+            self._overnight_volume = None
+        else:
+            last_date = overnight_prices.index[-1].date()
+            session_prices = overnight_prices[overnight_prices.index.date == last_date]
+            self._overnight_volume = int(session_prices['Volume'].sum())
+
+        return self._overnight_volume
 
     @property
     def market_cap(self):
