@@ -252,7 +252,7 @@ def _realign_dfs():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
-                           actions=False, progress=True, period="max",
+                           actions=False, progress=True, period=None,
                            interval="1d", prepost=False,
                            keepna=False, rounding=False, timeout=10):
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
@@ -264,7 +264,7 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
-                  actions=False, period="max", interval="1d",
+                  actions=False, period=None, interval="1d",
                   prepost=False, rounding=False,
                   keepna=False, timeout=10):
     data = None
