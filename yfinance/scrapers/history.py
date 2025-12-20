@@ -1831,6 +1831,8 @@ class PriceHistory:
         if not div_status_df[checks].any().any():
             # Perfect
             if df_modified:
+                if not df2_nan.empty:
+                    df2 = pd.concat([df2, df2_nan]).sort_index()
                 return df2
             else:
                 return df
