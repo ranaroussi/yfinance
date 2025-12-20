@@ -1,44 +1,58 @@
-import threading
-
-class SingletonMeta(type):
-    """
-    Metaclass that creates a Singleton instance.
-    """
-    _instances = {}
-    _lock = threading.Lock()
-
-    def __call__(cls, *args, **kwargs):
-        with cls._lock:
-            if cls not in cls._instances:
-                instance = super().__call__(*args, **kwargs)
-                cls._instances[cls] = instance
-            else:
-                # Update the existing instance
-                if 'hide_exceptions' in kwargs or (args and len(args) > 0):
-                    hide_exceptions = kwargs.get('hide_exceptions') if 'hide_exceptions' in kwargs else args[0]
-                    cls._instances[cls]._set_hide_exceptions(hide_exceptions)
-                if 'retries' in kwargs or (args and len(args) > 1):
-                    retries = kwargs.get('retries') if 'retries' in kwargs else args[1]
-                    cls._instances[cls]._set_retries(retries)
-            return cls._instances[cls]
+import json
 
 
-class YfConfig(metaclass=SingletonMeta):
-    def __init__(self, hide_exceptions=True, retries=0):
-        self._hide_exceptions = hide_exceptions
-        self._retries = retries
+class NestedConfig:
+    def __init__(self, name, data):
+        self.__dict__['name'] = name
+        self.__dict__['data'] = data
 
-    def _set_hide_exceptions(self, hide_exceptions):
-        self._hide_exceptions = hide_exceptions
+    def __getattr__(self, key):
+        return self.data.get(key)
 
-    def _set_retries(self, retries):
-        self._retries = retries
+    def __setattr__(self, key, value):
+        self.data[key] = value
 
-    @property
-    def hide_exceptions(self):
-        return self._hide_exceptions
+    def __len__(self):
+        return len(self.__dict__['data'])
 
-    @property
-    def retries(self):
-        return self._retries
-    
+    def __repr__(self):
+        return json.dumps(self.data, indent=4)
+
+class ConfigMgr:
+    def __init__(self):
+        self._initialised = False
+
+    def _load_option(self):
+        self._initialised = True  # prevent infinite loop
+        self.options = {}
+
+        # Initialise defaults
+        n = self.__getattr__('network')
+        n.proxy = None
+        n.retries = 0
+        d = self.__getattr__('debug')
+        d.hide_exceptions = True
+        d.logging = False
+
+    def __getattr__(self, key):
+        if not self._initialised:
+            self._load_option()
+
+        if key not in self.options:
+            self.options[key] = {}
+        return NestedConfig(key, self.options[key])
+
+    def __contains__(self, key):
+        if not self._initialised:
+            self._load_option()
+
+        return key in self.options
+
+    def __repr__(self):
+        if not self._initialised:
+            self._load_option()
+
+        all_options = self.options.copy()
+        return json.dumps(all_options, indent=4)
+
+YfConfig = ConfigMgr()

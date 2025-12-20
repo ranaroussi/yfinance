@@ -1,10 +1,9 @@
 import curl_cffi
 import pandas as pd
-import warnings
 
 from yfinance import utils
 from yfinance.config import YfConfig
-from yfinance.const import _BASE_URL_, _SENTINEL_
+from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
 
@@ -13,12 +12,9 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 class Holders:
     _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
-    def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
+    def __init__(self, data: YfData, symbol: str):
         self._data = data
         self._symbol = symbol
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            data._set_proxy(proxy)
 
         self._major = None
         self._major_direct_holders = None
@@ -76,7 +72,7 @@ class Holders:
         try:
             result = self._fetch()
         except curl_cffi.requests.exceptions.HTTPError as e:
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(str(e) + e.response.text)
 
@@ -101,7 +97,7 @@ class Holders:
             self._parse_insider_holders(data.get("insiderHolders", {}))
             self._parse_net_share_purchase_activity(data.get("netSharePurchaseActivity", {}))
         except (KeyError, IndexError):
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             raise YFDataException("Failed to parse holders json data.")
 

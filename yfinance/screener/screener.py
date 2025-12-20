@@ -2,7 +2,7 @@ import curl_cffi
 from typing import Union
 import warnings
 
-from yfinance.const import _QUERY1_URL_, _SENTINEL_
+from yfinance.const import _QUERY1_URL_
 from yfinance.data import YfData
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
@@ -59,7 +59,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
             sortAsc: bool = None,
             userId: str = None, 
             userIdType: str = None, 
-            session = None, proxy = _SENTINEL_):
+            session = None):
     """
     Run a screen: predefined query, or custom query.
 
@@ -111,11 +111,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     {predefined_screeners}
     """
 
-    if proxy is not _SENTINEL_:
-        warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-        _data = YfData(session=session, proxy=proxy)
-    else:
-        _data = YfData(session=session)
+    _data = YfData(session=session)
 
     # Only use defaults when user NOT give a predefined, because
     # Yahoo's predefined endpoint auto-applies defaults. Also,

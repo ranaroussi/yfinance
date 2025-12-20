@@ -11,11 +11,7 @@ from yfinance.exceptions import YFException, YFNotImplementedError
 
 class Fundamentals:
 
-    def __init__(self, data: YfData, symbol: str, proxy=const._SENTINEL_):
-        if proxy is not const._SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            data._set_proxy(proxy)
-
+    def __init__(self, data: YfData, symbol: str):
         self._data = data
         self._symbol = symbol
 
@@ -52,31 +48,19 @@ class Financials:
         self._balance_sheet_time_series = {}
         self._cash_flow_time_series = {}
 
-    def get_income_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
-        if proxy is not const._SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_income_time_series(self, freq="yearly") -> pd.DataFrame:
         res = self._income_time_series
         if freq not in res:
             res[freq] = self._fetch_time_series("income", freq)
         return res[freq]
 
-    def get_balance_sheet_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
-        if proxy is not const._SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_balance_sheet_time_series(self, freq="yearly") -> pd.DataFrame:
         res = self._balance_sheet_time_series
         if freq not in res:
             res[freq] = self._fetch_time_series("balance-sheet", freq)
         return res[freq]
 
-    def get_cash_flow_time_series(self, freq="yearly", proxy=const._SENTINEL_) -> pd.DataFrame:
-        if proxy is not const._SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_cash_flow_time_series(self, freq="yearly") -> pd.DataFrame:
         res = self._cash_flow_time_series
         if freq not in res:
             res[freq] = self._fetch_time_series("cash-flow", freq)
@@ -105,7 +89,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFException as e:
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"{self._symbol}: Failed to create {name} financials table for reason: {e}")
         return pd.DataFrame()
@@ -120,7 +104,7 @@ class Financials:
         try:
             return self._get_financials_time_series(timescale, keys)
         except Exception:
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             pass
 

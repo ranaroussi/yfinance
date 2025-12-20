@@ -32,8 +32,7 @@ from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
 from .domain.market import Market
-from .data import YfData
-from .config import YfConfig
+from .config import YfConfig as config
 
 from .screener.query import EquityQuery, FundQuery
 from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
@@ -50,11 +49,11 @@ __all__ += ['EquityQuery', 'FundQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
 
 # Config stuff:
 _NOTSET=object()
-def set_config(proxy=_NOTSET, retries=_NOTSET, hide_exceptions=_NOTSET):
+def set_config(proxy=_NOTSET, retries=_NOTSET):
     if proxy is not _NOTSET:
-        YfData(proxy=proxy)
+        warnings.warn("Set proxy via new config control: yf.config.network.proxy = proxy", DeprecationWarning)
+        config.network.proxy = proxy
     if retries is not _NOTSET:
-        YfConfig(retries=retries)
-    if hide_exceptions is not _NOTSET:
-        YfConfig(hide_exceptions=hide_exceptions)
+        warnings.warn("Set retries via new config control: yf.config.network.retries = retries", DeprecationWarning)
+        config.network.retries = retries
 __all__ += ["set_config"]

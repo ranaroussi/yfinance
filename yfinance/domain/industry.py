@@ -2,11 +2,9 @@ from __future__ import print_function
 
 import pandas as _pd
 from typing import Dict, Optional
-import warnings
 
 from .. import utils
 from ..config import YfConfig
-from ..const import _SENTINEL_
 from ..data import YfData
 
 from .domain import Domain, _QUERY_URL_
@@ -16,15 +14,12 @@ class Industry(Domain):
     Represents an industry within a sector.
     """
 
-    def __init__(self, key, session=None, proxy=_SENTINEL_):
+    def __init__(self, key, session=None):
         """
         Args:
             key (str): The key identifier for the industry.
             session (optional): The session to use for requests.
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            YfData(proxy=proxy)
         YfData(session=session)
         super(Industry, self).__init__(key, session)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
@@ -148,7 +143,7 @@ class Industry(Domain):
 
             return result
         except Exception as e:
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             logger = utils.get_yf_logger()
             logger.error(f"Failed to get industry data for '{self._key}' reason: {e}")
