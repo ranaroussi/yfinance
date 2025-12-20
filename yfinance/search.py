@@ -20,11 +20,10 @@
 #
 
 import json as _json
-import warnings
 
 from . import utils
 from .config import YfConfig
-from .const import _BASE_URL_, _SENTINEL_
+from .const import _BASE_URL_
 from .data import YfData
 from .exceptions import YFDataException
 
@@ -32,7 +31,7 @@ from .exceptions import YFDataException
 class Search:
     def __init__(self, query, max_results=8, news_count=8, lists_count=8, include_cb=True, include_nav_links=False,
                  include_research=False, include_cultural_assets=False, enable_fuzzy_query=False, recommended=8,
-                 session=None, proxy=_SENTINEL_, timeout=30, raise_errors=True):
+                 session=None, timeout=30, raise_errors=True):
         """
         Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles.
 
@@ -54,10 +53,6 @@ class Search:
         self.session = session
         self._data = YfData(session=self.session)
         
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
         self.query = query
         self.max_results = max_results
         self.enable_fuzzy_query = enable_fuzzy_query
@@ -110,7 +105,7 @@ class Search:
         try:
             data = data.json()
         except _json.JSONDecodeError:
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             self._logger.error(f"{self.query}: 'search' fetch received faulty data")
             data = {}

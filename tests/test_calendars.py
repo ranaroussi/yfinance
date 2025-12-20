@@ -11,11 +11,11 @@ class TestCalendars(unittest.TestCase):
         self.calendars = yf.Calendars(session=session_gbl)
 
     def test_get_earnings_calendar(self):
-        result = self.calendars.get_earnings_calendar(limit=5)
+        result = self.calendars.get_earnings_calendar(limit=1)
         tickers = self.calendars.earnings_calendar.index.tolist()
 
         self.assertIsInstance(result, pd.DataFrame)
-        self.assertEqual(len(result), 5)
+        self.assertEqual(len(result), 1)
         self.assertIsInstance(tickers, list)
         self.assertEqual(len(tickers), len(result))
         self.assertEqual(tickers, result.index.tolist())

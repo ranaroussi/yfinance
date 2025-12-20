@@ -69,9 +69,6 @@ class SingletonMeta(type):
                 if 'session' in kwargs or (args and len(args) > 0):
                     session = kwargs.get('session') if 'session' in kwargs else args[0]
                     cls._instances[cls]._set_session(session)
-                if 'proxy' in kwargs or (args and len(args) > 1):
-                    proxy = kwargs.get('proxy') if 'proxy' in kwargs else args[1]
-                    cls._instances[cls]._set_proxy(proxy)
             return cls._instances[cls]
 
 
@@ -81,7 +78,7 @@ class YfData(metaclass=SingletonMeta):
     Singleton means one session one cookie shared by all threads.
     """
 
-    def __init__(self, session=None, proxy=None):
+    def __init__(self, session=None):
         self._crumb = None
         self._cookie = None
 
@@ -92,9 +89,8 @@ class YfData(metaclass=SingletonMeta):
 
         self._cookie_lock = threading.Lock()
 
-        self._session, self._proxy = None, None
+        self._session = None
         self._set_session(session or requests.Session(impersonate="chrome"))
-        self._set_proxy(proxy)
 
     def _set_session(self, session):
         if session is None:
@@ -118,17 +114,8 @@ class YfData(metaclass=SingletonMeta):
 
         with self._cookie_lock:
             self._session = session
-            if self._proxy is not None:
-                self._session.proxies = self._proxy
-
-    def _set_proxy(self, proxy=None):
-        with self._cookie_lock:
-            if proxy is not None:
-                proxy = {'http': proxy, 'https': proxy} if isinstance(proxy, str) else proxy
-            else:
-                proxy = {}
-            self._proxy = proxy
-            self._session.proxies = proxy
+            if YfConfig.network.proxy is not None:
+                self._session.proxies = YfConfig.network.proxy
 
     def _set_cookie_strategy(self, strategy, have_lock=False):
         if strategy == self._cookie_strategy:
@@ -411,6 +398,9 @@ class YfData(metaclass=SingletonMeta):
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
 
+        # sync with config
+        self._session.proxies = YfConfig.network.proxy
+
         if params is None:
             params = {}
         if 'crumb' in params:
@@ -431,12 +421,12 @@ class YfData(metaclass=SingletonMeta):
         if body:
             request_args['json'] = body
 
-        for attempt in range(YfConfig().retries + 1):
+        for attempt in range(YfConfig.network.retries + 1):
             try:
                 response = request_method(**request_args)
                 break
             except Exception as e:
-                if _is_transient_error(e) and attempt < YfConfig().retries:
+                if _is_transient_error(e) and attempt < YfConfig.network.retries:
                     _time.sleep(2 ** attempt)
                 else:
                     raise

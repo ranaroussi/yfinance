@@ -3,11 +3,10 @@ import datetime
 import json
 import numpy as _np
 import pandas as pd
-import warnings
 
 from yfinance import utils
 from yfinance.config import YfConfig
-from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_, _SENTINEL_
+from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
 
@@ -27,11 +26,8 @@ _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 class FastInfo:
     # Contain small subset of info[] items that can be fetched faster elsewhere.
     # Imitates a dict.
-    def __init__(self, tickerBaseObject, proxy=_SENTINEL_):
+    def __init__(self, tickerBaseObject):
         self._tkr = tickerBaseObject
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._tkr._data._set_proxy(proxy)
 
         self._prices_1y = None
         self._prices_1wk_1h_prepost = None
@@ -485,12 +481,9 @@ class FastInfo:
 
 
 class Quote:
-    def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
+    def __init__(self, data: YfData, symbol: str):
         self._data = data
         self._symbol = symbol
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         self._info = None
         self._retired_info = None
@@ -522,7 +515,7 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]
                 except (KeyError, IndexError):
-                    if not YfConfig().hide_exceptions:
+                    if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
                 self._sustainability = pd.DataFrame(data)
@@ -538,7 +531,7 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
                 except (KeyError, IndexError):
-                    if not YfConfig().hide_exceptions:
+                    if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
                 self._recommendations = pd.DataFrame(data)
@@ -561,7 +554,7 @@ class Quote:
                     df.index = pd.to_datetime(df.index, unit='s')
                     self._upgrades_downgrades = df
                 except (KeyError, IndexError):
-                    if not YfConfig().hide_exceptions:
+                    if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
         return self._upgrades_downgrades
@@ -594,7 +587,7 @@ class Quote:
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(str(e) + e.response.text)
             return None
@@ -605,7 +598,7 @@ class Quote:
         try:
             result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(str(e) + e.response.text)
             return None
@@ -749,7 +742,7 @@ class Quote:
                 self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
                 self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
         except (KeyError, IndexError):
-            if not YfConfig().hide_exceptions:
+            if not YfConfig.debug.hide_exceptions:
                 raise
             raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
 

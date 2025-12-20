@@ -11,17 +11,14 @@ import warnings
 
 from yfinance import shared, utils
 from yfinance.config import YfConfig
-from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, _SENTINEL_
+from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
 
 class PriceHistory:
-    def __init__(self, data, ticker, tz, session=None, proxy=_SENTINEL_):
+    def __init__(self, data, ticker, tz, session=None):
         self._data = data
         self.ticker = ticker.upper()
         self.tz = tz
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=5)
-            self._data._set_proxy(proxy)
         self.session = session or requests.Session(impersonate="chrome")
 
         self._history_cache = {}
@@ -35,7 +32,7 @@ class PriceHistory:
     def history(self, period=None, interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
-                proxy=_SENTINEL_, rounding=False, timeout=10,
+                rounding=False, timeout=10,
                 raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
@@ -80,12 +77,8 @@ class PriceHistory:
         """
         logger = utils.get_yf_logger()
 
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=5)
-            self._data._set_proxy(proxy)
-
         if raise_errors:
-            warnings.warn("'raise_errors' deprecated, use yf.set_config(hide_exceptions=False)", DeprecationWarning, stacklevel=5)
+            warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
 
         interval_user = interval
         period_user = period
@@ -102,7 +95,7 @@ class PriceHistory:
                     err_msg = str(_exception)
                     shared._DFS[self.ticker] = utils.empty_df()
                     shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
-                    if raise_errors or (not YfConfig().hide_exceptions):
+                    if raise_errors or (not YfConfig.debug.hide_exceptions):
                         raise _exception
                     else:
                         logger.error(err_msg)
@@ -128,7 +121,7 @@ class PriceHistory:
                 err_msg = str(_exception)
                 shared._DFS[self.ticker] = utils.empty_df()
                 shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
-                if raise_errors or (not YfConfig().hide_exceptions):
+                if raise_errors or (not YfConfig.debug.hide_exceptions):
                     raise _exception
                 else:
                     logger.error(err_msg)
@@ -224,7 +217,7 @@ class PriceHistory:
         except YFRateLimitError:
             raise
         except Exception:
-            if raise_errors or (not YfConfig().hide_exceptions):
+            if raise_errors or (not YfConfig.debug.hide_exceptions):
                 raise
 
         # Store the meta data that gets retrieved simultaneously
@@ -277,7 +270,7 @@ class PriceHistory:
             err_msg = str(_exception)
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
-            if raise_errors or (not YfConfig().hide_exceptions):
+            if raise_errors or (not YfConfig.debug.hide_exceptions):
                 raise _exception
             else:
                 logger.error(err_msg)
@@ -473,7 +466,7 @@ class PriceHistory:
             elif back_adjust:
                 df = utils.back_adjust(df)
         except Exception as e:
-            if raise_errors or (not YfConfig().hide_exceptions):
+            if raise_errors or (not YfConfig.debug.hide_exceptions):
                 raise
             if auto_adjust:
                 err_msg = "auto_adjust failed with %s" % e
@@ -525,11 +518,7 @@ class PriceHistory:
         self._history_cache[cache_key] = df
         return df
 
-    def get_history_metadata(self, proxy=_SENTINEL_) -> dict:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
-            self._data._set_proxy(proxy)
-
+    def get_history_metadata(self) -> dict:
         if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
             # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
             self._get_history_cache(period="5d", interval="1h")
@@ -540,44 +529,28 @@ class PriceHistory:
 
         return self._history_metadata
 
-    def get_dividends(self, period="max", proxy=_SENTINEL_) -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
-            self._data._set_proxy(proxy)
-
+    def get_dividends(self, period="max") -> pd.Series:
         df = self._get_history_cache(period=period)
         if "Dividends" in df.columns:
             dividends = df["Dividends"]
             return dividends[dividends != 0]
         return pd.Series()
 
-    def get_capital_gains(self, period="max", proxy=_SENTINEL_) -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
-            self._data._set_proxy(proxy)
-
+    def get_capital_gains(self, period="max") -> pd.Series:
         df = self._get_history_cache(period=period)
         if "Capital Gains" in df.columns:
             capital_gains = df["Capital Gains"]
             return capital_gains[capital_gains != 0]
         return pd.Series()
 
-    def get_splits(self, period="max", proxy=_SENTINEL_) -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
-            self._data._set_proxy(proxy)
-
+    def get_splits(self, period="max") -> pd.Series:
         df = self._get_history_cache(period=period)
         if "Stock Splits" in df.columns:
             splits = df["Stock Splits"]
             return splits[splits != 0]
         return pd.Series()
 
-    def get_actions(self, period="max", proxy=_SENTINEL_) -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
-            self._data._set_proxy(proxy)
-
+    def get_actions(self, period="max") -> pd.Series:
         df = self._get_history_cache(period=period)
 
         action_columns = []
@@ -598,14 +571,23 @@ class PriceHistory:
         if df_interval == target_interval:
             return df
         offset = None
+        origin = 'epoch'  # default
+        
         if target_interval == '1wk':
-            resample_period = 'W-MON'
+            if period == 'ytd':
+                resample_period = '7D'  # was 'W'
+                year_start = pd.Timestamp(f"{_datetime.datetime.now().year}-01-01")
+                origin = year_start.tz_localize(df.index.tz)
+            else:
+                resample_period = 'W-MON'
         elif target_interval == '5d':
             resample_period = '5D'
+            if period == 'ytd':
+                year_start = pd.Timestamp(f"{_datetime.datetime.now().year}-01-01")
+                origin = year_start.tz_localize(df.index.tz)
         elif target_interval == '1mo':
             resample_period = 'MS'
         elif target_interval == '3mo':
-            resample_period = 'QS'
             if period == 'ytd':
                 align_month = 'JAN'
             else:
@@ -613,6 +595,7 @@ class PriceHistory:
             resample_period = f"QS-{align_month}"
         else:
             raise ValueError(f"Not implemented resampling to interval '{target_interval}'")
+        
         resample_map = {
             'Open': 'first', 'Low': 'min', 'High': 'max', 'Close': 'last',
             'Volume': 'sum', 'Dividends': 'sum', 'Stock Splits': 'prod'
@@ -624,7 +607,10 @@ class PriceHistory:
         if 'Capital Gains' in df.columns:
             resample_map['Capital Gains'] = 'sum'
         df.loc[df['Stock Splits']==0.0, 'Stock Splits'] = 1.0
-        df2 = df.resample(resample_period, label='left', closed='left', offset=offset).agg(resample_map)
+        if origin != 'epoch':
+            df2 = df.resample(resample_period, label='left', closed='left', origin=origin).agg(resample_map)
+        else:
+            df2 = df.resample(resample_period, label='left', closed='left', offset=offset).agg(resample_map)
         df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
         return df2
 
@@ -1042,7 +1028,7 @@ class PriceHistory:
                     prices_in_subunits = False
             except Exception:
                 # Should never happen but just-in-case
-                if not YfConfig().hide_exceptions:
+                if not YfConfig.debug.hide_exceptions:
                     raise
                 pass
         if prices_in_subunits:

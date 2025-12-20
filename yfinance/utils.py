@@ -31,6 +31,7 @@ from functools import wraps
 from inspect import getmembers
 from types import FunctionType
 from typing import List, Optional
+import warnings
 
 import numpy as _np
 import pandas as _pd
@@ -40,6 +41,7 @@ from pytz import UnknownTimeZoneError
 
 from yfinance import const
 from yfinance.exceptions import YFException
+from yfinance.config import YfConfig
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
@@ -147,6 +149,12 @@ class YFLogFormatter(logging.Filter):
 def get_yf_logger():
     global yf_logger
     global yf_log_indented
+
+    if yf_log_indented and not YfConfig.debug.logging:
+        _disable_debug_mode()
+    elif YfConfig.debug.logging and not yf_log_indented:
+        _enable_debug_mode()
+
     if yf_log_indented:
         yf_logger = get_indented_logger('yfinance')
     elif yf_logger is None:
@@ -156,6 +164,10 @@ def get_yf_logger():
 
 
 def enable_debug_mode():
+    warnings.warn("enable_debug_mode() is replaced by: yf.config.debug.logging = True (or False to disable)", DeprecationWarning)
+    _enable_debug_mode()
+
+def _enable_debug_mode():
     global yf_logger
     global yf_log_indented
     if not yf_log_indented:
@@ -169,6 +181,16 @@ def enable_debug_mode():
             yf_logger.addHandler(h)
         yf_logger = get_indented_logger()
         yf_log_indented = True
+
+
+def _disable_debug_mode():
+    global yf_logger
+    global yf_log_indented
+    if yf_log_indented:
+        yf_logger = logging.getLogger('yfinance')
+        yf_logger.setLevel(logging.NOTSET)
+        yf_logger = None
+        yf_log_indented = False
 
 
 def is_isin(string):

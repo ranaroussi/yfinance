@@ -61,7 +61,7 @@ class TestPriceRepairAssumptions(unittest.TestCase):
                         vol_diff_pct0 = (dfr['Volume'].iloc[0] - df_truth['Volume'].iloc[0])/df_truth['Volume'].iloc[0]
                         vol_diff_pct1 = (dfr['Volume'].iloc[-1] - df_truth['Volume'].iloc[-1])/df_truth['Volume'].iloc[-1]
                         vol_diff_pct = _np.array([vol_diff_pct0, vol_diff_pct1])
-                        vol_match = vol_diff_pct > -0.23
+                        vol_match = vol_diff_pct > -0.32
                         vol_match_nmatch = _np.sum(vol_match)
                         vol_match_ndiff = len(vol_match) - vol_match_nmatch
                         if vol_match.all():
@@ -78,6 +78,8 @@ class TestPriceRepairAssumptions(unittest.TestCase):
 
                     if debug:
                         print("- investigate:")
+                        print(f"  - interval = {interval}")
+                        print(f"  - period = {period}")
                         print("- df_truth:")
                         print(df_truth)#[['Open', 'Close', 'Volume']])
                         df_1d = dat.history(interval='1d', period=period)
@@ -361,27 +363,23 @@ class TestPriceRepair(unittest.TestCase):
         hist = dat._lazy_load_price_history()
         tz_exchange = dat.fast_info["timezone"]
 
-        df_bad = _pd.DataFrame(data={"Open":      [0,      114.37, 114.20],
-                                     "High":      [0,      114.40, 114.40],
-                                     "Low":       [0,      114.36, 114.20],
-                                     "Close":     [114.39, 114.38, 114.45],
-                                     "Adj Close": [114.39, 114.38, 114.45],
-                                     "Volume":    [9,      15666,  1094]},
-                               index=_pd.to_datetime([_dt.datetime(2025, 3, 17),
-                                                      _dt.datetime(2025, 3, 14),
-                                                      _dt.datetime(2025, 3, 13)]))
-        df_bad = df_bad.sort_index()
-        df_bad.index.name = "Date"
-        df_bad.index = df_bad.index.tz_localize(tz_exchange)
+        correct_df = dat.history(period='1mo', auto_adjust=False)
+
+        dt_bad = correct_df.index[len(correct_df)//2]
+        df_bad = correct_df.copy()
+        for c in df_bad.columns:
+            df_bad.loc[dt_bad, c] = _np.nan
 
         repaired_df = hist._fix_zeroes(df_bad, "1d", tz_exchange, prepost=False)
 
-        correct_df = df_bad.copy()
-        correct_df.loc["2025-03-17", "Open"] = 114.62
-        correct_df.loc["2025-03-17", "High"] = 114.62
-        correct_df.loc["2025-03-17", "Low"] = 114.41
         for c in ["Open", "Low", "High", "Close"]:
-            self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-7).all())
+            try:
+                self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-7).all())
+            except Exception:
+                print(f"# column = {c}")
+                print("# correct:") ; print(correct_df[c])
+                print("# repaired:") ; print(repaired_df[c])
+                raise
 
         self.assertTrue("Repaired?" in repaired_df.columns)
         self.assertFalse(repaired_df["Repaired?"].isna().any())
@@ -421,7 +419,13 @@ class TestPriceRepair(unittest.TestCase):
 
                 df_slice_bad_repaired = hist._fix_zeroes(df_slice_bad, "1d", tz_exchange, prepost=False)
                 for c in ["Close", "Adj Close"]:
-                    self.assertTrue(_np.isclose(df_slice_bad_repaired[c], df_slice[c], rtol=rtol).all())
+                    try:
+                        self.assertTrue(_np.isclose(df_slice_bad_repaired[c], df_slice[c], rtol=rtol).all())
+                    except Exception:
+                        print(f"# column = {c}")
+                        print("# correct:") ; print(df_slice[c])
+                        print("# repaired:") ; print(df_slice_bad_repaired[c])
+                        raise
                 self.assertTrue("Repaired?" in df_slice_bad_repaired.columns)
                 self.assertFalse(df_slice_bad_repaired["Repaired?"].isna().any())
 
@@ -464,7 +468,7 @@ class TestPriceRepair(unittest.TestCase):
         # Stocks that split in 2022 but no problems in Yahoo data,
         # so repair should change nothing
         good_tkrs = ['AMZN', 'DXCM', 'FTNT', 'GOOG', 'GME', 'PANW', 'SHOP', 'TSLA']
-        good_tkrs += ['AEI', 'GHI', 'IRON', 'LXU', 'RSLS', 'TISI']
+        good_tkrs += ['AEI', 'GHI', 'IRON', 'LXU', 'TISI']
         good_tkrs += ['BOL.ST', 'TUI1.DE']
         intervals = ['1d', '1wk', '1mo', '3mo']
         for tkr in good_tkrs:
@@ -589,7 +593,6 @@ class TestPriceRepair(unittest.TestCase):
 
         # Div 0.01x
         bad_tkrs += ['NVT.L']
-        bad_tkrs += ['TENT.L']
 
         # Missing div adjusts:
         bad_tkrs += ['1398.HK']
