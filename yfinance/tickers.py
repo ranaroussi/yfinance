@@ -64,7 +64,7 @@ class Tickers:
         return self.download(
             period, interval,
             start, end, prepost,
-            actions, auto_adjust, repair, 
+            actions, auto_adjust, repair,
             proxy,
             threads, group_by, progress,
             timeout, **kwargs)
@@ -113,3 +113,71 @@ class Tickers:
         self.ws = WebSocket(verbose=verbose)
         self.ws.subscribe(self.symbols)
         self.ws.listen(self._message_handler)
+
+    def download_info(self, threads=None):
+        """
+        Concurrently download info for all tickers.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        if threads is None:
+            threads = min(len(self.symbols), 20)  # Moderate default limit
+
+        results = {}
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            future_to_ticker = {
+                executor.submit(lambda t: self.tickers[t].info, ticker): ticker 
+                for ticker in self.symbols
+            }
+            
+            for future in as_completed(future_to_ticker):
+                ticker = future_to_ticker[future]
+                try:
+                    data = future.result()
+                    results[ticker] = data
+                except Exception as e:
+                    import logging
+                    logging.getLogger('yfinance').error(f'{ticker}: failed to download info: {e}')
+                    results[ticker] = None
+        
+        return results
+
+    def _download_attribute(self, attribute, threads=None):
+        """
+        Helper to concurrently download a specific attribute for all tickers.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        if threads is None:
+            threads = min(len(self.symbols), 20)
+
+        results = {}
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            future_to_ticker = {
+                executor.submit(lambda t: getattr(self.tickers[t], attribute), ticker): ticker 
+                for ticker in self.symbols
+            }
+            
+            for future in as_completed(future_to_ticker):
+                ticker = future_to_ticker[future]
+                try:
+                    data = future.result()
+                    results[ticker] = data
+                except Exception as e:
+                    import logging
+                    logging.getLogger('yfinance').error(f'{ticker}: failed to download {attribute}: {e}')
+                    results[ticker] = None
+        
+        return results
+
+    def download_financials(self, threads=None):
+        return self._download_attribute("financials", threads)
+
+    def download_balance_sheet(self, threads=None):
+        return self._download_attribute("balance_sheet", threads)
+
+    def download_cash_flow(self, threads=None):
+        return self._download_attribute("cash_flow", threads)
+
+    def download_earnings(self, threads=None):
+        return self._download_attribute("earnings", threads)
