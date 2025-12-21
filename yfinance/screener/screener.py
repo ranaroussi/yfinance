@@ -1,6 +1,7 @@
 import curl_cffi
 from typing import Union
 import warnings
+from json import dumps
 
 from yfinance.const import _QUERY1_URL_, _SENTINEL_
 from yfinance.data import YfData
@@ -198,10 +199,11 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     elif isinstance(post_query['query'], FndQy):
         post_query['quoteType'] = 'MUTUALFUND'
     post_query['query'] = post_query['query'].to_dict()
+    data = dumps(post_query, separators=(",", ":"), ensure_ascii=False)
 
     # Fetch
     response = _data.post(_SCREENER_URL_, 
-                            body=post_query, 
+                            data=data, 
                             params=params_dict)
     response.raise_for_status()
     return response.json()['finance']['result'][0]
