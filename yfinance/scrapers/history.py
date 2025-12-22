@@ -320,8 +320,8 @@ class PriceHistory:
             })
 
         # Note: ordering is important. If you change order, run the tests!
-        quotes = utils.set_df_tz(quotes, params["interval"], tz_exchange)
-        quotes = utils.fix_Yahoo_dst_issue(quotes, params["interval"])
+        quotes = utils.set_df_tz(quotes, interval, tz_exchange)
+        quotes = utils.fix_Yahoo_dst_issue(quotes, interval)
         intraday = params["interval"][-1] in ("m", 'h')
         if not prepost and intraday and "tradingPeriods" in self._history_metadata:
             tps = self._history_metadata["tradingPeriods"]
@@ -329,7 +329,7 @@ class PriceHistory:
                 self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
                 self._history_metadata_formatted = True
                 tps = self._history_metadata["tradingPeriods"]
-            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, params["interval"], tps)
+            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, interval, tps)
         if quotes.empty:
             msg = f'{self.ticker}: OHLC after cleaning: EMPTY'
         elif len(quotes) == 1:
