@@ -15,6 +15,7 @@ build:
   script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv "
 
 requirements:
+  # curl_cffi 0.14 has major problems, see their Github
   host:
     - pandas >=1.3.0
     - numpy >=1.16.5
@@ -26,7 +27,7 @@ requirements:
     - frozendict >=2.3.4
     - beautifulsoup4 >=4.11.1
     - html5lib >=1.1
-    - curl_cffi >=0.7
+    - curl_cffi >=0.7,<0.14
     - peewee >=3.16.2
     - pip
     - python
@@ -42,7 +43,7 @@ requirements:
     - frozendict >=2.3.4
     - beautifulsoup4 >=4.11.1
     - html5lib >=1.1
-    - curl_cffi >=0.7
+    - curl_cffi >=0.7,<0.14
     - peewee >=3.16.2
     - python
 
