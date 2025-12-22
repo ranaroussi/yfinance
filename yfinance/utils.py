@@ -601,7 +601,8 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     quotes.index = idx
     # "end" = end of regular trading hours (including any auction)
     f_drop = quotes.index >= quotes["end"]
-    f_drop = f_drop | (quotes.index < quotes["start"])
+    td = _interval_to_timedelta(interval)
+    f_drop = f_drop | (quotes.index + td <= quotes["start"])
     if f_drop.any():
         # When printing report, ignore rows that were already NaNs:
         # f_na = quotes[["Open","Close"]].isna().all(axis=1)
