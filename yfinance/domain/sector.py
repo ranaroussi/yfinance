@@ -2,10 +2,9 @@ from __future__ import print_function
 
 import pandas as _pd
 from typing import Dict, Optional
-import warnings
 
-from ..const import SECTOR_INDUSTY_MAPPING_LC, _SENTINEL_
-from ..data import YfData
+from ..config import YfConfig
+from ..const import SECTOR_INDUSTY_MAPPING_LC
 from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_logger
 
 from .domain import Domain, _QUERY_URL_
@@ -16,22 +15,17 @@ class Sector(Domain):
     such as top ETFs, top mutual funds, and industry data.
     """
 
-    def __init__(self, key, session=None, proxy=_SENTINEL_):
+    def __init__(self, key, session=None):
         """
         Args:
             key (str): The key representing the sector.
             session (requests.Session, optional): A session for making requests. Defaults to None.
-            proxy (dict, optional): A dictionary containing proxy settings for the request. Defaults to None.
         
         .. seealso::
    
             :attr:`Sector.industries <yfinance.Sector.industries>`
                 Map of sector and industry
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            YfData(session=session, proxy=proxy)
-
         super(Sector, self).__init__(key, session)
         self._query_url: str = f'{_QUERY_URL_}/sectors/{self._key}'
         self._top_etfs: Optional[Dict] = None
@@ -148,6 +142,8 @@ class Sector(Domain):
             self._industries = self._parse_industries(data.get('industries', {}))
 
         except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
             logger = get_yf_logger()
             logger.error(f"Failed to get sector data for '{self._key}' reason: {e}")
             logger.debug("Got response: ")

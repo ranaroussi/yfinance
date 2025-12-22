@@ -25,7 +25,6 @@ import logging
 import time as _time
 import traceback
 from typing import Union
-import warnings
 
 import multitasking as _multitasking
 import pandas as _pd
@@ -34,13 +33,13 @@ from curl_cffi import requests
 from . import Ticker, utils
 from .data import YfData
 from . import shared
-from .const import _SENTINEL_
+from .config import YfConfig
 
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True,
-             ignore_tz=None, group_by='column', auto_adjust=None, back_adjust=False,
+             ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
              repair=False, keepna=False, progress=True, period=None, interval="1d",
-             prepost=False, proxy=_SENTINEL_, rounding=False, timeout=10, session=None,
+             prepost=False, rounding=False, timeout=10, session=None,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
@@ -96,15 +95,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     session = session or requests.Session(impersonate="chrome")
 
     # Ensure data initialised with session.
-    if proxy is not _SENTINEL_:
-        warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=3)
-        YfData(proxy=proxy)
     YfData(session=session)
-
-    if auto_adjust is None:
-        # Warn users that default has changed to True
-        warnings.warn("YF.download() has changed argument auto_adjust default to True", FutureWarning, stacklevel=3)
-        auto_adjust = True
 
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
@@ -261,7 +252,7 @@ def _realign_dfs():
 @_multitasking.task
 def _download_one_threaded(ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
-                           actions=False, progress=True, period="max",
+                           actions=False, progress=True, period=None,
                            interval="1d", prepost=False,
                            keepna=False, rounding=False, timeout=10):
     _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
@@ -273,25 +264,27 @@ def _download_one_threaded(ticker, start=None, end=None,
 
 def _download_one(ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
-                  actions=False, period="max", interval="1d",
+                  actions=False, period=None, interval="1d",
                   prepost=False, rounding=False,
                   keepna=False, timeout=10):
     data = None
+    
+    backup = YfConfig.network.hide_exceptions
+    YfConfig.network.hide_exceptions = False
     try:
         data = Ticker(ticker).history(
                 period=period, interval=interval,
                 start=start, end=end, prepost=prepost,
                 actions=actions, auto_adjust=auto_adjust,
                 back_adjust=back_adjust, repair=repair,
-                rounding=rounding, keepna=keepna, timeout=timeout,
-                raise_errors=True
+                rounding=rounding, keepna=keepna, timeout=timeout
         )
+        shared._DFS[ticker.upper()] = data
     except Exception as e:
-        # glob try/except needed as current thead implementation breaks if exception is raised.
         shared._DFS[ticker.upper()] = utils.empty_df()
         shared._ERRORS[ticker.upper()] = repr(e)
         shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
-    else:
-        shared._DFS[ticker.upper()] = data
+
+    YfConfig.network.hide_exceptions = backup
 
     return data

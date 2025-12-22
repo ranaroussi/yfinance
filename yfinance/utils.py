@@ -31,6 +31,7 @@ from functools import wraps
 from inspect import getmembers
 from types import FunctionType
 from typing import List, Optional
+import warnings
 
 import numpy as _np
 import pandas as _pd
@@ -39,6 +40,8 @@ from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
+from yfinance.exceptions import YFException
+from yfinance.config import YfConfig
 
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
@@ -146,6 +149,12 @@ class YFLogFormatter(logging.Filter):
 def get_yf_logger():
     global yf_logger
     global yf_log_indented
+
+    if yf_log_indented and not YfConfig.debug.logging:
+        _disable_debug_mode()
+    elif YfConfig.debug.logging and not yf_log_indented:
+        _enable_debug_mode()
+
     if yf_log_indented:
         yf_logger = get_indented_logger('yfinance')
     elif yf_logger is None:
@@ -155,6 +164,10 @@ def get_yf_logger():
 
 
 def enable_debug_mode():
+    warnings.warn("enable_debug_mode() is replaced by: yf.config.debug.logging = True (or False to disable)", DeprecationWarning)
+    _enable_debug_mode()
+
+def _enable_debug_mode():
     global yf_logger
     global yf_log_indented
     if not yf_log_indented:
@@ -168,6 +181,16 @@ def enable_debug_mode():
             yf_logger.addHandler(h)
         yf_logger = get_indented_logger()
         yf_log_indented = True
+
+
+def _disable_debug_mode():
+    global yf_logger
+    global yf_log_indented
+    if yf_log_indented:
+        yf_logger = logging.getLogger('yfinance')
+        yf_logger.setLevel(logging.NOTSET)
+        yf_logger = None
+        yf_log_indented = False
 
 
 def is_isin(string):
@@ -399,7 +422,7 @@ def snake_case_2_camelCase(s):
     return sc
 
 
-def _parse_user_dt(dt, exchange_tz):
+def _parse_user_dt(dt, exchange_tz=_tz.utc):
     if isinstance(dt, int):
         dt = _pd.Timestamp(dt, unit="s", tz=exchange_tz)
     else:
@@ -578,7 +601,8 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     quotes.index = idx
     # "end" = end of regular trading hours (including any auction)
     f_drop = quotes.index >= quotes["end"]
-    f_drop = f_drop | (quotes.index < quotes["start"])
+    td = _interval_to_timedelta(interval)
+    f_drop = f_drop | (quotes.index + td <= quotes["start"])
     if f_drop.any():
         # When printing report, ignore rows that were already NaNs:
         # f_na = quotes[["Open","Close"]].isna().all(axis=1)
@@ -702,14 +726,10 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
 
 
 def safe_merge_dfs(df_main, df_sub, interval):
-    if df_sub.empty:
-        raise Exception("No data to merge")
     if df_main.empty:
         return df_main
 
     data_cols = [c for c in df_sub.columns if c not in df_main]
-    if len(data_cols) > 1:
-        raise Exception("Expected 1 data col")
     data_col = data_cols[0]
 
     df_main = df_main.sort_index()
@@ -793,7 +813,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_outOfRange = indices == -1
     if f_outOfRange.any():
         if intraday or interval in ['1d', '1wk']:
-            raise Exception(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
+            raise YFException(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
         get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
         df_sub = df_sub[~f_outOfRange].copy()
         indices = indices[~f_outOfRange]
@@ -815,7 +835,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             df = df.groupby("_NewIndex").prod()
             df.index.name = None
         else:
-            raise Exception(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
+            raise YFException(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
         if "_NewIndex" in df.columns:
             df = df.drop("_NewIndex", axis=1)
         return df
@@ -827,7 +847,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
     if data_lost:
-        raise Exception('Data was lost in merge, investigate')
+        raise YFException('Data was lost in merge, investigate')
 
     return df
 

@@ -1,9 +1,9 @@
 import pandas as pd
 from typing import Dict, Optional
-import warnings
 
 from yfinance import utils
-from yfinance.const import _BASE_URL_, _SENTINEL_
+from yfinance.config import YfConfig
+from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
 
@@ -17,7 +17,7 @@ class FundsData:
     Notes: 
     - fundPerformance module is not implemented as better data is queryable using history
     """
-    def __init__(self, data: YfData, symbol: str, proxy=_SENTINEL_):
+    def __init__(self, data: YfData, symbol: str):
         """
         Args:
             data (YfData): The YfData object for fetching data.
@@ -25,9 +25,6 @@ class FundsData:
         """
         self._data = data
         self._symbol = symbol
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
         
         # quoteType
         self._quote_type = None
@@ -193,8 +190,12 @@ class FundsData:
             self._parse_top_holdings(data["topHoldings"])
             self._parse_fund_profile(data["fundProfile"])
         except KeyError:
-            raise YFDataException("No Fund data found.")
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            raise YFDataException(f"{self._symbol}: No Fund data found.")
         except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
             logger = utils.get_yf_logger()
             logger.error(f"Failed to get fund data for '{self._symbol}' reason: {e}")
             logger.debug("Got response: ")

@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 import pandas as _pd
 from typing import Dict, List, Optional
-import warnings
 
-from ..const import _QUERY1_URL_, _SENTINEL_
+from ..const import _QUERY1_URL_
 from ..data import YfData
 from ..ticker import Ticker
 
@@ -15,9 +14,9 @@ class Domain(ABC):
     and methods for fetching and parsing data. Derived classes must implement the `_fetch_and_parse()` method.
     """
 
-    def __init__(self, key: str, session=None, proxy=_SENTINEL_):
+    def __init__(self, key: str, session=None):
         """
-        Initializes the Domain object with a key, session, and proxy.
+        Initializes the Domain object with a key, session.
 
         Args:
             key (str): Unique key identifying the domain entity.
@@ -26,9 +25,6 @@ class Domain(ABC):
         self._key: str = key
         self.session = session
         self._data: YfData = YfData(session=session)
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         self._name: Optional[str] = None
         self._symbol: Optional[str] = None

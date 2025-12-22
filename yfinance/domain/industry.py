@@ -2,10 +2,9 @@ from __future__ import print_function
 
 import pandas as _pd
 from typing import Dict, Optional
-import warnings
 
 from .. import utils
-from ..const import _SENTINEL_
+from ..config import YfConfig
 from ..data import YfData
 
 from .domain import Domain, _QUERY_URL_
@@ -15,15 +14,12 @@ class Industry(Domain):
     Represents an industry within a sector.
     """
 
-    def __init__(self, key, session=None, proxy=_SENTINEL_):
+    def __init__(self, key, session=None):
         """
         Args:
             key (str): The key identifier for the industry.
             session (optional): The session to use for requests.
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            YfData(proxy=proxy)
         YfData(session=session)
         super(Industry, self).__init__(key, session)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
@@ -96,7 +92,7 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top performing companies data.
         """
-        compnaies_column = ['symbol','name','ytd return',' last price','target price']
+        compnaies_column = ['symbol','name','ytd return','last price','target price']
         compnaies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
@@ -118,7 +114,7 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top growth companies data.
         """
-        compnaies_column = ['symbol','name','ytd return',' growth estimate']
+        compnaies_column = ['symbol','name','ytd return','growth estimate']
         compnaies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
@@ -147,6 +143,8 @@ class Industry(Domain):
 
             return result
         except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
             logger = utils.get_yf_logger()
             logger.error(f"Failed to get industry data for '{self._key}' reason: {e}")
             logger.debug("Got response: ")
