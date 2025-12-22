@@ -1,0 +1,43 @@
+﻿:orphan:
+
+Calendars
+=========
+
+.. currentmodule:: yfinance
+
+.. autoclass:: Calendars
+   :exclude-members: earnings_calendar, economic_events_calendar, ipo_info_calendar, splits_calendar
+
+   
+   
+   .. rubric:: Attributes
+   
+   
+   .. autoattribute:: earnings_calendar
+      :noindex:
+   .. autoattribute:: economic_events_calendar
+      :noindex:
+   .. autoattribute:: ipo_info_calendar
+      :noindex:
+   .. autoattribute:: splits_calendar
+      :noindex:
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   
+   .. automethod:: __init__
+      :noindex:
+   .. automethod:: get_earnings_calendar
+      :noindex:
+   .. automethod:: get_economic_events_calendar
+      :noindex:
+   .. automethod:: get_ipo_info_calendar
+      :noindex:
+   .. automethod:: get_splits_calendar
+      :noindex:
+   
+   

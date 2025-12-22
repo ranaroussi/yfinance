@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Lookup &#8212; yfinance</title>
+    <title>Calendars &#8212; yfinance</title>
   
   
   
@@ -42,11 +42,11 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.Lookup';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.Calendars';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="WebSocket" href="../yfinance.websocket.html" />
-    <link rel="prev" title="Search" href="yfinance.Search.html" />
+    <link rel="next" title="Financials" href="../yfinance.financials.html" />
+    <link rel="prev" title="Calendars" href="../yfinance.calendars.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -361,8 +361,8 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.calendars.html">Calendars</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="yfinance.Calendars.html">Calendars</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.calendars.html">Calendars</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Calendars</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -424,9 +424,9 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.mutualfund_holders.html">yfinance.Ticker.mutualfund_holders</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; Lookup</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.search.html">Search &amp; Lookup</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Search.html">Search</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">Lookup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Lookup.html">Lookup</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.websocket.html">WebSocket</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -497,9 +497,9 @@ document.write(`
     <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
     
     
-    <li class="breadcrumb-item"><a href="../yfinance.search.html" class="nav-link">Search &amp; Lookup</a></li>
+    <li class="breadcrumb-item"><a href="../yfinance.calendars.html" class="nav-link">Calendars</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Lookup</li>
+    <li class="breadcrumb-item active" aria-current="page">Calendars</li>
   </ul>
 </nav>
 </div>
@@ -516,249 +516,230 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="lookup">
-<h1>Lookup<a class="headerlink" href="#lookup" title="Link to this heading">#</a></h1>
+  <section id="calendars">
+<h1>Calendars<a class="headerlink" href="#calendars" title="Link to this heading">#</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="yfinance.Lookup">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Lookup" title="Link to this definition">#</a></dt>
-<dd><p>Fetches quote (ticker) lookups from Yahoo Finance.</p>
+<dt class="sig sig-object py" id="yfinance.Calendars">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Calendars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Session</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Calendars" title="Link to this definition">#</a></dt>
+<dd><p>Get economic calendars, for example, Earnings, IPO, Economic Events, Splits</p>
+<p>### Simple example default params:
+<code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">import</span> <span class="pre">yfinance</span> <span class="pre">as</span> <span class="pre">yf</span>
+<span class="pre">calendars</span> <span class="pre">=</span> <span class="pre">yf.Calendars()</span>
+<span class="pre">earnings_calendar</span> <span class="pre">=</span> <span class="pre">calendars.get_earnings_calendar(limit=50)</span>
+<span class="pre">print(earnings_calendar)</span>
+<span class="pre">`</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<em>str</em>) – The search query for financial data lookup.</p></li>
-<li><p><strong>session</strong> – Custom HTTP session for requests (default None).</p></li>
-<li><p><strong>timeout</strong> – Request timeout in seconds (default 30).</p></li>
-<li><p><strong>raise_errors</strong> – Raise exceptions on error (default True).</p></li>
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – start date (default today)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – end date (default <cite>start + 7 days</cite>)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>session</strong> – requests.Session object, optional</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Attributes</p>
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">all</span></span></dt>
-<dd><p>Returns all available financial instruments.</p>
+<span class="sig-name descname"><span class="pre">earnings_calendar</span></span></dt>
+<dd><p>Earnings calendar with default settings.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">cryptocurrency</span></span></dt>
-<dd><p>Returns Cryptocurrencies related financial instruments.</p>
+<span class="sig-name descname"><span class="pre">economic_events_calendar</span></span></dt>
+<dd><p>Economic events calendar with default settings.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">currency</span></span></dt>
-<dd><p>Returns Currencies related financial instruments.</p>
+<span class="sig-name descname"><span class="pre">ipo_info_calendar</span></span></dt>
+<dd><p>IPOs calendar with default settings.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">etf</span></span></dt>
-<dd><p>Returns ETFs related financial instruments.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">future</span></span></dt>
-<dd><p>Returns Futures related financial instruments.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">index</span></span></dt>
-<dd><p>Returns Indices related financial instruments.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">mutualfund</span></span></dt>
-<dd><p>Returns mutual funds related financial instruments.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">stock</span></span></dt>
-<dd><p>Returns stock related financial instruments.</p>
+<span class="sig-name descname"><span class="pre">splits_calendar</span></span></dt>
+<dd><p>Splits calendar with default settings.</p>
 </dd></dl>
 
 <p class="rubric">Methods</p>
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns all available financial instruments.</p>
-<dl class="field-list simple">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Session</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – start date (default today)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – end date (default <cite>start + 7 days</cite>)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>session</strong> – requests.Session object, optional</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_cryptocurrency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns Cryptocurrencies related financial instruments.</p>
+<span class="sig-name descname"><span class="pre">get_earnings_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">market_cap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_most_active</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Retrieve earnings calendar from YF as a DataFrame.
+Will re-query every time it is called, overwriting previous data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>market_cap</strong> – market cap cutoff in USD, default None</p></li>
+<li><p><strong>filter_most_active</strong> – will filter for actively traded stocks (default True)</p></li>
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with earnings calendar</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_currency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns Currencies related financial instruments.</p>
+<span class="sig-name descname"><span class="pre">get_economic_events_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Retrieve Economic Events calendar from YF as a DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with Economic Events calendar</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_etf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns ETFs related financial instruments.</p>
+<span class="sig-name descname"><span class="pre">get_ipo_info_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Retrieve IPOs calendar from YF as a Dataframe.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with IPOs calendar</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_future</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns Futures related financial instruments.</p>
+<span class="sig-name descname"><span class="pre">get_splits_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Retrieve Splits calendar from YF as a DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with Splits calendar</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns Indices related financial instruments.</p>
+<dt class="sig sig-object py" id="yfinance.Calendars.get_earnings_calendar">
+<span class="sig-name descname"><span class="pre">get_earnings_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">market_cap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_most_active</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Calendars.get_earnings_calendar" title="Link to this definition">#</a></dt>
+<dd><p>Retrieve earnings calendar from YF as a DataFrame.
+Will re-query every time it is called, overwriting previous data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>market_cap</strong> – market cap cutoff in USD, default None</p></li>
+<li><p><strong>filter_most_active</strong> – will filter for actively traded stocks (default True)</p></li>
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with earnings calendar</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_mutualfund</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns mutual funds related financial instruments.</p>
+<dt class="sig sig-object py" id="yfinance.Calendars.get_economic_events_calendar">
+<span class="sig-name descname"><span class="pre">get_economic_events_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Calendars.get_economic_events_calendar" title="Link to this definition">#</a></dt>
+<dd><p>Retrieve Economic Events calendar from YF as a DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with Economic Events calendar</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_stock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
-<dd><p>Returns stock related financial instruments.</p>
+<dt class="sig sig-object py" id="yfinance.Calendars.get_ipo_info_calendar">
+<span class="sig-name descname"><span class="pre">get_ipo_info_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Calendars.get_ipo_info_calendar" title="Link to this definition">#</a></dt>
+<dd><p>Retrieve IPOs calendar from YF as a Dataframe.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with IPOs calendar</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_all">
-<span class="sig-name descname"><span class="pre">get_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_all" title="Link to this definition">#</a></dt>
-<dd><p>Returns all available financial instruments.</p>
+<dt class="sig sig-object py" id="yfinance.Calendars.get_splits_calendar">
+<span class="sig-name descname"><span class="pre">get_splits_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Calendars.get_splits_calendar" title="Link to this definition">#</a></dt>
+<dd><p>Retrieve Splits calendar from YF as a DataFrame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite start date (default set by __init__)             eg. start=”2025-11-08”</p></li>
+<li><p><strong>end</strong> (<em>str</em><em> | </em><em>datetime</em><em> | </em><em>date</em>) – overwrite end date (default set by __init__)             eg. end=”2025-11-08”</p></li>
+<li><p><strong>limit</strong> – maximum number of results to return (YF caps at 100)</p></li>
+<li><p><strong>offset</strong> – offsets the results for pagination. YF default 0</p></li>
+<li><p><strong>force</strong> – if True, will re-query even if cache already exists</p></li>
+</ul>
 </dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_cryptocurrency">
-<span class="sig-name descname"><span class="pre">get_cryptocurrency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_cryptocurrency" title="Link to this definition">#</a></dt>
-<dd><p>Returns Cryptocurrencies related financial instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_currency">
-<span class="sig-name descname"><span class="pre">get_currency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_currency" title="Link to this definition">#</a></dt>
-<dd><p>Returns Currencies related financial instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_etf">
-<span class="sig-name descname"><span class="pre">get_etf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_etf" title="Link to this definition">#</a></dt>
-<dd><p>Returns ETFs related financial instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_future">
-<span class="sig-name descname"><span class="pre">get_future</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_future" title="Link to this definition">#</a></dt>
-<dd><p>Returns Futures related financial instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_index">
-<span class="sig-name descname"><span class="pre">get_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_index" title="Link to this definition">#</a></dt>
-<dd><p>Returns Indices related financial instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_mutualfund">
-<span class="sig-name descname"><span class="pre">get_mutualfund</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_mutualfund" title="Link to this definition">#</a></dt>
-<dd><p>Returns mutual funds related financial instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="yfinance.Lookup.get_stock">
-<span class="sig-name descname"><span class="pre">get_stock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#yfinance.Lookup.get_stock" title="Link to this definition">#</a></dt>
-<dd><p>Returns stock related financial instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>count</strong> (<em>int</em>) – The number of results to retrieve.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with Splits calendar</p>
 </dd>
 </dl>
 </dd></dl>
@@ -778,20 +759,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="yfinance.Search.html"
+       href="../yfinance.calendars.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Search</p>
+        <p class="prev-next-title">Calendars</p>
       </div>
     </a>
     <a class="right-next"
-       href="../yfinance.websocket.html"
+       href="../yfinance.financials.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">WebSocket</p>
+        <p class="prev-next-title">Financials</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -813,15 +794,11 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup"><code class="docutils literal notranslate"><span class="pre">Lookup</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_all"><code class="docutils literal notranslate"><span class="pre">Lookup.get_all()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_cryptocurrency"><code class="docutils literal notranslate"><span class="pre">Lookup.get_cryptocurrency()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_currency"><code class="docutils literal notranslate"><span class="pre">Lookup.get_currency()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_etf"><code class="docutils literal notranslate"><span class="pre">Lookup.get_etf()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_future"><code class="docutils literal notranslate"><span class="pre">Lookup.get_future()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_index"><code class="docutils literal notranslate"><span class="pre">Lookup.get_index()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_mutualfund"><code class="docutils literal notranslate"><span class="pre">Lookup.get_mutualfund()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Lookup.get_stock"><code class="docutils literal notranslate"><span class="pre">Lookup.get_stock()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Calendars"><code class="docutils literal notranslate"><span class="pre">Calendars</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Calendars.get_earnings_calendar"><code class="docutils literal notranslate"><span class="pre">Calendars.get_earnings_calendar()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Calendars.get_economic_events_calendar"><code class="docutils literal notranslate"><span class="pre">Calendars.get_economic_events_calendar()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Calendars.get_ipo_info_calendar"><code class="docutils literal notranslate"><span class="pre">Calendars.get_ipo_info_calendar()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Calendars.get_splits_calendar"><code class="docutils literal notranslate"><span class="pre">Calendars.get_splits_calendar()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -830,7 +807,7 @@ document.write(`
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../../_sources/reference/api/yfinance.Lookup.rst.txt">
+    <a href="../../_sources/reference/api/yfinance.Calendars.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

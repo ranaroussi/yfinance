@@ -361,6 +361,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.calendars.html">Calendars</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Calendars.html">Calendars</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
@@ -515,67 +519,67 @@ document.write(`
 <h2>Analysis<a class="headerlink" href="#analysis" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_recommendations.html#yfinance.Ticker.get_recommendations" title="yfinance.Ticker.get_recommendations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_recommendations</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_recommendations.html#yfinance.Ticker.get_recommendations" title="yfinance.Ticker.get_recommendations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_recommendations</span></code></a>([as_dict])</p></td>
 <td><p>Returns a DataFrame with the recommendations Columns: period  strongBuy  buy  hold  sell  strongSell</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.recommendations.html#yfinance.Ticker.recommendations" title="yfinance.Ticker.recommendations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recommendations</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_recommendations_summary.html#yfinance.Ticker.get_recommendations_summary" title="yfinance.Ticker.get_recommendations_summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_recommendations_summary</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_recommendations_summary.html#yfinance.Ticker.get_recommendations_summary" title="yfinance.Ticker.get_recommendations_summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_recommendations_summary</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.recommendations_summary.html#yfinance.Ticker.recommendations_summary" title="yfinance.Ticker.recommendations_summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recommendations_summary</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_upgrades_downgrades.html#yfinance.Ticker.get_upgrades_downgrades" title="yfinance.Ticker.get_upgrades_downgrades"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_upgrades_downgrades</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_upgrades_downgrades.html#yfinance.Ticker.get_upgrades_downgrades" title="yfinance.Ticker.get_upgrades_downgrades"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_upgrades_downgrades</span></code></a>([as_dict])</p></td>
 <td><p>Returns a DataFrame with the recommendations changes (upgrades/downgrades) Index: date of grade Columns: firm toGrade fromGrade action</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.upgrades_downgrades.html#yfinance.Ticker.upgrades_downgrades" title="yfinance.Ticker.upgrades_downgrades"><code class="xref py py-obj docutils literal notranslate"><span class="pre">upgrades_downgrades</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_sustainability.html#yfinance.Ticker.get_sustainability" title="yfinance.Ticker.get_sustainability"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sustainability</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_sustainability.html#yfinance.Ticker.get_sustainability" title="yfinance.Ticker.get_sustainability"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sustainability</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.sustainability.html#yfinance.Ticker.sustainability" title="yfinance.Ticker.sustainability"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sustainability</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_analyst_price_targets.html#yfinance.Ticker.get_analyst_price_targets" title="yfinance.Ticker.get_analyst_price_targets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_analyst_price_targets</span></code></a>([proxy])</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_analyst_price_targets.html#yfinance.Ticker.get_analyst_price_targets" title="yfinance.Ticker.get_analyst_price_targets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_analyst_price_targets</span></code></a>()</p></td>
+<td><p>Keys:   current  low  high  mean  median</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.analyst_price_targets.html#yfinance.Ticker.analyst_price_targets" title="yfinance.Ticker.analyst_price_targets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">analyst_price_targets</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_estimate.html#yfinance.Ticker.get_earnings_estimate" title="yfinance.Ticker.get_earnings_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_estimate</span></code></a>([proxy, as_dict])</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_estimate.html#yfinance.Ticker.get_earnings_estimate" title="yfinance.Ticker.get_earnings_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_estimate</span></code></a>([as_dict])</p></td>
+<td><p>Index:      0q  +1q  0y  +1y Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.earnings_estimate.html#yfinance.Ticker.earnings_estimate" title="yfinance.Ticker.earnings_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">earnings_estimate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_revenue_estimate.html#yfinance.Ticker.get_revenue_estimate" title="yfinance.Ticker.get_revenue_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_revenue_estimate</span></code></a>([proxy, as_dict])</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_revenue_estimate.html#yfinance.Ticker.get_revenue_estimate" title="yfinance.Ticker.get_revenue_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_revenue_estimate</span></code></a>([as_dict])</p></td>
+<td><p>Index:      0q  +1q  0y  +1y Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.revenue_estimate.html#yfinance.Ticker.revenue_estimate" title="yfinance.Ticker.revenue_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">revenue_estimate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_history.html#yfinance.Ticker.get_earnings_history" title="yfinance.Ticker.get_earnings_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_history</span></code></a>([proxy, as_dict])</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_history.html#yfinance.Ticker.get_earnings_history" title="yfinance.Ticker.get_earnings_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_history</span></code></a>([as_dict])</p></td>
+<td><p>Index:      pd.DatetimeIndex Columns:    epsEstimate  epsActual  epsDifference  surprisePercent</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.earnings_history.html#yfinance.Ticker.earnings_history" title="yfinance.Ticker.earnings_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">earnings_history</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_trend.html#yfinance.Ticker.get_eps_trend" title="yfinance.Ticker.get_eps_trend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_trend</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_trend.html#yfinance.Ticker.get_eps_trend" title="yfinance.Ticker.get_eps_trend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_trend</span></code></a>([as_dict])</p></td>
 <td><p>Index:      0q  +1q  0y  +1y Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.eps_trend.html#yfinance.Ticker.eps_trend" title="yfinance.Ticker.eps_trend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eps_trend</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_revisions.html#yfinance.Ticker.get_eps_revisions" title="yfinance.Ticker.get_eps_revisions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_revisions</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_revisions.html#yfinance.Ticker.get_eps_revisions" title="yfinance.Ticker.get_eps_revisions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_revisions</span></code></a>([as_dict])</p></td>
 <td><p>Index:      0q  +1q  0y  +1y Columns:    upLast7days  upLast30days  downLast7days  downLast30days</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.eps_revisions.html#yfinance.Ticker.eps_revisions" title="yfinance.Ticker.eps_revisions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eps_revisions</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_growth_estimates.html#yfinance.Ticker.get_growth_estimates" title="yfinance.Ticker.get_growth_estimates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_growth_estimates</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_growth_estimates.html#yfinance.Ticker.get_growth_estimates" title="yfinance.Ticker.get_growth_estimates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_growth_estimates</span></code></a>([as_dict])</p></td>
 <td><p>Index:      0q  +1q  0y  +1y +5y -5y Columns:    stock  industry  sector  index</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.growth_estimates.html#yfinance.Ticker.growth_estimates" title="yfinance.Ticker.growth_estimates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">growth_estimates</span></code></a></p></td>
@@ -589,7 +593,7 @@ document.write(`
 <h2>Holdings<a class="headerlink" href="#holdings" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_funds_data.html#yfinance.Ticker.get_funds_data" title="yfinance.Ticker.get_funds_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_funds_data</span></code></a>([proxy])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_funds_data.html#yfinance.Ticker.get_funds_data" title="yfinance.Ticker.get_funds_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_funds_data</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.funds_data.html#yfinance.Ticker.funds_data" title="yfinance.Ticker.funds_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">funds_data</span></code></a></p></td>
@@ -604,37 +608,37 @@ document.write(`
 </div>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_insider_purchases.html#yfinance.Ticker.get_insider_purchases" title="yfinance.Ticker.get_insider_purchases"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_insider_purchases</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_insider_purchases.html#yfinance.Ticker.get_insider_purchases" title="yfinance.Ticker.get_insider_purchases"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_insider_purchases</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.insider_purchases.html#yfinance.Ticker.insider_purchases" title="yfinance.Ticker.insider_purchases"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insider_purchases</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_insider_transactions.html#yfinance.Ticker.get_insider_transactions" title="yfinance.Ticker.get_insider_transactions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_insider_transactions</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_insider_transactions.html#yfinance.Ticker.get_insider_transactions" title="yfinance.Ticker.get_insider_transactions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_insider_transactions</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.insider_transactions.html#yfinance.Ticker.insider_transactions" title="yfinance.Ticker.insider_transactions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insider_transactions</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_insider_roster_holders.html#yfinance.Ticker.get_insider_roster_holders" title="yfinance.Ticker.get_insider_roster_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_insider_roster_holders</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_insider_roster_holders.html#yfinance.Ticker.get_insider_roster_holders" title="yfinance.Ticker.get_insider_roster_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_insider_roster_holders</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.insider_roster_holders.html#yfinance.Ticker.insider_roster_holders" title="yfinance.Ticker.insider_roster_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insider_roster_holders</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_major_holders.html#yfinance.Ticker.get_major_holders" title="yfinance.Ticker.get_major_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_major_holders</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_major_holders.html#yfinance.Ticker.get_major_holders" title="yfinance.Ticker.get_major_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_major_holders</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.major_holders.html#yfinance.Ticker.major_holders" title="yfinance.Ticker.major_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">major_holders</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_institutional_holders.html#yfinance.Ticker.get_institutional_holders" title="yfinance.Ticker.get_institutional_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_institutional_holders</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_institutional_holders.html#yfinance.Ticker.get_institutional_holders" title="yfinance.Ticker.get_institutional_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_institutional_holders</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.institutional_holders.html#yfinance.Ticker.institutional_holders" title="yfinance.Ticker.institutional_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">institutional_holders</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_mutualfund_holders.html#yfinance.Ticker.get_mutualfund_holders" title="yfinance.Ticker.get_mutualfund_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mutualfund_holders</span></code></a>([proxy, as_dict])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_mutualfund_holders.html#yfinance.Ticker.get_mutualfund_holders" title="yfinance.Ticker.get_mutualfund_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mutualfund_holders</span></code></a>([as_dict])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.mutualfund_holders.html#yfinance.Ticker.mutualfund_holders" title="yfinance.Ticker.mutualfund_holders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mutualfund_holders</span></code></a></p></td>

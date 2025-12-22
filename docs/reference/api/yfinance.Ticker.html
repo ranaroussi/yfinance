@@ -361,6 +361,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.calendars.html">Calendars</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Calendars.html">Calendars</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
@@ -516,7 +520,7 @@ document.write(`
 <h1>Ticker<a class="headerlink" href="#ticker" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="yfinance.Ticker">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Ticker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Ticker" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Ticker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Ticker" title="Link to this definition">#</a></dt>
 <dd><p>Initialize a Yahoo Finance Ticker object.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -798,7 +802,7 @@ or a tuple of (symbol, MIC) e.g. (‘OR’,’XPAR’)
 <p class="rubric">Methods</p>
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Initialize a Yahoo Finance Ticker object.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -814,17 +818,18 @@ or a tuple of (symbol, MIC) e.g. (‘OR’,’XPAR’)
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_actions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period='max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_actions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_analyst_price_targets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">get_analyst_price_targets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<dd><p>Keys:   current  low  high  mean  median</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_balance_sheet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_balance_sheet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -844,22 +849,22 @@ Default is “yearly”</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_balancesheet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_balancesheet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_calendar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_calendar</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_capital_gains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period='max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_capital_gains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_cash_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_cash_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span></span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -879,17 +884,17 @@ Default is “yearly”</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_cashflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_cashflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_dividends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period='max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_dividends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_earnings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_earnings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -911,58 +916,62 @@ Default is “yearly”</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_earnings_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">get_earnings_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Index:      0q  +1q  0y  +1y
+Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_earnings_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">get_earnings_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Index:      pd.DatetimeIndex
+Columns:    epsEstimate  epsActual  epsDifference  surprisePercent</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_eps_revisions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_eps_revisions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Index:      0q  +1q  0y  +1y
 Columns:    upLast7days  upLast30days  downLast7days  downLast30days</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_eps_trend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_eps_trend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Index:      0q  +1q  0y  +1y
 Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_fast_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_fast_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_financials</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_financials</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_funds_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="yfinance.scrapers.funds.FundsData.html#yfinance.scrapers.funds.FundsData" title="yfinance.scrapers.funds.FundsData"><span class="pre">FundsData</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_funds_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="yfinance.scrapers.funds.FundsData.html#yfinance.scrapers.funds.FundsData" title="yfinance.scrapers.funds.FundsData"><span class="pre">FundsData</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_growth_estimates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_growth_estimates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Index:      0q  +1q  0y  +1y +5y -5y
 Columns:    stock  industry  sector  index</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_history_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_history_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_income_stmt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_income_stmt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -982,100 +991,102 @@ Default is “yearly”</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_incomestmt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='yearly'</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_incomestmt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yearly'</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_insider_purchases</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_insider_purchases</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_insider_roster_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_insider_roster_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_insider_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_insider_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_institutional_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_institutional_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_isin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_isin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_major_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_major_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_mutualfund_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_mutualfund_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_news</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count=10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tab='news'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_news</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tab</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'news'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
 <dd><p>Allowed options for tab: “news”, “all”, “press releases</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_recommendations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_recommendations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Returns a DataFrame with the recommendations
 Columns: period  strongBuy  buy  hold  sell  strongSell</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_recommendations_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_recommendations_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_revenue_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_revenue_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Index:      0q  +1q  0y  +1y
+Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_sec_filings</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_sec_filings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_shares</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_shares</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_shares_full</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_shares_full</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_splits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_splits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period='max'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Series</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">get_sustainability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_sustainability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">get_upgrades_downgrades</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dict=False</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">get_upgrades_downgrades</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Returns a DataFrame with the recommendations changes (upgrades/downgrades)
 Index: date of grade
 Columns: firm toGrade fromGrade action</p>

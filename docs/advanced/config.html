@@ -394,14 +394,55 @@ document.write(`
                   
   <section id="config">
 <h1>Config<a class="headerlink" href="#config" title="Link to this heading">#</a></h1>
-<p><cite>yfinance</cite> has a new global config for sharing common values.</p>
-<section id="proxy">
-<h2>Proxy<a class="headerlink" href="#proxy" title="Link to this heading">#</a></h2>
-<p>Set proxy once in config, affects all yfinance data fetches.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
-<span class="n">yf</span><span class="o">.</span><span class="n">set_config</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
+<p><cite>yfinance</cite> has a new global config for sharing common values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">yf</span><span class="o">.</span><span class="n">config</span>
+<span class="go">{</span>
+<span class="go">  &quot;network&quot;: {</span>
+<span class="go">    &quot;proxy&quot;: null,</span>
+<span class="go">    &quot;retries&quot;: 0</span>
+<span class="go">  },</span>
+<span class="go">  &quot;debug&quot;: {</span>
+<span class="go">    &quot;hide_exceptions&quot;: true,</span>
+<span class="go">    &quot;logging&quot;: false</span>
+<span class="go">  }</span>
+<span class="go">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network</span>
+<span class="go">{</span>
+<span class="go">  &quot;proxy&quot;: null,</span>
+<span class="go">  &quot;retries&quot;: 0</span>
+<span class="go">}</span>
 </pre></div>
 </div>
+<section id="network">
+<h2>Network<a class="headerlink" href="#network" title="Link to this heading">#</a></h2>
+<ul>
+<li><p><strong>proxy</strong> - Set proxy for all yfinance data fetches.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">proxy</span> <span class="o">=</span> <span class="s2">&quot;PROXY_SERVER&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>retries</strong> - Configure automatic retry for transient network errors. The retry mechanism uses exponential backoff (1s, 2s, 4s…).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">retries</span> <span class="o">=</span> <span class="mi">2</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="debug">
+<h2>Debug<a class="headerlink" href="#debug" title="Link to this heading">#</a></h2>
+<ul>
+<li><p><strong>hide_exceptions</strong> - Set to <cite>False</cite> to stop yfinance hiding exceptions.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">debug</span><span class="o">.</span><span class="n">hide_exceptions</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>logging</strong> - Set to <cite>True</cite> to enable verbose debug logging.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">debug</span><span class="o">.</span><span class="n">logging</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</li>
+</ul>
 </section>
 </section>
 
@@ -451,7 +492,8 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#proxy">Proxy</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#network">Network</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#debug">Debug</a></li>
 </ul>
   </nav></div>
 

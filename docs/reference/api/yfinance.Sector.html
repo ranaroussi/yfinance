@@ -361,6 +361,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.calendars.html">Calendars</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Calendars.html">Calendars</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.financials.html">Financials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_income_stmt.html">yfinance.Ticker.get_income_stmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.income_stmt.html">yfinance.Ticker.income_stmt</a></li>
@@ -516,7 +520,7 @@ document.write(`
 <h1>Sector<a class="headerlink" href="#sector" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="yfinance.Sector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Sector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Sector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">Sector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Sector" title="Link to this definition">#</a></dt>
 <dd><p>Represents a financial market sector and allows retrieval of sector-related data
 such as top ETFs, top mutual funds, and industry data.</p>
 <dl class="field-list simple">
@@ -524,7 +528,6 @@ such as top ETFs, top mutual funds, and industry data.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>str</em>) – The key representing the sector.</p></li>
 <li><p><strong>session</strong> (<em>requests.Session</em><em>, </em><em>optional</em>) – A session for making requests. Defaults to None.</p></li>
-<li><p><strong>proxy</strong> (<em>dict</em><em>, </em><em>optional</em>) – A dictionary containing proxy settings for the request. Defaults to None.</p></li>
 </ul>
 </dd>
 </dl>
@@ -621,9 +624,9 @@ such as top ETFs, top mutual funds, and industry data.</p>
 </tr>
 <tr class="row-odd"><td><p>consumer-defensive</p></td>
 <td><ul class="simple">
-<li><p>beverages-brewers</p></li>
-<li><p>beverages-non-alcoholic</p></li>
-<li><p>beverages-wineries-distilleries</p></li>
+<li><p>beverages—brewers</p></li>
+<li><p>beverages—non-alcoholic</p></li>
+<li><p>beverages—wineries-distilleries</p></li>
 <li><p>confectioners</p></li>
 <li><p>discount-stores</p></li>
 <li><p>education-training-services</p></li>
@@ -639,7 +642,7 @@ such as top ETFs, top mutual funds, and industry data.</p>
 <tr class="row-even"><td><p>energy</p></td>
 <td><ul class="simple">
 <li><p>oil-gas-drilling</p></li>
-<li><p>oil-gas-e-p</p></li>
+<li><p>oil-gas-e&amp;p</p></li>
 <li><p>oil-gas-equipment-services</p></li>
 <li><p>oil-gas-integrated</p></li>
 <li><p>oil-gas-midstream</p></li>
@@ -652,18 +655,18 @@ such as top ETFs, top mutual funds, and industry data.</p>
 <tr class="row-odd"><td><p>financial-services</p></td>
 <td><ul class="simple">
 <li><p>asset-management</p></li>
-<li><p>banks-diversified</p></li>
-<li><p>banks-regional</p></li>
+<li><p>banks—diversified</p></li>
+<li><p>banks—regional</p></li>
 <li><p>capital-markets</p></li>
 <li><p>credit-services</p></li>
 <li><p>financial-conglomerates</p></li>
 <li><p>financial-data-stock-exchanges</p></li>
 <li><p>insurance-brokers</p></li>
-<li><p>insurance-diversified</p></li>
-<li><p>insurance-life</p></li>
-<li><p>insurance-property-casualty</p></li>
-<li><p>insurance-reinsurance</p></li>
-<li><p>insurance-specialty</p></li>
+<li><p>insurance—diversified</p></li>
+<li><p>insurance—life</p></li>
+<li><p>insurance—property-casualty</p></li>
+<li><p>insurance—reinsurance</p></li>
+<li><p>insurance—specialty</p></li>
 <li><p>mortgage-finance</p></li>
 <li><p>shell-companies</p></li>
 </ul>
@@ -673,8 +676,8 @@ such as top ETFs, top mutual funds, and industry data.</p>
 <td><ul class="simple">
 <li><p>biotechnology</p></li>
 <li><p>diagnostics-research</p></li>
-<li><p>drug-manufacturers-general</p></li>
-<li><p>drug-manufacturers-specialty-generic</p></li>
+<li><p>drug-manufacturers—general</p></li>
+<li><p>drug-manufacturers—specialty-generic</p></li>
 <li><p>health-information-services</p></li>
 <li><p>healthcare-plans</p></li>
 <li><p>medical-care-facilities</p></li>
@@ -717,18 +720,18 @@ such as top ETFs, top mutual funds, and industry data.</p>
 </tr>
 <tr class="row-even"><td><p>real-estate</p></td>
 <td><ul class="simple">
-<li><p>real-estate-development</p></li>
-<li><p>real-estate-diversified</p></li>
 <li><p>real-estate-services</p></li>
-<li><p>reit-diversified</p></li>
-<li><p>reit-healthcare-facilities</p></li>
-<li><p>reit-hotel-motel</p></li>
-<li><p>reit-industrial</p></li>
-<li><p>reit-mortgage</p></li>
-<li><p>reit-office</p></li>
-<li><p>reit-residential</p></li>
-<li><p>reit-retail</p></li>
-<li><p>reit-specialty</p></li>
+<li><p>real-estate—development</p></li>
+<li><p>real-estate—diversified</p></li>
+<li><p>reit—diversified</p></li>
+<li><p>reit—healthcare-facilities</p></li>
+<li><p>reit—hotel-motel</p></li>
+<li><p>reit—industrial</p></li>
+<li><p>reit—mortgage</p></li>
+<li><p>reit—office</p></li>
+<li><p>reit—residential</p></li>
+<li><p>reit—retail</p></li>
+<li><p>reit—specialty</p></li>
 </ul>
 </td>
 </tr>
@@ -743,20 +746,20 @@ such as top ETFs, top mutual funds, and industry data.</p>
 <li><p>scientific-technical-instruments</p></li>
 <li><p>semiconductor-equipment-materials</p></li>
 <li><p>semiconductors</p></li>
-<li><p>software-application</p></li>
-<li><p>software-infrastructure</p></li>
+<li><p>software—application</p></li>
+<li><p>software—infrastructure</p></li>
 <li><p>solar</p></li>
 </ul>
 </td>
 </tr>
 <tr class="row-even"><td><p>utilities</p></td>
 <td><ul class="simple">
-<li><p>utilities-diversified</p></li>
-<li><p>utilities-independent-power-producers</p></li>
-<li><p>utilities-regulated-electric</p></li>
-<li><p>utilities-regulated-gas</p></li>
-<li><p>utilities-regulated-water</p></li>
-<li><p>utilities-renewable</p></li>
+<li><p>utilities—diversified</p></li>
+<li><p>utilities—independent-power-producers</p></li>
+<li><p>utilities—regulated-electric</p></li>
+<li><p>utilities—regulated-gas</p></li>
+<li><p>utilities—regulated-water</p></li>
+<li><p>utilities—renewable</p></li>
 </ul>
 </td>
 </tr>
@@ -894,13 +897,12 @@ such as top ETFs, top mutual funds, and industry data.</p>
 <p class="rubric">Methods</p>
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>str</em>) – The key representing the sector.</p></li>
 <li><p><strong>session</strong> (<em>requests.Session</em><em>, </em><em>optional</em>) – A session for making requests. Defaults to None.</p></li>
-<li><p><strong>proxy</strong> (<em>dict</em><em>, </em><em>optional</em>) – A dictionary containing proxy settings for the request. Defaults to None.</p></li>
 </ul>
 </dd>
 </dl>

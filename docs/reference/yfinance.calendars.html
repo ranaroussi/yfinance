@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Screener &amp; Query &#8212; yfinance</title>
+    <title>Calendars &#8212; yfinance</title>
   
   
   
@@ -42,11 +42,11 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/yfinance.screener';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/yfinance.calendars';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="EquityQuery" href="api/yfinance.EquityQuery.html" />
-    <link rel="prev" title="Industry" href="api/yfinance.Industry.html" />
+    <link rel="next" title="Calendars" href="api/yfinance.Calendars.html" />
+    <link rel="prev" title="Market" href="api/yfinance.Market.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -361,7 +361,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Market.html">Market</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.calendars.html">Calendars</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Calendars</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Calendars.html">Calendars</a></li>
 </ul>
 </details></li>
@@ -439,7 +439,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.Industry.html">Industry</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Screener &amp; Query</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.screener.html">Screener &amp; Query</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.EquityQuery.html">EquityQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.FundQuery.html">FundQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.screen.html">yfinance.screen</a></li>
@@ -496,7 +496,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Screener &amp; Query</li>
+    <li class="breadcrumb-item active" aria-current="page">Calendars</li>
   </ul>
 </nav>
 </div>
@@ -513,37 +513,61 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="screener-query">
-<h1>Screener &amp; Query<a class="headerlink" href="#screener-query" title="Link to this heading">#</a></h1>
-<section id="query-market-data">
-<h2>Query Market Data<a class="headerlink" href="#query-market-data" title="Link to this heading">#</a></h2>
-<p>The <cite>Sector</cite> and <cite>Industry</cite> modules allow you to access the sector and industry information.</p>
+  <section id="calendars">
+<h1>Calendars<a class="headerlink" href="#calendars" title="Link to this heading">#</a></h1>
+<section id="class">
+<h2>Class<a class="headerlink" href="#class" title="Link to this heading">#</a></h2>
+<p>The <cite>Calendars</cite> class allows you to get information about upcoming events, for example, earning events.</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.EquityQuery.html#yfinance.EquityQuery" title="yfinance.EquityQuery"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EquityQuery</span></code></a>(operator, operand)</p></td>
-<td><p>The <cite>EquityQuery</cite> class constructs filters for stocks based on specific criteria such as region, sector, exchange, and peer group.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.FundQuery.html#yfinance.FundQuery" title="yfinance.FundQuery"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FundQuery</span></code></a>(operator, operand)</p></td>
-<td><p>The <cite>FundQuery</cite> class constructs filters for mutual funds based on specific criteria such as region, sector, exchange, and peer group.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.screen.html#yfinance.screen" title="yfinance.screen"><code class="xref py py-obj docutils literal notranslate"><span class="pre">screen</span></code></a>(query[, offset, size, count, ...])</p></td>
-<td><p>Run a screen: predefined query, or custom query.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Calendars.html#yfinance.Calendars" title="yfinance.Calendars"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Calendars</span></code></a>([start, end, session])</p></td>
+<td><p>Get economic calendars, for example, Earnings, IPO, Economic Events, Splits</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<dl class="simple">
-<dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">EquityQuery.valid_fields</span></code></dt><dd><p>supported operand values for query</p>
-</dd>
-<dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">EquityQuery.valid_values</span></code></dt><dd><p>supported <cite>EQ query operand parameters</cite></p>
-</dd>
-<dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">FundQuery.valid_fields</span></code></dt><dd><p>supported operand values for query</p>
-</dd>
-<dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">FundQuery.valid_values</span></code></dt><dd><p>supported <cite>EQ query operand parameters</cite></p>
-</dd>
-</dl>
+</section>
+<section id="sample-code">
+<h2>Sample Code<a class="headerlink" href="#sample-code" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="c1"># Default init (today + 7 days)</span>
+<span class="n">calendar</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Calendars</span><span class="p">()</span>
+
+<span class="c1"># Today&#39;s events: calendar of 1 day</span>
+<span class="n">tomorrow</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">calendar</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Calendars</span><span class="p">(</span><span class="n">end</span><span class="o">=</span><span class="n">tomorrow</span><span class="p">)</span>
+
+<span class="c1"># Default calendar queries - accessing the properties will fetch the data from YF</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">earnings_calendar</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">ipo_info_calendar</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">splits_calendar</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">economic_events_calendar</span>
+
+<span class="c1"># Manual queries</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">get_earnings_calendar</span><span class="p">()</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">get_ipo_info_calendar</span><span class="p">()</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">get_splits_calendar</span><span class="p">()</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">get_economic_events_calendar</span><span class="p">()</span>
+
+<span class="c1"># Earnings calendar custom filters</span>
+<span class="n">calendar</span><span class="o">.</span><span class="n">get_earnings_calendar</span><span class="p">(</span>
+    <span class="n">market_cap</span><span class="o">=</span><span class="mi">100_000_000</span><span class="p">,</span>  <span class="c1"># filter out small-cap </span>
+    <span class="n">filter_most_active</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># show only actively traded. Uses: `screen(query=&quot;MOST_ACTIVES&quot;)`</span>
+<span class="p">)</span>
+
+<span class="c1"># Example of real use case:</span>
+<span class="c1"># Get inminent unreported earnings events</span>
+<span class="n">today</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+<span class="n">is_friday</span> <span class="o">=</span> <span class="n">today</span><span class="o">.</span><span class="n">weekday</span><span class="p">()</span> <span class="o">==</span> <span class="mi">4</span>
+<span class="n">day_after_tomorrow</span> <span class="o">=</span> <span class="n">today</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">4</span> <span class="k">if</span> <span class="n">is_friday</span> <span class="k">else</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="n">calendar</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Calendars</span><span class="p">(</span><span class="n">today</span><span class="p">,</span> <span class="n">day_after_tomorrow</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">get_earnings_calendar</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="n">unreported_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;Reported EPS&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()]</span>
+</pre></div>
 </div>
 </section>
 </section>
@@ -559,20 +583,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="api/yfinance.Industry.html"
+       href="api/yfinance.Market.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Industry</p>
+        <p class="prev-next-title">Market</p>
       </div>
     </a>
     <a class="right-next"
-       href="api/yfinance.EquityQuery.html"
+       href="api/yfinance.Calendars.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">EquityQuery</p>
+        <p class="prev-next-title">Calendars</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -594,14 +618,15 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#query-market-data">Query Market Data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#class">Class</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sample-code">Sample Code</a></li>
 </ul>
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/reference/yfinance.screener.rst.txt">
+    <a href="../_sources/reference/yfinance.calendars.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>
