@@ -22,7 +22,6 @@
 from __future__ import print_function
 
 import json as _json
-import warnings
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
 
@@ -34,7 +33,8 @@ from curl_cffi import requests
 from . import utils, cache
 from .const import _MIC_TO_YAHOO_SUFFIX
 from .data import YfData
-from .exceptions import YFEarningsDateMissing, YFRateLimitError
+from .config import YfConfig
+from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
@@ -43,7 +43,7 @@ from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
-from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_, _SENTINEL_
+from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
 
 from io import StringIO
 from bs4 import BeautifulSoup
@@ -52,7 +52,7 @@ from bs4 import BeautifulSoup
 _tz_info_fetch_ctr = 0
 
 class TickerBase:
-    def __init__(self, ticker, session=None, proxy=_SENTINEL_):
+    def __init__(self, ticker, session=None):
         """
         Initialize a Yahoo Finance Ticker object.
 
@@ -98,9 +98,6 @@ class TickerBase:
             raise ValueError("Empty ticker name")
 
         self._data: YfData = YfData(session=session)
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         # accept isin as ticker
         if utils.is_isin(self.ticker):
@@ -188,6 +185,8 @@ class TickerBase:
             # Must propagate this
             raise
         except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
             logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
             return None
         else:
@@ -199,6 +198,8 @@ class TickerBase:
                 try:
                     return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
                 except Exception as err:
+                    if not YfConfig.debug.hide_exceptions:
+                        raise
                     logger.error(f"Could not get exchangeTimezoneName for ticker '{self.ticker}' reason: {err}")
                     logger.debug("Got response: ")
                     logger.debug("-------------")
@@ -206,164 +207,100 @@ class TickerBase:
                     logger.debug("-------------")
         return None
 
-    def get_recommendations(self, proxy=_SENTINEL_, as_dict=False):
+    def get_recommendations(self, as_dict=False):
         """
         Returns a DataFrame with the recommendations
         Columns: period  strongBuy  buy  hold  sell  strongSell
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
         data = self._quote.recommendations
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_recommendations_summary(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_recommendations_summary(self, as_dict=False):
         return self.get_recommendations(as_dict=as_dict)
 
-    def get_upgrades_downgrades(self, proxy=_SENTINEL_, as_dict=False):
+    def get_upgrades_downgrades(self, as_dict=False):
         """
         Returns a DataFrame with the recommendations changes (upgrades/downgrades)
         Index: date of grade
         Columns: firm toGrade fromGrade action
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
         data = self._quote.upgrades_downgrades
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_calendar(self, proxy=_SENTINEL_) -> dict:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_calendar(self) -> dict:
         return self._quote.calendar
 
-    def get_sec_filings(self, proxy=_SENTINEL_) -> dict:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_sec_filings(self) -> dict:
         return self._quote.sec_filings
 
-    def get_major_holders(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_major_holders(self, as_dict=False):
         data = self._holders.major
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_institutional_holders(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_institutional_holders(self, as_dict=False):
         data = self._holders.institutional
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
-    def get_mutualfund_holders(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_mutualfund_holders(self, as_dict=False):
         data = self._holders.mutualfund
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
-    def get_insider_purchases(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_insider_purchases(self, as_dict=False):
         data = self._holders.insider_purchases
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
-    def get_insider_transactions(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_insider_transactions(self, as_dict=False):
         data = self._holders.insider_transactions
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
-    def get_insider_roster_holders(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_insider_roster_holders(self, as_dict=False):
         data = self._holders.insider_roster
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
-    def get_info(self, proxy=_SENTINEL_) -> dict:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_info(self) -> dict:
         data = self._quote.info
         return data
 
-    def get_fast_info(self, proxy=_SENTINEL_):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_fast_info(self):
         if self._fast_info is None:
             self._fast_info = FastInfo(self)
         return self._fast_info
 
-    def get_sustainability(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_sustainability(self, as_dict=False):
         data = self._quote.sustainability
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_analyst_price_targets(self, proxy=_SENTINEL_) -> dict:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_analyst_price_targets(self) -> dict:
         """
         Keys:   current  low  high  mean  median
         """
         data = self._analysis.analyst_price_targets
         return data
 
-    def get_earnings_estimate(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_earnings_estimate(self, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
         Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth
@@ -371,11 +308,7 @@ class TickerBase:
         data = self._analysis.earnings_estimate
         return data.to_dict() if as_dict else data
 
-    def get_revenue_estimate(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_revenue_estimate(self, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
         Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth
@@ -383,11 +316,7 @@ class TickerBase:
         data = self._analysis.revenue_estimate
         return data.to_dict() if as_dict else data
 
-    def get_earnings_history(self, proxy=_SENTINEL_, as_dict=False):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_earnings_history(self, as_dict=False):
         """
         Index:      pd.DatetimeIndex
         Columns:    epsEstimate  epsActual  epsDifference  surprisePercent
@@ -395,43 +324,34 @@ class TickerBase:
         data = self._analysis.earnings_history
         return data.to_dict() if as_dict else data
 
-    def get_eps_trend(self, proxy=_SENTINEL_, as_dict=False):
+    def get_eps_trend(self, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
         Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         data = self._analysis.eps_trend
         return data.to_dict() if as_dict else data
 
-    def get_eps_revisions(self, proxy=_SENTINEL_, as_dict=False):
+    def get_eps_revisions(self, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y
         Columns:    upLast7days  upLast30days  downLast7days  downLast30days
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         data = self._analysis.eps_revisions
         return data.to_dict() if as_dict else data
 
-    def get_growth_estimates(self, proxy=_SENTINEL_, as_dict=False):
+    def get_growth_estimates(self, as_dict=False):
         """
         Index:      0q  +1q  0y  +1y +5y -5y
         Columns:    stock  industry  sector  index
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         data = self._analysis.growth_estimates
         return data.to_dict() if as_dict else data
 
-    def get_earnings(self, proxy=_SENTINEL_, as_dict=False, freq="yearly"):
+    def get_earnings(self, as_dict=False, freq="yearly"):
         """
         :Parameters:
             as_dict: bool
@@ -441,9 +361,6 @@ class TickerBase:
                 "yearly" or "quarterly" or "trailing"
                 Default is "yearly"
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         if self._fundamentals.earnings is None:
             return None
@@ -455,7 +372,7 @@ class TickerBase:
             return dict_data
         return data
 
-    def get_income_stmt(self, proxy=_SENTINEL_, as_dict=False, pretty=False, freq="yearly"):
+    def get_income_stmt(self, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
             as_dict: bool
@@ -468,9 +385,6 @@ class TickerBase:
                 "yearly" or "quarterly" or "trailing"
                 Default is "yearly"
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         data = self._fundamentals.financials.get_income_time_series(freq=freq)
 
@@ -481,21 +395,13 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_incomestmt(self, proxy=_SENTINEL_, as_dict=False, pretty=False, freq="yearly"):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def get_incomestmt(self, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_income_stmt(as_dict, pretty, freq)
 
-        return self.get_income_stmt(proxy, as_dict, pretty, freq)
+    def get_financials(self, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_income_stmt(as_dict, pretty, freq)
 
-    def get_financials(self, proxy=_SENTINEL_, as_dict=False, pretty=False, freq="yearly"):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
-        return self.get_income_stmt(proxy, as_dict, pretty, freq)
-
-    def get_balance_sheet(self, proxy=_SENTINEL_, as_dict=False, pretty=False, freq="yearly"):
+    def get_balance_sheet(self, as_dict=False, pretty=False, freq="yearly"):
         """
         :Parameters:
             as_dict: bool
@@ -508,9 +414,6 @@ class TickerBase:
                 "yearly" or "quarterly"
                 Default is "yearly"
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
 
         data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq)
@@ -522,14 +425,10 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_balancesheet(self, proxy=_SENTINEL_, as_dict=False, pretty=False, freq="yearly"):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def get_balancesheet(self, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_balance_sheet(as_dict, pretty, freq)
 
-        return self.get_balance_sheet(proxy, as_dict, pretty, freq)
-
-    def get_cash_flow(self, proxy=_SENTINEL_, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
+    def get_cash_flow(self, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
         """
         :Parameters:
             as_dict: bool
@@ -542,9 +441,6 @@ class TickerBase:
                 "yearly" or "quarterly"
                 Default is "yearly"
         """
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
 
         data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq)
@@ -556,53 +452,31 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_cashflow(self, proxy=_SENTINEL_, as_dict=False, pretty=False, freq="yearly"):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-        return self.get_cash_flow(proxy, as_dict, pretty, freq)
+    def get_cashflow(self, as_dict=False, pretty=False, freq="yearly"):
+        return self.get_cash_flow(as_dict, pretty, freq)
 
-    def get_dividends(self, proxy=_SENTINEL_, period="max") -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def get_dividends(self, period="max") -> pd.Series:
         return self._lazy_load_price_history().get_dividends(period=period)
 
-    def get_capital_gains(self, proxy=_SENTINEL_, period="max") -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def get_capital_gains(self, period="max") -> pd.Series:
         return self._lazy_load_price_history().get_capital_gains(period=period)
 
-    def get_splits(self, proxy=_SENTINEL_, period="max") -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def get_splits(self, period="max") -> pd.Series:
         return self._lazy_load_price_history().get_splits(period=period)
 
-    def get_actions(self, proxy=_SENTINEL_, period="max") -> pd.Series:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def get_actions(self, period="max") -> pd.Series:
         return self._lazy_load_price_history().get_actions(period=period)
 
-    def get_shares(self, proxy=_SENTINEL_, as_dict=False) -> Union[pd.DataFrame, dict]:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_shares(self, as_dict=False) -> Union[pd.DataFrame, dict]:
         data = self._fundamentals.shares
         if as_dict:
             return data.to_dict()
         return data
 
     @utils.log_indent_decorator
-    def get_shares_full(self, start=None, end=None, proxy=_SENTINEL_):
+    def get_shares_full(self, start=None, end=None):
         logger = utils.get_yf_logger()
 
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         # Process dates
         tz = self._get_ticker_tz(timeout=10)
@@ -628,6 +502,8 @@ class TickerBase:
             json_data = self._data.cache_get(url=shares_url)
             json_data = json_data.json()
         except (_json.JSONDecodeError, requests.exceptions.RequestException):
+            if not YfConfig.debug.hide_exceptions:
+                raise
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
         try:
@@ -635,6 +511,8 @@ class TickerBase:
         except KeyError:
             fail = False
         if fail:
+            if not YfConfig.debug.hide_exceptions:
+                raise requests.exceptions.HTTPError("Yahoo web request for share count returned 'Bad Request'")
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
 
@@ -644,6 +522,8 @@ class TickerBase:
         try:
             df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
         except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
             logger.error(f"{self.ticker}: Failed to parse shares count data: {e}")
             return None
 
@@ -651,11 +531,7 @@ class TickerBase:
         df = df.sort_index()
         return df
 
-    def get_isin(self, proxy=_SENTINEL_) -> Optional[str]:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_isin(self) -> Optional[str]:
         # *** experimental ***
         if self._isin is not None:
             return self._isin
@@ -691,16 +567,13 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
-    def get_news(self, count=10, tab="news", proxy=_SENTINEL_) -> list:
+    def get_news(self, count=10, tab="news") -> list:
         """Allowed options for tab: "news", "all", "press releases"""
         if self._news:
             return self._news
 
         logger = utils.get_yf_logger()
 
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         tab_queryrefs = {
             "all": "newsAll",
@@ -722,12 +595,12 @@ class TickerBase:
 
         data = self._data.post(url, body=payload)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
             data = data.json()
         except _json.JSONDecodeError:
+            if not YfConfig.debug.hide_exceptions:
+                raise
             logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
             data = {}
 
@@ -737,7 +610,15 @@ class TickerBase:
         return self._news
 
     def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
-        return self._get_earnings_dates_using_scrape(limit, offset)
+        if limit > 100:
+            raise ValueError("Yahoo caps limit at 100")
+
+        if self._earnings_dates and limit in self._earnings_dates:
+            return self._earnings_dates[limit]
+
+        df = self._get_earnings_dates_using_scrape(limit, offset)
+        self._earnings_dates[limit] = df
+        return df
 
     @utils.log_indent_decorator
     def _get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
@@ -835,7 +716,7 @@ class TickerBase:
         return df
 
     @utils.log_indent_decorator
-    def _get_earnings_dates_using_screener(self, limit=12, proxy=_SENTINEL_) -> Optional[pd.DataFrame]:
+    def _get_earnings_dates_using_screener(self, limit=12) -> Optional[pd.DataFrame]:
         """
         Get earning dates (future and historic)
 
@@ -851,20 +732,11 @@ class TickerBase:
         """
         logger = utils.get_yf_logger()
 
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
-        clamped_limit = min(limit, 100)  # YF caps at 100, don't go higher
-
-        if self._earnings_dates and clamped_limit in self._earnings_dates:
-            return self._earnings_dates[clamped_limit]
-
         # Fetch data
         url = f"{_QUERY1_URL_}/v1/finance/visualization"
         params = {"lang": "en-US", "region": "US"}
         body = {
-            "size": clamped_limit,
+            "size": limit,
             "query": { "operator": "eq", "operands": ["ticker", self.ticker] },
             "sortField": "startdatetime",
             "sortType": "DESC",
@@ -910,21 +782,13 @@ class TickerBase:
         df.set_index('Earnings Date', inplace=True)
         df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)  # Compatibility
 
-        self._earnings_dates[clamped_limit] = df
+        self._earnings_dates[limit] = df
         return df
 
-    def get_history_metadata(self, proxy=_SENTINEL_) -> dict:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def get_history_metadata(self) -> dict:
+        return self._lazy_load_price_history().get_history_metadata()
 
-        return self._lazy_load_price_history().get_history_metadata(proxy)
-
-    def get_funds_data(self, proxy=_SENTINEL_) -> Optional[FundsData]:
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-
+    def get_funds_data(self) -> Optional[FundsData]:
         if not self._funds_data:
             self._funds_data = FundsData(self._data, self.ticker)
         

@@ -21,12 +21,9 @@
 
 from __future__ import print_function
 
-import warnings
-
 from . import Ticker, multi
 from .live import WebSocket
 from .data import YfData
-from .const import _SENTINEL_
 
 
 class Tickers:
@@ -49,37 +46,24 @@ class Tickers:
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
 
-    def history(self, period="1mo", interval="1d",
+    def history(self, period=None, interval="1d",
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, repair=False,
-                proxy=_SENTINEL_,
                 threads=True, group_by='column', progress=True,
                 timeout=10, **kwargs):
-
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-            proxy = _SENTINEL_
 
         return self.download(
             period, interval,
             start, end, prepost,
             actions, auto_adjust, repair, 
-            proxy,
             threads, group_by, progress,
             timeout, **kwargs)
 
-    def download(self, period="1mo", interval="1d",
+    def download(self, period=None, interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, repair=False, 
-                 proxy=_SENTINEL_,
                  threads=True, group_by='column', progress=True,
                  timeout=10, **kwargs):
-
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
-            proxy = _SENTINEL_
 
         data = multi.download(self.symbols,
                               start=start, end=end,

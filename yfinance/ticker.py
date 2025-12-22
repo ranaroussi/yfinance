@@ -22,20 +22,16 @@
 from __future__ import print_function
 
 from collections import namedtuple as _namedtuple
-import warnings
 
 import pandas as _pd
 
 from .base import TickerBase
-from .const import _BASE_URL_, _SENTINEL_
+from .const import _BASE_URL_
 from .scrapers.funds import FundsData
 
 
 class Ticker(TickerBase):
-    def __init__(self, ticker, session=None, proxy=_SENTINEL_):
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
+    def __init__(self, ticker, session=None):
         super(Ticker, self).__init__(ticker, session=session)
         self._expirations = {}
         self._underlying  = {}

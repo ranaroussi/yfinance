@@ -1,5 +1,7 @@
 import functools
 from functools import lru_cache
+import socket
+import time as _time
 
 from curl_cffi import requests
 from urllib.parse import urlsplit, urljoin
@@ -9,9 +11,22 @@ import datetime
 from frozendict import frozendict
 
 from . import utils, cache
+from .config import YfConfig
 import threading
 
-from .exceptions import YFRateLimitError, YFDataException
+from .exceptions import YFException, YFDataException, YFRateLimitError
+
+
+def _is_transient_error(exception):
+    """Check if error is transient (network/timeout) and should be retried."""
+    if isinstance(exception, (TimeoutError, socket.error, OSError)):
+        return True
+    error_type_name = type(exception).__name__
+    transient_error_types = {
+        'Timeout', 'TimeoutError', 'ConnectionError', 'ConnectTimeout',
+        'ReadTimeout', 'ChunkedEncodingError', 'RemoteDisconnected',
+    }
+    return error_type_name in transient_error_types
 
 cache_maxsize = 64
 
@@ -54,9 +69,6 @@ class SingletonMeta(type):
                 if 'session' in kwargs or (args and len(args) > 0):
                     session = kwargs.get('session') if 'session' in kwargs else args[0]
                     cls._instances[cls]._set_session(session)
-                if 'proxy' in kwargs or (args and len(args) > 1):
-                    proxy = kwargs.get('proxy') if 'proxy' in kwargs else args[1]
-                    cls._instances[cls]._set_proxy(proxy)
             return cls._instances[cls]
 
 
@@ -66,7 +78,7 @@ class YfData(metaclass=SingletonMeta):
     Singleton means one session one cookie shared by all threads.
     """
 
-    def __init__(self, session=None, proxy=None):
+    def __init__(self, session=None):
         self._crumb = None
         self._cookie = None
 
@@ -77,9 +89,8 @@ class YfData(metaclass=SingletonMeta):
 
         self._cookie_lock = threading.Lock()
 
-        self._session, self._proxy = None, None
+        self._session = None
         self._set_session(session or requests.Session(impersonate="chrome"))
-        self._set_proxy(proxy)
 
     def _set_session(self, session):
         if session is None:
@@ -103,17 +114,8 @@ class YfData(metaclass=SingletonMeta):
 
         with self._cookie_lock:
             self._session = session
-            if self._proxy is not None:
-                self._session.proxies = self._proxy
-
-    def _set_proxy(self, proxy=None):
-        with self._cookie_lock:
-            if proxy is not None:
-                proxy = {'http': proxy, 'https': proxy} if isinstance(proxy, str) else proxy
-            else:
-                proxy = {}
-            self._proxy = proxy
-            self._session.proxies = proxy
+            if YfConfig.network.proxy is not None:
+                self._session.proxies = YfConfig.network.proxy
 
     def _set_cookie_strategy(self, strategy, have_lock=False):
         if strategy == self._cookie_strategy:
@@ -198,8 +200,10 @@ class YfData(metaclass=SingletonMeta):
                 url='https://fc.yahoo.com',
                 timeout=timeout,
                 allow_redirects=True)
-        except requests.exceptions.DNSError:
-            # Possible because url on some privacy/ad blocklists
+        except requests.exceptions.DNSError as e:
+            # Possible because url on some privacy/ad blocklists.
+            # Can ignore because have second strategy.
+            utils.get_yf_logger().debug("Handling DNS error on cookie fetch: " + str(e))
             return False
         self._save_cookie_curlCffi()
         return True
@@ -381,11 +385,11 @@ class YfData(metaclass=SingletonMeta):
         return response
 
     @utils.log_indent_decorator
-    def post(self, url, body, params=None, timeout=30):
-        return self._make_request(url, request_method = self._session.post, body=body, params=params, timeout=timeout)
+    def post(self, url, body=None, params=None, timeout=30, data=None):
+        return self._make_request(url, request_method = self._session.post, body=body, params=params, timeout=timeout, data=data)
 
     @utils.log_indent_decorator
-    def _make_request(self, url, request_method, body=None, params=None, timeout=30):
+    def _make_request(self, url, request_method, body=None, params=None, timeout=30, data=None):
         # Important: treat input arguments as immutable.
 
         if len(url) > 200:
@@ -394,10 +398,13 @@ class YfData(metaclass=SingletonMeta):
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
 
+        # sync with config
+        self._session.proxies = YfConfig.network.proxy
+
         if params is None:
             params = {}
         if 'crumb' in params:
-            raise Exception("Don't manually add 'crumb' to params dict, let data.py handle it")
+            raise YFException("Don't manually add 'crumb' to params dict, let data.py handle it")
 
         crumb, strategy = self._get_cookie_and_crumb()
         if crumb is not None:
@@ -413,8 +420,20 @@ class YfData(metaclass=SingletonMeta):
 
         if body:
             request_args['json'] = body
+        
+        if data:
+            request_args['data'] = data
+            request_args['headers'] = {"Content-Type": "application/json"}
 
-        response = request_method(**request_args)
+        for attempt in range(YfConfig.network.retries + 1):
+            try:
+                response = request_method(**request_args)
+                break
+            except Exception as e:
+                if _is_transient_error(e) and attempt < YfConfig.network.retries:
+                    _time.sleep(2 ** attempt)
+                else:
+                    raise
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
             # Retry with other cookie strategy

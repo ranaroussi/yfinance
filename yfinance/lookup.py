@@ -21,12 +21,12 @@
 
 import json as _json
 import pandas as pd
-import warnings
 
 from . import utils
-from .const import _QUERY1_URL_, _SENTINEL_
+from .config import YfConfig
+from .const import _QUERY1_URL_
 from .data import YfData
-from .exceptions import YFException
+from .exceptions import YFDataException
 
 LOOKUP_TYPES = ["all", "equity", "mutualfund", "etf", "index", "future", "currency", "cryptocurrency"]
 
@@ -38,18 +38,13 @@ class Lookup:
     :param query: The search query for financial data lookup.
     :type query: str
     :param session: Custom HTTP session for requests (default None).
-    :param proxy: Proxy settings for requests (default None).
     :param timeout: Request timeout in seconds (default 30).
     :param raise_errors: Raise exceptions on error (default True).
     """
 
-    def __init__(self, query: str, session=None, proxy=_SENTINEL_, timeout=30, raise_errors=True):
+    def __init__(self, query: str, session=None, timeout=30, raise_errors=True):
         self.session = session
         self._data = YfData(session=self.session)
-
-        if proxy is not _SENTINEL_:
-            warnings.warn("Set proxy via new config function: yf.set_config(proxy=proxy)", DeprecationWarning, stacklevel=2)
-            self._data._set_proxy(proxy)
 
         self.query = query
 
@@ -81,18 +76,19 @@ class Lookup:
 
         data = self._data.get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
             data = data.json()
         except _json.JSONDecodeError:
-            self._logger.error(f"{self.query}: Failed to retrieve lookup results and received faulty response instead.")
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            self._logger.error(f"{self.ticker}: 'lookup' fetch received faulty data")
             data = {}
 
         # Error returned
         if data.get("finance", {}).get("error", {}):
-            raise YFException(data.get("finance", {}).get("error", {}))
+            error = data.get("finance", {}).get("error", {})
+            raise YFDataException(f"{self.ticker}: 'lookup' fetch returned error: {error}")
 
         self._cache[cache_key] = data
         return data
