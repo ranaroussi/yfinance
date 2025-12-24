@@ -3,6 +3,7 @@ import datetime
 import json
 import numpy as _np
 import pandas as pd
+from io import StringIO
 
 from yfinance import utils
 from yfinance.config import YfConfig
@@ -716,6 +717,28 @@ class Quote:
                     self._info[k] = keydict[k][-1]["reportedValue"]["raw"]
                 else:
                     self.info[k] = None
+        if self._info.get('pegRatio') is None:
+            try:
+                url = f"https://finance.yahoo.com/quote/{self._symbol}/key-statistics"
+                response = self._data.cache_get(url=url)
+                
+                dfs = pd.read_html(StringIO(response.text))
+                
+                for df in dfs:
+                    if df.shape[1] >= 2:
+                        mask = df.iloc[:, 0].astype(str).str.contains("PEG Ratio", case=False, na=False)
+                        
+                        if mask.any():
+                            val_raw = df.loc[mask, df.columns[1]].iloc[0]
+                            
+                            if val_raw and str(val_raw).lower() != 'n/a':
+                                try:
+                                    self._info['pegRatio'] = float(val_raw)
+                                except ValueError:
+                                    pass
+                            break
+            except Exception:
+                pass
 
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
