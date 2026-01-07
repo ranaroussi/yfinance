@@ -64,7 +64,7 @@ $ pip install yfinance
 ### Legal Stuff
 
 **yfinance** is distributed under the **Apache Software License**. See
-the [LICENSE.txt](./LICENSE.txt) file in the release for details.
+the [LICENSE.txt](https://github.com/ranaroussi/yfinance/blob/main/LICENSE.txt) file in the release for details.
 
 AGAIN - yfinance is **not** affiliated, endorsed, or vetted by Yahoo, Inc. It's
 an open-source tool that uses Yahoo's publicly available APIs, and is
