@@ -1431,6 +1431,7 @@ class PriceHistory:
         # Add columns if not present
         if 'Repaired?' not in df.columns:
             df['Repaired?'] = False
+        df['Adj'] = df['Adj Close'] / df['Close']
 
         dts = df[df['Capital Gains'] > 0].index
         for dt in dts:
@@ -1462,11 +1463,19 @@ class PriceHistory:
 
                     df.loc[dt, 'Dividends'] = dividend_true
 
-                    # Apply scaling to all dates before and including this distribution date
-                    adj = df['Adj Close'] / df['Close']
-                    adj_correct = 1- ((1-adj)*scale_factor)
-                    df.loc[:dt, 'Adj Close'] = df.loc[:dt, 'Close'] * adj_correct
+                    # Correct adjustment for dates before and including this distribution date
+                    adj_before = df['Adj Close'].iloc[idx-1] / df['Close'].iloc[idx-1]
+                    adj_correct = 1- ((1-adj_before)*scale_factor)
+                    correction = adj_correct / adj_before
+                    df.loc[:dt, 'Adj'] *= correction
                     df.loc[:dt, 'Repaired?'] = True
+
+                    # Debug:
+                    # df.loc[dt, 'ScaleFactor'] = scale_factor
+                    # df.loc[dt, 'correction'] = correction
+
+        df['Adj Close'] = df['Close'] * df['Adj']
+        df = df.drop('Adj', axis=1)
 
         return df
 
