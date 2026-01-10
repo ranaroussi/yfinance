@@ -457,6 +457,10 @@ class PriceHistory:
             df = self._fix_bad_stock_splits(df, interval, tz_exchange)
             # Must repair 100x and split errors before price reconstruction
             df = self._fix_zeroes(df, interval, tz_exchange, prepost)
+
+            # New:
+            df = self._repair_capital_gains(df)
+
             df = df.sort_index()
 
         # Auto/back adjust
@@ -1404,6 +1408,69 @@ class PriceHistory:
         return df2
 
     @utils.log_indent_decorator
+    def _repair_capital_gains(self, df):
+        # Yahoo has started double-counting capital gains in Adj Close,
+        # by pre-adding it to dividends column.
+
+        if 'Capital Gains' not in df.columns:
+            return df
+        if (df['Capital Gains'] == 0).all():
+            return df
+
+        df = df.copy()
+        df = df.sort_index()
+
+        # Consider price drop to decide if Yahoo double-counted - 
+        #   drop should = true dividend + capital gains
+        # But need to account for normal price volatility:
+        df['Price_Change'] = df['Close'].diff()
+        no_distributions = (df['Dividends'] == 0) & (df['Capital Gains'] == 0)
+        price_drop_std = df.loc[no_distributions, 'Price_Change'].std()
+        df = df.drop('Price_Change', axis=1)
+
+        # Add columns if not present
+        if 'Repaired?' not in df.columns:
+            df['Repaired?'] = False
+
+        dts = df[df['Capital Gains'] > 0].index
+        for dt in dts:
+            idx = df.index.get_loc(dt)
+
+            if idx > 0:
+                # Need a row before for price drop
+
+                dividend = df.loc[dt, 'Dividends']
+                capital_gains = df.loc[dt, 'Capital Gains']
+                if dividend < capital_gains:
+                    # Not possible for 'dividend' to be including capital gains
+                    continue
+
+                price_drop = df.loc[df.index[idx-1], 'Close'] - df['Close'].iloc[idx]
+                price_drop_excl_vol = price_drop - price_drop_std
+
+                # Check whether adjusted price drop is closer to dividend vs dividend+capital_gains
+                diff_div = abs(price_drop_excl_vol - dividend)
+                diff_total = abs(price_drop_excl_vol - (dividend + capital_gains))
+                cg_is_double_counted = diff_div < diff_total
+
+                if cg_is_double_counted:
+                    # Instead of calculating new adjustment from scratch, 
+                    # reverse the double-count from existing adjustment.
+                    # In case don't have all events after last date.
+                    dividend_true = dividend - capital_gains
+                    scale_factor = (dividend_true + capital_gains) / (dividend_true + 2*capital_gains)
+
+                    df.loc[dt, 'Dividends'] = dividend_true
+
+                    # Apply scaling to all dates before and including this distribution date
+                    adj = df['Adj Close'] / df['Close']
+                    adj_correct = 1- ((1-adj)*scale_factor)
+                    df.loc[:dt, 'Adj Close'] = df.loc[:dt, 'Close'] * adj_correct
+                    df.loc[:dt, 'Repaired?'] = True
+
+        return df
+
+    @utils.log_indent_decorator
     def _fix_bad_div_adjust(self, df, interval, currency):
         # Look for dividend issues:
         # - dividend ~100x the Close change (a currency unit mixup)
@@ -1416,6 +1483,12 @@ class PriceHistory:
         if df is None or df.empty:
             return df
         if interval in ['1wk', '1mo', '3mo', '1y']:
+            return df
+
+        if 'Capital Gains' in df.columns and (df['Capital Gains']>0).any():
+            # So there are capital gains. This function only considers dividends. 
+            # I don't want to deal with capital gains being wrong as well!
+            # But if you find capital gains that need repair e.g. 100x error, then report to our Github.
             return df
 
         logger = utils.get_yf_logger()
