@@ -53,7 +53,7 @@ Install `yfinance` from PYPI using `pip`:
 $ pip install yfinance
 ```
 
-### [yfinance relies on the community to investigate bugs and contribute code. Here's how you can help.](CONTRIBUTING.md)
+### [yfinance relies on the community to investigate bugs and contribute code. Here's how you can help.](https://github.com/ranaroussi/yfinance/blob/main/CONTRIBUTING.md)
 
 ---
 
