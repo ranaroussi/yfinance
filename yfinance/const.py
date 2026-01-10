@@ -366,7 +366,7 @@ _MIC_TO_YAHOO_SUFFIX = {
     'XJSE': 'JO',  # South Africa
     'XKRX': 'KS', 'KQKS': 'KQ',  # South Korea
     'BMEX': 'MC',  # Spain
-    'XTAD': 'SAU',  # Saudi Arabia
+    'XSAU': 'SR',  # Saudi Arabia
     'XSTO': 'ST',  # Sweden
     'XSWX': 'SW',  # Switzerland
     'ROCO': 'TWO', 'XTAI': 'TW',  # Taiwan
