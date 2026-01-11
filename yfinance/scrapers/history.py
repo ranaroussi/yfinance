@@ -1429,7 +1429,7 @@ class PriceHistory:
         # Consider price drop to decide if Yahoo double-counted - 
         #   drop should = true dividend + capital gains
         # But need to account for normal price volatility:
-        df['Price_Change%'] = df['Close'].pct_change()
+        df['Price_Change%'] = df['Close'].pct_change().abs()
         no_distributions = (df['Dividends'] == 0) & (df['Capital Gains'] == 0)
         price_drop_pct_mean = df.loc[no_distributions, 'Price_Change%'].mean()
         df = df.drop('Price_Change%', axis=1)
