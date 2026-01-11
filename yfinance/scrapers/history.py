@@ -2733,7 +2733,7 @@ class PriceHistory:
                 end = min(len(flat_indices), start+30+1)
                 block = df2.iloc[flat_indices[start:end]]
                 block = block.sort_index()
-                block_before = block.loc[:dt-_datetime.timedelta(1)]
+                # block_before = block.loc[:dt-_datetime.timedelta(1)]
                 down_dts_from = down_dts[down_dts>=dt]
                 if len(down_dts_from) > 0:
                     next_down_dt = min(down_dts_from)
