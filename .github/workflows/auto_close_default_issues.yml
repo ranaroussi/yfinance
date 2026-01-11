@@ -13,18 +13,24 @@ jobs:
           script: |
             const issue = context.payload.issue;
             const body = issue.body || '';
+            const title = issue.title || '';
+            const textToCheck = (title + ' ' + body).toLowerCase();
             
             // Check for specific fields from your custom form
-            // Adjust these patterns based on your form structure
             const hasCustomFields = body.includes('### Describe bug') || 
                                    body.includes('### Simple code that reproduces');
             
-            if (!hasCustomFields) {
+            // Check for bug-related keywords
+            const bugKeywords = ['bug', 'problem', 'broken'];
+            const looksBugReport = bugKeywords.some(keyword => textToCheck.includes(keyword));
+            
+            // Only close if it looks like a bug report but doesn't use the template
+            if (!hasCustomFields && looksBugReport) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: 'This issue appears to use the default template. Stop that. Use our custom bug report form.'
+                body: 'This issue appears to be a bug report but doesn\'t use our bug report template. Resubmit with our custom bug report form..'
               });
               
               await github.rest.issues.update({

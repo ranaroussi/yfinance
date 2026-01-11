@@ -1,6 +1,35 @@
 Change Log
 ===========
 
+1.0
+---
+yfinance been stable a long time now, time to grow up
+
+No breaking changes, but some deprecation warnings.
+
+Features:
+- New config class yf.config / Improve exception handling #2524
+- Feature: Earning Calendar (& other calendars) #2615 @ianmihura
+- Add optional retry mechanism for transient network errors #2627 @axisrow
+Fixes:
+- 'Industry' column names #2613 @danchev
+- Correct 30m interval alignment and filtering for NSE/early-open markets #2642 @biplavbarua
+- Screener's sector industry mapping #2648 @ericpien
+- Set period default to None in multi #2650 @evanreynolds9
+- price-div-repair dropping NaN rows #2651
+- Block curl_cffi version 0.14 #2653
+
+
+0.2.66
+------
+Screener: add Swiss exchange and industry field
+Support MIC #2579
+Fixes:
+- parse epoch dt #2573
+- earnings_dates #2591
+- merge intraday prices with divs/splits #2595
+- exceptions missing detail #2599
+
 0.2.65
 ------
 Financials: ensure dtype float #2563
