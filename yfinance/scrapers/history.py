@@ -1417,6 +1417,12 @@ class PriceHistory:
         if (df['Capital Gains'] == 0).all():
             return df
 
+        debug = False
+        # debug = True
+
+        logger = utils.get_yf_logger()
+        log_extras = {'yf_cat': 'repair-capital-gains', 'yf_symbol': self.ticker}
+
         df = df.copy()
         df = df.sort_index()
 
@@ -1433,7 +1439,14 @@ class PriceHistory:
             df['Repaired?'] = False
         df['Adj'] = df['Adj Close'] / df['Close']
 
+        if debug:
+            df['ScaleFactor'] = np.nan
+            df['correction'] = np.nan
+            df['AdjYahoo'] = (df['Adj Close']/df['Close']).round(4)
+
         dts = df[df['Capital Gains'] > 0].index
+        c = df['Close'].to_numpy()
+        ac = df['Adj Close'].to_numpy()
         for dt in dts:
             idx = df.index.get_loc(dt)
 
@@ -1446,7 +1459,7 @@ class PriceHistory:
                     # Not possible for 'dividend' to be including capital gains
                     continue
 
-                price_drop = df.loc[df.index[idx-1], 'Close'] - df['Close'].iloc[idx]
+                price_drop = df.loc[df.index[idx-1], 'Close'] - c[idx]
                 price_drop_excl_vol = price_drop - price_drop_std
 
                 # Check whether adjusted price drop is closer to dividend vs dividend+capital_gains
@@ -1459,23 +1472,27 @@ class PriceHistory:
                     # reverse the double-count from existing adjustment.
                     # In case don't have all events after last date.
                     dividend_true = dividend - capital_gains
-                    scale_factor = (dividend_true + capital_gains) / (dividend_true + 2*capital_gains)
 
                     df.loc[dt, 'Dividends'] = dividend_true
 
                     # Correct adjustment for dates before and including this distribution date
-                    adj_before = df['Adj Close'].iloc[idx-1] / df['Close'].iloc[idx-1]
-                    adj_correct = 1- ((1-adj_before)*scale_factor)
+                    adj_before = (ac[idx-1]/c[idx-1]) / (ac[idx]/c[idx])
+                    adj_correct = 1.0 - (dividend_true + capital_gains) / c[idx-1]
                     correction = adj_correct / adj_before
-                    df.loc[:dt, 'Adj'] *= correction
+                    df.loc[:dt-_datetime.timedelta(1), 'Adj'] *= correction
                     df.loc[:dt, 'Repaired?'] = True
+                    msg = f"Repaired capital-gains double-count at {dt.date()}. Adj correction = {correction:.4f}"
+                    logger.info(msg, extra=log_extras)
 
-                    # Debug:
-                    # df.loc[dt, 'ScaleFactor'] = scale_factor
-                    # df.loc[dt, 'correction'] = correction
+                    if debug:
+                        df.loc[dt, 'correction'] = correction
 
         df['Adj Close'] = df['Close'] * df['Adj']
-        df = df.drop('Adj', axis=1)
+
+        if debug:
+            df['Adj'] = df['Adj'].round(4)
+        else:
+            df = df.drop('Adj', axis=1)
 
         return df
 
