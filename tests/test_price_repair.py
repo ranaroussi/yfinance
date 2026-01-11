@@ -695,6 +695,43 @@ class TestPriceRepair(unittest.TestCase):
                 print(repaired_df[c][f_diff] - correct_df[c][f_diff])
                 raise
 
+    def test_repair_capital_gains_double_count(self):
+        bad_tkrs = ['DODFX', 'VWILX']
+        for tkr in bad_tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            tz_exchange = dat.fast_info["timezone"]
+            hist = dat._lazy_load_price_history()
+
+            interval = '1d'
+            fp = os.path.join(self.dp, "data", tkr.replace('.','-')+'-'+interval+"-cg-double-count.csv")
+
+            df_bad = _pd.read_csv(fp, index_col="Date")
+            df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
+
+            repaired_df = hist._repair_capital_gains(df_bad)
+
+            fp = os.path.join(self.dp, "data", tkr.replace('.','-')+'-'+interval+"-cg-double-count-fixed.csv")
+            correct_df = _pd.read_csv(fp, index_col="Date")
+            correct_df.index = _pd.to_datetime(correct_df.index, utc=True)
+
+            repaired_df = repaired_df.sort_index()
+            correct_df = correct_df.sort_index()
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+                except AssertionError:
+                    print(f"tkr={tkr} COLUMN={c}")
+                    print("- repaired_df")
+                    print(repaired_df.drop(['Open', 'High', 'Low', 'Volume', 'Capital Gains'], axis=1))
+                    print("- repaired_df[c]")
+                    print(repaired_df[c])
+                    print("- correct_df[c]:")
+                    print(correct_df[c])
+                    print("- diff:")
+                    print(repaired_df[c] - correct_df[c])
+                    raise
+
+
 
 if __name__ == '__main__':
     unittest.main()
