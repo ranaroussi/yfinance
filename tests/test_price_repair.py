@@ -696,7 +696,7 @@ class TestPriceRepair(unittest.TestCase):
                 raise
 
     def test_repair_capital_gains_double_count(self):
-        bad_tkrs = ['DODFX', 'VWILX']
+        bad_tkrs = ['DODFX', 'VWILX', 'JENYX']
         for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             hist = dat._lazy_load_price_history()
@@ -719,15 +719,17 @@ class TestPriceRepair(unittest.TestCase):
                 try:
                     self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
                 except AssertionError:
+                    f = (correct_df['Capital Gains']!=0).to_numpy()
+                    f2 = f|_np.roll(f,1)|_np.roll(f,2)|_np.roll(f,-1)|_np.roll(f,-2)
                     print(f"tkr={tkr} COLUMN={c}")
                     print("- repaired_df")
-                    print(repaired_df.drop(['Open', 'High', 'Low', 'Volume', 'Capital Gains'], axis=1))
+                    print(repaired_df[f2].drop(['Open', 'High', 'Low', 'Volume', 'Capital Gains'], axis=1))
                     print("- repaired_df[c]")
-                    print(repaired_df[c])
+                    print(repaired_df[f2][c])
                     print("- correct_df[c]:")
-                    print(correct_df[c])
+                    print(correct_df[f2][c])
                     print("- diff:")
-                    print(repaired_df[c] - correct_df[c])
+                    print(repaired_df[f2][c] - correct_df[f2][c])
                     raise
 
 

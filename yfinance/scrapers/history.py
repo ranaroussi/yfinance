@@ -1444,17 +1444,20 @@ class PriceHistory:
             df['correction'] = np.nan
             df['AdjYahoo'] = (df['Adj Close']/df['Close']).round(4)
 
+            print(f"# price_drop_pct_mean = {price_drop_pct_mean:.4f}")
+
         dts = df[df['Capital Gains'] > 0].index
         c = df['Close'].to_numpy()
         ac = df['Adj Close'].to_numpy()
+        dcs = {}
         for dt in dts:
             idx = df.index.get_loc(dt)
 
             if idx > 0:
                 # Need a row before for price drop
 
-                dividend = df.loc[dt, 'Dividends']
-                capital_gains = df.loc[dt, 'Capital Gains']
+                dividend = df['Dividends'].iloc[idx]
+                capital_gains = df['Capital Gains'].iloc[idx]
                 if dividend < capital_gains:
                     # Not possible for 'dividend' to be including capital gains
                     continue
@@ -1469,25 +1472,45 @@ class PriceHistory:
                 diff_total = abs(price_drop_pct_excl_vol - (div_pct + cg_pct))
                 cg_is_double_counted = diff_div < diff_total
 
-                if cg_is_double_counted:
-                    # Instead of calculating new adjustment from scratch, 
-                    # reverse the double-count from existing adjustment.
-                    # In case don't have all events after last date.
-                    dividend_true = dividend - capital_gains
+                dcs[idx] = cg_is_double_counted
 
-                    df.loc[dt, 'Dividends'] = dividend_true
+                if debug:
+                    print(f"# {dt.date()}: div = {div_pct*100:.1f}%, cg = {cg_pct*100:.1f}%")
+                    print(f"- price_drop_pct = {price_drop_pct*100:.1f}%")
+                    print(f"- price_drop_pct_excl_vol = {price_drop_pct_excl_vol*100:.1f}%")
+                    print(f"- diff_div = {diff_div:.4f}")
+                    print(f"- diff_total = {diff_total:.4f}")
+                    print(f"- cg_is_double_counted = {cg_is_double_counted}")
 
-                    # Correct adjustment for dates before and including this distribution date
-                    adj_before = (ac[idx-1]/c[idx-1]) / (ac[idx]/c[idx])
-                    adj_correct = 1.0 - (dividend_true + capital_gains) / c[idx-1]
-                    correction = adj_correct / adj_before
-                    df.loc[:dt-_datetime.timedelta(1), 'Adj'] *= correction
-                    df.loc[:dt, 'Repaired?'] = True
-                    msg = f"Repaired capital-gains double-count at {dt.date()}. Adj correction = {correction:.4f}"
-                    logger.info(msg, extra=log_extras)
+        pct_double_counted = sum(dcs.values()) / len(dcs)
+        if debug:
+            print(f"- pct_double_counted = {pct_double_counted*100:.1f}%")
 
-                    if debug:
-                        df.loc[dt, 'correction'] = correction
+        if pct_double_counted >= 0.666:
+            for idx in dcs.keys():
+                dt = df.index[idx]
+
+                dividend = df['Dividends'].iloc[idx]
+                capital_gains = df['Capital Gains'].iloc[idx]
+
+                # Instead of calculating new adjustment from scratch, 
+                # reverse the double-count from existing adjustment.
+                # In case don't have all events after last date.
+                dividend_true = dividend - capital_gains
+
+                df.loc[dt, 'Dividends'] = dividend_true
+
+                # Correct adjustment for dates before and including this distribution date
+                adj_before = (ac[idx-1]/c[idx-1]) / (ac[idx]/c[idx])
+                adj_correct = 1.0 - (dividend_true + capital_gains) / c[idx-1]
+                correction = adj_correct / adj_before
+                df.loc[:dt-_datetime.timedelta(1), 'Adj'] *= correction
+                df.loc[:dt, 'Repaired?'] = True
+                msg = f"Repaired capital-gains double-count at {dt.date()}. Adj correction = {correction:.4f}"
+                logger.info(msg, extra=log_extras)
+
+                if debug:
+                    df.loc[dt, 'correction'] = correction
 
         df['Adj Close'] = df['Close'] * df['Adj']
 
