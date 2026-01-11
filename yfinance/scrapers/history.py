@@ -1429,10 +1429,10 @@ class PriceHistory:
         # Consider price drop to decide if Yahoo double-counted - 
         #   drop should = true dividend + capital gains
         # But need to account for normal price volatility:
-        df['Price_Change'] = df['Close'].diff()
+        df['Price_Change%'] = df['Close'].pct_change()
         no_distributions = (df['Dividends'] == 0) & (df['Capital Gains'] == 0)
-        price_drop_std = df.loc[no_distributions, 'Price_Change'].std()
-        df = df.drop('Price_Change', axis=1)
+        price_drop_pct_mean = df.loc[no_distributions, 'Price_Change%'].mean()
+        df = df.drop('Price_Change%', axis=1)
 
         # Add columns if not present
         if 'Repaired?' not in df.columns:
@@ -1459,12 +1459,14 @@ class PriceHistory:
                     # Not possible for 'dividend' to be including capital gains
                     continue
 
-                price_drop = df.loc[df.index[idx-1], 'Close'] - c[idx]
-                price_drop_excl_vol = price_drop - price_drop_std
+                div_pct = dividend / c[idx-1]
+                cg_pct = capital_gains / c[idx-1]
 
                 # Check whether adjusted price drop is closer to dividend vs dividend+capital_gains
-                diff_div = abs(price_drop_excl_vol - dividend)
-                diff_total = abs(price_drop_excl_vol - (dividend + capital_gains))
+                price_drop_pct = (c[idx-1] - c[idx]) / c[idx-1]
+                price_drop_pct_excl_vol = price_drop_pct - price_drop_pct_mean
+                diff_div = abs(price_drop_pct_excl_vol - div_pct)
+                diff_total = abs(price_drop_pct_excl_vol - (div_pct + cg_pct))
                 cg_is_double_counted = diff_div < diff_total
 
                 if cg_is_double_counted:

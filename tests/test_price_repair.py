@@ -699,7 +699,6 @@ class TestPriceRepair(unittest.TestCase):
         bad_tkrs = ['DODFX', 'VWILX']
         for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
-            tz_exchange = dat.fast_info["timezone"]
             hist = dat._lazy_load_price_history()
 
             interval = '1d'
