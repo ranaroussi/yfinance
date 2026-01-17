@@ -209,7 +209,7 @@ class Calendars:
         self._most_active_qy: CalendarQuery = CalendarQuery("or", [])
 
         self._cache_request_body = {}
-        self.calendars: Dict[str, pd.DataFrame]= {}
+        self.calendars: Dict[str, pd.DataFrame] = {}
 
     def _parse_date_param(self, _date: Optional[Union[str, datetime, date, int]]) -> str:
         if not _date:
