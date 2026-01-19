@@ -1,5 +1,6 @@
+from __future__ import annotations # Just in case
 import json
-from typing import Any, Optional
+from typing import Any, Optional, List, Union, Dict
 import warnings
 import numpy as np
 from requests import Session, Response, exceptions
@@ -30,7 +31,7 @@ class CalendarQuery:
     ```
     """
 
-    def __init__(self, operator: str, operand: list[Any] | list["CalendarQuery"]):
+    def __init__(self, operator: str, operand: Union[List[Any], List["CalendarQuery"]]):
         """
         :param operator: Operator string, e.g., 'eq', 'gte', 'and', 'or'.
         :param operand: List of operands: can be values (str, int), or other Operands instances (nested).
@@ -179,8 +180,8 @@ class Calendars:
 
     def __init__(
         self,
-        start: Optional[str | datetime | date] = None,
-        end: Optional[str | datetime | date] = None,
+        start: Optional[Union[str, datetime, date]] = None,
+        end: Optional[Union[str, datetime, date]] = None,
         session: Optional[Session] = None,
     ):
         """
@@ -208,9 +209,9 @@ class Calendars:
         self._most_active_qy: CalendarQuery = CalendarQuery("or", [])
 
         self._cache_request_body = {}
-        self.calendars: dict[str, pd.DataFrame] = {}
+        self.calendars: Dict[str, pd.DataFrame] = {}
 
-    def _parse_date_param(self, _date: Optional[str | datetime | date | int]) -> str:
+    def _parse_date_param(self, _date: Optional[Union[str, datetime, date, int]]) -> str:
         if not _date:
             return ""
         else:
