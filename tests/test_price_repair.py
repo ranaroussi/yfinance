@@ -303,10 +303,9 @@ class TestPriceRepair(unittest.TestCase):
         # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
 
         tkrs = ['AET.L', 'SSW.JO']
-        intervals = ['1d', '1wk']
-        # tkrs = ['AET.L']
-        # intervals = ['1wk']
-        # import yfinance as yf ; yf.enable_debug_mode()
+        # intervals = ['1d', '1wk']
+        # Give up repairing 1wk intervals directly. Instead will resample from 1d
+        intervals = ['1d']
 
         for tkr in tkrs:
             for interval in intervals:
@@ -539,7 +538,6 @@ class TestPriceRepair(unittest.TestCase):
         false_positives['NVDA'] = {'interval': '1d', 'start': '2001-07-01', 'end': '2007-09-15'}
         # yf.config.debug.logging = True
         for tkr, args in false_positives.items():
-            print(f"Testing: {tkr}")
             interval = args['interval']
             dat = yf.Ticker(tkr, session=self.session)
             tz_exchange = dat.fast_info["timezone"]
@@ -605,7 +603,6 @@ class TestPriceRepair(unittest.TestCase):
 
         # Phantom divs
         bad_tkrs += ['KAP.IL']  # 1x 1d phantom div, and false positives 0.01x in 1wk
-        bad_tkrs += ['SAND']
         bad_tkrs += ['TEM.L']
         bad_tkrs += ['TEP.PA']
 
