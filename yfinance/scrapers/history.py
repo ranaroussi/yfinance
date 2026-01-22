@@ -1429,7 +1429,7 @@ class PriceHistory:
         # Consider price drop to decide if Yahoo double-counted - 
         #   drop should = true dividend + capital gains
         # But need to account for normal price volatility:
-        df['Price_Change%'] = df['Close'].pct_change().abs()
+        df['Price_Change%'] = df['Close'].pct_change(fill_method=None).abs()
         no_distributions = (df['Dividends'] == 0) & (df['Capital Gains'] == 0)
         price_drop_pct_mean = df.loc[no_distributions, 'Price_Change%'].mean()
         df = df.drop('Price_Change%', axis=1)
@@ -2680,7 +2680,14 @@ class PriceHistory:
         df_workings = df2.copy()
         df_workings = df_workings.drop(['Adj Close', 'Dividends', 'Stock Splits', 'Repaired?'], axis=1, errors='ignore')
         df_workings = df_workings.rename(columns={'Volume': 'Vol'})
-        df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
+        fna = df_workings['Vol'].isna()
+        if fna.any():
+            df_workings['VolStr'] = ''
+            df_workings.loc[fna, 'VolStr'] = 'NaN'
+            df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).astype('int').astype('str') + 'm'
+            df_workings['Vol'] = df_workings['VolStr'] ; df_workings.drop('VolStr', axis=1)
+        else:
+            df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
         debug_cols = ['Close']
         df_workings = df_workings.drop([c for c in OHLC if c not in debug_cols], axis=1, errors='ignore')
 
@@ -2816,7 +2823,8 @@ class PriceHistory:
         if f_up_shifts.any():
             nf_up_shifts = ~f_up_shifts
             flat_indices = np.where(nf_up_shifts)[0]
-            down_dts = df2.index[f_down]
+            f_down_ndims = len(f_down.shape)
+            down_dts = df2.index[f_down if f_down_ndims==1 else f_down.any(axis=1)]
             for idx in np.where(f_up_shifts)[0]:
                 i = idx-1  # this is when price actually dropped
                 dt = df2.index[i]
@@ -2890,9 +2898,10 @@ class PriceHistory:
                 def _calc_volume_zscore(volume, block):
                     # print(f"_calc_volume_zscore(volume={volume})")
                     values = block['Volume'].to_numpy()
-                    mean = np.mean(values)
                     std = np.std(values, ddof=1)
-                    # print(f"# mean={mean:.0f}  std={std:.4f}")
+                    if std == 0.0:
+                        return 0
+                    mean = np.mean(values)
                     z_score = (volume - mean) / std
                     return z_score
 
