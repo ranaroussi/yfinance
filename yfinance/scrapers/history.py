@@ -101,9 +101,9 @@ class PriceHistory:
                         logger.error(err_msg)
                     return utils.empty_df()
                 if period == 'ytd':
-                    start = _datetime.date(pd.Timestamp.utcnow().tz_convert(tz).year, 1, 1)
+                    start = _datetime.date(pd.Timestamp.now('UTC').tz_convert(tz).year, 1, 1)
                 else:
-                    start = pd.Timestamp.utcnow().tz_convert(tz).date()
+                    start = pd.Timestamp.now('UTC').tz_convert(tz).date()
                     start -= utils._interval_to_timedelta(period)
                     start -= _datetime.timedelta(days=4)
                 period_user = period
@@ -141,7 +141,7 @@ class PriceHistory:
                 start_dt = end_dt - utils._interval_to_timedelta('1mo')
                 start = int(start_dt.timestamp())
             elif not end:
-                end_dt = pd.Timestamp.utcnow().tz_convert(tz)
+                end_dt = pd.Timestamp.now('UTC').tz_convert(tz)
                 end = int(end_dt.timestamp())
         else:
             if period.lower() == "max":
@@ -198,7 +198,7 @@ class PriceHistory:
         get_fn = self._data.get
         if end is not None:
             end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
-            dt_now = pd.Timestamp.utcnow()
+            dt_now = pd.Timestamp.now('UTC')
             data_delay = _datetime.timedelta(minutes=30)
             if end_dt + data_delay <= dt_now:
                 # Date range in past so safe to fetch through cache:
@@ -673,7 +673,7 @@ class PriceHistory:
             min_dt = None
         else:
             m -= _datetime.timedelta(days=1)  # allow space for 1-day padding
-            min_dt = pd.Timestamp.utcnow() - m
+            min_dt = pd.Timestamp.now('UTC') - m
             min_dt = min_dt.tz_convert(df.index.tz).ceil("D")
         logger.debug(f"min_dt={min_dt} interval={interval} sub_interval={sub_interval}", extra=log_extras)
         if min_dt is not None:
@@ -1020,7 +1020,7 @@ class PriceHistory:
             return df, currency
         last_row = df.iloc[np.where(f_volume)[0][-1]]
         prices_in_subunits = True  # usually is true
-        if last_row.name > (pd.Timestamp.utcnow() - _datetime.timedelta(days=30)):
+        if last_row.name > (pd.Timestamp.now('UTC') - _datetime.timedelta(days=30)):
             try:
                 ratio = self._history_metadata['regularMarketPrice'] / last_row['Close']
                 if abs((ratio*m)-1) < 0.1:

@@ -123,7 +123,7 @@ class TestPriceRepair(unittest.TestCase):
 
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
 
-        dt_now = _pd.Timestamp.utcnow()
+        dt_now = _pd.Timestamp.now('UTC')
         td_60d = _dt.timedelta(days=60)
 
         # Round time for 'requests_cache' reuse
