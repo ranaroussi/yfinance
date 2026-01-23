@@ -143,7 +143,7 @@ class FastInfo:
         if self._prices_1y.empty:
             return self._prices_1y
 
-        dnow = pd.Timestamp.utcnow().tz_convert(self.timezone).date()
+        dnow = pd.Timestamp.now('UTC').tz_convert(self.timezone).date()
         d1 = dnow
         d0 = (d1 + datetime.timedelta(days=1)) - utils._interval_to_timedelta("1y")
         if fullDaysOnly and self._exchange_open_now():
@@ -170,7 +170,7 @@ class FastInfo:
         return self._md
 
     def _exchange_open_now(self):
-        t = pd.Timestamp.utcnow()
+        t = pd.Timestamp.now('UTC')
         self._get_exchange_metadata()
 
         # if self._today_open is None and self._today_close is None:
@@ -231,7 +231,7 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.utcnow().date()-pd.Timedelta(days=548))
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date()-pd.Timedelta(days=548))
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
@@ -699,9 +699,9 @@ class Quote:
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data
-            start = pd.Timestamp.utcnow().floor("D") - datetime.timedelta(days=365 // 2)
+            start = pd.Timestamp.now('UTC').floor("D") - datetime.timedelta(days=365 // 2)
             start = int(start.timestamp())
-            end = pd.Timestamp.utcnow().ceil("D")
+            end = pd.Timestamp.now('UTC').ceil("D")
             end = int(end.timestamp())
             url += f"&period1={start}&period2={end}"
 
