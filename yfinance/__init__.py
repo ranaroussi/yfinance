@@ -56,4 +56,4 @@ def set_config(proxy=_NOTSET, retries=_NOTSET):
     if retries is not _NOTSET:
         warnings.warn("Set retries via new config control: yf.config.network.retries = retries", DeprecationWarning)
         config.network.retries = retries
-__all__ += ["set_config"]
+__all__ += ['config', 'set_config']

@@ -111,6 +111,7 @@ Fix errors in dividends:
 2. duplicate dividend (within 7 days)
 3. dividend 100x too big/small for the ex-dividend price drop
 4. ex-div date wrong (price drop is few days/weeks after)
+5. **NEW: capital gains double-counted**
 
 Most errors I've seen are on London stock exchange (£/pence mixup), but no exchange is safe.
 
@@ -275,3 +276,27 @@ TETY.ST
    2022-06-21 00:00:00+02:00  71.599998  60.007881        0.0
    2022-06-20 00:00:00+02:00  71.800003  60.175503        0.0
    2022-06-17 00:00:00+02:00  71.000000  59.505021        0.0
+
+
+Capital-gains double-counted
+----------------------------
+
+Clue: price drop matches dividend better than dividend+capital gains.
+
+DODFX
+
+.. code-block:: text
+
+   # ORIGINAL:
+                                  Close  Adj Close  Dividends  Capital Gains
+   Date                                                                     
+   2025-12-18 00:00:00-05:00  16.219999  16.219999      0.837          0.417
+   2025-12-17 00:00:00-05:00  16.920000  15.665999      0.000          0.000
+
+.. code-block:: text
+
+   # REPAIRED:
+                                  Close  Adj Close  Dividends  Capital Gains
+   Date                                                                     
+   2025-12-18 00:00:00-05:00  16.219999  16.219999       0.42          0.417
+   2025-12-17 00:00:00-05:00  16.920000  16.083000       0.00          0.000
