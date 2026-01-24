@@ -117,7 +117,7 @@ class Financials:
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
-        end = pd.Timestamp.utcnow().ceil("D")
+        end = pd.Timestamp.now('UTC').ceil("D")
         url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
         # Step 3: fetch and reshape data
