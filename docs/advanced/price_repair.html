@@ -484,6 +484,7 @@ Other times they are in a block, because Yahoo decided one day to permanently sw
 <li><p>duplicate dividend (within 7 days)</p></li>
 <li><p>dividend 100x too big/small for the ex-dividend price drop</p></li>
 <li><p>ex-div date wrong (price drop is few days/weeks after)</p></li>
+<li><p><strong>NEW: capital gains double-counted</strong></p></li>
 </ol>
 <p>Most errors I’ve seen are on London stock exchange (£/pence mixup), but no exchange is safe.</p>
 <section id="important-false-positives">
@@ -623,6 +624,25 @@ FP rate increases with longer intervals, so only 1d intervals are repaired. If y
 </pre></div>
 </div>
 </section>
+<section id="capital-gains-double-counted">
+<h3>Capital-gains double-counted<a class="headerlink" href="#capital-gains-double-counted" title="Link to this heading">#</a></h3>
+<p>Clue: price drop matches dividend better than dividend+capital gains.</p>
+<p>DODFX</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ORIGINAL:
+                               Close  Adj Close  Dividends  Capital Gains
+Date
+2025-12-18 00:00:00-05:00  16.219999  16.219999      0.837          0.417
+2025-12-17 00:00:00-05:00  16.920000  15.665999      0.000          0.000
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># REPAIRED:
+                               Close  Adj Close  Dividends  Capital Gains
+Date
+2025-12-18 00:00:00-05:00  16.219999  16.219999       0.42          0.417
+2025-12-17 00:00:00-05:00  16.920000  16.083000       0.00          0.000
+</pre></div>
+</div>
+</section>
 </section>
 </section>
 
@@ -690,6 +710,7 @@ FP rate increases with longer intervals, so only 1d intervals are repaired. If y
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dividend-too-small">Dividend too small</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adjusted-2x-on-day-before">Adjusted 2x on day before</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ex-div-date-wrong">ex-div date wrong</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#capital-gains-double-counted">Capital-gains double-counted</a></li>
 </ul>
 </li>
 </ul>
