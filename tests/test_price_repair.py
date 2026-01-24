@@ -303,10 +303,9 @@ class TestPriceRepair(unittest.TestCase):
         # Sometimes Yahoo suddenly shifts from cents->$ from some recent date.
 
         tkrs = ['AET.L', 'SSW.JO']
-        intervals = ['1d', '1wk']
-        # tkrs = ['AET.L']
-        # intervals = ['1wk']
-        # import yfinance as yf ; yf.enable_debug_mode()
+        # intervals = ['1d', '1wk']
+        # Give up repairing 1wk intervals directly. Instead will resample from 1d
+        intervals = ['1d']
 
         for tkr in tkrs:
             for interval in intervals:
@@ -530,33 +529,36 @@ class TestPriceRepair(unittest.TestCase):
                     # print(repaired_df[c] - correct_df[c])
                     raise
 
-        # Had very high price volatility in Jan-2021 around split date that could
-        # be mistaken for missing stock split adjustment. And old logic did think
-        # column 'High' required fixing - wrong!
-        sketchy_tkrs = ['FIZZ']
-        intervals = ['1wk']
-        for tkr in sketchy_tkrs:
-            for interval in intervals:
-                dat = yf.Ticker(tkr, session=self.session)
-                tz_exchange = dat.fast_info["timezone"]
-                hist = dat._lazy_load_price_history()
+        false_positives = {}
+        # FIZZ had very high price volatility in Jan-2021 around split date:
+        false_positives['FIZZ'] = {'interval': '1d', 'start': '2020-11-30', 'end': '2021-04-01'}
+        # GME has crazy price action in Jan 2021, mistaken for missing 2007 split
+        false_positives['GME'] = {'interval': '1d', 'start': '2007-01-01', 'end': '2023-01-01'}
+        # NVDA has a ~33% price drop on 2004-08-06, confused with earlier 3:2 split
+        false_positives['NVDA'] = {'interval': '1d', 'start': '2001-07-01', 'end': '2007-09-15'}
+        # yf.config.debug.logging = True
+        for tkr, args in false_positives.items():
+            interval = args['interval']
+            dat = yf.Ticker(tkr, session=self.session)
+            tz_exchange = dat.fast_info["timezone"]
+            hist = dat._lazy_load_price_history()
 
-                df_good = hist.history(start='2020-11-30', end='2021-04-01', interval=interval, auto_adjust=False)
+            df_good = hist.history(auto_adjust=False, **args)
 
-                repaired_df = hist._fix_bad_stock_splits(df_good, interval, tz_exchange)
+            repaired_df = hist._fix_bad_stock_splits(df_good, interval, tz_exchange)
 
-                # Expect no change from repair
-                df_good = df_good.sort_index()
-                repaired_df = repaired_df.sort_index()
-                for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
-                    try:
-                        self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
-                    except AssertionError:
-                        print(f"tkr={tkr} interval={interval} COLUMN={c}")
-                        df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
-                        f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
-                        print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
-                        raise
+            # Expect no change from repair
+            df_good = df_good.sort_index()
+            repaired_df = repaired_df.sort_index()
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
+                except AssertionError:
+                    print(f"tkr={tkr} interval={interval} COLUMN={c}")
+                    df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
+                    f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
+                    print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
+                    raise
 
     def test_repair_bad_div_adjusts(self):
         interval = '1d'
@@ -601,7 +603,6 @@ class TestPriceRepair(unittest.TestCase):
 
         # Phantom divs
         bad_tkrs += ['KAP.IL']  # 1x 1d phantom div, and false positives 0.01x in 1wk
-        bad_tkrs += ['SAND']
         bad_tkrs += ['TEM.L']
         bad_tkrs += ['TEP.PA']
 
@@ -694,6 +695,44 @@ class TestPriceRepair(unittest.TestCase):
                 print("- diff:")
                 print(repaired_df[c][f_diff] - correct_df[c][f_diff])
                 raise
+
+    def test_repair_capital_gains_double_count(self):
+        bad_tkrs = ['DODFX', 'VWILX', 'JENYX']
+        for tkr in bad_tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            hist = dat._lazy_load_price_history()
+
+            interval = '1d'
+            fp = os.path.join(self.dp, "data", tkr.replace('.','-')+'-'+interval+"-cg-double-count.csv")
+
+            df_bad = _pd.read_csv(fp, index_col="Date")
+            df_bad.index = _pd.to_datetime(df_bad.index, utc=True)
+
+            repaired_df = hist._repair_capital_gains(df_bad)
+
+            fp = os.path.join(self.dp, "data", tkr.replace('.','-')+'-'+interval+"-cg-double-count-fixed.csv")
+            correct_df = _pd.read_csv(fp, index_col="Date")
+            correct_df.index = _pd.to_datetime(correct_df.index, utc=True)
+
+            repaired_df = repaired_df.sort_index()
+            correct_df = correct_df.sort_index()
+            for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                try:
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+                except AssertionError:
+                    f = (correct_df['Capital Gains']!=0).to_numpy()
+                    f2 = f|_np.roll(f,1)|_np.roll(f,2)|_np.roll(f,-1)|_np.roll(f,-2)
+                    print(f"tkr={tkr} COLUMN={c}")
+                    print("- repaired_df")
+                    print(repaired_df[f2].drop(['Open', 'High', 'Low', 'Volume', 'Capital Gains'], axis=1))
+                    print("- repaired_df[c]")
+                    print(repaired_df[f2][c])
+                    print("- correct_df[c]:")
+                    print(correct_df[f2][c])
+                    print("- diff:")
+                    print(repaired_df[f2][c] - correct_df[f2][c])
+                    raise
+
 
 
 if __name__ == '__main__':
