@@ -62,8 +62,14 @@ body:
   - type: textarea
     id: debug-log
     attributes:
-      label: "Debug log from yf.enable_debug_mode()"
-      description: "Run code with debug logging enabled - `yf.enable_debug_mode()` - and post the full output. Context: https://github.com/ranaroussi/yfinance/tree/main#logging"
+      label: "Debug log with debug logging enabled"
+      description: |
+        Enable debug logging, reproduce the issue, then paste the full output:
+
+            import yfinance as yf
+            yf.config.debug.logging = True
+
+        Context: https://ranaroussi.github.io/yfinance/advanced/logging.html
     validations:
       required: true
 
