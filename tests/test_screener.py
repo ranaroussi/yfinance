@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from yfinance.screener.screener import screen
-from yfinance.screener.query import EquityQuery
+from yfinance.screener.query import EquityQuery, ETFQuery
 
 
 class TestScreener(unittest.TestCase):
@@ -33,6 +33,36 @@ class TestScreener(unittest.TestCase):
 
         response = screen(self.predefined)
         self.assertEqual(response, {'key': 'value'})
+
+    def test_etf_query_basic(self):
+        # Test constructing an ETF query
+        q = ETFQuery('gt', ['fundTotalAssets', 1000000])
+        self.assertEqual(q.operator, 'GT')
+        self.assertEqual(q.operands[0], 'fundTotalAssets')
+        self.assertEqual(q.operands[1], 1000000)
+
+        # Test validation failure
+        with self.assertRaises(ValueError):
+             ETFQuery('eq', ['invalid_field', 'value'])
+
+    @patch('yfinance.data.YfData.post')
+    def test_etf_screener_integration(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {'finance': {'result': [{'key': 'value'}]}}
+        mock_post.return_value = mock_response
+
+        q = ETFQuery('and', [
+            ETFQuery('lt', ["annualReportExpenseRatio", 0.005]), 
+            ETFQuery('gt', ["fundTotalAssets", 1000000000])
+        ])
+        
+        response = screen(q)
+        self.assertEqual(response, {'key': 'value'})
+        
+        # Verify call args to ensure quoteType is ETF
+        args, kwargs = mock_post.call_args
+        # kwargs['data'] is a json string, I should check if it contains "quoteType":"ETF"
+        self.assertIn('"quoteType":"ETF"', kwargs['data'])
 
 if __name__ == '__main__':
     unittest.main()
