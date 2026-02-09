@@ -597,6 +597,28 @@ FUND_SCREENER_FIELDS = {
         "riskratingoverall"}
 }
 FUND_SCREENER_FIELDS = merge_two_level_dicts(FUND_SCREENER_FIELDS, COMMON_SCREENER_FIELDS)
+
+ETF_SCREENER_EQ_MAP = {
+    "exchange": {
+        'us': {'NAS', 'NMS', 'NYQ', 'ASE', 'NGM', 'PCX'}
+    }
+}
+
+ETF_SCREENER_FIELDS = {
+    "eq_fields": {
+        "category",
+        "fundFamily"
+    },
+    "fund_basics": {
+        "fundTotalAssets",
+        "annualReportExpenseRatio"
+    },
+    "performance": {
+        "ytdReturn"
+    }
+}
+ETF_SCREENER_FIELDS = merge_two_level_dicts(ETF_SCREENER_FIELDS, COMMON_SCREENER_FIELDS)
+
 EQUITY_SCREENER_FIELDS = {
     "eq_fields": {
         "region",
