@@ -9,7 +9,8 @@ from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
 from .query import EquityQuery as EqyQy
 from .query import FundQuery as FndQy
-from .query import QueryBase, EquityQuery, FundQuery
+from .query import ETFQuery as EtfQy
+from .query import QueryBase, EquityQuery, FundQuery, ETFQuery
 
 _SCREENER_URL_ = f"{_QUERY1_URL_}/v1/finance/screener"
 _PREDEFINED_URL_ = f"{_SCREENER_URL_}/predefined/saved"
@@ -48,11 +49,13 @@ PREDEFINED_SCREENER_QUERIES = {
     'solid_midcap_growth_funds': {"sortType":"DESC", "sortField":"fundnetassets",
                                 "query": FndQy('and', [FndQy('eq', ['categoryname', 'Mid-Cap Growth']), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('lt', ['initialinvestment', 100001]), FndQy('lt', ['annualreturnnavy1categoryrank', 50]), FndQy('eq', ['exchange', 'NAS'])])},
     'top_mutual_funds': {"sortType":"DESC", "sortField":"percentchange",
-                        "query": FndQy('and', [FndQy('gt', ['intradayprice', 15]), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('gt', ['initialinvestment', 1000]), FndQy('eq', ['exchange', 'NAS'])])}
+                        "query": FndQy('and', [FndQy('gt', ['intradayprice', 15]), FndQy('is-in', ['performanceratingoverall', 4, 5]), FndQy('gt', ['initialinvestment', 1000]), FndQy('eq', ['exchange', 'NAS'])])},
+    'etf_low_cost': {"sortType":"DESC", "sortField":"fundnetassets",
+                    "query": EtfQy('and', [EtfQy('lt', ["annualReportExpenseRatio", 0.005]), EtfQy('gt', ["fundTotalAssets", 1000000000])])}
 }
 
 @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title='Predefined queries (Dec-2024)')})
-def screen(query: Union[str, EquityQuery, FundQuery],
+def screen(query: Union[str, EquityQuery, FundQuery, ETFQuery],
             offset: int = None, 
             size: int = None,
             count: int = None,
@@ -65,7 +68,7 @@ def screen(query: Union[str, EquityQuery, FundQuery],
     Run a screen: predefined query, or custom query.
 
     :Parameters:
-        * Defaults only apply if query = EquityQuery or FundQuery
+        * Defaults only apply if query = EquityQuery or FundQuery or ETFQuery
         query : str | Query:
             The query to execute, either name of predefined or custom query.
             For predefined list run yf.PREDEFINED_SCREENER_QUERIES.keys()
@@ -194,6 +197,8 @@ def screen(query: Union[str, EquityQuery, FundQuery],
         post_query['quoteType'] = 'EQUITY'
     elif isinstance(post_query['query'], FndQy):
         post_query['quoteType'] = 'MUTUALFUND'
+    elif isinstance(post_query['query'], EtfQy):
+        post_query['quoteType'] = 'ETF'
     post_query['query'] = post_query['query'].to_dict()
     data = dumps(post_query, separators=(",", ":"), ensure_ascii=False)
 
