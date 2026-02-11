@@ -28,7 +28,7 @@ class Market:
         except _json.JSONDecodeError:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.market}: Failed to retrieve market data and recieved faulty data.")
+            self._logger.error(f"{self.market}: Failed to retrieve market data and received faulty data.")
             return {}
         
     def _parse_data(self):
