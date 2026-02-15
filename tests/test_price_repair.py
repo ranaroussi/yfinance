@@ -2,6 +2,7 @@ from tests.context import yfinance as yf
 from tests.context import session_gbl
 
 import unittest
+from unittest import mock
 
 import os
 import datetime as _dt
@@ -134,6 +135,50 @@ class TestPriceRepair(unittest.TestCase):
             end_dt = dt_now
             start_dt = end_dt - td_60d
             dat.history(start=start_dt, end=end_dt, interval="2m", repair=True)
+
+    def test_fix_prices_sudden_change_handles_readonly_numpy_view(self):
+        hist = yf.scrapers.history.PriceHistory(
+            data=None, ticker="MSFT", tz="UTC", session=self.session
+        )
+
+        idx = _pd.to_datetime(
+            [_dt.date(2023, 1, 3), _dt.date(2023, 1, 4), _dt.date(2023, 1, 5)]
+        )
+        df = _pd.DataFrame(
+            {
+                "Open": [100.0, 101.0, 102.0],
+                "High": [101.0, 102.0, 103.0],
+                "Low": [99.0, 100.0, 101.0],
+                "Close": [100.5, 101.5, 102.5],
+                "Adj Close": [100.5, 101.5, 102.5],
+                "Volume": [1000, 1100, 1200],
+                "Dividends": [0.0, 0.0, 0.0],
+                "Stock Splits": [0.0, 0.0, 0.0],
+            },
+            index=idx,
+        )
+        df.index.name = "Date"
+
+        original_to_numpy = _pd.DataFrame.to_numpy
+
+        def to_numpy_with_readonly_view(df_self, *args, **kwargs):
+            arr = original_to_numpy(df_self, *args, **kwargs)
+            cols = list(df_self.columns)
+            if (
+                not kwargs.get("copy", False)
+                and cols in (["Open", "Close"], ["Open", "High", "Low", "Close"])
+            ):
+                arr = arr.view()
+                arr.setflags(write=False)
+            return arr
+
+        with mock.patch.object(_pd.DataFrame, "to_numpy", new=to_numpy_with_readonly_view):
+            repaired_df = hist._fix_prices_sudden_change(
+                df, "1d", "UTC", change=100.0
+            )
+
+        self.assertIsInstance(repaired_df, _pd.DataFrame)
+        self.assertEqual(len(repaired_df), len(df))
 
     def test_repair_100x_random_weekly(self):
         # Setup:

@@ -2698,12 +2698,12 @@ class PriceHistory:
             # very volatile which reduces ability to detect genuine stock split errors
             _1d_change_x = np.full((n, 2), 1.0)
             price_data_cols = ['Open','Close']
-            price_data = df2[price_data_cols].to_numpy()
+            price_data = df2[price_data_cols].to_numpy(copy=True)
             f_zero = price_data == 0.0
         else:
             _1d_change_x = np.full((n, 4), 1.0)
             price_data_cols = OHLC
-            price_data = df2[price_data_cols].to_numpy()
+            price_data = df2[price_data_cols].to_numpy(copy=True)
             f_zero = price_data == 0.0
         if f_zero.any():
             price_data[f_zero] = 1.0
