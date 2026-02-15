@@ -198,7 +198,7 @@ class PriceHistory:
         get_fn = self._data.get
         if end is not None:
             end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
-            dt_now = pd.Timestamp.utcnow()
+            dt_now = pd.Timestamp.now('UTC')
             data_delay = _datetime.timedelta(minutes=30)
             if end_dt + data_delay <= dt_now:
                 # Date range in past so safe to fetch through cache:
