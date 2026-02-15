@@ -402,6 +402,12 @@ class PriceHistory:
         if dividends.shape[0] > 0:
             df = utils.safe_merge_dfs(df, dividends, interval)
         if "Dividends" in df.columns:
+            if df["Dividends"].dtype == 'str':
+                # Dividends include currency ('3.14 USD' for example) -> remove currency and convert to float64
+                df["Dividends"] = pd.to_numeric(
+                    df["Dividends"].str.replace(r'^(\d+(?:\.\d+)?).*', '\\1', regex=True),
+                    errors='coerce',
+                )
             df.loc[df["Dividends"].isna(), "Dividends"] = 0
         else:
             df["Dividends"] = 0.0
