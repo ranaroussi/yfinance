@@ -509,6 +509,9 @@ class PriceHistory:
             msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
+        # Don't care that Pandas hid this. If they do it to improve performance, we do it.
+        df = df._consolidate()
+
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
         return df
@@ -910,12 +913,18 @@ class PriceHistory:
             for j in range(len(calib_cols)):
                 f = ~calib_filter[:, j]
                 if f.any():
+                    if not df_block_calib.flags.writeable:
+                        df_block_calib = df_block_calib.copy()
+                    if not df_new_calib.flags.writeable:
+                        df_new_calib = df_new_calib.copy()
                     df_block_calib[f, j] = 1
                     df_new_calib[f, j] = 1
             ratios = df_block_calib[calib_filter] / df_new_calib[calib_filter]
             weights = df_fine_grp.size()
             weights.index = df_new.index
             weights = weights[weights.index.isin(common_index)].to_numpy().astype(float)
+            if not weights.flags.writeable:
+                weights = weights.copy()
             weights = weights[:, None]  # transpose
             weights = np.tile(weights, len(calib_cols))  # 1D -> 2D
             weights = weights[calib_filter]  # flatten
@@ -2705,6 +2714,8 @@ class PriceHistory:
             price_data_cols = OHLC
             price_data = df2[price_data_cols].to_numpy()
             f_zero = price_data == 0.0
+        if not price_data.flags.writeable:
+            price_data = price_data.copy()
         if f_zero.any():
             price_data[f_zero] = 1.0
 
