@@ -1059,6 +1059,74 @@ class TestTickerInfo(unittest.TestCase):
         self.assertCountEqual(['quoteType', 'symbol', 'underlyingSymbol', 'uuid', 'maxAge', 'trailingPegRatio'], data.keys())
         self.assertIn("trailingPegRatio", data.keys(), "Did not find expected key 'trailingPegRatio' in info dict")
 
+    def test_price_to_book_mixed_currencies(self):
+        # Test for Issue #2593: priceToBook should be None when currency and financialCurrency differ.
+
+        from unittest.mock import Mock, patch
+        from yfinance.scrapers.quote import Quote
+        
+        # Test Case 1: Mixed currencies (INR price, USD book value) - the main issue
+        quote = Quote(Mock(), "TEST.NS")
+        quote._info = {
+            "symbol": "TEST.NS",
+            "currentPrice": 1531.4,  # INR
+            "bookValue": 2.67,       # USD
+            "priceToBook": 573.6,    # Invalid: 1531.4 / 2.67 but mismatched currencies
+            "currency": "INR",
+            "financialCurrency": "USD"
+        }
+        quote._sanitize_price_to_book()
+        self.assertIsNone(quote._info["priceToBook"], 
+                         "priceToBook should be None when currencies don't match")
+        self.assertEqual(quote._info["currency"], "INR")
+        self.assertEqual(quote._info["financialCurrency"], "USD")
+        
+        # Test Case 2: Matching currencies - priceToBook should be preserved
+        quote2 = Quote(Mock(), "TEST.US")
+        quote2._info = {
+            "symbol": "TEST.US",
+            "currentPrice": 150.0,
+            "bookValue": 50.0,
+            "priceToBook": 3.0,
+            "currency": "USD",
+            "financialCurrency": "USD"
+        }
+        quote2._sanitize_price_to_book()
+        self.assertEqual(quote2._info["priceToBook"], 3.0,
+                        "priceToBook should be preserved when currencies match")
+        
+        # Test Case 3: Missing priceToBook - should not raise error
+        quote3 = Quote(Mock(), "TEST.IN")
+        quote3._info = {
+            "symbol": "TEST.IN",
+            "currency": "INR",
+            "financialCurrency": "USD"
+        }
+        quote3._sanitize_price_to_book()  # Should not raise error
+        self.assertNotIn("priceToBook", quote3._info)
+        
+        # Test Case 4: Missing financialCurrency - should not clear priceToBook
+        quote4 = Quote(Mock(), "TEST.XX")
+        quote4._info = {
+            "symbol": "TEST.XX",
+            "priceToBook": 2.5,
+            "currency": "EUR"
+        }
+        quote4._sanitize_price_to_book()
+        self.assertEqual(quote4._info["priceToBook"], 2.5,
+                        "priceToBook should be preserved when financialCurrency is missing")
+        
+        # Test Case 5: Missing currency - should not clear priceToBook
+        quote5 = Quote(Mock(), "TEST.YY")
+        quote5._info = {
+            "symbol": "TEST.YY",
+            "priceToBook": 2.5,
+            "financialCurrency": "EUR"
+        }
+        quote5._sanitize_price_to_book()
+        self.assertEqual(quote5._info["priceToBook"], 2.5,
+                        "priceToBook should be preserved when currency is missing")
+
     # def test_fast_info_matches_info(self):
     #     fast_info_keys = set()
     #     for ticker in self.tickers:
