@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+1.2.0
+-----
+Features:
+- update exchange maps for equities and mutual funds. #2685
+Fixes:
+- handle Pandas to_numpy() returning read-only #2697
+
 1.1.0
 -----
 Features:
