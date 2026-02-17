@@ -306,6 +306,10 @@ class PriceHistory:
             msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
         logger.debug(msg)
 
+        # Fix frequency for daily data
+        if interval.lower() == "1d" and not quotes.empty:
+            quotes.index.freq = 'B'  # Set frequency to business days
+
         # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
