@@ -617,16 +617,17 @@ class Quote:
             result = additional_info
 
         query1_info = {}
-        for quote in ["quoteSummary", "quoteResponse"]:
-            if quote in result and len(result[quote]["result"]) > 0:
-                result[quote]["result"][0]["symbol"] = self._symbol
-                query_info = next(
-                    (info for info in result.get(quote, {}).get("result", [])
-                    if info["symbol"] == self._symbol),
-                    None,
-                )
-                if query_info:
-                    query1_info.update(query_info)
+        if result is not None:
+            for quote in ["quoteSummary", "quoteResponse"]:
+                if quote in result and len(result[quote]["result"]) > 0:
+                    result[quote]["result"][0]["symbol"] = self._symbol
+                    query_info = next(
+                        (info for info in result.get(quote, {}).get("result", [])
+                        if info["symbol"] == self._symbol),
+                        None,
+                    )
+                    if query_info:
+                        query1_info.update(query_info)
 
         # Normalize and flatten nested dictionaries while converting maxAge from days (1) to seconds (86400).
         # This handles Yahoo Finance API inconsistency where maxAge is sometimes expressed in days instead of seconds.
