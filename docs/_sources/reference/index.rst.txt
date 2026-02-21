@@ -27,7 +27,7 @@ The following are the publicly available classes, and functions exposed by the `
 - :attr:`EquityQuery <yfinance.EquityQuery>`: Class to build equity query filters.
 - :attr:`FundQuery <yfinance.FundQuery>`: Class to build fund query filters.
 - :attr:`screen <yfinance.screen>`: Run equity/fund queries.
-- :attr:`enable_debug_mode <yfinance.enable_debug_mode>`: Function to enable debug mode for logging.
+- :attr:`config.debug.logging <yfinance.config>`: Enable verbose debug logging (``yf.config.debug.logging = True``).
 - :attr:`set_tz_cache_location <yfinance.set_tz_cache_location>`: Function to set the timezone cache location.
 
 .. toctree::
