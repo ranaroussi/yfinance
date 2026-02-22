@@ -617,7 +617,7 @@ class Quote:
             result = additional_info
 
         query1_info = {}
-        if result is not None
+        if result is not None:
             for quote in ["quoteSummary", "quoteResponse"]:
                 if quote in result and len(result[quote]["result"]) > 0:
                     result[quote]["result"][0]["symbol"] = self._symbol
