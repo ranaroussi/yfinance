@@ -280,6 +280,22 @@ class Ticker(TickerBase):
     @property
     def revenue_estimate(self) -> _pd.DataFrame:
         return self.get_revenue_estimate()
+    
+    @property
+    def revenue_estimate_currency(self) -> str:
+        return self.get_revenue_estimate_currency()
+    
+    @property
+    def earnings_estimate_currency(self) -> str:
+        return self.get_earnings_estimate_currency()
+    
+    @property
+    def eps_trend_currency(self) -> str:
+        return self.get_eps_trend_currency()
+    
+    @property
+    def eps_revisions_currency(self) -> str:
+        return self.get_eps_revisions_currency()
 
     @property
     def earnings_history(self) -> _pd.DataFrame:

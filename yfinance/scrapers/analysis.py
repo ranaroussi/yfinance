@@ -26,6 +26,11 @@ class Analysis:
         self._eps_trend = None
         self._eps_revisions = None
         self._growth_estimates = None
+        self._earnings_estimate_currency=None
+        self._revenue_estimate_currency=None
+        self._eps_trend_currency=None
+        self._eps_revisions_currency=None
+
 
     def _get_periodic_df(self, key) -> pd.DataFrame:
         if self._earnings_trend is None:
@@ -56,7 +61,53 @@ class Analysis:
             return self._revenue_estimate
         self._revenue_estimate = self._get_periodic_df('revenueEstimate')
         return self._revenue_estimate
+    @property
+    def earnings_estimate_currency(self) -> str:
+        if self._earnings_estimate_currency is not None:
+            return self._earnings_estimate_currency
+        if not self._earnings_trend:
+            self._fetch_earnings_trend()
+        try:
+            self._earnings_estimate_currency = self._earnings_trend[0]['earningsEstimate']['earningsCurrency']
+        except (IndexError, KeyError, TypeError):
+            self._earnings_estimate_currency = None
+        return self._earnings_estimate_currency
 
+    @property
+    def revenue_estimate_currency(self) -> str:
+        if self._revenue_estimate_currency is not None:
+            return self._revenue_estimate_currency
+        if not self._earnings_trend:
+            self._fetch_earnings_trend()
+        try:
+            self._revenue_estimate_currency = self._earnings_trend[0]['revenueEstimate']['revenueCurrency']
+        except (IndexError, KeyError, TypeError):
+            self._revenue_estimate_currency = None
+        return self._revenue_estimate_currency
+
+    @property
+    def eps_trend_currency(self) -> str:
+        if self._eps_trend_currency is not None:
+            return self._eps_trend_currency
+        if not self._earnings_trend:
+            self._fetch_earnings_trend()
+        try:
+            self._eps_trend_currency = self._earnings_trend[0]['epsTrend']['epsTrendCurrency']
+        except (IndexError, KeyError, TypeError):
+            self._eps_trend_currency = None
+        return self._eps_trend_currency
+
+    @property
+    def eps_revisions_currency(self) -> str:
+        if self._eps_revisions_currency is not None:
+            return self._eps_revisions_currency
+        if not self._earnings_trend:
+            self._fetch_earnings_trend()
+        try:
+            self._eps_revisions_currency = self._earnings_trend[0]['epsRevisions']['epsRevisionsCurrency']
+        except (IndexError, KeyError, TypeError):
+            self._eps_revisions_currency = None
+        return self._eps_revisions_currency
     @property
     def eps_trend(self) -> pd.DataFrame:
         if self._eps_trend is not None:
