@@ -315,7 +315,17 @@ class TickerBase:
         """
         data = self._analysis.revenue_estimate
         return data.to_dict() if as_dict else data
+    def get_earnings_estimate_currency(self):
+        return self._analysis.earnings_estimate_currency
 
+    def get_revenue_estimate_currency(self):
+        return self._analysis.revenue_estimate_currency
+
+    def get_eps_trend_currency(self):
+        return self._analysis.eps_trend_currency
+
+    def get_eps_revisions_currency(self):
+        return self._analysis.eps_revisions_currency
     def get_earnings_history(self, as_dict=False):
         """
         Index:      pd.DatetimeIndex
