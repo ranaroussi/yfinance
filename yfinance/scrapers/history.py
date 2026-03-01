@@ -221,10 +221,15 @@ class PriceHistory:
                 raise
 
         # Store the meta data that gets retrieved simultaneously
-        if data['chart']['result'] is None:
-            self._history_metadata = {}
+        safe_chart  = (data or {}).get('chart') or {}
+        result_list = safe_chart.get('result')
+        if isinstance(result_list, list) and len(result_list) > 0:
+            first_item = result_list[0] or {}
+            meta = first_item.get('meta') or {}
         else:
-            self._history_metadata = data["chart"]["result"][0]["meta"]
+            meta = {}
+
+        self._history_metadata = meta
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
