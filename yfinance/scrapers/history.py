@@ -354,20 +354,25 @@ class PriceHistory:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
             if 'currency' in dividends.columns:
                 # Rare, only seen with Vietnam market
+                #   or companies that distribute dividends in a different currency
                 price_currency = self._history_metadata['currency']
                 if price_currency is None:
                     price_currency = ''
                 f_currency_mismatch = dividends['currency'] != price_currency
                 if f_currency_mismatch.any():
-                    if not repair or price_currency == '':
-                        # Append currencies to values, let user decide action.
-                        dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
-                    else:
+                    if repair and price_currency != '':
                         # Attempt repair = currency conversion
                         dividends = self._dividends_convert_fx(dividends, price_currency, repair)
-                        if (dividends['currency'] != price_currency).any():
-                            # FX conversion failed
-                            dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
+                        # FX conversion can fail, in that case, save as metadata
+                        save = (dividends['currency'] != price_currency).any()
+                    else:
+                        # No repair, but currency is important information to save
+                        save = True
+                    
+                    if save:
+                        # Save the original dividend dataframe in metadata
+                        #   to allow the user to perform any conversion or analysis
+                        self._history_metadata['originalDividends'] = dividends
                 dividends = dividends.drop('currency', axis=1)
 
         if capital_gains is not None:
