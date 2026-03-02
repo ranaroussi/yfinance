@@ -83,7 +83,7 @@ class TestPriceHistory(unittest.TestCase):
                 raise
 
     def test_duplicatingDaily(self):
-        # Added 1211.hk to increas chance of hitting the issue, as it has a late close time (16:00) and is in a timezone with DST (Hong Kong)
+        # Added 1211.hk to increase chance of hitting the issue, as it has a late close time (16:00) and is in a timezone far from UTC (Hong Kong)
         tkrs = ["1211.HK", "IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         test_run = False
         for tkr in tkrs:
