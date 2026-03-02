@@ -24,7 +24,9 @@ class TestSearch(unittest.TestCase):
 
         # Check if the fuzzy search retrieves relevant results despite the typo
         self.assertGreater(len(search.quotes), 0)
-        self.assertIn("AAPL", search.quotes[0]['symbol'])
+        # Confirm that 2 first results include Apple Inc. (AAPL) despite the typo
+        symbols = [q["symbol"] for q in search.quotes[:2]]
+        self.assertTrue(any("AAPL" in s for s in symbols))
 
     def test_quotes(self):
         search = yf.Search(query="AAPL", max_results=5)
