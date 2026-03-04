@@ -4,6 +4,8 @@ _ROOT_URL_ = 'https://finance.yahoo.com'
 
 _SENTINEL_ = object()
 
+period_default = '1mo if start & end None'
+
 fundamentals_keys = {
     'financials': ["TaxEffectOfUnusualItems", "TaxRateForCalcs", "NormalizedEBITDA", "NormalizedDilutedEPS",
                    "NormalizedBasicEPS", "TotalUnusualItems", "TotalUnusualItemsExcludingGoodwill",

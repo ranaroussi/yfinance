@@ -24,6 +24,7 @@ from __future__ import print_function
 from . import Ticker, multi
 from .live import WebSocket
 from .data import YfData
+from .const import period_default
 
 
 class Tickers:
@@ -46,7 +47,7 @@ class Tickers:
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
 
-    def history(self, period=None, interval="1d",
+    def history(self, period=period_default, interval="1d",
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, repair=False,
                 threads=True, group_by='column', progress=True,
@@ -59,7 +60,7 @@ class Tickers:
             threads, group_by, progress,
             timeout, **kwargs)
 
-    def download(self, period=None, interval="1d",
+    def download(self, period='1mo if start & end None', interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, repair=False, 
                  threads=True, group_by='column', progress=True,

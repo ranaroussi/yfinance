@@ -11,7 +11,7 @@ import warnings
 
 from yfinance import shared, utils
 from yfinance.config import YfConfig
-from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
+from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
 
 class PriceHistory:
@@ -29,7 +29,7 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
-    def history(self, period=None, interval="1d",
+    def history(self, period=period_default, interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 rounding=False, timeout=10,
@@ -38,7 +38,7 @@ class PriceHistory:
         :Parameters:
             period : str
               | Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-              | Default: 1mo
+              | Default: '1mo' if start & end None
               | Can combine with start/end e.g. end = start + period
             interval : str
               | Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
@@ -81,13 +81,21 @@ class PriceHistory:
             warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
 
         interval_user = interval
-        period_user = period
+        if period == period_default:
+            period_user = None
+            if start or end:
+                period = None
+            else:
+                period = '1mo'
+        else:
+            period_user = period
         if repair and interval in ["5d", "1wk", "1mo", "3mo"]:
             # Yahoo's way of adjusting mutiday intervals is fundamentally broken.
             # Have to fetch 1d, adjust, then resample.
             if interval == '5d':
                 raise ValueError("Yahoo's interval '5d' is nonsense, not supported with repair")
             if start is None and end is None and period is not None:
+                # Convert period to start -> end
                 tz = self.tz
                 if tz is None:
                     # Every valid ticker has a timezone. A missing timezone is a problem.

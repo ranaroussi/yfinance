@@ -34,11 +34,12 @@ from . import Ticker, utils
 from .data import YfData
 from . import shared
 from .config import YfConfig
+from .const import period_default
 
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
-             repair=False, keepna=False, progress=True, period=None, interval="1d",
+             repair=False, keepna=False, progress=True, period=period_default, interval="1d",
              prepost=False, rounding=False, timeout=10, session=None,
              multi_level_index=True) -> Union[_pd.DataFrame, None]:
     """
@@ -48,7 +49,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             List of tickers to download
         period : str
             Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-            Default: 1mo
+            Default: '1mo' if start & end None
             Either Use period parameter or use start and end
         interval : str
             Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
