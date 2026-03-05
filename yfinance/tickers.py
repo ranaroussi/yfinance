@@ -28,6 +28,13 @@ from .data import YfData
 
 class Tickers:
 
+    @staticmethod
+    def _validate_period_start_end(period, start, end):
+        if period is not None and start is not None and end is not None:
+            raise ValueError(
+                "Too many date parameters: provide at most 2 of 'period', 'start', and 'end'."
+            )
+
     def __repr__(self):
         return f"yfinance.Tickers object <{','.join(self.symbols)}>"
 
@@ -52,6 +59,8 @@ class Tickers:
                 threads=True, group_by='column', progress=True,
                 timeout=10, **kwargs):
 
+        self._validate_period_start_end(period, start, end)
+
         return self.download(
             period, interval,
             start, end, prepost,
@@ -64,6 +73,8 @@ class Tickers:
                  actions=True, auto_adjust=True, repair=False, 
                  threads=True, group_by='column', progress=True,
                  timeout=10, **kwargs):
+
+        self._validate_period_start_end(period, start, end)
 
         data = multi.download(self.symbols,
                               start=start, end=end,
