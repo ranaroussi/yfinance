@@ -221,10 +221,11 @@ class PriceHistory:
                 raise
 
         # Store the meta data that gets retrieved simultaneously
-        if data['chart']['result'] is None:
+        chart_data = data.get("chart") if isinstance(data, dict) else None
+        if not isinstance(chart_data, dict) or chart_data.get("result") is None:
             self._history_metadata = {}
         else:
-            self._history_metadata = data["chart"]["result"][0]["meta"]
+            self._history_metadata = chart_data["result"][0]["meta"]
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
@@ -254,11 +255,11 @@ class PriceHistory:
             _price_data_debug += f"(Yahoo status_code = {data['status_code']})"
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
-        elif "chart" in data and data["chart"]["error"]:
-            _price_data_debug += ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
+        elif isinstance(chart_data, dict) and chart_data.get("error"):
+            _price_data_debug += ' (Yahoo error = "' + chart_data["error"]["description"] + '")'
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
-        elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:
+        elif not isinstance(chart_data, dict) or chart_data.get("result") is None or not chart_data["result"] or not chart_data["result"][0]["indicators"]["quote"][0]:
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
         elif period and period not in self._history_metadata['validRanges'] and not utils.is_valid_period_format(period):
@@ -481,7 +482,7 @@ class PriceHistory:
             logger.error('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
-            df = np.round(df, data["chart"]["result"][0]["meta"]["priceHint"])
+            df = np.round(df, chart_data["result"][0]["meta"]["priceHint"])
         df['Volume'] = df['Volume'].fillna(0).astype(np.int64)
 
         if intraday:
