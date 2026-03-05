@@ -1,3 +1,4 @@
+import inspect
 import unittest
 from unittest.mock import patch
 
@@ -5,6 +6,13 @@ from tests.context import yfinance as yf
 
 
 class TestTickers(unittest.TestCase):
+    def test_default_period_matches_docs(self):
+        history_sig = inspect.signature(yf.Tickers.history)
+        download_sig = inspect.signature(yf.Tickers.download)
+
+        self.assertEqual(history_sig.parameters["period"].default, "1mo")
+        self.assertEqual(download_sig.parameters["period"].default, "1mo")
+
     def test_download_rejects_period_start_end_together(self):
         tickers = yf.Tickers("AAPL MSFT")
 

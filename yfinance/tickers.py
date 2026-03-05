@@ -53,7 +53,7 @@ class Tickers:
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
 
-    def history(self, period=None, interval="1d",
+    def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False,
                 actions=True, auto_adjust=True, repair=False,
                 threads=True, group_by='column', progress=True,
@@ -68,7 +68,7 @@ class Tickers:
             threads, group_by, progress,
             timeout, **kwargs)
 
-    def download(self, period=None, interval="1d",
+    def download(self, period="1mo", interval="1d",
                  start=None, end=None, prepost=False,
                  actions=True, auto_adjust=True, repair=False, 
                  threads=True, group_by='column', progress=True,
