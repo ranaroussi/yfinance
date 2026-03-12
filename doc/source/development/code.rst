@@ -52,7 +52,7 @@ Creating your branch
 Running a branch
 ----------------
 
-Please see `this page </development/running>`_.
+Please see `this page </development/running.html>`_.
 
 Git stuff
 ---------

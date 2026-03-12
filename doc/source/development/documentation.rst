@@ -27,8 +27,7 @@ To build the documentation locally, follow these steps:
 
 2. **Build with Sphinx**:
     
-   * After dependencies are installed, use the sphinx-build command to generate HTML documentation. 
-   * Go to ``doc/`` directory Run:
+   * After dependencies are installed, use the sphinx-build command to generate HTML documentation.
 
    .. code-block:: bash
 
