@@ -92,6 +92,24 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
     """
+    shared._LOCK.acquire()
+    try:
+        return _download_impl(
+            tickers, start=start, end=end, actions=actions, threads=threads,
+            ignore_tz=ignore_tz, group_by=group_by, auto_adjust=auto_adjust,
+            back_adjust=back_adjust, repair=repair, keepna=keepna, progress=progress,
+            period=period, interval=interval, prepost=prepost, rounding=rounding,
+            timeout=timeout, session=session, multi_level_index=multi_level_index,
+        )
+    finally:
+        shared._LOCK.release()
+
+
+def _download_impl(tickers, start=None, end=None, actions=False, threads=True,
+                   ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
+                   repair=False, keepna=False, progress=True, period=period_default, interval="1d",
+                   prepost=False, rounding=False, timeout=10, session=None,
+                   multi_level_index=True):
     logger = utils.get_yf_logger()
     session = session or requests.Session(impersonate="chrome")
 
