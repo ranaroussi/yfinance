@@ -51,7 +51,41 @@ class Tickers:
                 actions=True, auto_adjust=True, repair=False,
                 threads=True, group_by='column', progress=True,
                 timeout=10, **kwargs):
+        """
+        Fetch historical market data for multiple tickers.
 
+        :Parameters:
+            period : str
+                Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                Default: '1mo'
+            interval : str
+                Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+            start : str
+                Download start date string (YYYY-MM-DD) or datetime, inclusive.
+            end : str
+                Download end date string (YYYY-MM-DD) or datetime, exclusive.
+            prepost : bool
+                Include Pre and Post market data in results? Default is False.
+            actions : bool
+                Download dividend + stock splits data. Default is True.
+            auto_adjust : bool
+                Adjust all OHLC automatically? Default is True.
+            repair : bool
+                Detect currency unit 100x mixups and attempt repair.
+                Default is False.
+            threads : bool / int
+                How many threads to use for mass downloading. Default is True.
+            group_by : str
+                Group by 'column' or 'ticker'. Default is 'column'.
+            progress : bool
+                Show progress bar? Default is True.
+            timeout : float
+                Timeout for requests in seconds. Default is 10.
+
+        :Returns:
+            pandas.DataFrame
+                Historical market data for all tickers
+        """
         return self.download(
             period, interval,
             start, end, prepost,
@@ -61,10 +95,44 @@ class Tickers:
 
     def download(self, period=None, interval="1d",
                  start=None, end=None, prepost=False,
-                 actions=True, auto_adjust=True, repair=False, 
+                 actions=True, auto_adjust=True, repair=False,
                  threads=True, group_by='column', progress=True,
                  timeout=10, **kwargs):
+        """
+        Download historical market data for multiple tickers.
 
+        :Parameters:
+            period : str
+                Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                Default: '1mo'
+            interval : str
+                Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+            start : str
+                Download start date string (YYYY-MM-DD) or datetime, inclusive.
+            end : str
+                Download end date string (YYYY-MM-DD) or datetime, exclusive.
+            prepost : bool
+                Include Pre and Post market data in results? Default is False.
+            actions : bool
+                Download dividend + stock splits data. Default is True.
+            auto_adjust : bool
+                Adjust all OHLC automatically? Default is True.
+            repair : bool
+                Detect currency unit 100x mixups and attempt repair.
+                Default is False.
+            threads : bool / int
+                How many threads to use for mass downloading. Default is True.
+            group_by : str
+                Group by 'column' or 'ticker'. Default is 'column'.
+            progress : bool
+                Show progress bar? Default is True.
+            timeout : float
+                Timeout for requests in seconds. Default is 10.
+
+        :Returns:
+            pandas.DataFrame
+                Historical market data for all tickers
+        """
         data = multi.download(self.symbols,
                               start=start, end=end,
                               actions=actions,
