@@ -1,11 +1,15 @@
-from __future__ import annotations # Just in case
+"""Calendar query utilities for earnings, IPO, economic events, and splits."""
+
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta
 import json
-from typing import Any, Optional, List, Union, Dict
 import warnings
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
-from requests import Session, Response, exceptions
 import pandas as pd
-from datetime import datetime, date, timedelta
+from requests import Response, Session, exceptions
 
 from .const import _QUERY1_URL_
 from .utils import log_indent_decorator, get_yf_logger, _parse_user_dt
@@ -34,7 +38,8 @@ class CalendarQuery:
     def __init__(self, operator: str, operand: Union[List[Any], List["CalendarQuery"]]):
         """
         :param operator: Operator string, e.g., 'eq', 'gte', 'and', 'or'.
-        :param operand: List of operands: can be values (str, int), or other Operands instances (nested).
+            :param operand: List of operands: can be values (str, int), or nested
+                CalendarQuery instances.
         """
         operator = operator.upper()
         self.operator = operator
@@ -193,33 +198,125 @@ class Calendars:
         """
 
         self._logger = get_yf_logger()
-        self.session = session or Session()
         self._data: YfData = YfData(session=session)
 
         _start = self._parse_date_param(start)
         _end = self._parse_date_param(end)
         self._start = _start or datetime.now().strftime(DATE_STR_FORMAT)
-        self._end = _end or (datetime.strptime(self._start, DATE_STR_FORMAT) + timedelta(days=7)).strftime(DATE_STR_FORMAT)
+        self._end = _end or (
+            datetime.strptime(self._start, DATE_STR_FORMAT) + timedelta(days=7)
+        ).strftime(DATE_STR_FORMAT)
 
         if not start and end:
-            self._logger.debug(f"Incomplete boundary: did not provide `start`, using today {self._start=} to {self._end=}")
+            self._logger.debug(
+                "Incomplete boundary: did not provide `start`, using start=%s end=%s",
+                self._start,
+                self._end,
+            )
         elif start and not end:
-            self._logger.debug(f"Incomplete boundary: did not provide `end`, using {self._start=} to {self._end=}: +7 days from self._start")
+            self._logger.debug(
+                "Incomplete boundary: did not provide `end`, using start=%s end=%s "
+                "(+7 days from start)",
+                self._start,
+                self._end,
+            )
 
         self._most_active_qy: CalendarQuery = CalendarQuery("or", [])
 
         self._cache_request_body = {}
         self.calendars: Dict[str, pd.DataFrame] = {}
 
+    @property
+    def session(self) -> Session:
+        """Return underlying HTTP session used by this calendars client."""
+        return getattr(self._data, "_session")
+
     def _parse_date_param(self, _date: Optional[Union[str, datetime, date, int]]) -> str:
         if not _date:
             return ""
-        else:
-            return _parse_user_dt(_date).strftime(DATE_STR_FORMAT)
+        return _parse_user_dt(_date).strftime(DATE_STR_FORMAT)
+
+    def _parse_time_window(
+        self, args: tuple[Any, ...], kwargs: Dict[str, Any]
+    ) -> tuple[Any, Any, Dict[str, Any]]:
+        expected_keys = ("start", "end", "limit", "offset", "force")
+        if len(args) > len(expected_keys):
+            raise TypeError(
+                f"Expected at most {len(expected_keys)} positional arguments, "
+                f"received {len(args)}."
+            )
+        unknown = set(kwargs) - set(expected_keys)
+        if unknown:
+            unknown_fields = ", ".join(sorted(unknown))
+            raise TypeError(f"Unexpected keyword argument(s): {unknown_fields}")
+
+        merged: Dict[str, Any] = dict(zip(expected_keys, args))
+        merged.update(kwargs)
+
+        request = {
+            "limit": merged.get("limit", 12),
+            "offset": merged.get("offset", 0),
+            "force": merged.get("force", False),
+        }
+        return merged.get("start"), merged.get("end"), request
+
+    def _parse_earnings_request(
+        self, args: tuple[Any, ...], kwargs: Dict[str, Any]
+    ) -> tuple[Optional[float], bool, Any, Any, Dict[str, Any]]:
+        expected_keys = (
+            "market_cap",
+            "filter_most_active",
+            "start",
+            "end",
+            "limit",
+            "offset",
+            "force",
+        )
+        if len(args) > len(expected_keys):
+            raise TypeError(
+                f"Expected at most {len(expected_keys)} positional arguments, "
+                f"received {len(args)}."
+            )
+        unknown = set(kwargs) - set(expected_keys)
+        if unknown:
+            unknown_fields = ", ".join(sorted(unknown))
+            raise TypeError(f"Unexpected keyword argument(s): {unknown_fields}")
+
+        merged: Dict[str, Any] = dict(zip(expected_keys, args))
+        merged.update(kwargs)
+
+        request = {
+            "limit": merged.get("limit", 12),
+            "offset": merged.get("offset", 0),
+            "force": merged.get("force", False),
+        }
+        market_cap = merged.get("market_cap")
+        filter_most_active = merged.get("filter_most_active", True)
+        return market_cap, filter_most_active, merged.get("start"), merged.get("end"), request
+
+    @staticmethod
+    def _warn_partial_bounds(start: Any, end: Any) -> None:
+        if (start and not end) or (end and not start):
+            warnings.warn(
+                (
+                    "When providing custom `start` and `end` parameters, you may "
+                    "want to specify both to avoid unexpected behavior."
+                ),
+                UserWarning,
+                stacklevel=3,
+            )
 
     def _get_data(
-        self, calendar_type: str, query: CalendarQuery, limit=12, offset=0, force=False
+        self,
+        calendar_type: str,
+        query: CalendarQuery,
+        request: Optional[Dict[str, Any]] = None,
     ) -> pd.DataFrame:
+        request = request or {}
+        limit = request.get("limit", 12)
+        offset = request.get("offset", 0)
+        force = request.get("force", False)
+
         if calendar_type not in PREDEFINED_CALENDARS:
             raise YFException(f"Unknown calendar type: {calendar_type}")
 
@@ -238,17 +335,19 @@ class Calendars:
             cache_body = self._cache_request_body[calendar_type]
             if cache_body == body and calendar_type in self.calendars:
                 # Uses cache if force=False and new request has same body as previous
-                self._logger.debug(f"Getting {calendar_type=} from local cache")
+                self._logger.debug(
+                    "Getting calendar_type=%s from local cache", calendar_type
+                )
                 return self.calendars[calendar_type]
         self._cache_request_body[calendar_type] = body
 
-        self._logger.debug(f"Fetching {calendar_type=} with {limit=}")
+        self._logger.debug("Fetching calendar_type=%s with limit=%s", calendar_type, limit)
         response: Response = self._data.post(_CALENDAR_URL_, params=params, body=body)
 
         try:
             json_data = response.json()
         except json.JSONDecodeError:
-            self._logger.error(f"{calendar_type}: Failed to retrieve calendar.")
+            self._logger.error("%s: Failed to retrieve calendar.", calendar_type)
             json_data = {}
 
         # Error returned
@@ -320,7 +419,7 @@ class Calendars:
 
         self._most_active_qy = CalendarQuery("or", [])
         for stock in raw:
-            if type(stock) is not dict:
+            if not isinstance(stock, dict):
                 continue
 
             ticker = stock.get("symbol", "")
@@ -338,12 +437,7 @@ class Calendars:
         """
         _start = self._parse_date_param(start)
         _end = self._parse_date_param(end)
-        if (start and not end) or (end and not start):
-            warnings.warn(
-                "When prividing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
-                UserWarning,
-                stacklevel=2,
-            )
+        self._warn_partial_bounds(start, end)
 
         return CalendarQuery(
             "and",
@@ -356,39 +450,24 @@ class Calendars:
     ### Manual getter functions:
 
     @log_indent_decorator
-    def get_earnings_calendar(
-        self,
-        market_cap: Optional[float] = None,
-        filter_most_active: bool = True,
-        start=None,
-        end=None,
-        limit=12,
-        offset=0,
-        force=False,
-    ) -> pd.DataFrame:
+    def get_earnings_calendar(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """
         Retrieve earnings calendar from YF as a DataFrame.
         Will re-query every time it is called, overwriting previous data.
 
-        :param market_cap: market cap cutoff in USD, default None
-        :param filter_most_active: will filter for actively traded stocks (default True)
-        :param str | datetime | date start: overwrite start date (default set by __init__) \
-            eg. start="2025-11-08"
-        :param str | datetime | date end: overwrite end date (default set by __init__) \
-            eg. end="2025-11-08"
-        :param limit: maximum number of results to return (YF caps at 100)
-        :param offset: offsets the results for pagination. YF default 0
-        :param force: if True, will re-query even if cache already exists
+        :param args: optional positional args:
+            ``market_cap, filter_most_active, start, end, limit, offset, force``.
+        :param kwargs: optional legacy keyword args:
+            ``market_cap``, ``filter_most_active``, ``start``, ``end``,
+            ``limit``, ``offset``, ``force``.
         :return: DataFrame with earnings calendar
         """
+        market_cap, filter_most_active, start, end, request = self._parse_earnings_request(
+            args, kwargs
+        )
         _start = self._parse_date_param(start)
         _end = self._parse_date_param(end)
-        if (start and not end) or (end and not start):
-            warnings.warn(
-                "When prividing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
-                UserWarning,
-                stacklevel=2,
-            )
+        self._warn_partial_bounds(start, end)
 
         query = CalendarQuery(
             "and",
@@ -412,109 +491,80 @@ class Calendars:
                     f"market_cap {market_cap} is very low, did you mean to set it higher?",
                     UserWarning,
                     stacklevel=2,
-                )
+            )
             query.append(CalendarQuery("gte", ["intradaymarketcap", market_cap]))
-        if filter_most_active and not offset:
+        if filter_most_active and not request["offset"]:
             # YF does not like filter most active while offsetting
             query.append(self._get_most_active_operands(market_cap))
 
         return self._get_data(
             calendar_type="sp_earnings",
             query=query,
-            limit=limit,
-            offset=offset,
-            force=force,
+            request=request,
         )
 
     @log_indent_decorator
-    def get_ipo_info_calendar(
-        self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    def get_ipo_info_calendar(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """
         Retrieve IPOs calendar from YF as a Dataframe.
 
-        :param str | datetime | date start: overwrite start date (default set by __init__) \
-            eg. start="2025-11-08"
-        :param str | datetime | date end: overwrite end date (default set by __init__) \
-            eg. end="2025-11-08"
-        :param limit: maximum number of results to return (YF caps at 100)
-        :param offset: offsets the results for pagination. YF default 0
-        :param force: if True, will re-query even if cache already exists
+        :param args: optional legacy positional args:
+            ``start, end, limit, offset, force``.
+        :param kwargs: optional legacy keyword args:
+            ``start``, ``end``, ``limit``, ``offset``, ``force``.
         :return: DataFrame with IPOs calendar
         """
+        start, end, request = self._parse_time_window(args, kwargs)
         _start = self._parse_date_param(start)
         _end = self._parse_date_param(end)
-        if (start and not end) or (end and not start):
-            warnings.warn(
-                "When prividing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
-                UserWarning,
-                stacklevel=2,
-            )
+        self._warn_partial_bounds(start, end)
 
         query = CalendarQuery(
             "or",
             [
-                CalendarQuery("gtelt", ["startdatetime", _start or self._start, _end or self._end]),
-                CalendarQuery("gtelt", ["filingdate", _start or self._start, _end or self._end]),
-                CalendarQuery("gtelt", ["amendeddate", _start or self._start, _end or self._end]),
+                CalendarQuery(
+                    "gtelt", ["startdatetime", _start or self._start, _end or self._end]
+                ),
+                CalendarQuery(
+                    "gtelt", ["filingdate", _start or self._start, _end or self._end]
+                ),
+                CalendarQuery(
+                    "gtelt", ["amendeddate", _start or self._start, _end or self._end]
+                ),
             ],
         )
 
-        return self._get_data(
-            calendar_type="ipo_info",
-            query=query,
-            limit=limit,
-            offset=offset,
-            force=force,
-        )
+        return self._get_data(calendar_type="ipo_info", query=query, request=request)
 
     @log_indent_decorator
-    def get_economic_events_calendar(
-        self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    def get_economic_events_calendar(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """
         Retrieve Economic Events calendar from YF as a DataFrame.
 
-        :param str | datetime | date start: overwrite start date (default set by __init__) \
-            eg. start="2025-11-08"
-        :param str | datetime | date end: overwrite end date (default set by __init__) \
-            eg. end="2025-11-08"
-        :param limit: maximum number of results to return (YF caps at 100)
-        :param offset: offsets the results for pagination. YF default 0
-        :param force: if True, will re-query even if cache already exists
+        :param args: optional legacy positional args:
+            ``start, end, limit, offset, force``.
+        :param kwargs: optional legacy keyword args:
+            ``start``, ``end``, ``limit``, ``offset``, ``force``.
         :return: DataFrame with Economic Events calendar
         """
-        return self._get_data(
-            calendar_type="economic_event",
-            query=self._get_startdatetime_operators(start, end),
-            limit=limit,
-            offset=offset,
-            force=force,
-        )
+        start, end, request = self._parse_time_window(args, kwargs)
+        query = self._get_startdatetime_operators(start, end)
+        return self._get_data(calendar_type="economic_event", query=query, request=request)
 
     @log_indent_decorator
-    def get_splits_calendar(
-        self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    def get_splits_calendar(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """
         Retrieve Splits calendar from YF as a DataFrame.
 
-        :param str | datetime | date start: overwrite start date (default set by __init__) \
-            eg. start="2025-11-08"
-        :param str | datetime | date end: overwrite end date (default set by __init__) \
-            eg. end="2025-11-08"
-        :param limit: maximum number of results to return (YF caps at 100)
-        :param offset: offsets the results for pagination. YF default 0
-        :param force: if True, will re-query even if cache already exists
+        :param args: optional legacy positional args:
+            ``start, end, limit, offset, force``.
+        :param kwargs: optional legacy keyword args:
+            ``start``, ``end``, ``limit``, ``offset``, ``force``.
         :return: DataFrame with Splits calendar
         """
-        return self._get_data(
-            calendar_type="splits",
-            query=self._get_startdatetime_operators(start, end),
-            limit=limit,
-            offset=offset,
-            force=force,
-        )
+        start, end, request = self._parse_time_window(args, kwargs)
+        query = self._get_startdatetime_operators(start, end)
+        return self._get_data(calendar_type="splits", query=query, request=request)
 
     ### Easy / Default getter functions:
 

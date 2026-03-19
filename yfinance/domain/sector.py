@@ -1,7 +1,8 @@
-from __future__ import print_function
+"""Sector domain model and parsing helpers."""
+
+from typing import Any, Dict, List, Optional
 
 import pandas as _pd
-from typing import Dict, List, Optional
 
 from ..config import YF_CONFIG as YfConfig
 from ..const import SECTOR_INDUSTY_MAPPING_LC
@@ -9,46 +10,27 @@ from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_log
 
 from .domain import Domain, _QUERY_URL_
 
+_PARSE_ERROR_TYPES = (KeyError, TypeError, ValueError)
+
+
 class Sector(Domain):
-    """
-    Represents a financial market sector and allows retrieval of sector-related data 
-    such as top ETFs, top mutual funds, and industry data.
-    """
+    """Represents a financial market sector."""
 
     def __init__(self, key, session=None):
-        """
-        Args:
-            key (str): The key representing the sector.
-            session (requests.Session, optional): A session for making requests. Defaults to None.
-        
-        .. seealso::
-   
-            :attr:`Sector.industries <yfinance.Sector.industries>`
-                Map of sector and industry
-        """
-        super(Sector, self).__init__(key, session)
-        self._query_url: str = f'{_QUERY_URL_}/sectors/{self._key}'
+        """Initialize a sector by API key."""
+        super().__init__(key, session)
+        self._query_url: str = f"{_QUERY_URL_}/sectors/{self._key}"
         self._top_etfs: Optional[Dict[str, str]] = None
         self._top_mutual_funds: Optional[Dict[str, str]] = None
         self._industries: Optional[_pd.DataFrame] = None
 
     def __repr__(self):
-        """
-        Returns the string representation of the Sector object.
+        """Return a concise representation of the sector."""
+        return f"yfinance.Sector object <{self._key}>"
 
-        Returns:
-            str: A string representation of the object.
-        """
-        return f'yfinance.Sector object <{self._key}>'
-    
     @property
     def top_etfs(self) -> Dict[str, str]:
-        """
-        Gets the top ETFs for the sector.
-
-        Returns:
-            Dict[str, str]: A dictionary of ETF symbols and names.
-        """
+        """Return top ETF symbols and names for the sector."""
         self._ensure_fetched(self._top_etfs)
         if self._top_etfs is None:
             return {}
@@ -56,115 +38,74 @@ class Sector(Domain):
 
     @property
     def top_mutual_funds(self) -> Dict[str, str]:
-        """
-        Gets the top mutual funds for the sector.
-
-        Returns:
-            Dict[str, str]: A dictionary of mutual fund symbols and names.
-        """
+        """Return top mutual fund symbols and names for the sector."""
         self._ensure_fetched(self._top_mutual_funds)
         if self._top_mutual_funds is None:
             return {}
         return self._top_mutual_funds
 
-    @dynamic_docstring({"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING_LC,bullets=True)})
+    @dynamic_docstring(
+        {"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING_LC, bullets=True)}
+    )
     @property
     def industries(self) -> _pd.DataFrame:
-        """
-        Gets the industries within the sector.
-
-        Returns:
-            pandas.DataFrame: A DataFrame with industries' key, name, symbol, and market weight.
-
-        {sector_industry}
-        """
+        """Return the industries within the sector."""
         self._ensure_fetched(self._industries)
         if self._industries is None:
             raise ValueError(f"Failed to retrieve industries for sector '{self._key}'")
         return self._industries
-    
-    def _parse_top_etfs(self, top_etfs: List[Dict]) -> Dict[str, str]:
-        """
-        Parses top ETF data from the API response.
 
-        Args:
-            top_etfs (Dict): The raw ETF data from the API response.
-
-        Returns:
-            Dict[str, str]: A dictionary of ETF symbols and names.
-        """
+    def _parse_top_etfs(self, top_etfs: List[Dict[str, Any]]) -> Dict[str, str]:
+        """Parse top ETF data from API payload."""
         parsed: Dict[str, str] = {}
-        for e in top_etfs:
-            symbol = e.get('symbol')
-            name = e.get('name')
+        for item in top_etfs:
+            symbol = item.get("symbol")
+            name = item.get("name")
             if isinstance(symbol, str) and isinstance(name, str):
                 parsed[symbol] = name
         return parsed
 
-    def _parse_top_mutual_funds(self, top_mutual_funds: List[Dict]) -> Dict[str, str]:
-        """
-        Parses top mutual funds data from the API response.
-
-        Args:
-            top_mutual_funds (Dict): The raw mutual fund data from the API response.
-
-        Returns:
-            Dict[str, str]: A dictionary of mutual fund symbols and names.
-        """
+    def _parse_top_mutual_funds(
+        self,
+        top_mutual_funds: List[Dict[str, Any]],
+    ) -> Dict[str, str]:
+        """Parse top mutual fund data from API payload."""
         parsed: Dict[str, str] = {}
-        for e in top_mutual_funds:
-            symbol = e.get('symbol')
-            name = e.get('name')
+        for item in top_mutual_funds:
+            symbol = item.get("symbol")
+            name = item.get("name")
             if isinstance(symbol, str) and isinstance(name, str):
                 parsed[symbol] = name
         return parsed
-    
-    def _parse_industries(self, industries: List[Dict]) -> _pd.DataFrame:
-        """
-        Parses industry data from the API response into a DataFrame.
 
-        Args:
-            industries (Dict): The raw industry data from the API response.
-
-        Returns:
-            pandas.DataFrame: A DataFrame containing industry key, name, symbol, and market weight.
-        """
-        industries_column = ['key','name','symbol','market weight']
-        industries_values = [(i.get('key'),
-                              i.get('name'),
-                              i.get('symbol'),
-                              i.get('marketWeight',{}).get('raw', None)
-                              ) for i in industries if i.get('name') != 'All Industries']
-        return _pd.DataFrame(industries_values, columns=industries_column).set_index('key')
+    def _parse_industries(self, industries: List[Dict[str, Any]]) -> _pd.DataFrame:
+        """Parse industries payload into a DataFrame."""
+        industries_column = ["key", "name", "symbol", "market weight"]
+        industries_values = [
+            (
+                industry.get("key"),
+                industry.get("name"),
+                industry.get("symbol"),
+                industry.get("marketWeight", {}).get("raw"),
+            )
+            for industry in industries
+            if industry.get("name") != "All Industries"
+        ]
+        return _pd.DataFrame(industries_values, columns=industries_column).set_index("key")
 
     def _fetch_and_parse(self) -> None:
-        """
-        Fetches and parses sector data from the API.
-
-        Fetches data for the sector and parses the top ETFs, top mutual funds, 
-        and industries within the sector. Stores the parsed data in the corresponding
-        attributes `_top_etfs`, `_top_mutual_funds`, and `_industries`.
-
-        Raises:
-            Exception: If fetching or parsing the sector data fails.
-        """
+        """Fetch and parse sector data from Yahoo Finance."""
         result = None
-        
+
         try:
-            result = self._fetch(self._query_url)
-            data = result['data']
-            self._parse_and_assign_common(data)
+            result, data = self._fetch_common_data(self._query_url)
+            self._top_etfs = self._parse_top_etfs(data.get("topETFs") or [])
+            self._top_mutual_funds = self._parse_top_mutual_funds(
+                data.get("topMutualFunds") or []
+            )
+            self._industries = self._parse_industries(data.get("industries") or [])
 
-            self._top_etfs = self._parse_top_etfs(data.get('topETFs') or [])
-            self._top_mutual_funds = self._parse_top_mutual_funds(data.get('topMutualFunds') or [])
-            self._industries = self._parse_industries(data.get('industries') or [])
-
-        except Exception as e:
+        except _PARSE_ERROR_TYPES as err:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            logger = get_yf_logger()
-            logger.error(f"Failed to get sector data for '{self._key}' reason: {e}")
-            logger.debug("Got response: ")
-            logger.debug("-------------")
-            logger.debug(f" {result}")
-            logger.debug("-------------")
+            self._log_fetch_error(get_yf_logger(), "sector", err, result)

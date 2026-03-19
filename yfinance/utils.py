@@ -55,6 +55,8 @@ from yfinance.utils_financial import (
     snake_case_to_camel_case as _snake_case_to_camel_case,
 )
 from yfinance.utils_price import (
+    _LiveSeparateContext,
+    _MergeContext,
     fix_yahoo_returning_live_separate_impl as _fix_yahoo_returning_live_separate_impl,
     format_history_metadata_impl as _format_history_metadata_impl,
     safe_merge_dfs_impl as _safe_merge_dfs_impl,
@@ -349,6 +351,9 @@ def _parse_user_dt(dt, exchange_tz=_tz.utc):
     return dt
 
 
+parse_user_dt = _parse_user_dt
+
+
 def _interval_to_timedelta(interval):
     """Convert a Yahoo interval token into a Timedelta/relativedelta."""
     if interval[-1] == "d":
@@ -360,6 +365,9 @@ def _interval_to_timedelta(interval):
     if interval[-1] == "y":
         return relativedelta(years=int(interval[:-1]))
     return _pd.Timedelta(interval)
+
+
+interval_to_timedelta = _interval_to_timedelta
 
 
 def is_valid_period_format(period):
@@ -539,12 +547,14 @@ def fix_yahoo_returning_live_separate(
     currency = repair_context.get("currency")
     return _fix_yahoo_returning_live_separate_impl(
         quotes,
-        interval,
-        tz_exchange,
-        prepost,
-        repair,
-        currency,
-        _PRICE_COLNAMES,
+        _LiveSeparateContext(
+            interval=interval,
+            tz_exchange=tz_exchange,
+            prepost=prepost,
+            repair=repair,
+            currency=currency,
+            price_colnames=_PRICE_COLNAMES,
+        ),
     )
 
 
@@ -584,10 +594,12 @@ def safe_merge_dfs(df_main, df_sub, interval):
         df_main,
         df_sub,
         interval,
-        interval_to_timedelta=_interval_to_timedelta,
-        logger_getter=get_yf_logger,
-        price_colnames=_PRICE_COLNAMES,
-        exception_cls=YFException,
+        _MergeContext(
+            interval_to_timedelta=_interval_to_timedelta,
+            logger_getter=get_yf_logger,
+            price_colnames=_PRICE_COLNAMES,
+            exception_cls=YFException,
+        ),
     )
 
 

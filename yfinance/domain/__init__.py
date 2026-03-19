@@ -1,4 +1,5 @@
-# domain/__init__.py
+"""Public domain entities."""
+
 from .sector import Sector
 from .industry import Industry
 

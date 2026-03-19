@@ -1,11 +1,17 @@
+"""Async websocket example."""
+
 import asyncio
+
 import yfinance as yf
 
-# define your message callback
+
 def message_handler(message):
+    """Handle decoded websocket messages."""
     print("Received message:", message)
 
+
 async def main():
+    """Connect to the async websocket and start listening."""
     # =======================
     # With Context Manager
     # =======================
@@ -19,5 +25,6 @@ async def main():
     ws = yf.AsyncWebSocket()
     await ws.subscribe(["AAPL", "BTC-USD"])
     await ws.listen()
+
 
 asyncio.run(main())

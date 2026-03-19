@@ -1,55 +1,39 @@
+"""Base abstractions for Yahoo Finance domain entities."""
+
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple
+
 import pandas as _pd
-from typing import Dict, List, Optional
 
 from ..const import _QUERY1_URL_
 from ..data import YfData
 from ..ticker import Ticker
 
-_QUERY_URL_ = f'{_QUERY1_URL_}/v1/finance'
+_QUERY_URL_ = f"{_QUERY1_URL_}/v1/finance"
+
 
 class Domain(ABC):
-    """
-    Abstract base class representing a domain entity in financial data, with key attributes 
-    and methods for fetching and parsing data. Derived classes must implement the `_fetch_and_parse()` method.
-    """
+    """Abstract base class for sector and industry domain entities."""
 
     def __init__(self, key: str, session=None):
-        """
-        Initializes the Domain object with a key, session.
-
-        Args:
-            key (str): Unique key identifying the domain entity.
-            session (Optional[requests.Session]): Session object for HTTP requests. Defaults to None.
-        """
+        """Initialize a domain entity with key and optional HTTP session."""
         self._key: str = key
-        self.session = session
         self._data: YfData = YfData(session=session)
 
         self._name: Optional[str] = None
         self._symbol: Optional[str] = None
-        self._overview: Optional[Dict] = None
+        self._overview: Optional[Dict[str, Any]] = None
         self._top_companies: Optional[_pd.DataFrame] = None
         self._research_reports: Optional[List[Dict[str, str]]] = None
 
     @property
     def key(self) -> str:
-        """
-        Retrieves the key of the domain entity.
-
-        Returns:
-            str: The unique key of the domain entity.
-        """
+        """Return the unique key identifying the domain."""
         return self._key
 
     @property
     def name(self) -> str:
-        """
-        Retrieves the name of the domain entity.
-
-        Returns:
-            str: The name of the domain entity.
-        """
+        """Return the domain display name."""
         self._ensure_fetched(self._name)
         if self._name is None:
             raise ValueError(f"Failed to retrieve name for domain '{self._key}'")
@@ -57,12 +41,7 @@ class Domain(ABC):
 
     @property
     def symbol(self) -> str:
-        """
-        Retrieves the symbol of the domain entity.
-
-        Returns:
-            str: The symbol representing the domain entity.
-        """
+        """Return the representative symbol for the domain."""
         self._ensure_fetched(self._symbol)
         if self._symbol is None:
             raise ValueError(f"Failed to retrieve symbol for domain '{self._key}'")
@@ -70,22 +49,12 @@ class Domain(ABC):
 
     @property
     def ticker(self) -> Ticker:
-        """
-        Retrieves a Ticker object based on the domain entity's symbol.
-
-        Returns:
-            Ticker: A Ticker object associated with the domain entity.
-        """
+        """Return the domain symbol as a :class:`Ticker` object."""
         return Ticker(self.symbol)
 
     @property
-    def overview(self) -> Dict:
-        """
-        Retrieves the overview information of the domain entity.
-
-        Returns:
-            Dict: A dictionary containing an overview of the domain entity.
-        """
+    def overview(self) -> Dict[str, Any]:
+        """Return overview information for the domain."""
         self._ensure_fetched(self._overview)
         if self._overview is None:
             raise ValueError(f"Failed to retrieve overview for domain '{self._key}'")
@@ -93,110 +62,107 @@ class Domain(ABC):
 
     @property
     def top_companies(self) -> Optional[_pd.DataFrame]:
-        """
-        Retrieves the top companies within the domain entity.
-
-        Returns:
-            pandas.DataFrame: A DataFrame containing the top companies in the domain.
-        """
+        """Return top companies table for the domain."""
         self._ensure_fetched(self._top_companies)
-        return self._top_companies 
+        return self._top_companies
 
     @property
     def research_reports(self) -> List[Dict[str, str]]:
-        """
-        Retrieves research reports related to the domain entity.
-
-        Returns:
-            List[Dict[str, str]]: A list of research reports, where each report is a dictionary with metadata.
-        """
+        """Return associated research reports."""
         self._ensure_fetched(self._research_reports)
         if self._research_reports is None:
             return []
         return self._research_reports
 
-    def _fetch(self, query_url) -> Dict:
-        """
-        Fetches data from the given query URL.
-
-        Args:
-            query_url (str): The URL used for the data query.
-
-        Returns:
-            Dict: The JSON response data from the request.
-        """
-        params_dict = {"formatted": "true", "withReturns": "true", "lang": "en-US", "region": "US"}
+    def _fetch(self, query_url: str) -> Dict[str, Any]:
+        """Fetch raw JSON for a domain endpoint."""
+        params_dict = {
+            "formatted": "true",
+            "withReturns": "true",
+            "lang": "en-US",
+            "region": "US",
+        }
         result = self._data.get_raw_json(query_url, params=params_dict)
         return result
 
-    def _parse_and_assign_common(self, data) -> None:
-        """
-        Parses and assigns common data fields such as name, symbol, overview, and top companies.
+    def _parse_and_assign_common(self, data: Dict[str, Any]) -> None:
+        """Parse and cache common fields shared by sector and industry."""
+        self._name = data.get("name")
+        self._symbol = data.get("symbol")
+        self._overview = self._parse_overview(data.get("overview", {}))
+        self._top_companies = self._parse_top_companies(data.get("topCompanies", []))
+        self._research_reports = data.get("researchReports") or []
 
-        Args:
-            data (Dict): The raw data received from the API.
-        """
-        self._name = data.get('name')
-        self._symbol = data.get('symbol')
-        self._overview = self._parse_overview(data.get('overview', {}))
-        self._top_companies = self._parse_top_companies(data.get('topCompanies', {}))
-        self._research_reports = data.get('researchReports') or []
-
-    def _parse_overview(self, overview) -> Dict:
-        """
-        Parses the overview data for the domain entity.
-
-        Args:
-            overview (Dict): The raw overview data.
-
-        Returns:
-            Dict: A dictionary containing parsed overview information.
-        """
+    def _parse_overview(self, overview: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse overview payload into a flatter dict."""
         return {
-            "companies_count": overview.get('companiesCount', None),
-            "market_cap": overview.get('marketCap', {}).get('raw', None),
-            "message_board_id": overview.get('messageBoardId', None),
-            "description": overview.get('description', None),
-            "industries_count": overview.get('industriesCount', None),
-            "market_weight": overview.get('marketWeight', {}).get('raw', None),
-            "employee_count": overview.get('employeeCount', {}).get('raw', None)
+            "companies_count": overview.get("companiesCount"),
+            "market_cap": overview.get("marketCap", {}).get("raw"),
+            "message_board_id": overview.get("messageBoardId"),
+            "description": overview.get("description"),
+            "industries_count": overview.get("industriesCount"),
+            "market_weight": overview.get("marketWeight", {}).get("raw"),
+            "employee_count": overview.get("employeeCount", {}).get("raw"),
         }
 
-    def _parse_top_companies(self, top_companies) -> Optional[_pd.DataFrame]:
-        """
-        Parses the top companies data and converts it into a pandas DataFrame.
+    def _parse_top_companies(
+        self,
+        top_companies: List[Dict[str, Any]],
+    ) -> Optional[_pd.DataFrame]:
+        """Parse top-companies payload into a DataFrame."""
+        top_companies_column = ["symbol", "name", "rating", "market weight"]
+        top_companies_values = [
+            (
+                company.get("symbol"),
+                company.get("name"),
+                company.get("rating"),
+                company.get("marketWeight", {}).get("raw"),
+            )
+            for company in top_companies
+        ]
 
-        Args:
-            top_companies (Dict): The raw top companies data.
-
-        Returns:
-            Optional[pandas.DataFrame]: A DataFrame containing top company data, or None if no data is available.
-        """
-        top_companies_column = ['symbol', 'name', 'rating', 'market weight']
-        top_companies_values = [(c.get('symbol'), 
-                                c.get('name'), 
-                                c.get('rating'), 
-                                c.get('marketWeight',{}).get('raw',None)) for c in top_companies]
-
-        if not top_companies_values: 
+        if not top_companies_values:
             return None
-        
-        return _pd.DataFrame(top_companies_values, columns=top_companies_column).set_index('symbol')
+
+        return _pd.DataFrame(
+            top_companies_values,
+            columns=top_companies_column,
+        ).set_index("symbol")
+
+    def _fetch_common_data(self, query_url: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Fetch a domain payload and parse common fields."""
+        result = self._fetch(query_url)
+        data = result["data"]
+        self._parse_and_assign_common(data)
+        return result, data
+
+    def _log_fetch_error(
+        self,
+        logger,
+        domain_type: str,
+        error: Exception,
+        result: Optional[Dict[str, Any]],
+    ) -> None:
+        """Log a failed domain payload fetch in a consistent format."""
+        logger.error(
+            "Failed to get %s data for '%s' reason: %s",
+            domain_type,
+            self._key,
+            error,
+        )
+        logger.debug("Got response:")
+        logger.debug("-------------")
+        logger.debug("%s", result)
+        logger.debug("-------------")
 
     @abstractmethod
     def _fetch_and_parse(self) -> None:
-        """
-        Abstract method for fetching and parsing domain-specific data. 
-        Must be implemented by derived classes.
-        """
-        raise NotImplementedError("_fetch_and_parse() needs to be implemented by children classes")
+        """Fetch and parse domain-specific data."""
+        raise NotImplementedError(
+            "_fetch_and_parse() needs to be implemented by children classes"
+        )
 
     def _ensure_fetched(self, attribute) -> None:
-        """
-        Ensures that the given attribute is fetched by calling `_fetch_and_parse()` if the attribute is None.
-
-        Args:
-            attribute: The attribute to check and potentially fetch.
-        """
+        """Fetch domain data on first access for lazy-loaded properties."""
         if attribute is None:
             self._fetch_and_parse()

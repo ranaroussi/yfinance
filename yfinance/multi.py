@@ -26,7 +26,7 @@ from __future__ import print_function
 import logging
 import time as _time
 import traceback
-from typing import Union
+from typing import Union, cast
 
 import multitasking as _multitasking
 import pandas as _pd
@@ -482,7 +482,7 @@ def download(tickers, *args, **kwargs) -> Union[_pd.DataFrame, None]:
 
     data = _create_download_dataframe(options["ignore_tz"])
     # switch names back to isins if applicable
-    data.rename(columns=_get_isins(), inplace=True)
+    data = cast(_pd.DataFrame, data.rename(columns=_get_isins()))
 
     if options["group_by"] == "column":
         if isinstance(data.columns, _pd.MultiIndex):
@@ -491,7 +491,8 @@ def download(tickers, *args, **kwargs) -> Union[_pd.DataFrame, None]:
 
     if not options["multi_level_index"] and len(parsed_tickers) == 1:
         level = 0 if options["group_by"] == "ticker" else 1
-        data = data.droplevel(level, axis=1).rename_axis(None, axis=1)
+        data = cast(_pd.DataFrame, data.droplevel(level, axis=1))
+        data = data.rename_axis(None, axis=1)
 
     return data
 

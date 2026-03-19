@@ -1,3 +1,5 @@
+"""Market endpoint example."""
+
 import yfinance as yf
 
 EUROPE = yf.Market("EUROPE")

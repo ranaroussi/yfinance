@@ -1,10 +1,15 @@
+"""Integration tests for Yahoo Finance search endpoints."""
+
 import unittest
 
 from tests.context import yfinance as yf
 
 
 class TestSearch(unittest.TestCase):
+    """Validate search responses for common query modes."""
+
     def test_invalid_query(self):
+        """Return empty sections for nonsense query strings."""
         search = yf.Search(query="XYZXYZ")
 
         self.assertEqual(len(search.quotes), 0)
@@ -14,12 +19,14 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(len(search.research), 0)
 
     def test_empty_query(self):
+        """Return empty quotes and news for empty queries."""
         search = yf.Search(query="")
 
         self.assertEqual(len(search.quotes), 0)
         self.assertEqual(len(search.news), 0)
 
     def test_fuzzy_query(self):
+        """Return likely matches when fuzzy search is enabled."""
         search = yf.Search(query="Appel", enable_fuzzy_query=True)
 
         # Check if the fuzzy search retrieves relevant results despite the typo
@@ -29,16 +36,19 @@ class TestSearch(unittest.TestCase):
         self.assertTrue(any("AAPL" in s for s in symbols), f"AAPL not found in results: {symbols}")
 
     def test_quotes(self):
+        """Return requested number of quote results."""
         search = yf.Search(query="AAPL", max_results=5)
 
         self.assertEqual(len(search.quotes), 5)
         self.assertIn("AAPL", search.quotes[0]['symbol'])
 
     def test_news(self):
+        """Return requested number of news results."""
         search = yf.Search(query="AAPL", news_count=3)
 
         self.assertEqual(len(search.news), 3)
 
     def test_research_reports(self):
+        """Return research reports when include_research is enabled."""
         search = yf.Search(query="AAPL", include_research=True)
         self.assertEqual(len(search.research), 3)

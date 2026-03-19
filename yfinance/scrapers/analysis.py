@@ -1,6 +1,9 @@
+"""Analysis scraper for analyst and earnings-trend data."""
+
+from typing import Any, Dict, List, Optional
+
 import curl_cffi
 import pandas as pd
-from typing import Any, Dict, List, Optional
 
 from yfinance import utils
 from yfinance.config import YF_CONFIG as YfConfig
@@ -9,211 +12,262 @@ from yfinance.data import YfData
 from yfinance.exceptions import YFException
 from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
 
+
 class Analysis:
+    """Fetch and cache ticker analysis datasets from quoteSummary."""
 
     def __init__(self, data: YfData, symbol: str):
+        """Initialize analysis scraper state."""
         self._data = data
         self._symbol = symbol
+        self._cache: Dict[str, Any] = {
+            "earnings_trend": None,
+            "analyst_price_targets": None,
+            "earnings_estimate": None,
+            "revenue_estimate": None,
+            "earnings_history": None,
+            "eps_trend": None,
+            "eps_revisions": None,
+            "growth_estimates": None,
+        }
 
-        # In quoteSummary the 'earningsTrend' module contains most of the data below.
-        # The format of data is not optimal so each function will process it's part of the data.
-        # This variable works as a cache.
-        self._earnings_trend: Optional[List[Dict[str, Any]]] = None
-
-        self._analyst_price_targets: Optional[dict] = None
-        self._earnings_estimate: Optional[pd.DataFrame] = None
-        self._revenue_estimate: Optional[pd.DataFrame] = None
-        self._earnings_history: Optional[pd.DataFrame] = None
-        self._eps_trend: Optional[pd.DataFrame] = None
-        self._eps_revisions: Optional[pd.DataFrame] = None
-        self._growth_estimates: Optional[pd.DataFrame] = None
+    def _earnings_trend(self) -> List[Dict[str, Any]]:
+        trend = self._cache["earnings_trend"]
+        if trend is None:
+            self._fetch_earnings_trend()
+            trend = self._cache["earnings_trend"]
+        return trend or []
 
     def _get_periodic_df(self, key: str) -> pd.DataFrame:
-        if self._earnings_trend is None:
-            self._fetch_earnings_trend()
-
-        data = []
-        earnings_trend = self._earnings_trend or []
-        for item in earnings_trend[:4]:
-            period = item.get('period')
+        """Build a period-indexed DataFrame for one earningsTrend section."""
+        data: list[dict[str, Any]] = []
+        for item in self._earnings_trend()[:4]:
+            period = item.get("period")
             if period is None:
                 continue
-            row = {'period': period}
+
+            row: dict[str, Any] = {"period": period}
             values = item.get(key, {})
             if not isinstance(values, dict):
                 continue
-            for k, v in values.items():
-                if not isinstance(v, dict) or len(v) == 0:
+
+            for field, value in values.items():
+                if not isinstance(value, dict) or len(value) == 0:
                     continue
-                row[k] = v['raw']
+                row[field] = value.get("raw")
             data.append(row)
+
         if len(data) == 0:
             return pd.DataFrame()
-        return pd.DataFrame(data).set_index('period')
+        return pd.DataFrame(data).set_index("period")
+
+    def _cached_periodic_df(self, cache_key: str, source_key: str) -> pd.DataFrame:
+        cached = self._cache[cache_key]
+        if cached is not None:
+            return cached
+        self._cache[cache_key] = self._get_periodic_df(source_key)
+        return self._cache[cache_key]
 
     @property
     def earnings_estimate(self) -> pd.DataFrame:
-        if self._earnings_estimate is not None:
-            return self._earnings_estimate
-        self._earnings_estimate = self._get_periodic_df('earningsEstimate')
-        return self._earnings_estimate
+        """Return earnings estimate table by period."""
+        return self._cached_periodic_df("earnings_estimate", "earningsEstimate")
 
     @property
     def revenue_estimate(self) -> pd.DataFrame:
-        if self._revenue_estimate is not None:
-            return self._revenue_estimate
-        self._revenue_estimate = self._get_periodic_df('revenueEstimate')
-        return self._revenue_estimate
+        """Return revenue estimate table by period."""
+        return self._cached_periodic_df("revenue_estimate", "revenueEstimate")
 
     @property
     def eps_trend(self) -> pd.DataFrame:
-        if self._eps_trend is not None:
-            return self._eps_trend
-        self._eps_trend = self._get_periodic_df('epsTrend')
-        return self._eps_trend
+        """Return EPS trend table by period."""
+        return self._cached_periodic_df("eps_trend", "epsTrend")
 
     @property
     def eps_revisions(self) -> pd.DataFrame:
-        if self._eps_revisions is not None:
-            return self._eps_revisions
-        self._eps_revisions = self._get_periodic_df('epsRevisions')
-        return self._eps_revisions
+        """Return EPS revisions table by period."""
+        return self._cached_periodic_df("eps_revisions", "epsRevisions")
 
     @property
     def analyst_price_targets(self) -> dict:
-        if self._analyst_price_targets is not None:
-            return self._analyst_price_targets
+        """Return analyst price targets."""
+        cached = self._cache["analyst_price_targets"]
+        if cached is not None:
+            return cached
 
         try:
-            data = self._fetch(['financialData'])
+            data = self._fetch(["financialData"])
             if data is None:
                 raise KeyError("Missing quoteSummary data")
-            data = data['quoteSummary']['result'][0]['financialData']
+            financial_data = data["quoteSummary"]["result"][0]["financialData"]
         except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._analyst_price_targets = {}
-            return self._analyst_price_targets
+            self._cache["analyst_price_targets"] = {}
+            return self._cache["analyst_price_targets"]
 
         result = {}
-        for key, value in data.items():
-            if key.startswith('target'):
-                new_key = key.replace('target', '').lower().replace('price', '').strip()
+        for key, value in financial_data.items():
+            if key.startswith("target"):
+                new_key = key.replace("target", "").lower().replace("price", "").strip()
                 result[new_key] = value
-            elif key == 'currentPrice':
-                result['current'] = value
+            elif key == "currentPrice":
+                result["current"] = value
 
-        self._analyst_price_targets = result
-        return self._analyst_price_targets
+        self._cache["analyst_price_targets"] = result
+        return self._cache["analyst_price_targets"]
 
     @property
     def earnings_history(self) -> pd.DataFrame:
-        if self._earnings_history is not None:
-            return self._earnings_history
+        """Return historical reported-vs-estimate earnings data."""
+        cached = self._cache["earnings_history"]
+        if cached is not None:
+            return cached
 
         try:
-            data = self._fetch(['earningsHistory'])
+            data = self._fetch(["earningsHistory"])
             if data is None:
                 raise KeyError("Missing quoteSummary data")
-            data = data['quoteSummary']['result'][0]['earningsHistory']['history']
+            history = data["quoteSummary"]["result"][0]["earningsHistory"]["history"]
         except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._earnings_history = pd.DataFrame()
-            return self._earnings_history
+            self._cache["earnings_history"] = pd.DataFrame()
+            return self._cache["earnings_history"]
 
         rows = []
-        for item in data:
-            row = {'quarter': item.get('quarter', {}).get('fmt', None)}
-            for k, v in item.items():
-                if k == 'quarter':
+        for item in history:
+            row = {"quarter": item.get("quarter", {}).get("fmt")}
+            for key, value in item.items():
+                if key == "quarter":
                     continue
-                if not isinstance(v, dict) or len(v) == 0:
+                if not isinstance(value, dict) or len(value) == 0:
                     continue
-                row[k] = v.get('raw', None)
+                row[key] = value.get("raw")
             rows.append(row)
-        if len(data) == 0:
+
+        if len(history) == 0:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
-        if 'quarter' in df.columns:
-            df['quarter'] = pd.to_datetime(df['quarter'], format='%Y-%m-%d')
-            df.set_index('quarter', inplace=True)
+        if "quarter" in df.columns:
+            df["quarter"] = pd.to_datetime(df["quarter"], format="%Y-%m-%d")
+            df.set_index("quarter", inplace=True)
 
-        self._earnings_history = df
-        return self._earnings_history
+        self._cache["earnings_history"] = df
+        return self._cache["earnings_history"]
+
+    def _growth_rows_from_stock(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self._earnings_trend():
+            period = item.get("period")
+            if period is None:
+                continue
+            rows.append(
+                {
+                    "period": period,
+                    "stockTrend": item.get("growth", {}).get("raw"),
+                }
+            )
+        return rows
+
+    @staticmethod
+    def _upsert_growth_row(
+        rows: list[dict[str, Any]],
+        period: Any,
+        trend_name: str,
+        growth: Any,
+    ) -> None:
+        existing_row = next((row for row in rows if row["period"] == period), None)
+        if existing_row is not None:
+            existing_row[trend_name] = growth
+            return
+        rows.append({"period": period, trend_name: growth})
 
     @property
     def growth_estimates(self) -> pd.DataFrame:
-        if self._growth_estimates is not None:
-            return self._growth_estimates
-
-        if self._earnings_trend is None:
-            self._fetch_earnings_trend()
+        """Return stock/industry/sector/index growth estimates by period."""
+        cached = self._cache["growth_estimates"]
+        if cached is not None:
+            return cached
 
         try:
-            trends = self._fetch(['industryTrend', 'sectorTrend', 'indexTrend'])
-            if trends is None:
+            trends_response = self._fetch(["industryTrend", "sectorTrend", "indexTrend"])
+            if trends_response is None:
                 raise KeyError("Missing quoteSummary data")
-            trends = trends['quoteSummary']['result'][0]
+            trends = trends_response["quoteSummary"]["result"][0]
         except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._growth_estimates = pd.DataFrame()
-            return self._growth_estimates
+            self._cache["growth_estimates"] = pd.DataFrame()
+            return self._cache["growth_estimates"]
 
-        data = []
-        for item in self._earnings_trend or []:
-            period = item.get('period')
-            if period is None:
-                continue
-            row = {'period': period, 'stockTrend': item.get('growth', {}).get('raw', None)}
-            data.append(row)
-
+        rows = self._growth_rows_from_stock()
         for trend_name, trend_info in trends.items():
-            if trend_info.get('estimates'):
-                for estimate in trend_info['estimates']:
-                    period = estimate['period']
-                    existing_row = next((row for row in data if row['period'] == period), None)
-                    if existing_row:
-                        existing_row[trend_name] = estimate.get('growth')
-                    else:
-                        row = {'period': period, trend_name: estimate.get('growth')}
-                        data.append(row)
-        if len(data) == 0:
+            estimates = trend_info.get("estimates")
+            if not estimates:
+                continue
+            for estimate in estimates:
+                self._upsert_growth_row(
+                    rows=rows,
+                    period=estimate.get("period"),
+                    trend_name=trend_name,
+                    growth=estimate.get("growth"),
+                )
+
+        if len(rows) == 0:
             return pd.DataFrame()
 
-        self._growth_estimates = pd.DataFrame(data).set_index('period').dropna(how='all')
-        return self._growth_estimates
+        self._cache["growth_estimates"] = (
+            pd.DataFrame(rows).set_index("period").dropna(how="all")
+        )
+        return self._cache["growth_estimates"]
 
-    # modified version from quote.py
     def _fetch(self, modules: List[str]) -> Optional[Dict[str, Any]]:
+        """Fetch quoteSummary JSON for a set of valid modules."""
         if not isinstance(modules, list):
-            raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
+            raise YFException(
+                "Should provide a list of modules, see available modules using "
+                "`valid_modules`"
+            )
 
-        valid_modules = [m for m in modules if m in quote_summary_valid_modules]
-        module_param = ','.join(valid_modules)
+        valid_modules = [module for module in modules if module in quote_summary_valid_modules]
+        module_param = ",".join(valid_modules)
         if len(module_param) == 0:
-            raise YFException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": module_param, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
+            raise YFException(
+                "No valid modules provided, see available modules using "
+                "`valid_modules`"
+            )
+
+        params_dict = {
+            "modules": module_param,
+            "corsDomain": "finance.yahoo.com",
+            "formatted": "false",
+            "symbol": self._symbol,
+        }
         try:
-            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
-        except curl_cffi.requests.exceptions.HTTPError as e:
+            result = self._data.get_raw_json(
+                f"{_QUOTE_SUMMARY_URL_}/{self._symbol}",
+                params=params_dict,
+            )
+        except curl_cffi.requests.exceptions.HTTPError as err:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            response = e.response
+            response = err.response
             response_text = response.text if response is not None else ""
-            utils.get_yf_logger().error(str(e) + response_text)
+            utils.get_yf_logger().error("%s%s", err, response_text)
             return None
         return result
 
     def _fetch_earnings_trend(self) -> None:
+        """Populate cached earningsTrend payload."""
         try:
-            data = self._fetch(['earningsTrend'])
+            data = self._fetch(["earningsTrend"])
             if data is None:
                 raise KeyError("Missing quoteSummary data")
-            self._earnings_trend = data['quoteSummary']['result'][0]['earningsTrend']['trend']
+            trend = data["quoteSummary"]["result"][0]["earningsTrend"]["trend"]
+            self._cache["earnings_trend"] = trend
         except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._earnings_trend = []
+            self._cache["earnings_trend"] = []

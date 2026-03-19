@@ -1,38 +1,36 @@
-import yfinance as yf
+"""Calendars example."""
+
 from datetime import datetime, timedelta
 
-# Default init (today + 7 days)
-calendar = yf.Calendars()
+import yfinance as yf
 
-# Today's events: calendar of 1 day
-tomorrow = datetime.now() + timedelta(days=1)
-calendar = yf.Calendars(end=tomorrow)
 
-# Default calendar queries - accessing the properties will fetch the data from YF
-calendar.earnings_calendar
-calendar.ipo_info_calendar
-calendar.splits_calendar
-calendar.economic_events_calendar
+def main():
+    """Fetch several calendar views and a filtered earnings slice."""
+    default_calendar = yf.Calendars()
+    tomorrow = datetime.now() + timedelta(days=1)
+    calendar = yf.Calendars(end=tomorrow)
 
-# Manual queries
-calendar.get_earnings_calendar()
-calendar.get_ipo_info_calendar()
-calendar.get_splits_calendar()
-calendar.get_economic_events_calendar()
+    today = datetime.now()
+    filtered_calendar = yf.Calendars(
+        today,
+        today + timedelta(days=4 if today.weekday() == 4 else 2),
+    )
+    earnings_df = filtered_calendar.get_earnings_calendar(limit=100)
 
-# Earnings calendar custom filters
-calendar.get_earnings_calendar(
-    market_cap=100_000_000,  # filter out small-cap 
-    filter_most_active=True,  # show only actively traded. Uses: `screen(query="MOST_ACTIVES")`
-)
-
-# Example of real use case:
-# Get inminent unreported earnings events
-today = datetime.now()
-is_friday = today.weekday() == 4
-day_after_tomorrow = today + timedelta(days=4 if is_friday else 2)
-
-calendar = yf.Calendars(today, day_after_tomorrow)
-df = calendar.get_earnings_calendar(limit=100)
-
-unreported_df = df[df["Reported EPS"].isnull()]
+    return {
+        "default_calendar": default_calendar,
+        "earnings_calendar": calendar.earnings_calendar,
+        "ipo_info_calendar": calendar.ipo_info_calendar,
+        "splits_calendar": calendar.splits_calendar,
+        "economic_events_calendar": calendar.economic_events_calendar,
+        "earnings_query": calendar.get_earnings_calendar(),
+        "ipo_query": calendar.get_ipo_info_calendar(),
+        "splits_query": calendar.get_splits_calendar(),
+        "economic_events_query": calendar.get_economic_events_calendar(),
+        "active_earnings_query": calendar.get_earnings_calendar(
+            market_cap=100_000_000,
+            filter_most_active=True,
+        ),
+        "unreported_df": earnings_df[earnings_df["Reported EPS"].isnull()],
+    }

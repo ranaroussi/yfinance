@@ -1,6 +1,9 @@
+"""Sphinx configuration for the yfinance docs."""
+
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..')) 
+
+sys.path.insert(0, os.path.abspath('../..'))
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -10,9 +13,9 @@ sys.path.insert(0, os.path.abspath('../..'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'yfinance / Pythonic access to market data'
-copyright = '2017-2025 Ran Aroussi'
-author = 'Ran Aroussi'
+PROJECT = 'yfinance / Pythonic access to market data'
+COPYRIGHT = '2017-2025 Ran Aroussi'
+AUTHOR = 'Ran Aroussi'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -26,8 +29,8 @@ extensions = ['sphinx.ext.autodoc',
 
 templates_path = ['_templates']
 exclude_patterns = []
-autoclass_content = 'both'
-autosummary_generate = True
+AUTOCLASS_CONTENT = 'both'
+AUTOSUMMARY_GENERATE = True
 autodoc_default_options = {
     'exclude-members': '__init__',
     'members': True,
@@ -36,8 +39,8 @@ autodoc_default_options = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_title = 'yfinance'
-html_theme = 'pydata_sphinx_theme'
+HTML_TITLE = 'yfinance'
+HTML_THEME = 'pydata_sphinx_theme'
 html_theme_options = {
     "github_url": "https://github.com/ranaroussi/yfinance",
     "navbar_align": "left",
@@ -48,3 +51,13 @@ html_theme_options = {
 }
 html_static_path = ['_static']
 html_css_files = ['yfinance.css']
+
+globals().update(
+    project=PROJECT,
+    copyright=COPYRIGHT,
+    author=AUTHOR,
+    autoclass_content=AUTOCLASS_CONTENT,
+    autosummary_generate=AUTOSUMMARY_GENERATE,
+    html_title=HTML_TITLE,
+    html_theme=HTML_THEME,
+)

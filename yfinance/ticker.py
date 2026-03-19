@@ -24,7 +24,7 @@
 from __future__ import print_function
 
 from collections import namedtuple as _namedtuple
-from typing import Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import pandas as _pd
 
@@ -38,6 +38,56 @@ _OptionalDataFrameOrDict = Optional[_DataFrameOrDict]
 
 class Ticker(TickerBase):
     """Top-level ticker API facade with convenience properties."""
+
+    if TYPE_CHECKING:
+        isin: Optional[str]
+        major_holders: Optional[_pd.DataFrame]
+        institutional_holders: Optional[_pd.DataFrame]
+        mutualfund_holders: Optional[_pd.DataFrame]
+        insider_purchases: Optional[_pd.DataFrame]
+        insider_transactions: Optional[_pd.DataFrame]
+        insider_roster_holders: Optional[_pd.DataFrame]
+        dividends: _pd.Series
+        capital_gains: _pd.Series
+        splits: _pd.Series
+        actions: _pd.DataFrame
+        shares: _pd.DataFrame
+        info: Dict[str, Any]
+        fast_info: "FastInfo"
+        calendar: Dict[str, Any]
+        sec_filings: Dict[str, Any]
+        recommendations: _pd.DataFrame
+        recommendations_summary: _pd.DataFrame
+        upgrades_downgrades: _pd.DataFrame
+        earnings: Optional[_pd.DataFrame]
+        quarterly_earnings: Optional[_pd.DataFrame]
+        income_stmt: _pd.DataFrame
+        quarterly_income_stmt: _pd.DataFrame
+        ttm_income_stmt: _pd.DataFrame
+        incomestmt: _pd.DataFrame
+        quarterly_incomestmt: _pd.DataFrame
+        ttm_incomestmt: _pd.DataFrame
+        financials: _pd.DataFrame
+        quarterly_financials: _pd.DataFrame
+        ttm_financials: _pd.DataFrame
+        balance_sheet: _pd.DataFrame
+        quarterly_balance_sheet: _pd.DataFrame
+        balancesheet: _pd.DataFrame
+        quarterly_balancesheet: _pd.DataFrame
+        cash_flow: _pd.DataFrame
+        quarterly_cash_flow: _pd.DataFrame
+        ttm_cash_flow: _pd.DataFrame
+        cashflow: _pd.DataFrame
+        quarterly_cashflow: _pd.DataFrame
+        ttm_cashflow: _pd.DataFrame
+        analyst_price_targets: Dict[str, Any]
+        earnings_estimate: _pd.DataFrame
+        revenue_estimate: _pd.DataFrame
+        earnings_history: _pd.DataFrame
+        eps_trend: _pd.DataFrame
+        eps_revisions: _pd.DataFrame
+        growth_estimates: _pd.DataFrame
+        sustainability: _pd.DataFrame
 
     def __init__(self, ticker, session=None):
         """Initialize a ticker object."""
@@ -161,6 +211,10 @@ def _attr_property(attribute_name, doc):
         return getattr(self, attribute_name)
 
     return property(_getter, doc=doc)
+
+
+if TYPE_CHECKING:
+    from .scrapers.quote import FastInfo
 
 
 Ticker.isin = _method_property("get_isin", "Return the ticker ISIN, if available.")

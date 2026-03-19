@@ -1,9 +1,9 @@
 """Financial-statement formatting helpers used by yfinance."""
 
+import re as _re
 from typing import List, Optional, Sequence
 
 import pandas as _pd
-import re as _re
 
 
 def build_template(data):

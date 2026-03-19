@@ -26,3 +26,13 @@ _PROGRESS_BAR = None
 _ERRORS = {}
 _TRACEBACKS = {}
 _ISINS = {}
+
+
+def set_df(symbol, value):
+    """Store the latest dataframe for a ticker in shared module state."""
+    _DFS[symbol] = value
+
+
+def set_error(symbol, value):
+    """Store the latest error string for a ticker in shared module state."""
+    _ERRORS[symbol] = value

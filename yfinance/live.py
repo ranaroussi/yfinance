@@ -20,23 +20,29 @@ from yfinance.pricing_pb2 import PricingData
 class _AsyncWebSocketProtocol(Protocol):
     async def send(self, message: str) -> Any:
         """Send one message payload over the socket."""
+        raise NotImplementedError
 
     async def close(self) -> Any:
         """Close the socket connection."""
+        raise NotImplementedError
 
     def __aiter__(self) -> AsyncIterator[str]:
         """Yield inbound message payloads."""
+        raise NotImplementedError
 
 
 class _SyncWebSocketProtocol(Protocol):
     def send(self, message: str) -> Any:
         """Send one message payload over the socket."""
+        raise NotImplementedError
 
     def recv(self) -> str:
         """Receive one message payload from the socket."""
+        raise NotImplementedError
 
     def close(self) -> Any:
         """Close the socket connection."""
+        raise NotImplementedError
 
 
 class BaseWebSocket:

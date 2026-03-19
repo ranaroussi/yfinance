@@ -1,7 +1,10 @@
+"""Synchronous websocket example."""
+
 import yfinance as yf
 
-# define your message callback
+
 def message_handler(message):
+    """Handle decoded websocket messages."""
     print("Received message:", message)
 
 # =======================

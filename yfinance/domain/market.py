@@ -1,26 +1,37 @@
+"""Market status and summary accessors."""
+
 import datetime as dt
 import json as _json
+from typing import Any, Dict, Optional
+
+from frozendict import frozendict
 
 from ..config import YF_CONFIG as YfConfig
 from ..const import _QUERY1_URL_
-from ..data import utils, YfData
+from ..data import YfData, utils
 from ..exceptions import YFDataException
 
+_PARSE_ERROR_TYPES = (IndexError, KeyError, TypeError, ValueError)
+
+
 class Market:
-    def __init__(self, market:'str', session=None, timeout=30):
+    """Fetch and expose Yahoo Finance market status and summary data."""
+
+    def __init__(self, market: str, session=None, timeout: int = 30):
+        """Initialize a market helper for a given Yahoo market code."""
         self.market = market
         self.session = session
         self.timeout = timeout
 
         self._data = YfData(session=self.session)
-
         self._logger = utils.get_yf_logger()
-        
-        self._status = None
-        self._summary = None
 
-    def _fetch_json(self, url, params):
-        data = self._data.cache_get(url=url, params=params, timeout=self.timeout)
+        self._status: Optional[Dict[str, Any]] = None
+        self._summary: Optional[Dict[str, Any]] = None
+
+    def _fetch_json(self, url: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Fetch JSON for a market endpoint and handle Yahoo downtime pages."""
+        data = self._data.cache_get(url=url, params=frozendict(params), timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
             raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
@@ -28,25 +39,31 @@ class Market:
         except _json.JSONDecodeError:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.market}: Failed to retrieve market data and received faulty data.")
+            self._logger.error(
+                "%s: Failed to retrieve market data and received faulty data.",
+                self.market,
+            )
             return {}
-        
-    def _parse_data(self):
-        # Fetch both to ensure they are at the same time
-        if (self._status is not None) and (self._summary is not None):
-            return
-        
-        self._logger.debug(f"{self.market}: Parsing market data")
 
-        # Summary
+    def _parse_data(self) -> None:
+        """Fetch and parse market summary and market-time status payloads."""
+        if self._status is not None and self._summary is not None:
+            return
+
+        self._logger.debug("%s: Parsing market data", self.market)
 
         summary_url = f"{_QUERY1_URL_}/v6/finance/quote/marketSummary"
-        summary_fields = ["shortName", "regularMarketPrice", "regularMarketChange", "regularMarketChangePercent"]
+        summary_fields = [
+            "shortName",
+            "regularMarketPrice",
+            "regularMarketChange",
+            "regularMarketChangePercent",
+        ]
         summary_params = {
             "fields": ",".join(summary_fields),
             "formatted": False,
             "lang": "en-US",
-            "market": self.market
+            "market": self.market,
         }
 
         status_url = f"{_QUERY1_URL_}/v6/finance/markettime"
@@ -54,54 +71,63 @@ class Market:
             "formatted": True,
             "key": "finance",
             "lang": "en-US",
-            "market": self.market
+            "market": self.market,
         }
 
-        self._summary = self._fetch_json(summary_url, summary_params)
-        self._status = self._fetch_json(status_url, status_params)
+        summary_payload = self._fetch_json(summary_url, summary_params)
+        status_payload = self._fetch_json(status_url, status_params)
+        self._summary = summary_payload
+        self._status = status_payload
 
         try:
-            self._summary = self._summary['marketSummaryResponse']['result']
-            self._summary = {x['exchange']:x for x in self._summary}
-        except Exception as e:
+            summary_result = summary_payload["marketSummaryResponse"]["result"]
+            self._summary = {item["exchange"]: item for item in summary_result}
+        except _PARSE_ERROR_TYPES as err:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.market}: Failed to parse market summary")
-            self._logger.debug(f"{type(e)}: {e}")
-
+            self._logger.error("%s: Failed to parse market summary", self.market)
+            self._logger.debug("%s: %s", type(err).__name__, err)
 
         try:
-            # Unpack
-            self._status = self._status['finance']['marketTimes'][0]['marketTime'][0]
-            self._status['timezone'] = self._status['timezone'][0]
-            del self._status['time']  # redundant
-        except Exception as e:
+            status = status_payload["finance"]["marketTimes"][0]["marketTime"][0]
+            status["timezone"] = status["timezone"][0]
+            del status["time"]  # Redundant with open and close fields.
+            self._status = status
+        except _PARSE_ERROR_TYPES as err:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.market}: Failed to parse market status")
-            self._logger.debug(f"{type(e)}: {e}")
+            self._logger.error("%s: Failed to parse market status", self.market)
+            self._logger.debug("%s: %s", type(err).__name__, err)
+            return
+
         try:
-            self._status.update({
-                "open": dt.datetime.fromisoformat(self._status["open"]),
-                "close": dt.datetime.fromisoformat(self._status["close"]),
-                "tz": dt.timezone(dt.timedelta(hours=int(self._status["timezone"]["gmtoffset"]))/1000, self._status["timezone"]["short"])
-            })
-        except Exception as e:
+            gmtoffset = int(status["timezone"]["gmtoffset"]) / 1000
+            timezone_name = status["timezone"]["short"]
+            status.update(
+                {
+                    "open": dt.datetime.fromisoformat(status["open"]),
+                    "close": dt.datetime.fromisoformat(status["close"]),
+                    "tz": dt.timezone(
+                        dt.timedelta(hours=gmtoffset),
+                        timezone_name,
+                    ),
+                }
+            )
+            self._status = status
+        except _PARSE_ERROR_TYPES as err:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.market}: Failed to update market status")
-            self._logger.debug(f"{type(e)}: {e}")
-
-
-
+            self._logger.error("%s: Failed to update market status", self.market)
+            self._logger.debug("%s: %s", type(err).__name__, err)
 
     @property
-    def status(self):
+    def status(self) -> Optional[Dict[str, Any]]:
+        """Return parsed market status details."""
         self._parse_data()
         return self._status
 
-
     @property
-    def summary(self):
+    def summary(self) -> Optional[Dict[str, Any]]:
+        """Return parsed market summary keyed by exchange."""
         self._parse_data()
         return self._summary

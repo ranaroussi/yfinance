@@ -1,9 +1,11 @@
-# -*- coding: utf-8 -*-
+"""Shared test context and cache setup."""
+
+import datetime as _dt
+import os
+import sys
 
 import platformdirs as _ad
-import datetime as _dt
-import sys
-import os
+
 import yfinance
 # from requests_ratelimiter import LimiterSession
 # from pyrate_limiter import Duration, RequestRate, Limiter
@@ -26,12 +28,12 @@ if os.path.isdir(testing_cache_dirpath):
         shutil.rmtree(testing_cache_dirpath)
 
 # Since switching to curl_cffi, the requests_ratelimiter|cache won't work.
-session_gbl = None
+SESSION_GBL = None
 
 # # Setup a session to only rate-limit
 # history_rate = RequestRate(1, Duration.SECOND)
 # limiter = Limiter(history_rate)
-# session_gbl = LimiterSession(limiter=limiter)
+# SESSION_GBL = LimiterSession(limiter=limiter)
 
 # # Use this instead if you also want caching:
 # from requests_cache import CacheMixin, SQLiteCache
@@ -41,7 +43,7 @@ session_gbl = None
 # class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
 #     pass
 # cache_fp = os.path.join(testing_cache_dirpath, "unittests-cache")
-# session_gbl = CachedLimiterSession(
+# SESSION_GBL = CachedLimiterSession(
 #     limiter=limiter,
 #     bucket_class=MemoryQueueBucket,
 #     backend=SQLiteCache(cache_fp, expire_after=_dt.timedelta(hours=1)),

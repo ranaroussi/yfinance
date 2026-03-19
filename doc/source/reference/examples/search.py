@@ -1,3 +1,5 @@
+"""Search example."""
+
 import yfinance as yf
 
 # get list of quotes
