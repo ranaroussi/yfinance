@@ -7,7 +7,9 @@ from .config import YF_CONFIG as YfConfig
 from .exceptions import YFDataException
 
 
-def parse_json_response(response: Any, logger, error_message: str, *error_args: Any) -> Dict[str, Any]:
+def parse_json_response(
+    response: Any, logger, error_message: str, *error_args: Any
+) -> Dict[str, Any]:
     """Parse a Yahoo response body into JSON with common downtime handling."""
     if response is None or "Will be right back" in response.text:
         raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")

@@ -18,6 +18,7 @@ class TestBindOptions(unittest.TestCase):
     """Validate shared option binding logic."""
 
     def test_bind_options_returns_passthrough_kwargs(self):
+        """Split recognized option values from passthrough kwargs."""
         options, passthrough = bind_options(
             "download",
             TICKERS_DOWNLOAD_ARG_NAMES,
@@ -31,6 +32,7 @@ class TestBindOptions(unittest.TestCase):
         self.assertIn("session", passthrough)
 
     def test_bind_options_rejects_duplicate_argument(self):
+        """Reject duplicate values supplied positionally and by keyword."""
         with self.assertRaisesRegex(
             TypeError,
             re.escape("download() got multiple values for argument 'period'"),
@@ -44,6 +46,7 @@ class TestBindOptions(unittest.TestCase):
             )
 
     def test_parse_history_request_rejects_unexpected_keyword(self):
+        """Raise when unsupported history keywords are provided."""
         with self.assertRaisesRegex(
             TypeError,
             re.escape("history() got an unexpected keyword argument 'proxy'"),
@@ -51,6 +54,7 @@ class TestBindOptions(unittest.TestCase):
             _parse_history_request("history", (), {"proxy": "http://localhost"})
 
     def test_history_request_defaults_are_complete(self):
+        """Keep parsed history defaults aligned with the exported constants."""
         request = _parse_history_request("history", (), {})
 
         self.assertEqual(request.interval, HISTORY_REQUEST_DEFAULTS["interval"])
@@ -62,6 +66,7 @@ class TestQuoteSummaryModuleConstants(unittest.TestCase):
     """Validate canonical quote-summary module subsets."""
 
     def test_holders_modules_are_valid_quote_summary_modules(self):
+        """Ensure holders modules stay within the allowed quote-summary set."""
         self.assertTrue(holders_quote_summary_modules)
         self.assertTrue(set(holders_quote_summary_modules).issubset(quote_summary_valid_modules))
 
