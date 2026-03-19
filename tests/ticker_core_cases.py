@@ -21,6 +21,10 @@ from tests.ticker_support import (
 class TestTickerCore(SessionTickerTestCase):
     """Validate core ticker construction and top-level accessors."""
 
+    def tearDown(self):
+        """Restore hide_exceptions to default after each test."""
+        YF_CONFIG.debug.hide_exceptions = True
+
     def test_get_tz(self):
         """Fetch and cache timezone data for several tickers."""
         for ticker_symbol in ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]:
