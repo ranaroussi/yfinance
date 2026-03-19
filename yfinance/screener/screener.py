@@ -1,5 +1,5 @@
 import curl_cffi
-from typing import Union
+from typing import Optional, Union
 import warnings
 from json import dumps
 
@@ -53,13 +53,13 @@ PREDEFINED_SCREENER_QUERIES = {
 
 @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title='Predefined queries (Dec-2024)')})
 def screen(query: Union[str, EquityQuery, FundQuery],
-            offset: int = None, 
-            size: int = None,
-            count: int = None,
-            sortField: str = None, 
-            sortAsc: bool = None,
-            userId: str = None, 
-            userIdType: str = None, 
+            offset: Optional[int] = None, 
+            size: Optional[int] = None,
+            count: Optional[int] = None,
+            sortField: Optional[str] = None, 
+            sortAsc: Optional[bool] = None,
+            userId: Optional[str] = None, 
+            userIdType: Optional[str] = None, 
             session = None):
     """
     Run a screen: predefined query, or custom query.

@@ -6,16 +6,18 @@
 
 """yfinance - market data downloader"""
 
-from setuptools import setup, find_packages
-# from codecs import open
 import io
 from os import path
 
+from setuptools import find_packages, setup
+
 # --- get version ---
 version = "unknown"
-with open("yfinance/version.py") as f:
-    line = f.read().strip()
-    version = line.replace("version = ", "").replace('"', '')
+with open("yfinance/version.py", encoding="utf-8") as f:
+    for line in f:
+        if line.startswith("VERSION = "):
+            version = line.replace("VERSION = ", "").strip().replace('"', '')
+            break
 # --- /get version ---
 
 
@@ -64,7 +66,8 @@ setup(
                       'requests>=2.31', 'multitasking>=0.0.7',
                       'platformdirs>=2.0.0', 'pytz>=2022.5',
                       'frozendict>=2.3.4', 'peewee>=3.16.2',
-                      'beautifulsoup4>=4.11.1', 'curl_cffi>=0.7,<0.14',
+                      'beautifulsoup4>=4.11.1', 'lxml>=4.9.1',
+                      'curl_cffi>=0.7,<0.14',
                       'protobuf>=3.19.0', 'websockets>=13.0'],
     extras_require={
         'nospam': ['requests_cache>=1.0', 'requests_ratelimiter>=0.3.1'],
@@ -75,7 +78,7 @@ setup(
         'yfinance': ['pricing.proto', 'pricing_pb2.py'],
     },
     include_package_data=True,
-    # Note: Pandas.read_html() needs html5lib & beautifulsoup4
+    # Note: Pandas.read_html() needs lxml (included above)
     entry_points={
         'console_scripts': [
             'sample=sample:main',

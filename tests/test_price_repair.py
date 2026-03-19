@@ -5,8 +5,14 @@ import unittest
 
 import os
 import datetime as _dt
+from typing import cast
 import numpy as _np
 import pandas as _pd
+
+
+def _as_datetime_index(index: _pd.Index) -> _pd.DatetimeIndex:
+    assert isinstance(index, _pd.DatetimeIndex)
+    return index
 
 
 class TestPriceRepairAssumptions(unittest.TestCase):
@@ -159,8 +165,8 @@ class TestPriceRepair(unittest.TestCase):
         df_bad.loc["2022-10-24", "Close"] *= 100
         df_bad.loc["2022-10-17", "Low"] *= 100
         df_bad.loc["2022-10-03", "Open"] *= 100
-        df.index = df.index.tz_localize(tz_exchange)
-        df_bad.index = df_bad.index.tz_localize(tz_exchange)
+        df.index = _as_datetime_index(df.index).tz_localize(tz_exchange)
+        df_bad.index = _as_datetime_index(df_bad.index).tz_localize(tz_exchange)
 
         # Run test
 
@@ -176,7 +182,7 @@ class TestPriceRepair(unittest.TestCase):
                 raise
 
         # Second test - all differences should be either ~1x or ~100x
-        ratio = df_bad[data_cols].values / df[data_cols].values
+        ratio = df_bad[data_cols].to_numpy(dtype=float) / df[data_cols].to_numpy(dtype=float)
         ratio = ratio.round(2)
         # - round near-100 ratio to 100:
         f = ratio > 90
@@ -219,8 +225,8 @@ class TestPriceRepair(unittest.TestCase):
         df_bad.loc["2020-03-30", "Close"] *= 100
         df_bad.loc["2020-03-23", "Low"] *= 100
         df_bad.loc["2020-03-09", "Open"] *= 100
-        df.index = df.index.tz_localize(tz_exchange)
-        df_bad.index = df_bad.index.tz_localize(tz_exchange)
+        df.index = _as_datetime_index(df.index).tz_localize(tz_exchange)
+        df_bad.index = _as_datetime_index(df_bad.index).tz_localize(tz_exchange)
 
         df_repaired = hist._fix_unit_random_mixups(df_bad, "1wk", tz_exchange, prepost=False)
 
@@ -237,7 +243,7 @@ class TestPriceRepair(unittest.TestCase):
                 raise
 
         # Second test - all differences should be either ~1x or ~100x
-        ratio = df_bad[data_cols].values / df[data_cols].values
+        ratio = df_bad[data_cols].to_numpy(dtype=float) / df[data_cols].to_numpy(dtype=float)
         ratio = ratio.round(2)
         # - round near-100 ratio to 100:
         f = ratio > 90
@@ -275,8 +281,8 @@ class TestPriceRepair(unittest.TestCase):
         df_bad.loc["2022-11-01", "Close"] *= 100
         df_bad.loc["2022-10-31", "Low"] *= 100
         df_bad.loc["2022-10-27", "Open"] *= 100
-        df.index = df.index.tz_localize(tz_exchange)
-        df_bad.index = df_bad.index.tz_localize(tz_exchange)
+        df.index = _as_datetime_index(df.index).tz_localize(tz_exchange)
+        df_bad.index = _as_datetime_index(df_bad.index).tz_localize(tz_exchange)
 
         df_repaired = hist._fix_unit_random_mixups(df_bad, "1d", tz_exchange, prepost=False)
 
@@ -285,7 +291,7 @@ class TestPriceRepair(unittest.TestCase):
             self.assertTrue(_np.isclose(df_repaired[c], df[c], rtol=1e-2).all())
 
         # Second test - all differences should be either ~1x or ~100x
-        ratio = df_bad[data_cols].values / df[data_cols].values
+        ratio = df_bad[data_cols].to_numpy(dtype=float) / df[data_cols].to_numpy(dtype=float)
         ratio = ratio.round(2)
         # - round near-100 ratio to 100:
         f = ratio > 90
@@ -343,7 +349,7 @@ class TestPriceRepair(unittest.TestCase):
                         raise
 
                 # Second test - all differences should be either ~1x or ~100x
-                ratio = df_bad[data_cols].values / df[data_cols].values
+                ratio = df_bad[data_cols].to_numpy(dtype=float) / df[data_cols].to_numpy(dtype=float)
                 ratio = ratio.round(2)
                 # - round near-100 ratio to 100:
                 f = ratio > 90
@@ -620,8 +626,10 @@ class TestPriceRepair(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
-            currency = hist._history_metadata['currency']
-            tz = hist._history_metadata['exchangeTimezoneName']
+            metadata = cast(dict[str, str] | None, hist._history_metadata)
+            assert metadata is not None
+            currency = metadata['currency']
+            tz = metadata['exchangeTimezoneName']
 
             fp = os.path.join(self.dp, "data", tkr.replace('.','-') + '-' + interval + "-no-bad-divs.csv")
             if not os.path.isfile(fp):
@@ -634,8 +642,8 @@ class TestPriceRepair(unittest.TestCase):
             c = 'Dividends'
             self.assertTrue(_np.isclose(repaired_df[c].to_numpy(), df[c].to_numpy(), rtol=1e-12, equal_nan=True).all())
             c = 'Adj Close'
+            f_close = _np.isclose(repaired_df[c].to_numpy(), df[c].to_numpy(), rtol=1e-12, equal_nan=True)
             try:
-                f_close = _np.isclose(repaired_df[c].to_numpy(), df[c].to_numpy(), rtol=1e-12, equal_nan=True)
                 self.assertTrue(f_close.all())
             except Exception:
                 f_diff = ~f_close
@@ -652,8 +660,10 @@ class TestPriceRepair(unittest.TestCase):
             dat = yf.Ticker(tkr, session=self.session)
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
-            currency = hist._history_metadata['currency']
-            tz = hist._history_metadata['exchangeTimezoneName']
+            metadata = cast(dict[str, str] | None, hist._history_metadata)
+            assert metadata is not None
+            currency = metadata['currency']
+            tz = metadata['exchangeTimezoneName']
 
             fp = os.path.join(self.dp, "data", tkr.replace('.','-') + '-' + interval + "-bad-div.csv")
             if not os.path.isfile(fp):

@@ -8,6 +8,33 @@ import datetime as _dt
 import pytz as _tz
 import numpy as _np
 import pandas as _pd
+from yfinance import const as _yf_const
+from typing import cast
+
+
+def _as_datetime_index(index: _pd.Index) -> _pd.DatetimeIndex:
+    assert isinstance(index, _pd.DatetimeIndex)
+    return index
+
+
+def _as_multi_index(index: _pd.Index) -> _pd.MultiIndex:
+    assert isinstance(index, _pd.MultiIndex)
+    return index
+
+
+def _index_dates(index: _pd.Index) -> _np.ndarray:
+    dt_index = _as_datetime_index(index)
+    return _np.array([ts.date() for ts in dt_index], dtype=object)
+
+
+def _index_times(index: _pd.Index) -> _np.ndarray:
+    dt_index = _as_datetime_index(index)
+    return _np.array([ts.time() for ts in dt_index], dtype=object)
+
+
+def _index_weekdays(index: _pd.Index) -> _np.ndarray:
+    dt_index = _as_datetime_index(index)
+    return _np.array([ts.weekday() for ts in dt_index], dtype=int)
 
 
 class TestPriceHistory(unittest.TestCase):
@@ -29,7 +56,7 @@ class TestPriceHistory(unittest.TestCase):
             for interval in intervals:
                 df = dat.history(period="5y", interval=interval)
 
-                f = df.index.time == _dt.time(0)
+                f = _index_times(df.index) == _dt.time(0)
                 self.assertTrue(f.all())
 
     def test_download_multi_large_interval(self):
@@ -38,17 +65,19 @@ class TestPriceHistory(unittest.TestCase):
         for interval in intervals:
             with self.subTest(interval):
                 df = yf.download(tkrs, period="5y", interval=interval)
+                assert df is not None
 
-                f = df.index.time == _dt.time(0)
+                f = _index_times(df.index) == _dt.time(0)
                 self.assertTrue(f.all())
 
-                df_tkrs = df.columns.levels[1]
+                df_tkrs = _as_multi_index(df.columns).levels[1]
                 self.assertEqual(sorted(tkrs), sorted(df_tkrs))
 
     def test_download_multi_small_interval(self):
         use_tkrs = ["AAPL", "0Q3.DE", "ATVI"]
         df = yf.download(use_tkrs, period="1d", interval="5m", auto_adjust=True)
-        self.assertEqual(df.index.tz, _dt.timezone.utc)
+        assert df is not None
+        self.assertEqual(_as_datetime_index(df.index).tz, _dt.timezone.utc)
 
     def test_download_with_invalid_ticker(self):
         #Checks if using an invalid symbol gives the same output as not using an invalid symbol in combination with a valid symbol (AAPL)
@@ -60,7 +89,9 @@ class TestPriceHistory(unittest.TestCase):
         start_d = _dt.date.today() - _dt.timedelta(days=30)
         data_invalid_sym = yf.download(invalid_tkrs, start=start_d, auto_adjust=True)
         data_valid_sym = yf.download(valid_tkrs, start=start_d, auto_adjust=True)
-        dt_compare = data_valid_sym.index[0]
+        assert data_invalid_sym is not None
+        assert data_valid_sym is not None
+        dt_compare = _as_datetime_index(data_valid_sym.index)[0]
         self.assertEqual(data_invalid_sym['Close']['AAPL'][dt_compare],data_valid_sym['Close']['AAPL'][dt_compare])
 
     def test_duplicatingHourly(self):
@@ -68,14 +99,16 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(timeout=None)
+            assert isinstance(tz, str)
 
             dt_utc = _pd.Timestamp.now('UTC')
             dt = dt_utc.astimezone(_tz.timezone(tz))
             start_d = dt.date() - _dt.timedelta(days=7)
             df = dat.history(start=start_d, interval="1h")
 
-            dt0 = df.index[-2]
-            dt1 = df.index[-1]
+            dt_index = _as_datetime_index(df.index)
+            dt0 = cast(_pd.Timestamp, dt_index[-2])
+            dt1 = cast(_pd.Timestamp, dt_index[-1])
             try:
                 self.assertNotEqual(dt0.hour, dt1.hour)
             except AssertionError:
@@ -88,6 +121,7 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(timeout=None)
+            assert isinstance(tz, str)
 
             dt_utc = _pd.Timestamp.now('UTC')
             dt = dt_utc.astimezone(_tz.timezone(tz))
@@ -97,8 +131,9 @@ class TestPriceHistory(unittest.TestCase):
 
             df = dat.history(start=dt.date() - _dt.timedelta(days=7), interval="1d")
 
-            dt0 = df.index[-2]
-            dt1 = df.index[-1]
+            dt_index = _as_datetime_index(df.index)
+            dt0 = dt_index[-2]
+            dt1 = dt_index[-1]
             try:
                 self.assertNotEqual(dt0, dt1)
             except AssertionError:
@@ -114,6 +149,7 @@ class TestPriceHistory(unittest.TestCase):
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz = dat._get_ticker_tz(timeout=None)
+            assert isinstance(tz, str)
 
             dt = _tz.timezone(tz).localize(_dt.datetime.now())
             if dt.date().weekday() not in [1, 2, 3, 4]:
@@ -121,10 +157,11 @@ class TestPriceHistory(unittest.TestCase):
             test_run = True
 
             df = dat.history(start=dt.date() - _dt.timedelta(days=7), interval="1wk")
-            dt0 = df.index[-2]
-            dt1 = df.index[-1]
+            dt_index = _as_datetime_index(df.index)
+            dt0 = dt_index[-2]
+            dt1 = dt_index[-1]
             try:
-                self.assertNotEqual(dt0.week, dt1.week)
+                self.assertNotEqual(dt0.isocalendar().week, dt1.isocalendar().week)
             except AssertionError:
                 print("Ticker={}: Last two rows within same week:".format(tkr))
                 print(df.iloc[df.shape[0] - 2:])
@@ -235,12 +272,13 @@ class TestPriceHistory(unittest.TestCase):
         for tkr, dates in tkr_div_dates.items():
             df = yf.Ticker(tkr, session=self.session).history(interval='1d', start=start_d, end=end_d)
             df_divs = df[df['Dividends'] != 0].sort_index(ascending=False)
+            div_dates = _index_dates(df_divs.index)
             try:
-                self.assertTrue((df_divs.index.date == dates).all())
+                self.assertTrue((div_dates == dates).all())
             except AssertionError:
                 print(f'- ticker = {tkr}')
                 print('- response:')
-                print(df_divs.index.date)
+                print(div_dates)
                 print('- answer:')
                 print(dates)
                 raise
@@ -282,7 +320,7 @@ class TestPriceHistory(unittest.TestCase):
         # Reproduce issue #1634 - 1d dividend out-of-range, should be prepended to prices
         div_dt = _pd.Timestamp(2022, 7, 21).tz_localize("America/New_York")
         df_dividends = _pd.DataFrame(data={"Dividends":[1.0]}, index=[div_dt])
-        df_prices = _pd.DataFrame(data={c:[1.0] for c in yf.const._PRICE_COLNAMES_}|{'Volume':0}, index=[div_dt+_dt.timedelta(days=1)])
+        df_prices = _pd.DataFrame(data={c:[1.0] for c in _yf_const._PRICE_COLNAMES_}|{'Volume':0}, index=[div_dt+_dt.timedelta(days=1)])
         df_merged = yf.utils.safe_merge_dfs(df_prices, df_dividends, '1d')
         self.assertEqual(df_merged.shape[0], 2)
         self.assertTrue(df_merged[df_prices.columns].iloc[1:].equals(df_prices))
@@ -386,12 +424,13 @@ class TestPriceHistory(unittest.TestCase):
 
         interval = "1d"
         df = dat.history(start=start, end=end, interval=interval)
-        self.assertTrue(((df.index.weekday >= 0) & (df.index.weekday <= 4)).all())
+        weekdays = _index_weekdays(df.index)
+        self.assertTrue(((weekdays >= 0) & (weekdays <= 4)).all())
 
         interval = "1wk"
         df = dat.history(start=start, end=end, interval=interval)
         try:
-            self.assertTrue((df.index.weekday == 0).all())
+            self.assertTrue((_index_weekdays(df.index) == 0).all())
         except AssertionError:
             print("Weekly data not aligned to Monday")
             raise
@@ -420,23 +459,28 @@ class TestPriceHistory(unittest.TestCase):
         df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
         if df.empty:
             self.skipTest("TEST NEEDS UPDATE: 'special_day' needs to be LATEST Thanksgiving date")
-        last_dts = _pd.Series(df.index).groupby(df.index.date).last()
+        df_dates = _index_dates(df.index)
+        last_dts = _pd.Series(df.index).groupby(df_dates).last()
         dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)
-        self.assertTrue(_np.equal(dfd.index.date, _pd.to_datetime(last_dts.index).date).all())
+        self.assertTrue(_np.equal(_index_dates(dfd.index), _index_dates(_pd.to_datetime(last_dts.index))).all())
 
     def test_prune_post_intraday_asx(self):
         # Setup
         tkr = "BHP.AX"
-        # No early closes in 2024
+        # No early closes in 2025
         dat = yf.Ticker(tkr, session=self.session)
 
         # Test no other afternoons (or mornings) were pruned
-        start_d = _dt.date(2024, 1, 1)
-        end_d = _dt.date(2024+1, 1, 1)
+        # Use a recent 6-month window to stay within Yahoo's 730-day 1h data limit
+        end_d = _dt.date.today() - _dt.timedelta(days=1)
+        start_d = end_d - _dt.timedelta(days=180)
         df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
-        last_dts = _pd.Series(df.index).groupby(df.index.date).last()
+        if df.empty or not hasattr(df.index, 'date'):
+            self.skipTest("No 1h data available for BHP.AX in this date range")
+        df_dates = _index_dates(df.index)
+        last_dts = _pd.Series(df.index).groupby(df_dates).last()
         dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)
-        self.assertTrue(_np.equal(dfd.index.date, _pd.to_datetime(last_dts.index).date).all())
+        self.assertTrue(_np.equal(_index_dates(dfd.index), _index_dates(_pd.to_datetime(last_dts.index))).all())
 
     def test_weekly_2rows_fix(self):
         tkr = "AMZN"
@@ -445,7 +489,7 @@ class TestPriceHistory(unittest.TestCase):
 
         dat = yf.Ticker(tkr)
         df = dat.history(start=start, interval="1wk")
-        self.assertTrue((df.index.weekday == 0).all())
+        self.assertTrue((_index_weekdays(df.index) == 0).all())
 
     def test_aggregate_capital_gains(self):
         # Setup

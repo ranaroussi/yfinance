@@ -51,6 +51,8 @@ class Domain(ABC):
             str: The name of the domain entity.
         """
         self._ensure_fetched(self._name)
+        if self._name is None:
+            raise ValueError(f"Failed to retrieve name for domain '{self._key}'")
         return self._name
 
     @property
@@ -62,6 +64,8 @@ class Domain(ABC):
             str: The symbol representing the domain entity.
         """
         self._ensure_fetched(self._symbol)
+        if self._symbol is None:
+            raise ValueError(f"Failed to retrieve symbol for domain '{self._key}'")
         return self._symbol
 
     @property
@@ -72,8 +76,7 @@ class Domain(ABC):
         Returns:
             Ticker: A Ticker object associated with the domain entity.
         """
-        self._ensure_fetched(self._symbol)
-        return Ticker(self._symbol)
+        return Ticker(self.symbol)
 
     @property
     def overview(self) -> Dict:
@@ -84,6 +87,8 @@ class Domain(ABC):
             Dict: A dictionary containing an overview of the domain entity.
         """
         self._ensure_fetched(self._overview)
+        if self._overview is None:
+            raise ValueError(f"Failed to retrieve overview for domain '{self._key}'")
         return self._overview
 
     @property
@@ -106,6 +111,8 @@ class Domain(ABC):
             List[Dict[str, str]]: A list of research reports, where each report is a dictionary with metadata.
         """
         self._ensure_fetched(self._research_reports)
+        if self._research_reports is None:
+            return []
         return self._research_reports
 
     def _fetch(self, query_url) -> Dict:
@@ -133,7 +140,7 @@ class Domain(ABC):
         self._symbol = data.get('symbol')
         self._overview = self._parse_overview(data.get('overview', {}))
         self._top_companies = self._parse_top_companies(data.get('topCompanies', {}))
-        self._research_reports = data.get('researchReports')
+        self._research_reports = data.get('researchReports') or []
 
     def _parse_overview(self, overview) -> Dict:
         """

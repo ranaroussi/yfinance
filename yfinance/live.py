@@ -1,18 +1,47 @@
+"""WebSocket clients for Yahoo Finance live streaming quotes."""
+
 import asyncio
+import binascii
 import base64
 import json
-from typing import List, Optional, Callable, Union
+from typing import Any, AsyncIterator, Callable, List, Optional, Protocol, Union, cast
 
-from websockets.sync.client import connect as sync_connect
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import DecodeError, Message
 from websockets.asyncio.client import connect as async_connect
+from websockets.exceptions import WebSocketException
+from websockets.sync.client import connect as sync_connect
 
 from yfinance import utils
-from yfinance.config import YfConfig
+from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.pricing_pb2 import PricingData
-from google.protobuf.json_format import MessageToDict
+
+
+class _AsyncWebSocketProtocol(Protocol):
+    async def send(self, message: str) -> Any:
+        """Send one message payload over the socket."""
+
+    async def close(self) -> Any:
+        """Close the socket connection."""
+
+    def __aiter__(self) -> AsyncIterator[str]:
+        """Yield inbound message payloads."""
+
+
+class _SyncWebSocketProtocol(Protocol):
+    def send(self, message: str) -> Any:
+        """Send one message payload over the socket."""
+
+    def recv(self) -> str:
+        """Receive one message payload from the socket."""
+
+    def close(self) -> Any:
+        """Close the socket connection."""
 
 
 class BaseWebSocket:
+    """Shared functionality for sync and async Yahoo Finance websocket clients."""
+
     def __init__(self, url: str = "wss://streamer.finance.yahoo.com/?version=2", verbose=True):
         self.url = url
         self.verbose = verbose
@@ -21,22 +50,36 @@ class BaseWebSocket:
         self._subscriptions = set()
         self._subscription_interval = 15  # seconds
 
+    def subscriptions(self) -> List[str]:
+        """Return the currently tracked subscriptions."""
+        return list(self._subscriptions)
+
+    def is_connected(self) -> bool:
+        """Return whether a websocket instance has been established."""
+        return self._ws is not None
+
     def _decode_message(self, base64_message: str) -> dict:
         try:
             decoded_bytes = base64.b64decode(base64_message)
-            pricing_data = PricingData()
+            pricing_data = cast(Message, PricingData())
             pricing_data.ParseFromString(decoded_bytes)
-            return MessageToDict(pricing_data, preserving_proto_field_name=True)
-        except Exception as e:
+            return cast(dict, MessageToDict(pricing_data, preserving_proto_field_name=True))
+        except (binascii.Error, DecodeError, TypeError, ValueError) as error:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self.logger.error("Failed to decode message: %s", e, exc_info=True)
+            self.logger.error("Failed to decode message: %s", error, exc_info=True)
             if self.verbose:
-                print("Failed to decode message: %s", e)
+                print(f"Failed to decode message: {error}")
             return {
-                'error': str(e),
+                'error': str(error),
                 'raw_base64': base64_message
             }
+
+    def _decode_stream_payload(self, message: str) -> dict:
+        """Decode one websocket payload into a pricing dictionary."""
+        message_json = json.loads(message)
+        encoded_data = message_json.get("message", "")
+        return self._decode_message(encoded_data)
 
 
 class AsyncWebSocket(BaseWebSocket):
@@ -53,22 +96,23 @@ class AsyncWebSocket(BaseWebSocket):
             verbose (bool): Flag to enable or disable print statements. Defaults to True.
         """
         super().__init__(url, verbose)
+        self._ws: Optional[_AsyncWebSocketProtocol] = None
         self._message_handler = None  # Callable to handle messages
         self._heartbeat_task = None  # Task to send heartbeat subscribe
 
     async def _connect(self):
         try:
             if self._ws is None:
-                self._ws = await async_connect(self.url)
+                self._ws = cast(_AsyncWebSocketProtocol, await async_connect(self.url))
                 self.logger.info("Connected to WebSocket.")
                 if self.verbose:
                     print("Connected to WebSocket.")
-        except Exception as e:
+        except (OSError, WebSocketException) as error:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self.logger.error("Failed to connect to WebSocket: %s", e, exc_info=True)
+            self.logger.error("Failed to connect to WebSocket: %s", error, exc_info=True)
             if self.verbose:
-                print(f"Failed to connect to WebSocket: {e}")
+                print(f"Failed to connect to WebSocket: {error}")
             self._ws = None
             raise
 
@@ -78,17 +122,19 @@ class AsyncWebSocket(BaseWebSocket):
                 await asyncio.sleep(self._subscription_interval)
 
                 if self._subscriptions:
+                    if self._ws is None:
+                        raise RuntimeError("WebSocket is not connected.")
                     message = {"subscribe": list(self._subscriptions)}
                     await self._ws.send(json.dumps(message))
 
                     if self.verbose:
                         print(f"Heartbeat subscription sent for symbols: {self._subscriptions}")
-            except Exception as e:
+            except (OSError, RuntimeError, TypeError, ValueError) as error:
                 if not YfConfig.debug.hide_exceptions:
                     raise
-                self.logger.error("Error in heartbeat subscription: %s", e, exc_info=True)
+                self.logger.error("Error in heartbeat subscription: %s", error, exc_info=True)
                 if self.verbose:
-                    print(f"Error in heartbeat subscription: {e}")
+                    print(f"Error in heartbeat subscription: {error}")
                 break
 
     async def subscribe(self, symbols: Union[str, List[str]]):
@@ -105,6 +151,8 @@ class AsyncWebSocket(BaseWebSocket):
 
         self._subscriptions.update(symbols)
 
+        if self._ws is None:
+            raise RuntimeError("WebSocket is not connected.")
         message = {"subscribe": list(self._subscriptions)}
         await self._ws.send(json.dumps(message))
 
@@ -112,7 +160,7 @@ class AsyncWebSocket(BaseWebSocket):
         if self._heartbeat_task is None:
             self._heartbeat_task = asyncio.create_task(self._periodic_subscribe())
 
-        self.logger.info(f"Subscribed to symbols: {symbols}")
+        self.logger.info("Subscribed to symbols: %s", symbols)
         if self.verbose:
             print(f"Subscribed to symbols: {symbols}")
 
@@ -130,19 +178,58 @@ class AsyncWebSocket(BaseWebSocket):
 
         self._subscriptions.difference_update(symbols)
 
+        if self._ws is None:
+            raise RuntimeError("WebSocket is not connected.")
         message = {"unsubscribe": symbols}
         await self._ws.send(json.dumps(message))
 
-        self.logger.info(f"Unsubscribed from symbols: {symbols}")
+        self.logger.info("Unsubscribed from symbols: %s", symbols)
         if self.verbose:
             print(f"Unsubscribed from symbols: {symbols}")
+
+    async def _process_async_message(self, message: str):
+        """Decode and dispatch one async stream message."""
+        decoded_message = self._decode_stream_payload(message)
+
+        if self._message_handler:
+            try:
+                if asyncio.iscoroutinefunction(self._message_handler):
+                    await self._message_handler(decoded_message)
+                else:
+                    self._message_handler(decoded_message)
+            except (RuntimeError, TypeError, ValueError) as handler_error:
+                if not YfConfig.debug.hide_exceptions:
+                    raise
+                self.logger.error(
+                    "Error in message handler: %s",
+                    handler_error,
+                    exc_info=True,
+                )
+                if self.verbose:
+                    print("Error in message handler:", handler_error)
+            return
+
+        print(decoded_message)
+
+    async def _recover_async_listener(self, error: Exception):
+        """Log listener failures and reconnect after a backoff."""
+        self.logger.error("Error while listening to messages: %s", error, exc_info=True)
+        if self.verbose:
+            print(f"Error while listening to messages: {error}")
+
+        self.logger.info("Attempting to reconnect...")
+        if self.verbose:
+            print("Attempting to reconnect...")
+        await asyncio.sleep(3)
+        await self._connect()
 
     async def listen(self, message_handler=None):
         """
         Start listening to messages from the WebSocket server.
 
         Args:
-            message_handler (Optional[Callable[[dict], None]]): Optional function to handle received messages.
+            message_handler (Optional[Callable[[dict], None]]):
+                Optional function to handle received messages.
         """
         await self._connect()
         self._message_handler = message_handler
@@ -155,27 +242,12 @@ class AsyncWebSocket(BaseWebSocket):
         if self._heartbeat_task is None:
             self._heartbeat_task = asyncio.create_task(self._periodic_subscribe())
 
+        if self._ws is None:
+            raise RuntimeError("WebSocket is not connected.")
         while True:
             try:
                 async for message in self._ws:
-                    message_json = json.loads(message)
-                    encoded_data = message_json.get("message", "")
-                    decoded_message = self._decode_message(encoded_data)
-
-                    if self._message_handler:
-                        try:
-                            if asyncio.iscoroutinefunction(self._message_handler):
-                                await self._message_handler(decoded_message)
-                            else:
-                                self._message_handler(decoded_message)
-                        except Exception as handler_exception:
-                            if not YfConfig.debug.hide_exceptions:
-                                raise
-                            self.logger.error("Error in message handler: %s", handler_exception, exc_info=True)
-                            if self.verbose:
-                                print("Error in message handler:", handler_exception)
-                    else:
-                        print(decoded_message)
+                    await self._process_async_message(message)
 
             except (KeyboardInterrupt, asyncio.CancelledError):
                 self.logger.info("WebSocket listening interrupted. Closing connection...")
@@ -184,19 +256,10 @@ class AsyncWebSocket(BaseWebSocket):
                 await self.close()
                 break
 
-            except Exception as e:
+            except (json.JSONDecodeError, OSError, RuntimeError, TypeError, ValueError) as error:
                 if not YfConfig.debug.hide_exceptions:
                     raise
-                self.logger.error("Error while listening to messages: %s", e, exc_info=True)
-                if self.verbose:
-                    print("Error while listening to messages: %s", e)
-
-                # Attempt to reconnect if connection drops
-                self.logger.info("Attempting to reconnect...")
-                if self.verbose:
-                    print("Attempting to reconnect...")
-                await asyncio.sleep(3)  # backoff
-                await self._connect()
+                await self._recover_async_listener(error)
 
     async def close(self):
         """Close the WebSocket connection."""
@@ -231,18 +294,19 @@ class WebSocket(BaseWebSocket):
             verbose (bool): Flag to enable or disable print statements. Defaults to True.
         """
         super().__init__(url, verbose)
+        self._ws: Optional[_SyncWebSocketProtocol] = None
 
     def _connect(self):
         try:
             if self._ws is None:
-                self._ws = sync_connect(self.url)
+                self._ws = cast(_SyncWebSocketProtocol, sync_connect(self.url))
                 self.logger.info("Connected to WebSocket.")
                 if self.verbose:
                     print("Connected to WebSocket.")
-        except Exception as e:
-            self.logger.error("Failed to connect to WebSocket: %s", e, exc_info=True)
+        except (OSError, WebSocketException) as error:
+            self.logger.error("Failed to connect to WebSocket: %s", error, exc_info=True)
             if self.verbose:
-                print(f"Failed to connect to WebSocket: {e}")
+                print(f"Failed to connect to WebSocket: {error}")
             self._ws = None
             raise
 
@@ -260,10 +324,12 @@ class WebSocket(BaseWebSocket):
 
         self._subscriptions.update(symbols)
 
+        if self._ws is None:
+            raise RuntimeError("WebSocket is not connected.")
         message = {"subscribe": list(self._subscriptions)}
         self._ws.send(json.dumps(message))
 
-        self.logger.info(f"Subscribed to symbols: {symbols}")
+        self.logger.info("Subscribed to symbols: %s", symbols)
         if self.verbose:
             print(f"Subscribed to symbols: {symbols}")
 
@@ -281,19 +347,47 @@ class WebSocket(BaseWebSocket):
 
         self._subscriptions.difference_update(symbols)
 
+        if self._ws is None:
+            raise RuntimeError("WebSocket is not connected.")
         message = {"unsubscribe": symbols}
         self._ws.send(json.dumps(message))
 
-        self.logger.info(f"Unsubscribed from symbols: {symbols}")
+        self.logger.info("Unsubscribed from symbols: %s", symbols)
         if self.verbose:
             print(f"Unsubscribed from symbols: {symbols}")
+
+    def _process_sync_message(
+        self,
+        message: str,
+        message_handler: Optional[Callable[[dict], None]],
+    ):
+        """Decode and dispatch one sync stream message."""
+        decoded_message = self._decode_stream_payload(message)
+
+        if message_handler:
+            try:
+                message_handler(decoded_message)
+            except (RuntimeError, TypeError, ValueError) as handler_error:
+                if not YfConfig.debug.hide_exceptions:
+                    raise
+                self.logger.error(
+                    "Error in message handler: %s",
+                    handler_error,
+                    exc_info=True,
+                )
+                if self.verbose:
+                    print("Error in message handler:", handler_error)
+            return
+
+        print(decoded_message)
 
     def listen(self, message_handler: Optional[Callable[[dict], None]] = None):
         """
         Start listening to messages from the WebSocket server.
 
         Args:
-            message_handler (Optional[Callable[[dict], None]]): Optional function to handle received messages.
+            message_handler (Optional[Callable[[dict], None]]):
+                Optional function to handle received messages.
         """
         self._connect()
 
@@ -303,22 +397,10 @@ class WebSocket(BaseWebSocket):
 
         while True:
             try:
+                if self._ws is None:
+                    raise RuntimeError("WebSocket is not connected.")
                 message = self._ws.recv()
-                message_json = json.loads(message)
-                encoded_data = message_json.get("message", "")
-                decoded_message = self._decode_message(encoded_data)
-
-                if message_handler:
-                    try:
-                        message_handler(decoded_message)
-                    except Exception as handler_exception:
-                        if not YfConfig.debug.hide_exceptions:
-                            raise
-                        self.logger.error("Error in message handler: %s", handler_exception, exc_info=True)
-                        if self.verbose:
-                            print("Error in message handler:", handler_exception)
-                else:
-                    print(decoded_message)
+                self._process_sync_message(message, message_handler)
 
             except KeyboardInterrupt:
                 if self.verbose:
@@ -326,12 +408,12 @@ class WebSocket(BaseWebSocket):
                 self.close()
                 break
 
-            except Exception as e:
+            except (json.JSONDecodeError, OSError, RuntimeError, TypeError, ValueError) as error:
                 if not YfConfig.debug.hide_exceptions:
                     raise
-                self.logger.error("Error while listening to messages: %s", e, exc_info=True)
+                self.logger.error("Error while listening to messages: %s", error, exc_info=True)
                 if self.verbose:
-                    print("Error while listening to messages: %s", e)
+                    print(f"Error while listening to messages: {error}")
                 break
 
     def close(self):

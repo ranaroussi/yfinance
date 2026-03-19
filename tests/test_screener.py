@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
+from typing import Any
+
 from yfinance.screener.screener import screen
 from yfinance.screener.query import EquityQuery
 
@@ -7,9 +9,10 @@ from yfinance.screener.query import EquityQuery
 class TestScreener(unittest.TestCase):
 
     @classmethod
-    def setUpClass(self):
-        self.query = EquityQuery('gt',['eodprice',3])
-        self.predefined = 'aggressive_small_caps'
+    def setUpClass(cls):
+        operand: list[Any] = ['eodprice', 3]
+        cls.query = EquityQuery('gt', operand)
+        cls.predefined = 'aggressive_small_caps'
 
     @patch('yfinance.screener.screener.YfData.post')
     def test_set_large_size_in_body(self, mock_post):

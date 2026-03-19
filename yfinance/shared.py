@@ -19,6 +19,8 @@
 # limitations under the License.
 #
 
+"""Shared module state used across yfinance helpers."""
+
 _DFS = {}
 _PROGRESS_BAR = None
 _ERRORS = {}

@@ -15,11 +15,11 @@ import pandas as pd
 from tests.context import yfinance as yf
 from tests.context import session_gbl
 from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError, YFDataException
-from yfinance.config import YfConfig
+from yfinance.config import YF_CONFIG as YfConfig
 
 import unittest
 # import requests_cache
-from typing import Union, Any, get_args, _GenericAlias
+from typing import Union, Any, Optional, TypeVar, get_args
 # from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
@@ -63,7 +63,7 @@ def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name
         attribute = getattr(instance, attribute_name)
         if attribute is not None and expected_type is not Any:
             err_msg = f'{attribute_name} type is {type(attribute)} not {expected_type}'
-            if isinstance(expected_type, _GenericAlias) and expected_type.__origin__ is Union:
+            if getattr(expected_type, '__origin__', None) is Union:
                 allowed_types = get_args(expected_type)
                 testClass.assertTrue(isinstance(attribute, allowed_types), err_msg)
             else:
@@ -72,6 +72,19 @@ def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name
         testClass.assertRaises(
             YFNotImplementedError, lambda: getattr(instance, attribute_name)
         )
+
+
+def as_dataframe(value: Any) -> pd.DataFrame:
+    assert isinstance(value, pd.DataFrame)
+    return value
+
+
+T = TypeVar("T")
+
+
+def as_non_none(value: Optional[T]) -> T:
+    assert value is not None
+    return value
 
 class TestTicker(unittest.TestCase):
     session = None
@@ -89,7 +102,9 @@ class TestTicker(unittest.TestCase):
         tkrs = ["IMP.JO", "BHG.JO", "SSW.JO", "BP.L", "INTC"]
         for tkr in tkrs:
             # First step: remove ticker from tz-cache
-            yf.cache.get_tz_cache().store(tkr, None)
+            tz_cache = yf.cache.get_tz_cache()
+            assert tz_cache is not None
+            tz_cache.store(tkr, None)
 
             # Test:
             dat = yf.Ticker(tkr, session=self.session)
@@ -179,14 +194,14 @@ class TestTicker(unittest.TestCase):
                     else:
                         continue
 
-                    actual_start = df.index[0].to_pydatetime().replace(tzinfo=None)
+                    actual_start = datetime.fromisoformat(str(df.index[0])).replace(tzinfo=None)
                     expected_start = expected_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
                     # leeway added because of weekends
                     self.assertGreaterEqual(actual_start, expected_start - timedelta(days=10),
                                             f"Start date {actual_start} out of range for period={period}")
-                    self.assertLessEqual(df.index[-1].to_pydatetime().replace(tzinfo=None), now,
-                                         f"End date {df.index[-1]} out of range for period={period}")
+                    actual_end = datetime.fromisoformat(str(df.index[-1])).replace(tzinfo=None)
+                    self.assertLessEqual(actual_end, now, f"End date {df.index[-1]} out of range for period={period}")
 
     # # 2025-12-11: test failing and no time to find new tkr
     # def test_prices_missing(self):
@@ -279,7 +294,7 @@ class TestTickerHistory(unittest.TestCase):
         self.symbols = ["AMZN", "MSFT", "NVDA"]
 
     def tearDown(self):
-        self.ticker = None
+        pass
 
     def test_history(self):
         md = self.ticker.history_metadata
@@ -289,20 +304,22 @@ class TestTickerHistory(unittest.TestCase):
         self.assertFalse(data.empty, "data is empty")
 
     def test_download(self):
-        tomorrow = pd.Timestamp.now().date() + pd.Timedelta(days=1)  # helps with caching
+        tomorrow = datetime.now().date() + timedelta(days=1)  # helps with caching
         for t in [False, True]:
             for i in [False, True]:
                 for m in [False, True]:
                     for n in [1, 'all']:
                         symbols = self.symbols[0] if n == 1 else self.symbols
-                        data = yf.download(symbols, end=tomorrow, session=self.session, 
+                        data = yf.download(symbols, end=tomorrow, session=self.session,
                                            threads=t, ignore_tz=i, multi_level_index=m)
                         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+                        data = as_dataframe(data)
                         self.assertFalse(data.empty, "data is empty")
+                        dt_index = pd.DatetimeIndex(data.index)
                         if i:
-                            self.assertIsNone(data.index.tz)
+                            self.assertIsNone(dt_index.tz)
                         else:
-                            self.assertIsNotNone(data.index.tz)
+                            self.assertIsNotNone(dt_index.tz)
                         if (not m) and n == 1:
                             self.assertFalse(isinstance(data.columns, pd.MultiIndex))
                         else:
@@ -378,11 +395,12 @@ class TestTickerEarnings(unittest.TestCase):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
 
     def tearDown(self):
-        self.ticker = None
+        pass
 
     def test_earnings_dates(self):
         data = self.ticker.earnings_dates
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_non_none(data)
         self.assertFalse(data.empty, "data is empty")
 
     def test_earnings_dates_with_limit(self):
@@ -391,6 +409,7 @@ class TestTickerEarnings(unittest.TestCase):
         limit = 100
         data = ticker.get_earnings_dates(limit=limit)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         self.assertEqual(len(data), limit, "Wrong number or rows")
 
@@ -435,11 +454,12 @@ class TestTickerHolders(unittest.TestCase):
         self.ticker = yf.Ticker("GOOGL", session=self.session)
 
     def tearDown(self):
-        self.ticker = None
+        pass
 
     def test_major_holders(self):
         data = self.ticker.major_holders
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.major_holders
@@ -448,6 +468,7 @@ class TestTickerHolders(unittest.TestCase):
     def test_institutional_holders(self):
         data = self.ticker.institutional_holders
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.institutional_holders
@@ -456,6 +477,7 @@ class TestTickerHolders(unittest.TestCase):
     def test_mutualfund_holders(self):
         data = self.ticker.mutualfund_holders
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.mutualfund_holders
@@ -464,6 +486,7 @@ class TestTickerHolders(unittest.TestCase):
     def test_insider_transactions(self):
         data = self.ticker.insider_transactions
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.insider_transactions
@@ -472,6 +495,7 @@ class TestTickerHolders(unittest.TestCase):
     def test_insider_purchases(self):
         data = self.ticker.insider_purchases
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.insider_purchases
@@ -480,6 +504,7 @@ class TestTickerHolders(unittest.TestCase):
     def test_insider_roster_holders(self):
         data = self.ticker.insider_roster_holders
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.insider_roster_holders
@@ -507,7 +532,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.ticker_old_fmt = yf.Ticker("BSE.AX", session=self.session)
 
     def tearDown(self):
-        self.ticker = None
+        pass
 
     def test_isin(self):
         data = self.ticker.isin
@@ -525,6 +550,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
     def test_shares_full(self):
         data = self.ticker.get_shares_full()
         self.assertIsInstance(data, pd.Series, "data has wrong type")
+        assert isinstance(data, pd.Series)
         self.assertFalse(data.empty, "data is empty")
 
     def test_income_statement(self):
@@ -534,6 +560,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_income_stmt(pretty=True)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -548,6 +575,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_income_stmt(pretty=False)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -563,6 +591,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_income_stmt(pretty=True, freq="quarterly")
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -577,6 +606,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_income_stmt(pretty=False, freq="quarterly")
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -591,6 +621,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_income_stmt(pretty=True, freq='trailing')
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -605,6 +636,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_income_stmt(pretty=False, freq='trailing')
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -620,6 +652,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_balance_sheet(pretty=True)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -634,6 +667,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_balance_sheet(pretty=False)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -649,6 +683,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_balance_sheet(pretty=True, freq="quarterly")
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -663,6 +698,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_balance_sheet(pretty=False, freq="quarterly")
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -678,6 +714,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_cashflow(pretty=True)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -692,6 +729,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_cashflow(pretty=False)
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -707,6 +745,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_cashflow(pretty=True, freq="quarterly")
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -721,6 +760,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_cashflow(pretty=False, freq="quarterly")
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -735,6 +775,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         # Test contents of table
         data = self.ticker.get_cashflow(pretty=True, freq='trailing')
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -749,6 +790,7 @@ class TestTickerMiscFinancials(unittest.TestCase):
         expected_keys = [k.replace(' ', '') for k in expected_keys]
         data = self.ticker.get_cashflow(pretty=False, freq='trailing')
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         for k in expected_keys:
             self.assertIn(k, data.index, "Did not find expected row in index")
@@ -758,82 +800,82 @@ class TestTickerMiscFinancials(unittest.TestCase):
         self.assertIsInstance(data, dict, "data has wrong type")
 
     def test_income_alt_names(self):
-        i1 = self.ticker.income_stmt
-        i2 = self.ticker.incomestmt
+        i1 = as_dataframe(self.ticker.income_stmt)
+        i2 = as_dataframe(self.ticker.incomestmt)
         self.assertTrue(i1.equals(i2))
-        i3 = self.ticker.financials
+        i3 = as_dataframe(self.ticker.financials)
         self.assertTrue(i1.equals(i3))
 
-        i1 = self.ticker.get_income_stmt()
-        i2 = self.ticker.get_incomestmt()
+        i1 = as_dataframe(self.ticker.get_income_stmt())
+        i2 = as_dataframe(self.ticker.get_incomestmt())
         self.assertTrue(i1.equals(i2))
-        i3 = self.ticker.get_financials()
+        i3 = as_dataframe(self.ticker.get_financials())
         self.assertTrue(i1.equals(i3))
 
-        i1 = self.ticker.quarterly_income_stmt
-        i2 = self.ticker.quarterly_incomestmt
+        i1 = as_dataframe(self.ticker.quarterly_income_stmt)
+        i2 = as_dataframe(self.ticker.quarterly_incomestmt)
         self.assertTrue(i1.equals(i2))
-        i3 = self.ticker.quarterly_financials
+        i3 = as_dataframe(self.ticker.quarterly_financials)
         self.assertTrue(i1.equals(i3))
 
-        i1 = self.ticker.get_income_stmt(freq="quarterly")
-        i2 = self.ticker.get_incomestmt(freq="quarterly")
+        i1 = as_dataframe(self.ticker.get_income_stmt(freq="quarterly"))
+        i2 = as_dataframe(self.ticker.get_incomestmt(freq="quarterly"))
         self.assertTrue(i1.equals(i2))
-        i3 = self.ticker.get_financials(freq="quarterly")
+        i3 = as_dataframe(self.ticker.get_financials(freq="quarterly"))
         self.assertTrue(i1.equals(i3))
 
-        i1 = self.ticker.ttm_income_stmt
-        i2 = self.ticker.ttm_incomestmt
+        i1 = as_dataframe(self.ticker.ttm_income_stmt)
+        i2 = as_dataframe(self.ticker.ttm_incomestmt)
         self.assertTrue(i1.equals(i2))
-        i3 = self.ticker.ttm_financials
+        i3 = as_dataframe(self.ticker.ttm_financials)
         self.assertTrue(i1.equals(i3))
 
-        i1 = self.ticker.get_income_stmt(freq="trailing")
-        i2 = self.ticker.get_incomestmt(freq="trailing")
+        i1 = as_dataframe(self.ticker.get_income_stmt(freq="trailing"))
+        i2 = as_dataframe(self.ticker.get_incomestmt(freq="trailing"))
         self.assertTrue(i1.equals(i2))
-        i3 = self.ticker.get_financials(freq="trailing")
+        i3 = as_dataframe(self.ticker.get_financials(freq="trailing"))
         self.assertTrue(i1.equals(i3))
 
     def test_balance_sheet_alt_names(self):
-        i1 = self.ticker.balance_sheet
-        i2 = self.ticker.balancesheet
+        i1 = as_dataframe(self.ticker.balance_sheet)
+        i2 = as_dataframe(self.ticker.balancesheet)
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.get_balance_sheet()
-        i2 = self.ticker.get_balancesheet()
+        i1 = as_dataframe(self.ticker.get_balance_sheet())
+        i2 = as_dataframe(self.ticker.get_balancesheet())
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.quarterly_balance_sheet
-        i2 = self.ticker.quarterly_balancesheet
+        i1 = as_dataframe(self.ticker.quarterly_balance_sheet)
+        i2 = as_dataframe(self.ticker.quarterly_balancesheet)
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.get_balance_sheet(freq="quarterly")
-        i2 = self.ticker.get_balancesheet(freq="quarterly")
+        i1 = as_dataframe(self.ticker.get_balance_sheet(freq="quarterly"))
+        i2 = as_dataframe(self.ticker.get_balancesheet(freq="quarterly"))
         self.assertTrue(i1.equals(i2))
 
     def test_cash_flow_alt_names(self):
-        i1 = self.ticker.cash_flow
-        i2 = self.ticker.cashflow
+        i1 = as_dataframe(self.ticker.cash_flow)
+        i2 = as_dataframe(self.ticker.cashflow)
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.get_cash_flow()
-        i2 = self.ticker.get_cashflow()
+        i1 = as_dataframe(self.ticker.get_cash_flow())
+        i2 = as_dataframe(self.ticker.get_cashflow())
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.quarterly_cash_flow
-        i2 = self.ticker.quarterly_cashflow
+        i1 = as_dataframe(self.ticker.quarterly_cash_flow)
+        i2 = as_dataframe(self.ticker.quarterly_cashflow)
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.get_cash_flow(freq="quarterly")
-        i2 = self.ticker.get_cashflow(freq="quarterly")
+        i1 = as_dataframe(self.ticker.get_cash_flow(freq="quarterly"))
+        i2 = as_dataframe(self.ticker.get_cashflow(freq="quarterly"))
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.ttm_cash_flow
-        i2 = self.ticker.ttm_cashflow
+        i1 = as_dataframe(self.ticker.ttm_cash_flow)
+        i2 = as_dataframe(self.ticker.ttm_cashflow)
         self.assertTrue(i1.equals(i2))
 
-        i1 = self.ticker.get_cash_flow(freq="trailing")
-        i2 = self.ticker.get_cashflow(freq="trailing")
+        i1 = as_dataframe(self.ticker.get_cash_flow(freq="trailing"))
+        i2 = as_dataframe(self.ticker.get_cashflow(freq="trailing"))
         self.assertTrue(i1.equals(i2))
 
     def test_bad_freq_value_raises_exception(self):
@@ -889,14 +931,16 @@ class TestTickerAnalysts(unittest.TestCase):
         self.ticker_no_analysts = yf.Ticker("^GSPC", session=self.session)
 
     def tearDown(self):
-        self.ticker = None
-        self.ticker_no_analysts = None
+        pass
 
     def test_recommendations(self):
         data = self.ticker.recommendations
         data_summary = self.ticker.recommendations_summary
-        self.assertTrue(data.equals(data_summary))
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        self.assertIsInstance(data_summary, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
+        data_summary = as_dataframe(data_summary)
+        self.assertTrue(data.equals(data_summary))
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.recommendations
@@ -905,6 +949,7 @@ class TestTickerAnalysts(unittest.TestCase):
     def test_recommendations_summary(self):  # currently alias for recommendations
         data = self.ticker.recommendations_summary
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.recommendations_summary
@@ -913,6 +958,7 @@ class TestTickerAnalysts(unittest.TestCase):
     def test_upgrades_downgrades(self):
         data = self.ticker.upgrades_downgrades
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
         self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
 
@@ -929,6 +975,7 @@ class TestTickerAnalysts(unittest.TestCase):
     def test_earnings_estimate(self):
         data = self.ticker.earnings_estimate
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.earnings_estimate
@@ -937,6 +984,7 @@ class TestTickerAnalysts(unittest.TestCase):
     def test_revenue_estimate(self):
         data = self.ticker.revenue_estimate
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.revenue_estimate
@@ -945,6 +993,7 @@ class TestTickerAnalysts(unittest.TestCase):
     def test_earnings_history(self):
         data = self.ticker.earnings_history
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         self.assertIsInstance(data.index, pd.DatetimeIndex, "data has wrong index type")
@@ -955,6 +1004,7 @@ class TestTickerAnalysts(unittest.TestCase):
     def test_eps_trend(self):
         data = self.ticker.eps_trend
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.eps_trend
@@ -963,6 +1013,7 @@ class TestTickerAnalysts(unittest.TestCase):
     def test_growth_estimates(self):
         data = self.ticker.growth_estimates
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+        data = as_dataframe(data)
         self.assertFalse(data.empty, "data is empty")
 
         data_cached = self.ticker.growth_estimates
@@ -983,6 +1034,7 @@ class TestTickerAnalysts(unittest.TestCase):
             try:
                 data = getattr(self.ticker_no_analysts, attribute)
                 self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+                data = as_dataframe(data)
                 self.assertTrue(data.empty, "data is not empty")
             except Exception as e:
                 self.fail(f"Exception raised for attribute '{attribute}': {e}")
@@ -1179,60 +1231,71 @@ class TestTickerFundsData(unittest.TestCase):
     def test_fetch_and_parse(self):
         try:
             for ticker in self.test_tickers:
-                ticker.funds_data._fetch_and_parse()
+                funds_data = as_non_none(ticker.funds_data)
+                funds_data._fetch_and_parse()
 
         except Exception as e:
             self.fail(f"_fetch_and_parse raised an exception unexpectedly: {e}")
 
         with self.assertRaises(YFDataException):
-            ticker = yf.Ticker("AAPL", session=self.session) # stock, not funds
-            ticker.funds_data._fetch_and_parse()
+            ticker = yf.Ticker("AAPL", session=self.session)  # stock, not funds
+            funds_data = as_non_none(ticker.funds_data)
+            funds_data._fetch_and_parse()
             self.fail("_fetch_and_parse should have failed when calling for non-funds data")
 
     def test_description(self):
         for ticker in self.test_tickers:
-            description = ticker.funds_data.description
+            funds_data = as_non_none(ticker.funds_data)
+            description = funds_data.description
             self.assertIsInstance(description, str)
             self.assertTrue(len(description) > 0)
 
     def test_fund_overview(self):
         for ticker in self.test_tickers:
-            fund_overview = ticker.funds_data.fund_overview
+            funds_data = as_non_none(ticker.funds_data)
+            fund_overview = funds_data.fund_overview
             self.assertIsInstance(fund_overview, dict)
 
     def test_fund_operations(self):
         for ticker in self.test_tickers:
-            fund_operations = ticker.funds_data.fund_operations
+            funds_data = as_non_none(ticker.funds_data)
+            fund_operations = funds_data.fund_operations
             self.assertIsInstance(fund_operations, pd.DataFrame)
 
     def test_asset_classes(self):
         for ticker in self.test_tickers:
-            asset_classes = ticker.funds_data.asset_classes
+            funds_data = as_non_none(ticker.funds_data)
+            asset_classes = funds_data.asset_classes
             self.assertIsInstance(asset_classes, dict)
 
     def test_top_holdings(self):
         for ticker in self.test_tickers:
-            top_holdings = ticker.funds_data.top_holdings
+            funds_data = as_non_none(ticker.funds_data)
+            top_holdings = funds_data.top_holdings
             self.assertIsInstance(top_holdings, pd.DataFrame)
 
     def test_equity_holdings(self):
         for ticker in self.test_tickers:
-            equity_holdings = ticker.funds_data.equity_holdings
+            funds_data = as_non_none(ticker.funds_data)
+            equity_holdings = funds_data.equity_holdings
             self.assertIsInstance(equity_holdings, pd.DataFrame)
 
     def test_bond_holdings(self):
         for ticker in self.test_tickers:
-            bond_holdings = ticker.funds_data.bond_holdings
+            funds_data = as_non_none(ticker.funds_data)
+            bond_holdings = funds_data.bond_holdings
             self.assertIsInstance(bond_holdings, pd.DataFrame)
 
     def test_bond_ratings(self):
         for ticker in self.test_tickers:
-            bond_ratings = ticker.funds_data.bond_ratings
+            funds_data = as_non_none(ticker.funds_data)
+            bond_ratings = funds_data.bond_ratings
             self.assertIsInstance(bond_ratings, dict)
 
     def test_sector_weightings(self):
         for ticker in self.test_tickers:
-            sector_weightings = ticker.funds_data.sector_weightings
+            funds_data = as_non_none(ticker.funds_data)
+            sector_weightings = funds_data.sector_weightings
             self.assertIsInstance(sector_weightings, dict)
 
 def suite():

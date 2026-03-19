@@ -1,10 +1,10 @@
 from __future__ import print_function
 
 import pandas as _pd
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from .. import utils
-from ..config import YfConfig
+from ..config import YF_CONFIG as YfConfig
 from ..data import YfData
 
 from .domain import Domain, _QUERY_URL_
@@ -24,8 +24,8 @@ class Industry(Domain):
         super(Industry, self).__init__(key, session)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
 
-        self._sector_key = None
-        self._sector_name = None
+        self._sector_key: Optional[str] = None
+        self._sector_name: Optional[str] = None
         self._top_performing_companies = None
         self._top_growth_companies = None
 
@@ -47,6 +47,8 @@ class Industry(Domain):
             str: The sector key.
         """
         self._ensure_fetched(self._sector_key)
+        if self._sector_key is None:
+            raise ValueError(f"Failed to retrieve sector key for industry '{self._key}'")
         return self._sector_key
     
     @property
@@ -58,6 +60,8 @@ class Industry(Domain):
             str: The sector name.
         """
         self._ensure_fetched(self._sector_name)
+        if self._sector_name is None:
+            raise ValueError(f"Failed to retrieve sector name for industry '{self._key}'")
         return self._sector_name
     
     @property
@@ -82,7 +86,7 @@ class Industry(Domain):
         self._ensure_fetched(self._top_growth_companies)
         return self._top_growth_companies
     
-    def _parse_top_performing_companies(self, top_performing_companies: Dict) -> Optional[_pd.DataFrame]:
+    def _parse_top_performing_companies(self, top_performing_companies: List[Dict]) -> Optional[_pd.DataFrame]:
         """
         Parses the top performing companies data.
         
@@ -104,7 +108,7 @@ class Industry(Domain):
 
         return _pd.DataFrame(compnaies_values, columns = compnaies_column).set_index('symbol')
     
-    def _parse_top_growth_companies(self, top_growth_companies: Dict) -> Optional[_pd.DataFrame]:
+    def _parse_top_growth_companies(self, top_growth_companies: List[Dict]) -> Optional[_pd.DataFrame]:
         """
         Parses the top growth companies data.
         
@@ -138,10 +142,8 @@ class Industry(Domain):
 
             self._sector_key = data.get('sectorKey')
             self._sector_name = data.get('sectorName')
-            self._top_performing_companies = self._parse_top_performing_companies(data.get('topPerformingCompanies'))
-            self._top_growth_companies = self._parse_top_growth_companies(data.get('topGrowthCompanies'))
-
-            return result
+            self._top_performing_companies = self._parse_top_performing_companies(data.get('topPerformingCompanies') or [])
+            self._top_growth_companies = self._parse_top_growth_companies(data.get('topGrowthCompanies') or [])
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise

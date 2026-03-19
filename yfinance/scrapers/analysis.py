@@ -1,8 +1,9 @@
 import curl_cffi
 import pandas as pd
+from typing import Any, Dict, List, Optional
 
 from yfinance import utils
-from yfinance.config import YfConfig
+from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import quote_summary_valid_modules
 from yfinance.data import YfData
 from yfinance.exceptions import YFException
@@ -17,24 +18,31 @@ class Analysis:
         # In quoteSummary the 'earningsTrend' module contains most of the data below.
         # The format of data is not optimal so each function will process it's part of the data.
         # This variable works as a cache.
-        self._earnings_trend = None
+        self._earnings_trend: Optional[List[Dict[str, Any]]] = None
 
-        self._analyst_price_targets = None
-        self._earnings_estimate = None
-        self._revenue_estimate = None
-        self._earnings_history = None
-        self._eps_trend = None
-        self._eps_revisions = None
-        self._growth_estimates = None
+        self._analyst_price_targets: Optional[dict] = None
+        self._earnings_estimate: Optional[pd.DataFrame] = None
+        self._revenue_estimate: Optional[pd.DataFrame] = None
+        self._earnings_history: Optional[pd.DataFrame] = None
+        self._eps_trend: Optional[pd.DataFrame] = None
+        self._eps_revisions: Optional[pd.DataFrame] = None
+        self._growth_estimates: Optional[pd.DataFrame] = None
 
-    def _get_periodic_df(self, key) -> pd.DataFrame:
+    def _get_periodic_df(self, key: str) -> pd.DataFrame:
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
 
         data = []
-        for item in self._earnings_trend[:4]:
-            row = {'period': item['period']}
-            for k, v in item[key].items():
+        earnings_trend = self._earnings_trend or []
+        for item in earnings_trend[:4]:
+            period = item.get('period')
+            if period is None:
+                continue
+            row = {'period': period}
+            values = item.get(key, {})
+            if not isinstance(values, dict):
+                continue
+            for k, v in values.items():
                 if not isinstance(v, dict) or len(v) == 0:
                     continue
                 row[k] = v['raw']
@@ -78,8 +86,10 @@ class Analysis:
 
         try:
             data = self._fetch(['financialData'])
+            if data is None:
+                raise KeyError("Missing quoteSummary data")
             data = data['quoteSummary']['result'][0]['financialData']
-        except (TypeError, KeyError):
+        except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
             self._analyst_price_targets = {}
@@ -103,8 +113,10 @@ class Analysis:
 
         try:
             data = self._fetch(['earningsHistory'])
+            if data is None:
+                raise KeyError("Missing quoteSummary data")
             data = data['quoteSummary']['result'][0]['earningsHistory']['history']
-        except (TypeError, KeyError):
+        except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
             self._earnings_history = pd.DataFrame()
@@ -141,16 +153,20 @@ class Analysis:
 
         try:
             trends = self._fetch(['industryTrend', 'sectorTrend', 'indexTrend'])
+            if trends is None:
+                raise KeyError("Missing quoteSummary data")
             trends = trends['quoteSummary']['result'][0]
-        except (TypeError, KeyError):
+        except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
             self._growth_estimates = pd.DataFrame()
             return self._growth_estimates
 
         data = []
-        for item in self._earnings_trend:
-            period = item['period']
+        for item in self._earnings_trend or []:
+            period = item.get('period')
+            if period is None:
+                continue
             row = {'period': period, 'stockTrend': item.get('growth', {}).get('raw', None)}
             data.append(row)
 
@@ -171,28 +187,33 @@ class Analysis:
         return self._growth_estimates
 
     # modified version from quote.py
-    def _fetch(self, modules: list):
+    def _fetch(self, modules: List[str]) -> Optional[Dict[str, Any]]:
         if not isinstance(modules, list):
             raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
-        modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
-        if len(modules) == 0:
+        valid_modules = [m for m in modules if m in quote_summary_valid_modules]
+        module_param = ','.join(valid_modules)
+        if len(module_param) == 0:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
+        params_dict = {"modules": module_param, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            utils.get_yf_logger().error(str(e) + e.response.text)
+            response = e.response
+            response_text = response.text if response is not None else ""
+            utils.get_yf_logger().error(str(e) + response_text)
             return None
         return result
 
     def _fetch_earnings_trend(self) -> None:
         try:
             data = self._fetch(['earningsTrend'])
+            if data is None:
+                raise KeyError("Missing quoteSummary data")
             self._earnings_trend = data['quoteSummary']['result'][0]['earningsTrend']['trend']
-        except (TypeError, KeyError):
+        except (TypeError, KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
             self._earnings_trend = []

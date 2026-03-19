@@ -1,8 +1,8 @@
 import pandas as pd
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from yfinance import utils
-from yfinance.config import YfConfig
+from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
@@ -27,22 +27,22 @@ class FundsData:
         self._symbol = symbol
         
         # quoteType
-        self._quote_type = None
+        self._quote_type: Optional[str] = None
 
         # summaryProfile
-        self._description = None
+        self._description: Optional[str] = None
 
         # fundProfile
-        self._fund_overview = None
-        self._fund_operations = None
+        self._fund_overview: Optional[Dict[str, Optional[str]]] = None
+        self._fund_operations: Optional[pd.DataFrame] = None
 
         # topHoldings
-        self._asset_classes = None
-        self._top_holdings = None
-        self._equity_holdings = None
-        self._bond_holdings = None
-        self._bond_ratings = None
-        self._sector_weightings = None
+        self._asset_classes: Optional[Dict[str, float]] = None
+        self._top_holdings: Optional[pd.DataFrame] = None
+        self._equity_holdings: Optional[pd.DataFrame] = None
+        self._bond_holdings: Optional[pd.DataFrame] = None
+        self._bond_ratings: Optional[Dict[str, float]] = None
+        self._sector_weightings: Optional[Dict[str, float]] = None
 
     def quote_type(self) -> str:
         """
@@ -53,7 +53,7 @@ class FundsData:
         """
         if self._quote_type is None:
             self._fetch_and_parse()
-        return self._quote_type
+        return self._quote_type or ""
     
     @property
     def description(self) -> str:
@@ -65,7 +65,7 @@ class FundsData:
         """
         if self._description is None:
             self._fetch_and_parse()
-        return self._description
+        return self._description or ""
     
     @property
     def fund_overview(self) -> Dict[str, Optional[str]]:
@@ -77,7 +77,7 @@ class FundsData:
         """
         if self._fund_overview is None:
             self._fetch_and_parse()
-        return self._fund_overview
+        return self._fund_overview or {}
 
     @property
     def fund_operations(self) -> pd.DataFrame:
@@ -89,7 +89,7 @@ class FundsData:
         """
         if self._fund_operations is None:
             self._fetch_and_parse()
-        return self._fund_operations
+        return self._fund_operations if self._fund_operations is not None else pd.DataFrame()
 
     @property
     def asset_classes(self) -> Dict[str, float]:
@@ -101,7 +101,7 @@ class FundsData:
         """
         if self._asset_classes is None:
             self._fetch_and_parse()
-        return self._asset_classes
+        return self._asset_classes or {}
 
     @property
     def top_holdings(self) -> pd.DataFrame:
@@ -113,7 +113,7 @@ class FundsData:
         """
         if self._top_holdings is None:
             self._fetch_and_parse()
-        return self._top_holdings
+        return self._top_holdings if self._top_holdings is not None else pd.DataFrame()
 
     @property
     def equity_holdings(self) -> pd.DataFrame:
@@ -125,7 +125,7 @@ class FundsData:
         """
         if self._equity_holdings is None:
             self._fetch_and_parse()
-        return self._equity_holdings
+        return self._equity_holdings if self._equity_holdings is not None else pd.DataFrame()
 
     @property
     def bond_holdings(self) -> pd.DataFrame:
@@ -137,7 +137,7 @@ class FundsData:
         """
         if self._bond_holdings is None:
             self._fetch_and_parse()
-        return self._bond_holdings
+        return self._bond_holdings if self._bond_holdings is not None else pd.DataFrame()
 
     @property
     def bond_ratings(self) -> Dict[str, float]:
@@ -149,7 +149,7 @@ class FundsData:
         """
         if self._bond_ratings is None:
             self._fetch_and_parse()
-        return self._bond_ratings
+        return self._bond_ratings or {}
 
     @property
     def sector_weightings(self) -> Dict[str,float]:
@@ -161,7 +161,7 @@ class FundsData:
         """
         if self._sector_weightings is None:
             self._fetch_and_parse()
-        return self._sector_weightings
+        return self._sector_weightings or {}
 
     def _fetch(self):
         """
@@ -184,11 +184,13 @@ class FundsData:
             data = result["quoteSummary"]["result"][0]
             # check quote type
             self._quote_type = data["quoteType"]["quoteType"]
-            
+            if self._quote_type not in ("ETF", "MUTUALFUND"):
+                raise YFDataException(f"{self._symbol}: No Fund data found.")
+
             # parse "summaryProfile", "topHoldings", "fundProfile"
             self._parse_description(data["summaryProfile"])
-            self._parse_top_holdings(data["topHoldings"])
-            self._parse_fund_profile(data["fundProfile"])
+            self._parse_top_holdings(data.get("topHoldings", {}))
+            self._parse_fund_profile(data.get("fundProfile", {}))
         except KeyError:
             if not YfConfig.debug.hide_exceptions:
                 raise
@@ -220,6 +222,15 @@ class FundsData:
         
         return data.get("raw", default)
 
+    @staticmethod
+    def _to_float(value: Any) -> float:
+        if value is None:
+            return float("nan")
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float("nan")
+
     def _parse_description(self, data) -> None:
         """
         Parses the description from the data.
@@ -238,12 +249,12 @@ class FundsData:
         """
         # asset classes
         self._asset_classes = {
-            "cashPosition": self._parse_raw_values(data.get("cashPosition", None)),
-            "stockPosition": self._parse_raw_values(data.get("stockPosition", None)),
-            "bondPosition": self._parse_raw_values(data.get("bondPosition", None)),
-            "preferredPosition": self._parse_raw_values(data.get("preferredPosition", None)),
-            "convertiblePosition": self._parse_raw_values(data.get("convertiblePosition", None)),
-            "otherPosition": self._parse_raw_values(data.get("otherPosition", None))
+            "cashPosition": self._to_float(self._parse_raw_values(data.get("cashPosition", None))),
+            "stockPosition": self._to_float(self._parse_raw_values(data.get("stockPosition", None))),
+            "bondPosition": self._to_float(self._parse_raw_values(data.get("bondPosition", None))),
+            "preferredPosition": self._to_float(self._parse_raw_values(data.get("preferredPosition", None))),
+            "convertiblePosition": self._to_float(self._parse_raw_values(data.get("convertiblePosition", None))),
+            "otherPosition": self._to_float(self._parse_raw_values(data.get("otherPosition", None)))
         }
 
         # top holdings
@@ -300,10 +311,20 @@ class FundsData:
         }).set_index("Average")
 
         # bond ratings
-        self._bond_ratings = dict((key, d[key]) for d in data.get("bondRatings", []) for key in d)
+        self._bond_ratings = {
+            str(key): self._to_float(value)
+            for d in data.get("bondRatings", [])
+            if isinstance(d, dict)
+            for key, value in d.items()
+        }
 
         # sector weightings
-        self._sector_weightings = dict((key, d[key]) for d in data.get("sectorWeightings", []) for key in d)
+        self._sector_weightings = {
+            str(key): self._to_float(value)
+            for d in data.get("sectorWeightings", [])
+            if isinstance(d, dict)
+            for key, value in d.items()
+        }
         
     def _parse_fund_profile(self, data):
         """

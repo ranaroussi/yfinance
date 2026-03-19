@@ -1,10 +1,14 @@
+"""Runtime configuration for yfinance."""
+
 import json
 
 
 class NestedConfig:
+    """Provide attribute-style access to a nested configuration section."""
+
     def __init__(self, name, data):
-        self.__dict__['name'] = name
-        self.__dict__['data'] = data
+        self.__dict__["name"] = name
+        self.__dict__["data"] = data
 
     def __getattr__(self, key):
         return self.data.get(key)
@@ -13,30 +17,30 @@ class NestedConfig:
         self.data[key] = value
 
     def __len__(self):
-        return len(self.__dict__['data'])
+        return len(self.__dict__["data"])
 
     def __repr__(self):
         return json.dumps(self.data, indent=4)
 
+
 class ConfigMgr:
+    """Manage yfinance global options and section-level defaults."""
+
     def __init__(self):
         self._initialised = False
-
-    def _load_option(self):
-        self._initialised = True  # prevent infinite loop
         self.options = {}
+        self._load_options()
 
-        # Initialise defaults
-        n = self.__getattr__('network')
-        n.proxy = None
-        n.retries = 0
-        d = self.__getattr__('debug')
-        d.hide_exceptions = True
-        d.logging = False
+    def _load_options(self):
+        self._initialised = True
+        self.options = {
+            "network": {"proxy": None, "retries": 0},
+            "debug": {"hide_exceptions": True, "logging": False},
+        }
 
     def __getattr__(self, key):
         if not self._initialised:
-            self._load_option()
+            self._load_options()
 
         if key not in self.options:
             self.options[key] = {}
@@ -44,15 +48,22 @@ class ConfigMgr:
 
     def __contains__(self, key):
         if not self._initialised:
-            self._load_option()
+            self._load_options()
 
         return key in self.options
 
     def __repr__(self):
         if not self._initialised:
-            self._load_option()
+            self._load_options()
 
         all_options = self.options.copy()
         return json.dumps(all_options, indent=4)
 
-YfConfig = ConfigMgr()
+
+YF_CONFIG = ConfigMgr()
+
+
+def __getattr__(name):
+    if name == "YfConfig":
+        return YF_CONFIG
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -1,16 +1,19 @@
 from abc import ABC, abstractmethod
 import numbers
-from typing import List, Union, Dict, TypeVar, Tuple
+from typing import Collection, Dict, List, Mapping, Sequence, TypeVar, Union
 
 from yfinance.const import EQUITY_SCREENER_EQ_MAP, EQUITY_SCREENER_FIELDS
 from yfinance.const import FUND_SCREENER_EQ_MAP, FUND_SCREENER_FIELDS
 from yfinance.exceptions import YFNotImplementedError
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
-T = TypeVar('T', bound=Union[str, numbers.Real])
+OperandValue = Union[str, int, float]
+OperandItem = Union['QueryBase', OperandValue]
+ValidValueGroup = Union[Collection[OperandValue], Mapping[str, Collection[OperandValue]]]
+T = TypeVar('T', bound=OperandValue)
 
 class QueryBase(ABC):
-    def __init__(self, operator: str, operand: Union[ List['QueryBase'], Tuple[str, Tuple[Union[str, numbers.Real],  ...]] ]):
+    def __init__(self, operator: str, operand: List[OperandItem]):
         operator = operator.upper()
 
         if not isinstance(operand, list):
@@ -36,67 +39,82 @@ class QueryBase(ABC):
 
     @property
     @abstractmethod
-    def valid_fields(self) -> List:
+    def valid_fields(self) -> Dict[str, set[str]]:
         raise YFNotImplementedError('valid_fields() needs to be implemented by child')
 
     @property
     @abstractmethod
-    def valid_values(self) -> Dict:
+    def valid_values(self) -> Mapping[str, ValidValueGroup]:
         raise YFNotImplementedError('valid_values() needs to be implemented by child')
 
-    def _validate_or_and_operand(self, operand: List['QueryBase']) -> None:
+    @staticmethod
+    def _validate_field(field: OperandItem) -> str:
+        if not isinstance(field, str):
+            raise TypeError('Field name must be str')
+        return field
+
+    @staticmethod
+    def _flatten_valid_values(vv: ValidValueGroup) -> set[OperandValue]:
+        if isinstance(vv, Mapping):
+            flattened: set[OperandValue] = set()
+            for values in vv.values():
+                flattened.update(values)
+            return flattened
+        return set(vv)
+
+    def _validate_or_and_operand(self, operand: Sequence[OperandItem]) -> None:
         if len(operand) <= 1: 
             raise ValueError('Operand must be length longer than 1')
         if all(isinstance(e, QueryBase) for e in operand) is False: 
             raise TypeError(f'Operand must be type {type(self)} for OR/AND')
 
-    def _validate_eq_operand(self, operand: List[Union[str, numbers.Real]]) -> None:
+    def _validate_eq_operand(self, operand: Sequence[OperandItem]) -> None:
         if len(operand) != 2:
             raise ValueError('Operand must be length 2 for EQ')
-        
-        if  not any(operand[0] in fields_by_type for fields_by_type in self.valid_fields.values()):
-            raise ValueError(f'Invalid field for {type(self)} "{operand[0]}"')
-        if operand[0] in self.valid_values:
-            vv = self.valid_values[operand[0]]
-            if isinstance(vv, dict):
-                # this data structure is slightly different to generate better docs, 
-                # need to unpack here.
-                vv = set().union(*[e for e in vv.values()])
-            if operand[1] not in vv:
-                raise ValueError(f'Invalid EQ value "{operand[1]}"')
-    
-    def _validate_btwn_operand(self, operand: List[Union[str, numbers.Real]]) -> None:
+
+        field = self._validate_field(operand[0])
+        value = operand[1]
+
+        if not any(field in fields_by_type for fields_by_type in self.valid_fields.values()):
+            raise ValueError(f'Invalid field for {type(self)} "{field}"')
+        if field in self.valid_values:
+            vv = self._flatten_valid_values(self.valid_values[field])
+            if not isinstance(value, (str, numbers.Real)) or value not in vv:
+                raise ValueError(f'Invalid EQ value "{value}"')
+
+    def _validate_btwn_operand(self, operand: Sequence[OperandItem]) -> None:
         if len(operand) != 3: 
             raise ValueError('Operand must be length 3 for BTWN')
-        if  not any(operand[0] in fields_by_type for fields_by_type in self.valid_fields.values()):
+        field = self._validate_field(operand[0])
+        if not any(field in fields_by_type for fields_by_type in self.valid_fields.values()):
             raise ValueError(f'Invalid field for {type(self)}')
         if isinstance(operand[1], numbers.Real) is False:
             raise TypeError('Invalid comparison type for BTWN')
         if isinstance(operand[2], numbers.Real) is False:
             raise TypeError('Invalid comparison type for BTWN')
 
-    def _validate_gt_lt(self, operand: List[Union[str, numbers.Real]]) -> None:
+    def _validate_gt_lt(self, operand: Sequence[OperandItem]) -> None:
         if len(operand) != 2:
             raise ValueError('Operand must be length 2 for GT/LT')
-        if  not any(operand[0] in fields_by_type for fields_by_type in self.valid_fields.values()):
-            raise ValueError(f'Invalid field for {type(self)} "{operand[0]}"')
+        field = self._validate_field(operand[0])
+        if not any(field in fields_by_type for fields_by_type in self.valid_fields.values()):
+            raise ValueError(f'Invalid field for {type(self)} "{field}"')
         if isinstance(operand[1], numbers.Real) is False:
             raise TypeError('Invalid comparison type for GT/LT')
 
-    def _validate_isin_operand(self, operand: List['QueryBase']) -> None:
+    def _validate_isin_operand(self, operand: Sequence[OperandItem]) -> None:
         if len(operand) < 2:
             raise ValueError('Operand must be length 2+ for IS-IN')
-        
-        if  not any(operand[0] in fields_by_type for fields_by_type in self.valid_fields.values()):
-            raise ValueError(f'Invalid field for {type(self)} "{operand[0]}"')
-        if operand[0] in self.valid_values:
-            vv = self.valid_values[operand[0]]
-            if isinstance(vv, dict):
-                # this data structure is slightly different to generate better docs, 
-                # need to unpack here.
-                vv = set().union(*[e for e in vv.values()])
+
+        field = self._validate_field(operand[0])
+
+        if not any(field in fields_by_type for fields_by_type in self.valid_fields.values()):
+            raise ValueError(f'Invalid field for {type(self)} "{field}"')
+        if field in self.valid_values:
+            vv = self._flatten_valid_values(self.valid_values[field])
             for i in range(1, len(operand)):
-                if operand[i] not in vv:
+                value = operand[i]
+                if not isinstance(value, (str, numbers.Real)) or value not in vv:
                     raise ValueError(f'Invalid EQ value "{operand[i]}"')
 
     def to_dict(self) -> Dict:
@@ -158,7 +176,7 @@ class EquityQuery(QueryBase):
 
     @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(EQUITY_SCREENER_FIELDS)})
     @property
-    def valid_fields(self) -> Dict:
+    def valid_fields(self) -> Dict[str, set[str]]:
         """
         Valid operands, grouped by category.
         {valid_operand_fields_table}
@@ -167,7 +185,7 @@ class EquityQuery(QueryBase):
     
     @dynamic_docstring({"valid_values_table": generate_list_table_from_dict_universal(EQUITY_SCREENER_EQ_MAP, concat_keys=['exchange', 'industry'])})
     @property
-    def valid_values(self) -> Dict:
+    def valid_values(self) -> Mapping[str, ValidValueGroup]:
         """
         Most operands take number values, but some have a restricted set of valid values.
         {valid_values_table}
@@ -200,7 +218,7 @@ class FundQuery(QueryBase):
     """
     @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(FUND_SCREENER_FIELDS)})
     @property
-    def valid_fields(self) -> Dict:
+    def valid_fields(self) -> Dict[str, set[str]]:
         """
         Valid operands, grouped by category.
         {valid_operand_fields_table}
@@ -209,10 +227,9 @@ class FundQuery(QueryBase):
     
     @dynamic_docstring({"valid_values_table": generate_list_table_from_dict_universal(FUND_SCREENER_EQ_MAP)})
     @property
-    def valid_values(self) -> Dict:
+    def valid_values(self) -> Mapping[str, ValidValueGroup]:
         """
         Most operands take number values, but some have a restricted set of valid values.
         {valid_values_table}
         """
         return FUND_SCREENER_EQ_MAP
-

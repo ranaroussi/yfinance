@@ -1,7 +1,7 @@
 import datetime as dt
 import json as _json
 
-from ..config import YfConfig
+from ..config import YF_CONFIG as YfConfig
 from ..const import _QUERY1_URL_
 from ..data import utils, YfData
 from ..exceptions import YFDataException

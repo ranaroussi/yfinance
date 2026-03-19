@@ -1,8 +1,9 @@
 import curl_cffi
 import pandas as pd
+from typing import Hashable, cast
 
 from yfinance import utils
-from yfinance.config import YfConfig
+from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
@@ -29,36 +30,48 @@ class Holders:
     def major(self) -> pd.DataFrame:
         if self._major is None:
             self._fetch_and_parse()
+        if self._major is None:
+            return pd.DataFrame()
         return self._major
 
     @property
     def institutional(self) -> pd.DataFrame:
         if self._institutional is None:
             self._fetch_and_parse()
+        if self._institutional is None:
+            return pd.DataFrame()
         return self._institutional
 
     @property
     def mutualfund(self) -> pd.DataFrame:
         if self._mutualfund is None:
             self._fetch_and_parse()
+        if self._mutualfund is None:
+            return pd.DataFrame()
         return self._mutualfund
 
     @property
     def insider_transactions(self) -> pd.DataFrame:
         if self._insider_transactions is None:
             self._fetch_and_parse()
+        if self._insider_transactions is None:
+            return pd.DataFrame()
         return self._insider_transactions
 
     @property
     def insider_purchases(self) -> pd.DataFrame:
         if self._insider_purchases is None:
             self._fetch_and_parse()
+        if self._insider_purchases is None:
+            return pd.DataFrame()
         return self._insider_purchases
 
     @property
     def insider_roster(self) -> pd.DataFrame:
         if self._insider_roster is None:
             self._fetch_and_parse()
+        if self._insider_roster is None:
+            return pd.DataFrame()
         return self._insider_roster
 
     def _fetch(self):
@@ -74,7 +87,8 @@ class Holders:
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            utils.get_yf_logger().error(str(e) + e.response.text)
+            response_text = e.response.text if e.response is not None else ""
+            utils.get_yf_logger().error(str(e) + response_text)
 
             self._major = pd.DataFrame()
             self._major_direct_holders = pd.DataFrame()
@@ -149,7 +163,8 @@ class Holders:
         df = pd.DataFrame.from_dict(data, orient="index")
         if not df.empty:
             df.columns.name = "Breakdown"
-            df.rename(columns={df.columns[0]: 'Value'}, inplace=True)
+            first_col = df.columns[0]
+            df.rename(columns={cast(Hashable, first_col): 'Value'}, inplace=True)
         self._major = df
 
     def _parse_insider_transactions(self, data):

@@ -19,39 +19,40 @@
 # limitations under the License.
 #
 
+"""Core ticker implementation used by the public ``Ticker`` wrapper."""
+
 from __future__ import print_function
 
 import json as _json
-from typing import Optional, Union
+from io import StringIO
+from typing import Optional, Union, cast
 from urllib.parse import quote as urlencode
 
+from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 from curl_cffi import requests
+from frozendict import frozendict
 
-
-from . import utils, cache
-from .const import _MIC_TO_YAHOO_SUFFIX
+from . import cache, utils
+from .config import YF_CONFIG as YfConfig
+from .const import _BASE_URL_, _MIC_TO_YAHOO_SUFFIX, _QUERY1_URL_, _ROOT_URL_
 from .data import YfData
-from .config import YfConfig
-from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
+from .exceptions import YFDataException, YFEarningsDateMissing
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
-from .scrapers.holders import Holders
-from .scrapers.quote import Quote, FastInfo
-from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
+from .scrapers.history import PriceHistory
+from .scrapers.holders import Holders
+from .scrapers.quote import FastInfo, Quote
 
-from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
+_TZ_INFO_FETCH_CTR = {"count": 0}
 
-from io import StringIO
-from bs4 import BeautifulSoup
-
-
-_tz_info_fetch_ctr = 0
 
 class TickerBase:
+    """Internal base class that provides all data access methods for a ticker."""
+
     def __init__(self, ticker, session=None):
         """
         Initialize a Yahoo Finance Ticker object.
@@ -64,7 +65,7 @@ class TickerBase:
 
             session (requests.Session, optional):
                 Custom requests session.
-        """        
+        """
         if isinstance(ticker, tuple):
             if len(ticker) != 2:
                 raise ValueError("Ticker tuple must be (symbol, mic_code)")
@@ -80,7 +81,9 @@ class TickerBase:
             else:
                 ticker = base_symbol
 
-        self.ticker = ticker.upper()
+        if not isinstance(ticker, str):
+            raise ValueError("Ticker symbol must be a string")
+        self.ticker: str = ticker.upper()
         self.session = session or requests.Session(impersonate="chrome")
         self._tz = None
 
@@ -103,13 +106,13 @@ class TickerBase:
         if utils.is_isin(self.ticker):
             isin = self.ticker
             c = cache.get_isin_cache()
-            self.ticker = c.lookup(isin)
-            if not self.ticker:
-                self.ticker = utils.get_ticker_by_isin(isin)
-            if self.ticker == "":
+            resolved_ticker = c.lookup(isin)
+            if not resolved_ticker:
+                resolved_ticker = utils.get_ticker_by_isin(isin)
+            if not resolved_ticker:
                 raise ValueError(f"Invalid ISIN number: {isin}")
-            if self.ticker:
-                c.store(isin, self.ticker)
+            self.ticker = resolved_ticker
+            c.store(isin, self.ticker)
 
         # self._price_history = PriceHistory(self._data, self.ticker)
         self._price_history = None  # lazy-load
@@ -126,22 +129,29 @@ class TickerBase:
 
     @utils.log_indent_decorator
     def history(self, *args, **kwargs) -> pd.DataFrame:
+        """Return price history for the ticker."""
         return self._lazy_load_price_history().history(*args, **kwargs)
 
     # ------------------------
 
     def _lazy_load_price_history(self):
+        """Instantiate and cache ``PriceHistory`` on first use."""
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+            self._price_history = PriceHistory(
+                self._data,
+                self.ticker,
+                self._get_ticker_tz(timeout=10),
+            )
         return self._price_history
 
     def _get_ticker_tz(self, timeout):
+        """Resolve and cache the ticker exchange timezone."""
         if self._tz is not None:
             return self._tz
         c = cache.get_tz_cache()
         tz = c.lookup(self.ticker)
 
-        if tz and not utils.is_valid_timezone(tz):
+        if tz is not None and (not isinstance(tz, str) or not utils.is_valid_timezone(tz)):
             # Clear from cache and force re-fetch
             c.store(self.ticker, None)
             tz = None
@@ -151,16 +161,17 @@ class TickerBase:
             if tz is None:
                 # _fetch_ticker_tz works in 99.999% of cases.
                 # For rare fail get from info.
-                global _tz_info_fetch_ctr
-                if _tz_info_fetch_ctr < 2:
+                if _TZ_INFO_FETCH_CTR["count"] < 2:
                     # ... but limit. If _fetch_ticker_tz() always
                     # failing then bigger problem.
-                    _tz_info_fetch_ctr += 1
+                    _TZ_INFO_FETCH_CTR["count"] += 1
+                    info = self._quote.info
                     for k in ['exchangeTimezoneName', 'timeZoneFullName']:
-                        if k in self.info:
-                            tz = self.info[k]
+                        value = info.get(k)
+                        if isinstance(value, str):
+                            tz = value
                             break
-            if utils.is_valid_timezone(tz):
+            if isinstance(tz, str) and utils.is_valid_timezone(tz):
                 c.store(self.ticker, tz)
             else:
                 tz = None
@@ -170,10 +181,11 @@ class TickerBase:
 
     @utils.log_indent_decorator
     def _fetch_ticker_tz(self, timeout):
+        """Fetch exchange timezone directly from Yahoo chart metadata."""
         # Query Yahoo for fast price data just to get returned timezone
         logger = utils.get_yf_logger()
 
-        params = {"range": "1d", "interval": "1d"}
+        params = frozendict({"range": "1d", "interval": "1d"})
 
         # Getting data from json
         url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
@@ -181,30 +193,41 @@ class TickerBase:
         try:
             data = self._data.cache_get(url=url, params=params, timeout=timeout)
             data = data.json()
-        except YFRateLimitError:
-            # Must propagate this
-            raise
-        except Exception as e:
+        except (
+            _json.JSONDecodeError,
+            requests.exceptions.RequestException,
+            AttributeError,
+            TypeError,
+            ValueError,
+        ) as error:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
+            logger.error("Failed to get ticker '%s' reason: %s", self.ticker, error)
             return None
-        else:
-            error = data.get('chart', {}).get('error', None)
-            if error:
-                # explicit error from yahoo API
-                logger.debug(f"Got error from yahoo api for ticker {self.ticker}, Error: {error}")
-            else:
-                try:
-                    return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-                except Exception as err:
-                    if not YfConfig.debug.hide_exceptions:
-                        raise
-                    logger.error(f"Could not get exchangeTimezoneName for ticker '{self.ticker}' reason: {err}")
-                    logger.debug("Got response: ")
-                    logger.debug("-------------")
-                    logger.debug(f" {data}")
-                    logger.debug("-------------")
+        error = data.get('chart', {}).get('error', None)
+        if error:
+            # explicit error from yahoo API
+            logger.debug(
+                "Got error from yahoo api for ticker %s, Error: %s",
+                self.ticker,
+                error,
+            )
+            return None
+
+        try:
+            return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+        except (IndexError, KeyError, TypeError) as error:
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            logger.error(
+                "Could not get exchangeTimezoneName for ticker '%s' reason: %s",
+                self.ticker,
+                error,
+            )
+            logger.debug("Got response: ")
+            logger.debug("-------------")
+            logger.debug(" %s", data)
+            logger.debug("-------------")
         return None
 
     def get_recommendations(self, as_dict=False):
@@ -218,6 +241,7 @@ class TickerBase:
         return data
 
     def get_recommendations_summary(self, as_dict=False):
+        """Return recommendation table alias."""
         return self.get_recommendations(as_dict=as_dict)
 
     def get_upgrades_downgrades(self, as_dict=False):
@@ -232,62 +256,78 @@ class TickerBase:
         return data
 
     def get_calendar(self) -> dict:
+        """Return upcoming events, earnings, and dividend dates."""
         return self._quote.calendar
 
     def get_sec_filings(self) -> dict:
+        """Return SEC filings metadata."""
         return self._quote.sec_filings
 
     def get_major_holders(self, as_dict=False):
+        """Return major holders data."""
         data = self._holders.major
         if as_dict:
             return data.to_dict()
         return data
 
     def get_institutional_holders(self, as_dict=False):
+        """Return institutional holders data."""
         data = self._holders.institutional
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
+        return None
 
     def get_mutualfund_holders(self, as_dict=False):
+        """Return mutual fund holders data."""
         data = self._holders.mutualfund
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
+        return None
 
     def get_insider_purchases(self, as_dict=False):
+        """Return insider purchase transactions."""
         data = self._holders.insider_purchases
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
+        return None
 
     def get_insider_transactions(self, as_dict=False):
+        """Return insider transaction history."""
         data = self._holders.insider_transactions
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
+        return None
 
     def get_insider_roster_holders(self, as_dict=False):
+        """Return insider roster holders."""
         data = self._holders.insider_roster
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
+        return None
 
     def get_info(self) -> dict:
+        """Return quote summary information."""
         data = self._quote.info
         return data
 
     def get_fast_info(self):
+        """Return lazily populated fast-info object."""
         if self._fast_info is None:
             self._fast_info = FastInfo(self)
         return self._fast_info
 
     def get_sustainability(self, as_dict=False):
+        """Return sustainability scores and metadata."""
         data = self._quote.sustainability
         if as_dict:
             return data.to_dict()
@@ -367,8 +407,12 @@ class TickerBase:
         data = self._fundamentals.earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
-                'financialCurrency']
+            currency = "USD"
+            if isinstance(self._earnings, dict):
+                maybe_currency = self._earnings.get("financialCurrency")
+                if isinstance(maybe_currency, str):
+                    currency = maybe_currency
+            dict_data['financialCurrency'] = currency
             return dict_data
         return data
 
@@ -390,15 +434,21 @@ class TickerBase:
 
         if pretty:
             data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
+            data.index = utils.camel2title(
+                data.index.tolist(),
+                sep=' ',
+                acronyms=["EBIT", "EBITDA", "EPS", "NI"],
+            )
         if as_dict:
             return data.to_dict()
         return data
 
     def get_incomestmt(self, as_dict=False, pretty=False, freq="yearly"):
+        """Alias for :meth:`get_income_stmt`."""
         return self.get_income_stmt(as_dict, pretty, freq)
 
     def get_financials(self, as_dict=False, pretty=False, freq="yearly"):
+        """Alias for :meth:`get_income_stmt`."""
         return self.get_income_stmt(as_dict, pretty, freq)
 
     def get_balance_sheet(self, as_dict=False, pretty=False, freq="yearly"):
@@ -420,15 +470,21 @@ class TickerBase:
 
         if pretty:
             data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
+            data.index = utils.camel2title(data.index.tolist(), sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
 
     def get_balancesheet(self, as_dict=False, pretty=False, freq="yearly"):
+        """Alias for :meth:`get_balance_sheet`."""
         return self.get_balance_sheet(as_dict, pretty, freq)
 
-    def get_cash_flow(self, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
+    def get_cash_flow(
+        self,
+        as_dict=False,
+        pretty=False,
+        freq="yearly",
+    ) -> Union[pd.DataFrame, dict]:
         """
         :Parameters:
             as_dict: bool
@@ -447,91 +503,129 @@ class TickerBase:
 
         if pretty:
             data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
+            data.index = utils.camel2title(data.index.tolist(), sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
         return data
 
     def get_cashflow(self, as_dict=False, pretty=False, freq="yearly"):
+        """Alias for :meth:`get_cash_flow`."""
         return self.get_cash_flow(as_dict, pretty, freq)
 
     def get_dividends(self, period="max") -> pd.Series:
+        """Return dividend history for the requested period."""
         return self._lazy_load_price_history().get_dividends(period=period)
 
     def get_capital_gains(self, period="max") -> pd.Series:
+        """Return capital gains history for the requested period."""
         return self._lazy_load_price_history().get_capital_gains(period=period)
 
     def get_splits(self, period="max") -> pd.Series:
+        """Return stock split history for the requested period."""
         return self._lazy_load_price_history().get_splits(period=period)
 
-    def get_actions(self, period="max") -> pd.Series:
+    def get_actions(self, period="max") -> pd.DataFrame:
+        """Return action history (dividends and splits)."""
         return self._lazy_load_price_history().get_actions(period=period)
 
     def get_shares(self, as_dict=False) -> Union[pd.DataFrame, dict]:
+        """Return yearly shares outstanding data."""
         data = self._fundamentals.shares
         if as_dict:
             return data.to_dict()
         return data
 
-    @utils.log_indent_decorator
-    def get_shares_full(self, start=None, end=None):
-        logger = utils.get_yf_logger()
+    def _parse_user_datetime(self, value, tz):
+        parser = getattr(utils, "_parse_user_dt")
+        return parser(value, tz)
 
-
-        # Process dates
-        tz = self._get_ticker_tz(timeout=10)
-        dt_now = pd.Timestamp.now('UTC').tz_convert(tz)
-        if start is not None:
-            start = utils._parse_user_dt(start, tz)
-        if end is not None:
-            end = utils._parse_user_dt(end, tz)
-        if end is None:
-            end = dt_now
-        if start is None:
-            start = end - pd.Timedelta(days=548)  # 18 months
-        if start >= end:
+    def _resolve_shares_date_bounds(self, start, end, tz, logger):
+        end_value = self._parse_user_datetime(end, tz) if end is not None else None
+        start_value = self._parse_user_datetime(start, tz) if start is not None else None
+        if end_value is None:
+            end_value = pd.Timestamp.now("UTC").tz_convert(tz)
+        if start_value is None:
+            start_value = end_value - pd.Timedelta(days=548)  # 18 months
+        if start_value >= end_value:
             logger.error("Start date must be before end")
             return None
-        start = start.floor("D")
-        end = end.ceil("D")
+        start_value = start_value.floor("D")
+        end_value = end_value.ceil("D")
+        if pd.isna(start_value) or pd.isna(end_value):
+            logger.error("Failed to parse start/end date")
+            return None
+        return cast(pd.Timestamp, start_value), cast(pd.Timestamp, end_value)
 
-        # Fetch
-        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self.ticker}?symbol={self.ticker}"
-        shares_url = f"{ts_url_base}&period1={int(start.timestamp())}&period2={int(end.timestamp())}"
+    def _build_shares_url(self, start_date: pd.Timestamp, end_date: pd.Timestamp) -> str:
+        ts_url_base = (
+            "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/"
+            f"{self.ticker}?symbol={self.ticker}"
+        )
+        return (
+            f"{ts_url_base}&period1={int(start_date.timestamp())}"
+            f"&period2={int(end_date.timestamp())}"
+        )
+
+    def _fetch_shares_payload(self, shares_url: str, logger):
         try:
-            json_data = self._data.cache_get(url=shares_url)
-            json_data = json_data.json()
-        except (_json.JSONDecodeError, requests.exceptions.RequestException):
+            response = self._data.cache_get(url=shares_url)
+            json_data = response.json()
+        except (_json.JSONDecodeError, AttributeError, requests.exceptions.RequestException):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            logger.error(f"{self.ticker}: Yahoo web request for share count failed")
-            return None
-        try:
-            fail = json_data["finance"]["error"]["code"] == "Bad Request"
-        except KeyError:
-            fail = False
-        if fail:
-            if not YfConfig.debug.hide_exceptions:
-                raise requests.exceptions.HTTPError("Yahoo web request for share count returned 'Bad Request'")
-            logger.error(f"{self.ticker}: Yahoo web request for share count failed")
+            logger.error("%s: Yahoo web request for share count failed", self.ticker)
             return None
 
-        shares_data = json_data["timeseries"]["result"]
-        if "shares_out" not in shares_data[0]:
+        is_bad_request = json_data.get("finance", {}).get("error", {}).get("code") == "Bad Request"
+        if is_bad_request:
+            if not YfConfig.debug.hide_exceptions:
+                raise requests.exceptions.HTTPError(
+                    "Yahoo web request for share count returned 'Bad Request'"
+                )
+            logger.error("%s: Yahoo web request for share count failed", self.ticker)
+            return None
+        return json_data
+
+    def _extract_shares_series(self, json_data, tz, logger):
+        shares_data = json_data.get("timeseries", {}).get("result", [])
+        if not shares_data or "shares_out" not in shares_data[0]:
             return None
         try:
-            df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
-        except Exception as e:
+            shares_series = pd.Series(
+                shares_data[0]["shares_out"],
+                index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"),
+            )
+        except (KeyError, TypeError, ValueError) as error:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            logger.error(f"{self.ticker}: Failed to parse shares count data: {e}")
+            logger.error("%s: Failed to parse shares count data: %s", self.ticker, error)
             return None
 
-        df.index = df.index.tz_localize(tz)
-        df = df.sort_index()
-        return df
+        if isinstance(shares_series.index, pd.DatetimeIndex):
+            dt_index = shares_series.index
+        else:
+            dt_index = pd.DatetimeIndex(shares_series.index)
+        shares_series.index = dt_index.tz_localize(tz)
+        return shares_series.sort_index()
+
+    @utils.log_indent_decorator
+    def get_shares_full(self, start=None, end=None):
+        """Return daily shares outstanding over a date range."""
+        logger = utils.get_yf_logger()
+        tz = self._get_ticker_tz(timeout=10)
+        date_bounds = self._resolve_shares_date_bounds(start, end, tz, logger)
+        if date_bounds is None:
+            return None
+
+        start_date, end_date = date_bounds
+        shares_url = self._build_shares_url(start_date, end_date)
+        json_data = self._fetch_shares_payload(shares_url, logger)
+        if json_data is None:
+            return None
+        return self._extract_shares_series(json_data, tz, logger)
 
     def get_isin(self) -> Optional[str]:
+        """Return ISIN for the ticker when available."""
         # *** experimental ***
         if self._isin is not None:
             return self._isin
@@ -550,7 +644,10 @@ class TickerBase:
         if "shortName" in self._quote.info:
             q = self._quote.info['shortName']
 
-        url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
+        url = (
+            "https://markets.businessinsider.com/ajax/SearchController_Suggest"
+            f"?max_results=25&query={urlencode(q)}"
+        )
         data = self._data.cache_get(url=url).text
 
         search_str = f'"{ticker}|'
@@ -574,7 +671,6 @@ class TickerBase:
 
         logger = utils.get_yf_logger()
 
-
         tab_queryrefs = {
             "all": "newsAll",
             "news": "latestNews",
@@ -583,7 +679,8 @@ class TickerBase:
 
         query_ref = tab_queryrefs.get(tab.lower())
         if not query_ref:
-            raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
+            valid_tabs = ", ".join(tab_queryrefs.keys())
+            raise ValueError(f"Invalid tab name '{tab}'. Choose from: {valid_tabs}")
 
         url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
         payload = {
@@ -601,7 +698,10 @@ class TickerBase:
         except _json.JSONDecodeError:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+            logger.error(
+                "%s: Failed to retrieve the news and received faulty response instead.",
+                self.ticker,
+            )
             data = {}
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
@@ -609,7 +709,8 @@ class TickerBase:
         self._news = [article for article in news if not article.get('ad', [])]
         return self._news
 
-    def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+    def get_earnings_dates(self, limit=12, offset=0) -> Optional[pd.DataFrame]:
+        """Return upcoming and historical earnings dates."""
         if limit > 100:
             raise ValueError("Yahoo caps limit at 100")
 
@@ -621,20 +722,20 @@ class TickerBase:
         return df
 
     @utils.log_indent_decorator
-    def _get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+    def _get_earnings_dates_using_scrape(self, limit=12, offset=0) -> Optional[pd.DataFrame]:
         """
         Uses YfData.cache_get() to scrape earnings data from YahooFinance.
         (https://finance.yahoo.com/calendar/earnings?symbol=INTC)
-    
+
         Args:
             limit (int): Number of rows to extract (max=100)
-            offset (int): if 0, search from future EPS estimates. 
-                          if 1, search from the most recent EPS. 
-                          if x, search from x'th recent EPS. 
-    
+            offset (int): if 0, search from future EPS estimates.
+                          if 1, search from the most recent EPS.
+                          if x, search from x'th recent EPS.
+
         Returns:
             pd.DataFrame in the following format.
-    
+
                        EPS Estimate Reported EPS Surprise(%)
             Date
             2025-10-30         2.97            -           -
@@ -652,24 +753,25 @@ class TickerBase:
         #####################################################
         # Define Constants
         #####################################################
-        if limit > 0 and limit <= 25:
+        if 0 < limit <= 25:
             size = 25
-        elif limit > 25 and limit <= 50:
+        elif 25 < limit <= 50:
             size = 50
-        elif limit > 50 and limit <= 100:
+        elif 50 < limit <= 100:
             size = 100
         else:
             raise ValueError("Please use limit <= 100")
-    
+
         # Define the URL
-        url = "https://finance.yahoo.com/calendar/earnings?symbol={}&offset={}&size={}".format(
-            self.ticker, offset, size
+        url = (
+            f"https://finance.yahoo.com/calendar/earnings?symbol={self.ticker}"
+            f"&offset={offset}&size={size}"
         )
         #####################################################
         # Get data
         #####################################################
         response = self._data.cache_get(url)
-    
+
         #####################################################
         # Response -> pd.DataFrame
         #####################################################
@@ -681,13 +783,13 @@ class TickerBase:
         if table:
             # Get the HTML string of the table
             table_html = str(table)
-    
+
             # Wrap the HTML string in a StringIO object
             html_stringio = StringIO(table_html)
-    
+
             # Pass the StringIO object to pd.read_html()
             df = pd.read_html(html_stringio, na_values=['-'])[0]
-    
+
             # Drop redundant columns
             df = df.drop(["Symbol", "Company"], axis=1)
 
@@ -701,17 +803,17 @@ class TickerBase:
             df['Earnings Date'] = df['Earnings Date'].str.replace('EDT', 'America/New_York')
             df['Earnings Date'] = df['Earnings Date'].str.replace('EST', 'America/New_York')
             # - separate timezone string (last word)
-            dt_parts = df['Earnings Date'].str.rsplit(' ', n=1, expand=True)
-            dts = dt_parts[0]
-            tzs = dt_parts[1]
-            df['Earnings Date'] = pd.to_datetime(dts, format='%B %d, %Y at %I %p')
-            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)])
+            date_parts = df['Earnings Date'].str.rsplit(' ', n=1, expand=True)
+            df['Earnings Date'] = pd.to_datetime(date_parts[0], format='%B %d, %Y at %I %p')
+            df['Earnings Date'] = pd.Series(
+                [dt.tz_localize(tz_name) for dt, tz_name in zip(df['Earnings Date'], date_parts[1])]
+            )
             df = df.set_index("Earnings Date")
 
         else:
             err_msg = "No earnings dates found, symbol may be delisted"
             logger = utils.get_yf_logger()
-            logger.error(f'{self.ticker}: {err_msg}')
+            logger.error("%s: %s", self.ticker, err_msg)
             return None
         return df
 
@@ -722,7 +824,7 @@ class TickerBase:
 
         In Summer 2025, Yahoo stopped updating the data at this endpoint.
         So reverting to scraping HTML.
-        
+
         Args:
             limit (int): max amount of upcoming and recent earnings dates to return.
                 Default value 12 should return next 4 quarters and last 8 quarters.
@@ -737,24 +839,34 @@ class TickerBase:
         params = {"lang": "en-US", "region": "US"}
         body = {
             "size": limit,
-            "query": { "operator": "eq", "operands": ["ticker", self.ticker] },
+            "query": {"operator": "eq", "operands": ["ticker", self.ticker]},
             "sortField": "startdatetime",
             "sortType": "DESC",
             "entityIdType": "earnings",
-            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct", "eventtype"]
+            "includeFields": [
+                "startdatetime",
+                "timeZoneShortName",
+                "epsestimate",
+                "epsactual",
+                "epssurprisepct",
+                "eventtype",
+            ],
         }
         response = self._data.post(url, params=params, body=body)
         json_data = response.json()
 
         # Extract data
-        columns = [row['label'] for row in json_data['finance']['result'][0]['documents'][0]['columns']]
+        columns = [
+            row['label']
+            for row in json_data['finance']['result'][0]['documents'][0]['columns']
+        ]
         rows = json_data['finance']['result'][0]['documents'][0]['rows']
         df = pd.DataFrame(rows, columns=columns)
 
         if df.empty:
             _exception = YFEarningsDateMissing(self.ticker)
             err_msg = str(_exception)
-            logger.error(f'{self.ticker}: {err_msg}')
+            logger.error("%s: %s", self.ticker, err_msg)
             return None
 
         # Convert eventtype
@@ -786,15 +898,18 @@ class TickerBase:
         return df
 
     def get_history_metadata(self) -> dict:
+        """Return metadata associated with historical price responses."""
         return self._lazy_load_price_history().get_history_metadata()
 
     def get_funds_data(self) -> Optional[FundsData]:
+        """Return funds metadata for ETF and mutual-fund symbols."""
         if not self._funds_data:
             self._funds_data = FundsData(self._data, self.ticker)
-        
+
         return self._funds_data
 
     def live(self, message_handler=None, verbose=True):
+        """Open a synchronous live stream for the ticker."""
         self._message_handler = message_handler
 
         self.ws = WebSocket(verbose=verbose)

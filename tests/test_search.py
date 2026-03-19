@@ -24,7 +24,9 @@ class TestSearch(unittest.TestCase):
 
         # Check if the fuzzy search retrieves relevant results despite the typo
         self.assertGreater(len(search.quotes), 0)
-        self.assertIn("AAPL", search.quotes[0]['symbol'])
+        # Yahoo Finance ranking can change; check AAPL appears anywhere in results
+        symbols = [q['symbol'] for q in search.quotes]
+        self.assertTrue(any("AAPL" in s for s in symbols), f"AAPL not found in results: {symbols}")
 
     def test_quotes(self):
         search = yf.Search(query="AAPL", max_results=5)

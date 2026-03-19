@@ -1,6 +1,8 @@
 import yfinance as yf
 spy = yf.Ticker('SPY')
 data = spy.funds_data
+if data is None:
+    raise RuntimeError("No funds data available for this ticker")
 
 # show fund description
 data.description

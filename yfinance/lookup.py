@@ -19,16 +19,27 @@
 # limitations under the License.
 #
 
+"""Yahoo Finance lookup endpoint wrapper."""
+
 import json as _json
 import pandas as pd
 
 from . import utils
-from .config import YfConfig
+from .config import YF_CONFIG as YfConfig
 from .const import _QUERY1_URL_
 from .data import YfData
 from .exceptions import YFDataException
 
-LOOKUP_TYPES = ["all", "equity", "mutualfund", "etf", "index", "future", "currency", "cryptocurrency"]
+LOOKUP_TYPES = [
+    "all",
+    "equity",
+    "mutualfund",
+    "etf",
+    "index",
+    "future",
+    "currency",
+    "cryptocurrency",
+]
 
 
 class Lookup:
@@ -72,7 +83,11 @@ class Lookup:
             "region": "US"
         }
 
-        self._logger.debug(f'GET Lookup for ticker ({self.query}) with parameters: {str(dict(params))}')
+        self._logger.debug(
+            "GET Lookup for ticker (%s) with parameters: %s",
+            self.query,
+            dict(params),
+        )
 
         data = self._data.get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
@@ -82,13 +97,13 @@ class Lookup:
         except _json.JSONDecodeError:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.ticker}: 'lookup' fetch received faulty data")
+            self._logger.error("%s: 'lookup' fetch received faulty data", self.query)
             data = {}
 
         # Error returned
         if data.get("finance", {}).get("error", {}):
             error = data.get("finance", {}).get("error", {})
-            raise YFDataException(f"{self.ticker}: 'lookup' fetch returned error: {error}")
+            raise YFDataException(f"{self.query}: 'lookup' fetch returned error: {error}")
 
         self._cache[cache_key] = data
         return data

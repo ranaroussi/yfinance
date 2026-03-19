@@ -30,10 +30,13 @@ class TestCacheNoPermission(unittest.TestCase):
         tz1 = "America/New_York"
 
         # During attempt to store, will discover cannot write
-        yf.cache.get_tz_cache().store(tkr, tz1)
+        cache = yf.cache.get_tz_cache()
+        assert cache is not None
+        cache.store(tkr, tz1)
 
         # Handling the store failure replaces cache with a dummy
         cache = yf.cache.get_tz_cache()
+        assert cache is not None
         self.assertTrue(cache.dummy)
         cache.store(tkr, tz1)
 
@@ -41,10 +44,13 @@ class TestCacheNoPermission(unittest.TestCase):
         # Test that if cache path in read-only filesystem, no exception.
         tkr = 'AMZN'
         # During attempt to lookup, will discover cannot write
-        yf.cache.get_tz_cache().lookup(tkr)
+        cache = yf.cache.get_tz_cache()
+        assert cache is not None
+        cache.lookup(tkr)
 
         # Handling the lookup failure replaces cache with a dummy
         cache = yf.cache.get_tz_cache()
+        assert cache is not None
         self.assertTrue(cache.dummy)
         cache.lookup(tkr)
 

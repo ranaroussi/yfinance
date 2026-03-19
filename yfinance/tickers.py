@@ -19,7 +19,13 @@
 # limitations under the License.
 #
 
+"""Container helpers for downloading data for multiple tickers."""
+
 from __future__ import print_function
+
+from typing import Dict
+
+import pandas as _pd
 
 from . import Ticker, multi
 from .live import WebSocket
@@ -27,6 +33,36 @@ from .data import YfData
 
 
 class Tickers:
+    """Wrapper around multiple :class:`Ticker` objects."""
+
+    _DOWNLOAD_ARG_NAMES = (
+        "period",
+        "interval",
+        "start",
+        "end",
+        "prepost",
+        "actions",
+        "auto_adjust",
+        "repair",
+        "threads",
+        "group_by",
+        "progress",
+        "timeout",
+    )
+    _DOWNLOAD_DEFAULTS = {
+        "period": None,
+        "interval": "1d",
+        "start": None,
+        "end": None,
+        "prepost": False,
+        "actions": True,
+        "auto_adjust": True,
+        "repair": False,
+        "threads": True,
+        "group_by": "column",
+        "progress": True,
+        "timeout": 10,
+    }
 
     def __repr__(self):
         return f"yfinance.Tickers object <{','.join(self.symbols)}>"
@@ -35,7 +71,9 @@ class Tickers:
         tickers = tickers if isinstance(
             tickers, list) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
-        self.tickers = {ticker: Ticker(ticker, session=session) for ticker in self.symbols}
+        self.tickers: Dict[str, Ticker] = {
+            ticker: Ticker(ticker, session=session) for ticker in self.symbols
+        }
 
         self._data = YfData(session=session)
 
@@ -46,52 +84,76 @@ class Tickers:
         #     "Tickers", ticker_objects.keys(), rename=True
         # )(*ticker_objects.values())
 
-    def history(self, period=None, interval="1d",
-                start=None, end=None, prepost=False,
-                actions=True, auto_adjust=True, repair=False,
-                threads=True, group_by='column', progress=True,
-                timeout=10, **kwargs):
+    def _parse_download_options(self, args, kwargs):
+        if len(args) > len(self._DOWNLOAD_ARG_NAMES):
+            raise TypeError(
+                "download() takes at most "
+                f"{len(self._DOWNLOAD_ARG_NAMES)} positional arguments "
+                f"({len(args)} given)"
+            )
 
-        return self.download(
-            period, interval,
-            start, end, prepost,
-            actions, auto_adjust, repair, 
-            threads, group_by, progress,
-            timeout, **kwargs)
+        options = dict(self._DOWNLOAD_DEFAULTS)
+        passthrough = dict(kwargs)
 
-    def download(self, period=None, interval="1d",
-                 start=None, end=None, prepost=False,
-                 actions=True, auto_adjust=True, repair=False, 
-                 threads=True, group_by='column', progress=True,
-                 timeout=10, **kwargs):
+        for key, value in zip(self._DOWNLOAD_ARG_NAMES, args):
+            if key in passthrough:
+                raise TypeError(f"download() got multiple values for argument '{key}'")
+            options[key] = value
 
-        data = multi.download(self.symbols,
-                              start=start, end=end,
-                              actions=actions,
-                              auto_adjust=auto_adjust,
-                              repair=repair,
-                              period=period,
-                              interval=interval,
-                              prepost=prepost,
-                              group_by='ticker',
-                              threads=threads,
-                              progress=progress,
-                              timeout=timeout,
-                              **kwargs)
+        for key in self._DOWNLOAD_ARG_NAMES:
+            if key in passthrough:
+                options[key] = passthrough.pop(key)
+
+        return options, passthrough
+
+    def history(self, *args, **kwargs):
+        """Alias for :meth:`download` with the same arguments."""
+
+        return self.download(*args, **kwargs)
+
+    def download(self, *args, **kwargs):
+        """Download price history for all symbols in this container."""
+
+        options, passthrough = self._parse_download_options(args, kwargs)
+
+        data = multi.download(
+            self.symbols,
+            start=options["start"],
+            end=options["end"],
+            actions=options["actions"],
+            auto_adjust=options["auto_adjust"],
+            repair=options["repair"],
+            period=options["period"],
+            interval=options["interval"],
+            prepost=options["prepost"],
+            group_by="ticker",
+            threads=options["threads"],
+            progress=options["progress"],
+            timeout=options["timeout"],
+            **passthrough,
+        )
+        if data is None:
+            data = _pd.DataFrame()
 
         for symbol in self.symbols:
-            self.tickers.get(symbol, {})._history = data[symbol]
+            ticker_obj = self.tickers.get(symbol)
+            if ticker_obj is not None and symbol in data:
+                setattr(ticker_obj, "_history", data[symbol])
 
-        if group_by == 'column':
+        if options["group_by"] == "column" and isinstance(data.columns, _pd.MultiIndex):
             data.columns = data.columns.swaplevel(0, 1)
             data.sort_index(level=0, axis=1, inplace=True)
 
         return data
 
     def news(self):
-        return {ticker: [item for item in Ticker(ticker).news] for ticker in self.symbols}
+        """Get the latest news entries for each symbol."""
+
+        return {ticker: list(Ticker(ticker).news) for ticker in self.symbols}
 
     def live(self, message_handler=None, verbose=True):
+        """Start a websocket stream subscribed to all symbols."""
+
         self._message_handler = message_handler
 
         self.ws = WebSocket(verbose=verbose)

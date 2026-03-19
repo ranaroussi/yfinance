@@ -1,127 +1,15 @@
-_QUERY1_URL_ = 'https://query1.finance.yahoo.com'
-_BASE_URL_ = 'https://query2.finance.yahoo.com'
-_ROOT_URL_ = 'https://finance.yahoo.com'
+"""Shared constants for Yahoo Finance requests and screeners."""
+
+from .fundamentals_keys import fundamentals_keys as _fundamentals_keys
+
+_QUERY1_URL_ = "https://query1.finance.yahoo.com"
+_BASE_URL_ = "https://query2.finance.yahoo.com"
+_ROOT_URL_ = "https://finance.yahoo.com"
 
 _SENTINEL_ = object()
+fundamentals_keys = _fundamentals_keys
 
-fundamentals_keys = {
-    'financials': ["TaxEffectOfUnusualItems", "TaxRateForCalcs", "NormalizedEBITDA", "NormalizedDilutedEPS",
-                   "NormalizedBasicEPS", "TotalUnusualItems", "TotalUnusualItemsExcludingGoodwill",
-                   "NetIncomeFromContinuingOperationNetMinorityInterest", "ReconciledDepreciation",
-                   "ReconciledCostOfRevenue", "EBITDA", "EBIT", "NetInterestIncome", "InterestExpense",
-                   "InterestIncome", "ContinuingAndDiscontinuedDilutedEPS", "ContinuingAndDiscontinuedBasicEPS",
-                   "NormalizedIncome", "NetIncomeFromContinuingAndDiscontinuedOperation", "TotalExpenses",
-                   "RentExpenseSupplemental", "ReportedNormalizedDilutedEPS", "ReportedNormalizedBasicEPS",
-                   "TotalOperatingIncomeAsReported", "DividendPerShare", "DilutedAverageShares", "BasicAverageShares",
-                   "DilutedEPS", "DilutedEPSOtherGainsLosses", "TaxLossCarryforwardDilutedEPS",
-                   "DilutedAccountingChange", "DilutedExtraordinary", "DilutedDiscontinuousOperations",
-                   "DilutedContinuousOperations", "BasicEPS", "BasicEPSOtherGainsLosses", "TaxLossCarryforwardBasicEPS",
-                   "BasicAccountingChange", "BasicExtraordinary", "BasicDiscontinuousOperations",
-                   "BasicContinuousOperations", "DilutedNIAvailtoComStockholders", "AverageDilutionEarnings",
-                   "NetIncomeCommonStockholders", "OtherunderPreferredStockDividend", "PreferredStockDividends",
-                   "NetIncome", "MinorityInterests", "NetIncomeIncludingNoncontrollingInterests",
-                   "NetIncomeFromTaxLossCarryforward", "NetIncomeExtraordinary", "NetIncomeDiscontinuousOperations",
-                   "NetIncomeContinuousOperations", "EarningsFromEquityInterestNetOfTax", "TaxProvision",
-                   "PretaxIncome", "OtherIncomeExpense", "OtherNonOperatingIncomeExpenses", "SpecialIncomeCharges",
-                   "GainOnSaleOfPPE", "GainOnSaleOfBusiness", "OtherSpecialCharges", "WriteOff",
-                   "ImpairmentOfCapitalAssets", "RestructuringAndMergernAcquisition", "SecuritiesAmortization",
-                   "EarningsFromEquityInterest", "GainOnSaleOfSecurity", "NetNonOperatingInterestIncomeExpense",
-                   "TotalOtherFinanceCost", "InterestExpenseNonOperating", "InterestIncomeNonOperating",
-                   "OperatingIncome", "OperatingExpense", "OtherOperatingExpenses", "OtherTaxes",
-                   "ProvisionForDoubtfulAccounts", "DepreciationAmortizationDepletionIncomeStatement",
-                   "DepletionIncomeStatement", "DepreciationAndAmortizationInIncomeStatement", "Amortization",
-                   "AmortizationOfIntangiblesIncomeStatement", "DepreciationIncomeStatement", "ResearchAndDevelopment",
-                   "SellingGeneralAndAdministration", "SellingAndMarketingExpense", "GeneralAndAdministrativeExpense",
-                   "OtherGandA", "InsuranceAndClaims", "RentAndLandingFees", "SalariesAndWages", "GrossProfit",
-                   "CostOfRevenue", "TotalRevenue", "ExciseTaxes", "OperatingRevenue", "LossAdjustmentExpense",
-                   "NetPolicyholderBenefitsAndClaims", "PolicyholderBenefitsGross", "PolicyholderBenefitsCeded",
-                   "OccupancyAndEquipment", "ProfessionalExpenseAndContractServicesExpense", "OtherNonInterestExpense"],
-    'balance-sheet': ["TreasurySharesNumber", "PreferredSharesNumber", "OrdinarySharesNumber", "ShareIssued", "NetDebt",
-                      "TotalDebt", "TangibleBookValue", "InvestedCapital", "WorkingCapital", "NetTangibleAssets",
-                      "CapitalLeaseObligations", "CommonStockEquity", "PreferredStockEquity", "TotalCapitalization",
-                      "TotalEquityGrossMinorityInterest", "MinorityInterest", "StockholdersEquity",
-                      "OtherEquityInterest", "GainsLossesNotAffectingRetainedEarnings", "OtherEquityAdjustments",
-                      "FixedAssetsRevaluationReserve", "ForeignCurrencyTranslationAdjustments",
-                      "MinimumPensionLiabilities", "UnrealizedGainLoss", "TreasuryStock", "RetainedEarnings",
-                      "AdditionalPaidInCapital", "CapitalStock", "OtherCapitalStock", "CommonStock", "PreferredStock",
-                      "TotalPartnershipCapital", "GeneralPartnershipCapital", "LimitedPartnershipCapital",
-                      "TotalLiabilitiesNetMinorityInterest", "TotalNonCurrentLiabilitiesNetMinorityInterest",
-                      "OtherNonCurrentLiabilities", "LiabilitiesHeldforSaleNonCurrent", "RestrictedCommonStock",
-                      "PreferredSecuritiesOutsideStockEquity", "DerivativeProductLiabilities", "EmployeeBenefits",
-                      "NonCurrentPensionAndOtherPostretirementBenefitPlans", "NonCurrentAccruedExpenses",
-                      "DuetoRelatedPartiesNonCurrent", "TradeandOtherPayablesNonCurrent",
-                      "NonCurrentDeferredLiabilities", "NonCurrentDeferredRevenue",
-                      "NonCurrentDeferredTaxesLiabilities", "LongTermDebtAndCapitalLeaseObligation",
-                      "LongTermCapitalLeaseObligation", "LongTermDebt", "LongTermProvisions", "CurrentLiabilities",
-                      "OtherCurrentLiabilities", "CurrentDeferredLiabilities", "CurrentDeferredRevenue",
-                      "CurrentDeferredTaxesLiabilities", "CurrentDebtAndCapitalLeaseObligation",
-                      "CurrentCapitalLeaseObligation", "CurrentDebt", "OtherCurrentBorrowings", "LineOfCredit",
-                      "CommercialPaper", "CurrentNotesPayable", "PensionandOtherPostRetirementBenefitPlansCurrent",
-                      "CurrentProvisions", "PayablesAndAccruedExpenses", "CurrentAccruedExpenses", "InterestPayable",
-                      "Payables", "OtherPayable", "DuetoRelatedPartiesCurrent", "DividendsPayable", "TotalTaxPayable",
-                      "IncomeTaxPayable", "AccountsPayable", "TotalAssets", "TotalNonCurrentAssets",
-                      "OtherNonCurrentAssets", "DefinedPensionBenefit", "NonCurrentPrepaidAssets",
-                      "NonCurrentDeferredAssets", "NonCurrentDeferredTaxesAssets", "DuefromRelatedPartiesNonCurrent",
-                      "NonCurrentNoteReceivables", "NonCurrentAccountsReceivable", "FinancialAssets",
-                      "InvestmentsAndAdvances", "OtherInvestments", "InvestmentinFinancialAssets",
-                      "HeldToMaturitySecurities", "AvailableForSaleSecurities",
-                      "FinancialAssetsDesignatedasFairValueThroughProfitorLossTotal", "TradingSecurities",
-                      "LongTermEquityInvestment", "InvestmentsinJointVenturesatCost",
-                      "InvestmentsInOtherVenturesUnderEquityMethod", "InvestmentsinAssociatesatCost",
-                      "InvestmentsinSubsidiariesatCost", "InvestmentProperties", "GoodwillAndOtherIntangibleAssets",
-                      "OtherIntangibleAssets", "Goodwill", "NetPPE", "AccumulatedDepreciation", "GrossPPE", "Leases",
-                      "ConstructionInProgress", "OtherProperties", "MachineryFurnitureEquipment",
-                      "BuildingsAndImprovements", "LandAndImprovements", "Properties", "CurrentAssets",
-                      "OtherCurrentAssets", "HedgingAssetsCurrent", "AssetsHeldForSaleCurrent", "CurrentDeferredAssets",
-                      "CurrentDeferredTaxesAssets", "RestrictedCash", "PrepaidAssets", "Inventory",
-                      "InventoriesAdjustmentsAllowances", "OtherInventories", "FinishedGoods", "WorkInProcess",
-                      "RawMaterials", "Receivables", "ReceivablesAdjustmentsAllowances", "OtherReceivables",
-                      "DuefromRelatedPartiesCurrent", "TaxesReceivable", "AccruedInterestReceivable", "NotesReceivable",
-                      "LoansReceivable", "AccountsReceivable", "AllowanceForDoubtfulAccountsReceivable",
-                      "GrossAccountsReceivable", "CashCashEquivalentsAndShortTermInvestments",
-                      "OtherShortTermInvestments", "CashAndCashEquivalents", "CashEquivalents", "CashFinancial",
-                      "CashCashEquivalentsAndFederalFundsSold"],
-    'cash-flow': ["ForeignSales", "DomesticSales", "AdjustedGeographySegmentData", "FreeCashFlow",
-                  "RepurchaseOfCapitalStock", "RepaymentOfDebt", "IssuanceOfDebt", "IssuanceOfCapitalStock",
-                  "CapitalExpenditure", "InterestPaidSupplementalData", "IncomeTaxPaidSupplementalData",
-                  "EndCashPosition", "OtherCashAdjustmentOutsideChangeinCash", "BeginningCashPosition",
-                  "EffectOfExchangeRateChanges", "ChangesInCash", "OtherCashAdjustmentInsideChangeinCash",
-                  "CashFlowFromDiscontinuedOperation", "FinancingCashFlow", "CashFromDiscontinuedFinancingActivities",
-                  "CashFlowFromContinuingFinancingActivities", "NetOtherFinancingCharges", "InterestPaidCFF",
-                  "ProceedsFromStockOptionExercised", "CashDividendsPaid", "PreferredStockDividendPaid",
-                  "CommonStockDividendPaid", "NetPreferredStockIssuance", "PreferredStockPayments",
-                  "PreferredStockIssuance", "NetCommonStockIssuance", "CommonStockPayments", "CommonStockIssuance",
-                  "NetIssuancePaymentsOfDebt", "NetShortTermDebtIssuance", "ShortTermDebtPayments",
-                  "ShortTermDebtIssuance", "NetLongTermDebtIssuance", "LongTermDebtPayments", "LongTermDebtIssuance",
-                  "InvestingCashFlow", "CashFromDiscontinuedInvestingActivities",
-                  "CashFlowFromContinuingInvestingActivities", "NetOtherInvestingChanges", "InterestReceivedCFI",
-                  "DividendsReceivedCFI", "NetInvestmentPurchaseAndSale", "SaleOfInvestment", "PurchaseOfInvestment",
-                  "NetInvestmentPropertiesPurchaseAndSale", "SaleOfInvestmentProperties",
-                  "PurchaseOfInvestmentProperties", "NetBusinessPurchaseAndSale", "SaleOfBusiness",
-                  "PurchaseOfBusiness", "NetIntangiblesPurchaseAndSale", "SaleOfIntangibles", "PurchaseOfIntangibles",
-                  "NetPPEPurchaseAndSale", "SaleOfPPE", "PurchaseOfPPE", "CapitalExpenditureReported",
-                  "OperatingCashFlow", "CashFromDiscontinuedOperatingActivities",
-                  "CashFlowFromContinuingOperatingActivities", "TaxesRefundPaid", "InterestReceivedCFO",
-                  "InterestPaidCFO", "DividendReceivedCFO", "DividendPaidCFO", "ChangeInWorkingCapital",
-                  "ChangeInOtherWorkingCapital", "ChangeInOtherCurrentLiabilities", "ChangeInOtherCurrentAssets",
-                  "ChangeInPayablesAndAccruedExpense", "ChangeInAccruedExpense", "ChangeInInterestPayable",
-                  "ChangeInPayable", "ChangeInDividendPayable", "ChangeInAccountPayable", "ChangeInTaxPayable",
-                  "ChangeInIncomeTaxPayable", "ChangeInPrepaidAssets", "ChangeInInventory", "ChangeInReceivables",
-                  "ChangesInAccountReceivables", "OtherNonCashItems", "ExcessTaxBenefitFromStockBasedCompensation",
-                  "StockBasedCompensation", "UnrealizedGainLossOnInvestmentSecurities", "ProvisionandWriteOffofAssets",
-                  "AssetImpairmentCharge", "AmortizationOfSecurities", "DeferredTax", "DeferredIncomeTax",
-                  "DepreciationAmortizationDepletion", "Depletion", "DepreciationAndAmortization",
-                  "AmortizationCashFlow", "AmortizationOfIntangibles", "Depreciation", "OperatingGainsLosses",
-                  "PensionAndEmployeeBenefitExpense", "EarningsLossesFromEquityInvestments",
-                  "GainLossOnInvestmentSecurities", "NetForeignCurrencyExchangeGainLoss", "GainLossOnSaleOfPPE",
-                  "GainLossOnSaleOfBusiness", "NetIncomeFromContinuingOperations",
-                  "CashFlowsfromusedinOperatingActivitiesDirect", "TaxesRefundPaidDirect", "InterestReceivedDirect",
-                  "InterestPaidDirect", "DividendsReceivedDirect", "DividendsPaidDirect", "ClassesofCashPayments",
-                  "OtherCashPaymentsfromOperatingActivities", "PaymentsonBehalfofEmployees",
-                  "PaymentstoSuppliersforGoodsandServices", "ClassesofCashReceiptsfromOperatingActivities",
-                  "OtherCashReceiptsfromOperatingActivities", "ReceiptsfromGovernmentGrants", "ReceiptsfromCustomers"]}
-
-_PRICE_COLNAMES_ = ['Open', 'High', 'Low', 'Close', 'Adj Close']
+_PRICE_COLNAMES_ = ["Open", "High", "Low", "Close", "Adj Close"]
 
 quote_summary_valid_modules = (
     "summaryProfile",  # contains general information about the company
@@ -130,7 +18,8 @@ quote_summary_valid_modules = (
     "fundProfile",
     "price",  # current prices
     "quoteType",  # quoteType
-    "esgScores",  # Environmental, social, and governance (ESG) scores, sustainability and ethical performance of companies
+    # Environmental, social, and governance (ESG) metrics.
+    "esgScores",
     "incomeStatementHistory",
     "incomeStatementHistoryQuarterly",
     "balanceSheetHistory",
@@ -138,7 +27,8 @@ quote_summary_valid_modules = (
     "cashFlowStatementHistory",
     "cashFlowStatementHistoryQuarterly",
     "defaultKeyStatistics",  # KPIs (PE, enterprise value, EPS, EBITA, and more)
-    "financialData",  # Financial KPIs (revenue, gross margins, operating cash flow, free cash flow, and more)
+    # Financial KPIs (revenue, margins, operating cash flow, free cash flow, and more).
+    "financialData",
     "calendarEvents",  # future earnings date
     "secFilings",  # SEC filings, such as 10K and 10Q reports
     "upgradeDowngradeHistory",  # upgrades and downgrades that analysts have given a company's stock
@@ -146,9 +36,11 @@ quote_summary_valid_modules = (
     "fundOwnership",  # mutual fund ownership, holders and shares outstanding
     "majorDirectHolders",
     "majorHoldersBreakdown",
-    "insiderTransactions",  # insider transactions, such as the number of shares bought and sold by company executives
+    # Insider transactions, including shares bought/sold by company executives.
+    "insiderTransactions",
     "insiderHolders",  # insider holders, such as the number of shares held by company executives
-    "netSharePurchaseActivity",  # net share purchase activity, such as the number of shares bought and sold by company executives
+    # Net share purchase activity by company executives.
+    "netSharePurchaseActivity",
     "earnings",  # earnings history
     "earningsHistory",
     "earningsTrend",  # earnings trend
@@ -161,159 +53,193 @@ quote_summary_valid_modules = (
 
 # map last updated as of 2025.12.19
 SECTOR_INDUSTY_MAPPING = {
-    'Basic Materials': {'Specialty Chemicals',
-                        'Gold',
-                        'Building Materials',
-                        'Copper',
-                        'Steel',
-                        'Agricultural Inputs',
-                        'Chemicals',
-                        'Other Industrial Metals & Mining',
-                        'Lumber & Wood Production',
-                        'Aluminum',
-                        'Other Precious Metals & Mining',
-                        'Coking Coal',
-                        'Paper & Paper Products',
-                        'Silver'},
-    'Communication Services': {'Advertising Agencies',
-                                'Broadcasting',
-                                'Electronic Gaming & Multimedia',
-                                'Entertainment',
-                                'Internet Content & Information',
-                                'Publishing',
-                                'Telecom Services'},
-    'Consumer Cyclical': {'Apparel Manufacturing',
-                            'Apparel Retail',
-                            'Auto & Truck Dealerships',
-                            'Auto Manufacturers',
-                            'Auto Parts',
-                            'Department Stores',
-                            'Footwear & Accessories',
-                            'Furnishings, Fixtures & Appliances',
-                            'Gambling',
-                            'Home Improvement Retail',
-                            'Internet Retail',
-                            'Leisure',
-                            'Lodging',
-                            'Luxury Goods',
-                            'Packaging & Containers',
-                            'Personal Services',
-                            'Recreational Vehicles',
-                            'Residential Construction',
-                            'Resorts & Casinos',
-                            'Restaurants',
-                            'Specialty Retail',
-                            'Textile Manufacturing',
-                            'Travel Services'},
-    'Consumer Defensive': {'Beverages—Brewers',
-                            'Beverages—Non-Alcoholic',
-                            'Beverages—Wineries & Distilleries',
-                            'Confectioners',
-                            'Discount Stores',
-                            'Education & Training Services',
-                            'Farm Products',
-                            'Food Distribution',
-                            'Grocery Stores',
-                            'Household & Personal Products',
-                            'Packaged Foods',
-                            'Tobacco'},
-    'Energy': {'Oil & Gas Drilling',
-                'Oil & Gas E&P',
-                'Oil & Gas Equipment & Services',
-                'Oil & Gas Integrated',
-                'Oil & Gas Midstream',
-                'Oil & Gas Refining & Marketing',
-                'Thermal Coal',
-                'Uranium'},
-    'Financial Services': {'Asset Management',
-                            'Banks—Diversified',
-                            'Banks—Regional',
-                            'Capital Markets',
-                            'Credit Services',
-                            'Financial Conglomerates',
-                            'Financial Data & Stock Exchanges',
-                            'Insurance Brokers',
-                            'Insurance—Diversified',
-                            'Insurance—Life',
-                            'Insurance—Property & Casualty',
-                            'Insurance—Reinsurance',
-                            'Insurance—Specialty',
-                            'Mortgage Finance',
-                            'Shell Companies'},
-    'Healthcare': {'Biotechnology',
-                    'Diagnostics & Research',
-                    'Drug Manufacturers—General',
-                    'Drug Manufacturers—Specialty & Generic',
-                    'Health Information Services',
-                    'Healthcare Plans',
-                    'Medical Care Facilities',
-                    'Medical Devices',
-                    'Medical Instruments & Supplies',
-                    'Medical Distribution',
-                    'Pharmaceutical Retailers'},
-    'Industrials': {'Aerospace & Defense',
-                    'Airlines',
-                    'Airports & Air Services',
-                    'Building Products & Equipment',
-                    'Business Equipment & Supplies',
-                    'Conglomerates',
-                    'Consulting Services',
-                    'Electrical Equipment & Parts',
-                    'Engineering & Construction',
-                    'Farm & Heavy Construction Machinery',
-                    'Industrial Distribution',
-                    'Infrastructure Operations',
-                    'Integrated Freight & Logistics',
-                    'Marine Shipping',
-                    'Metal Fabrication',
-                    'Pollution & Treatment Controls',
-                    'Railroads',
-                    'Rental & Leasing Services',
-                    'Security & Protection Services',
-                    'Specialty Business Services',
-                    'Specialty Industrial Machinery',
-                    'Staffing & Employment Services',
-                    'Tools & Accessories',
-                    'Trucking',
-                    'Waste Management'},
-    'Real Estate': {'Real Estate—Development',
-                    'Real Estate Services',
-                    'Real Estate—Diversified',
-                    'REIT—Healthcare Facilities',
-                    'REIT—Hotel & Motel',
-                    'REIT—Industrial',
-                    'REIT—Office',
-                    'REIT—Residential',
-                    'REIT—Retail',
-                    'REIT—Mortgage',
-                    'REIT—Specialty',
-                    'REIT—Diversified'},
-    'Technology': {'Communication Equipment',
-                    'Computer Hardware',
-                    'Consumer Electronics',
-                    'Electronic Components',
-                    'Electronics & Computer Distribution',
-                    'Information Technology Services',
-                    'Scientific & Technical Instruments',
-                    'Semiconductor Equipment & Materials',
-                    'Semiconductors',
-                    'Software—Application',
-                    'Software—Infrastructure',
-                    'Solar'},
-    'Utilities': {'Utilities—Diversified',
-                    'Utilities—Independent Power Producers',
-                    'Utilities—Regulated Electric',
-                    'Utilities—Regulated Gas',
-                    'Utilities—Regulated Water',
-                    'Utilities—Renewable'},
+    "Basic Materials": {
+        "Specialty Chemicals",
+        "Gold",
+        "Building Materials",
+        "Copper",
+        "Steel",
+        "Agricultural Inputs",
+        "Chemicals",
+        "Other Industrial Metals & Mining",
+        "Lumber & Wood Production",
+        "Aluminum",
+        "Other Precious Metals & Mining",
+        "Coking Coal",
+        "Paper & Paper Products",
+        "Silver",
+    },
+    "Communication Services": {
+        "Advertising Agencies",
+        "Broadcasting",
+        "Electronic Gaming & Multimedia",
+        "Entertainment",
+        "Internet Content & Information",
+        "Publishing",
+        "Telecom Services",
+    },
+    "Consumer Cyclical": {
+        "Apparel Manufacturing",
+        "Apparel Retail",
+        "Auto & Truck Dealerships",
+        "Auto Manufacturers",
+        "Auto Parts",
+        "Department Stores",
+        "Footwear & Accessories",
+        "Furnishings, Fixtures & Appliances",
+        "Gambling",
+        "Home Improvement Retail",
+        "Internet Retail",
+        "Leisure",
+        "Lodging",
+        "Luxury Goods",
+        "Packaging & Containers",
+        "Personal Services",
+        "Recreational Vehicles",
+        "Residential Construction",
+        "Resorts & Casinos",
+        "Restaurants",
+        "Specialty Retail",
+        "Textile Manufacturing",
+        "Travel Services",
+    },
+    "Consumer Defensive": {
+        "Beverages—Brewers",
+        "Beverages—Non-Alcoholic",
+        "Beverages—Wineries & Distilleries",
+        "Confectioners",
+        "Discount Stores",
+        "Education & Training Services",
+        "Farm Products",
+        "Food Distribution",
+        "Grocery Stores",
+        "Household & Personal Products",
+        "Packaged Foods",
+        "Tobacco",
+    },
+    "Energy": {
+        "Oil & Gas Drilling",
+        "Oil & Gas E&P",
+        "Oil & Gas Equipment & Services",
+        "Oil & Gas Integrated",
+        "Oil & Gas Midstream",
+        "Oil & Gas Refining & Marketing",
+        "Thermal Coal",
+        "Uranium",
+    },
+    "Financial Services": {
+        "Asset Management",
+        "Banks—Diversified",
+        "Banks—Regional",
+        "Capital Markets",
+        "Credit Services",
+        "Financial Conglomerates",
+        "Financial Data & Stock Exchanges",
+        "Insurance Brokers",
+        "Insurance—Diversified",
+        "Insurance—Life",
+        "Insurance—Property & Casualty",
+        "Insurance—Reinsurance",
+        "Insurance—Specialty",
+        "Mortgage Finance",
+        "Shell Companies",
+    },
+    "Healthcare": {
+        "Biotechnology",
+        "Diagnostics & Research",
+        "Drug Manufacturers—General",
+        "Drug Manufacturers—Specialty & Generic",
+        "Health Information Services",
+        "Healthcare Plans",
+        "Medical Care Facilities",
+        "Medical Devices",
+        "Medical Instruments & Supplies",
+        "Medical Distribution",
+        "Pharmaceutical Retailers",
+    },
+    "Industrials": {
+        "Aerospace & Defense",
+        "Airlines",
+        "Airports & Air Services",
+        "Building Products & Equipment",
+        "Business Equipment & Supplies",
+        "Conglomerates",
+        "Consulting Services",
+        "Electrical Equipment & Parts",
+        "Engineering & Construction",
+        "Farm & Heavy Construction Machinery",
+        "Industrial Distribution",
+        "Infrastructure Operations",
+        "Integrated Freight & Logistics",
+        "Marine Shipping",
+        "Metal Fabrication",
+        "Pollution & Treatment Controls",
+        "Railroads",
+        "Rental & Leasing Services",
+        "Security & Protection Services",
+        "Specialty Business Services",
+        "Specialty Industrial Machinery",
+        "Staffing & Employment Services",
+        "Tools & Accessories",
+        "Trucking",
+        "Waste Management",
+    },
+    "Real Estate": {
+        "Real Estate—Development",
+        "Real Estate Services",
+        "Real Estate—Diversified",
+        "REIT—Healthcare Facilities",
+        "REIT—Hotel & Motel",
+        "REIT—Industrial",
+        "REIT—Office",
+        "REIT—Residential",
+        "REIT—Retail",
+        "REIT—Mortgage",
+        "REIT—Specialty",
+        "REIT—Diversified",
+    },
+    "Technology": {
+        "Communication Equipment",
+        "Computer Hardware",
+        "Consumer Electronics",
+        "Electronic Components",
+        "Electronics & Computer Distribution",
+        "Information Technology Services",
+        "Scientific & Technical Instruments",
+        "Semiconductor Equipment & Materials",
+        "Semiconductors",
+        "Software—Application",
+        "Software—Infrastructure",
+        "Solar",
+    },
+    "Utilities": {
+        "Utilities—Diversified",
+        "Utilities—Independent Power Producers",
+        "Utilities—Regulated Electric",
+        "Utilities—Regulated Gas",
+        "Utilities—Regulated Water",
+        "Utilities—Renewable",
+    },
 }
 SECTOR_INDUSTY_MAPPING_LC = {}
-for k in SECTOR_INDUSTY_MAPPING.keys():
-    k2 = k.lower().replace('& ', '').replace('- ', '').replace(', ', ' ').replace(' ', '-')
-    SECTOR_INDUSTY_MAPPING_LC[k2] = []
-    for v in SECTOR_INDUSTY_MAPPING[k]:
-        v2 = v.lower().replace('& ', '').replace('- ', '').replace(', ', ' ').replace(' ', '-')
-        SECTOR_INDUSTY_MAPPING_LC[k2].append(v2)
+for sector, industries in SECTOR_INDUSTY_MAPPING.items():
+    normalized_sector = (
+        sector.lower()
+        .replace("& ", "")
+        .replace("- ", "")
+        .replace(", ", " ")
+        .replace(" ", "-")
+    )
+    SECTOR_INDUSTY_MAPPING_LC[normalized_sector] = []
+    for industry in industries:
+        normalized_industry = (
+            industry.lower()
+            .replace("& ", "")
+            .replace("- ", "")
+            .replace(", ", " ")
+            .replace(" ", "-")
+        )
+        SECTOR_INDUSTY_MAPPING_LC[normalized_sector].append(normalized_industry)
 
 # _MIC_TO_YAHOO_SUFFIX maps Market Identifier Codes (MIC) to Yahoo Finance market suffixes.
 # c.f. :
@@ -321,64 +247,93 @@ for k in SECTOR_INDUSTY_MAPPING.keys():
 # https://www.iso20022.org/market-identifier-codes
 
 _MIC_TO_YAHOO_SUFFIX = {
-    'XCBT': 'CBT', 'XCME': 'CME', 'IFUS': 'NYB', 'CECS': 'CMX', 'XNYM': 'NYM', 'XNYS': '', 'XNAS': '',  # United States
-    'XBUE': 'BA',  # Argentina
-    'XVIE': 'VI',  # Austria
-    'XASX': 'AX', 'XAUS': 'XA',  # Australia
-    'XBRU': 'BR',  # Belgium
-    'BVMF': 'SA',  # Brazil
-    'CNSX': 'CN', 'NEOE': 'NE', 'XTSE': 'TO', 'XTSX': 'V',  # Canada
-    'XSGO': 'SN',  # Chile
-    'XSHG': 'SS', 'XSHE': 'SZ',  # China
-    'XBOG': 'CL',  # Colombia
-    'XPRA': 'PR',  # Czech Republic
-    'XCSE': 'CO',  # Denmark
-    'XCAI': 'CA',  # Egypt
-    'XTAL': 'TL',  # Estonia
-    'CEUX': 'XD', 'XEUR': 'NX',  # Europe (Cboe Europe, Euronext)
-    'XHEL': 'HE',  # Finland
-    'XPAR': 'PA',  # France
-    'XBER': 'BE', 'XBMS': 'BM', 'XDUS': 'DU', 'XFRA': 'F', 'XHAM': 'HM', 'XHAN': 'HA', 'XMUN': 'MU', 'XSTU': 'SG', 'XETR': 'DE',  # Germany
-    'XATH': 'AT',  # Greece
-    'XHKG': 'HK',  # Hong Kong
-    'XBUD': 'BD',  # Hungary
-    'XICE': 'IC',  # Iceland
-    'XBOM': 'BO', 'XNSE': 'NS',  # India
-    'XIDX': 'JK',  # Indonesia
-    'XDUB': 'IR',  # Ireland
-    'XTAE': 'TA',  # Israel
-    'MTAA': 'MI', 'EUTL': 'TI',  # Italy
-    'XTKS': 'T',  # Japan
-    'XKFE': 'KW',  # Kuwait
-    'XRIS': 'RG',  # Latvia
-    'XVIL': 'VS',  # Lithuania
-    'XKLS': 'KL',  # Malaysia
-    'XMEX': 'MX',  # Mexico
-    'XAMS': 'AS',  # Netherlands
-    'XNZE': 'NZ',  # New Zealand
-    'XOSL': 'OL',  # Norway
-    'XPHS': 'PS',  # Philippines
-    'XWAR': 'WA',  # Poland
-    'XLIS': 'LS',  # Portugal
-    'XQAT': 'QA',  # Qatar
-    'XBSE': 'RO',  # Romania
-    'XSES': 'SI',  # Singapore
-    'XJSE': 'JO',  # South Africa
-    'XKRX': 'KS', 'KQKS': 'KQ',  # South Korea
-    'BMEX': 'MC',  # Spain
-    'XSAU': 'SR',  # Saudi Arabia
-    'XSTO': 'ST',  # Sweden
-    'XSWX': 'SW',  # Switzerland
-    'ROCO': 'TWO', 'XTAI': 'TW',  # Taiwan
-    'XBKK': 'BK',  # Thailand
-    'XIST': 'IS',  # Turkey
-    'XDFM': 'AE',  # UAE
-    'AQXE': 'AQ', 'XCHI': 'XC', 'XLON': 'L', 'ILSE': 'IL',  # United Kingdom
-    'XCAR': 'CR',  # Venezuela
-    'XSTC': 'VN'  # Vietnam
+    "XCBT": "CBT",
+    "XCME": "CME",
+    "IFUS": "NYB",
+    "CECS": "CMX",
+    "XNYM": "NYM",
+    "XNYS": "",
+    "XNAS": "",  # United States
+    "XBUE": "BA",  # Argentina
+    "XVIE": "VI",  # Austria
+    "XASX": "AX",
+    "XAUS": "XA",  # Australia
+    "XBRU": "BR",  # Belgium
+    "BVMF": "SA",  # Brazil
+    "CNSX": "CN",
+    "NEOE": "NE",
+    "XTSE": "TO",
+    "XTSX": "V",  # Canada
+    "XSGO": "SN",  # Chile
+    "XSHG": "SS",
+    "XSHE": "SZ",  # China
+    "XBOG": "CL",  # Colombia
+    "XPRA": "PR",  # Czech Republic
+    "XCSE": "CO",  # Denmark
+    "XCAI": "CA",  # Egypt
+    "XTAL": "TL",  # Estonia
+    "CEUX": "XD",
+    "XEUR": "NX",  # Europe (Cboe Europe, Euronext)
+    "XHEL": "HE",  # Finland
+    "XPAR": "PA",  # France
+    "XBER": "BE",
+    "XBMS": "BM",
+    "XDUS": "DU",
+    "XFRA": "F",
+    "XHAM": "HM",
+    "XHAN": "HA",
+    "XMUN": "MU",
+    "XSTU": "SG",
+    "XETR": "DE",  # Germany
+    "XATH": "AT",  # Greece
+    "XHKG": "HK",  # Hong Kong
+    "XBUD": "BD",  # Hungary
+    "XICE": "IC",  # Iceland
+    "XBOM": "BO",
+    "XNSE": "NS",  # India
+    "XIDX": "JK",  # Indonesia
+    "XDUB": "IR",  # Ireland
+    "XTAE": "TA",  # Israel
+    "MTAA": "MI",
+    "EUTL": "TI",  # Italy
+    "XTKS": "T",  # Japan
+    "XKFE": "KW",  # Kuwait
+    "XRIS": "RG",  # Latvia
+    "XVIL": "VS",  # Lithuania
+    "XKLS": "KL",  # Malaysia
+    "XMEX": "MX",  # Mexico
+    "XAMS": "AS",  # Netherlands
+    "XNZE": "NZ",  # New Zealand
+    "XOSL": "OL",  # Norway
+    "XPHS": "PS",  # Philippines
+    "XWAR": "WA",  # Poland
+    "XLIS": "LS",  # Portugal
+    "XQAT": "QA",  # Qatar
+    "XBSE": "RO",  # Romania
+    "XSES": "SI",  # Singapore
+    "XJSE": "JO",  # South Africa
+    "XKRX": "KS",
+    "KQKS": "KQ",  # South Korea
+    "BMEX": "MC",  # Spain
+    "XSAU": "SR",  # Saudi Arabia
+    "XSTO": "ST",  # Sweden
+    "XSWX": "SW",  # Switzerland
+    "ROCO": "TWO",
+    "XTAI": "TW",  # Taiwan
+    "XBKK": "BK",  # Thailand
+    "XIST": "IS",  # Turkey
+    "XDFM": "AE",  # UAE
+    "AQXE": "AQ",
+    "XCHI": "XC",
+    "XLON": "L",
+    "ILSE": "IL",  # United Kingdom
+    "XCAR": "CR",  # Venezuela
+    "XSTC": "VN",  # Vietnam
 }
 
+
 def merge_two_level_dicts(dict1, dict2):
+    """Merge two nested dictionaries, unioning set values when keys overlap."""
     result = dict1.copy()
     for key, value in dict2.items():
         if key in result:
@@ -388,8 +343,8 @@ def merge_two_level_dicts(dict1, dict2):
             # If both are dicts, merge their contents
             elif isinstance(value, dict) and isinstance(result[key], dict):
                 result[key] = {
-                    k: (result[key].get(k, set()) | v if isinstance(v, set) 
-                        else v) if k in result[key]
+                    k: (result[key].get(k, set()) | v if isinstance(v, set) else v)
+                    if k in result[key]
                     else v
                     for k, v in value.items()
                 }
@@ -397,72 +352,96 @@ def merge_two_level_dicts(dict1, dict2):
             result[key] = value
     return result
 
+
 EQUITY_SCREENER_EQ_MAP = {
     "exchange": {
-        'ae': {'DFM'},
-        'ar': {'BUE'},
-        'at': {'VIE'},
-        'au': {'ASX', 'CXA'},
-        'be': {'BRU'},
-        'br': {'SAO'},
-        'ca': {'CNQ', 'NEO', 'TOR', 'VAN'},
-        'ch': {'EBS'},
-        'cl': {'SGO'},
-        'cn': {'SHH', 'SHZ'},
-        'co': {'BVC'},
-        'cz': {'PRA'},
-        'de': {'BER', 'DUS', 'EUX', 'FRA', 'HAM', 'HAN', 'GER', 'MUN', 'STU'},
-        'dk': {'CPH'},
-        'ee': {'TAL'},
-        'eg': {'CAI'},
-        'es': {'MAD', 'MCE'},
-        'fi': {'HEL'},
-        'fr': {'ENX', 'PAR'},
-        'gb': {'AQS', 'CXE', 'IOB', 'LSE'},
-        'gr': {'ATH'},
-        'hk': {'HKG'},
-        'hu': {'BUD'},
-        'id': {'JKT'},
-        'ie': {'ISE'},
-        'il': {'TLV'},
-        'in': {'BSE', 'NSI'},
-        'is': {'ICE'},
-        'it': {'MDD', 'MIL', 'TLO'},
-        'jp': {'FKA', 'JPX', 'OSA', 'SAP'},
-        'kr': {'KOE', 'KSC'},
-        'kw': {'KUW'},
-        'lk': {'CSE'},
-        'lt': {'LIT'},
-        'lv': {'RIS'},
-        'mx': {'MEX'},
-        'my': {'KLS'},
-        'nl': {'AMS', 'DXE'},
-        'no': {'OSL'},
-        'nz': {'NZE'},
-        'pe': {},
-        'ph': {'PHP', 'PHS'},
-        'pk': {'KAR'},
-        'pl': {'WSE'},
-        'pt': {'LIS'},
-        'qa': {'DOH'},
-        'ro': {'BVB'},
-        'ru': {'MCX'},
-        'sa': {'SAU'},
-        'se': {'STO'},
-        'sg': {'SES'},
-        'sr': {},
-        'th': {'SET'},
-        'tr': {'IST'},
-        'tw': {'TAI', 'TWO'},
-        'us': {'ASE', 'BTS', 'CXI', 'NAE', 'NCM', 'NGM', 'NMS', 'NYQ', 'OEM', 'OQB', 'OQX', 'PCX', 'PNK', 'YHD'},
-        've': {'CCS'},
-        'vn': {'VSE'},
-        'za': {'JNB'}
+        "ae": {"DFM"},
+        "ar": {"BUE"},
+        "at": {"VIE"},
+        "au": {"ASX", "CXA"},
+        "be": {"BRU"},
+        "br": {"SAO"},
+        "ca": {"CNQ", "NEO", "TOR", "VAN"},
+        "ch": {"EBS"},
+        "cl": {"SGO"},
+        "cn": {"SHH", "SHZ"},
+        "co": {"BVC"},
+        "cz": {"PRA"},
+        "de": {"BER", "DUS", "EUX", "FRA", "HAM", "HAN", "GER", "MUN", "STU"},
+        "dk": {"CPH"},
+        "ee": {"TAL"},
+        "eg": {"CAI"},
+        "es": {"MAD", "MCE"},
+        "fi": {"HEL"},
+        "fr": {"ENX", "PAR"},
+        "gb": {"AQS", "CXE", "IOB", "LSE"},
+        "gr": {"ATH"},
+        "hk": {"HKG"},
+        "hu": {"BUD"},
+        "id": {"JKT"},
+        "ie": {"ISE"},
+        "il": {"TLV"},
+        "in": {"BSE", "NSI"},
+        "is": {"ICE"},
+        "it": {"MDD", "MIL", "TLO"},
+        "jp": {"FKA", "JPX", "OSA", "SAP"},
+        "kr": {"KOE", "KSC"},
+        "kw": {"KUW"},
+        "lk": {"CSE"},
+        "lt": {"LIT"},
+        "lv": {"RIS"},
+        "mx": {"MEX"},
+        "my": {"KLS"},
+        "nl": {"AMS", "DXE"},
+        "no": {"OSL"},
+        "nz": {"NZE"},
+        "pe": {},
+        "ph": {"PHP", "PHS"},
+        "pk": {"KAR"},
+        "pl": {"WSE"},
+        "pt": {"LIS"},
+        "qa": {"DOH"},
+        "ro": {"BVB"},
+        "ru": {"MCX"},
+        "sa": {"SAU"},
+        "se": {"STO"},
+        "sg": {"SES"},
+        "sr": {},
+        "th": {"SET"},
+        "tr": {"IST"},
+        "tw": {"TAI", "TWO"},
+        "us": {
+            "ASE",
+            "BTS",
+            "CXI",
+            "NAE",
+            "NCM",
+            "NGM",
+            "NMS",
+            "NYQ",
+            "OEM",
+            "OQB",
+            "OQX",
+            "PCX",
+            "PNK",
+            "YHD",
+        },
+        "ve": {"CCS"},
+        "vn": {"VSE"},
+        "za": {"JNB"},
     },
     "sector": {
-        "Basic Materials", "Industrials", "Communication Services", "Healthcare",
-        "Real Estate", "Technology", "Energy", "Utilities", "Financial Services",
-        "Consumer Defensive", "Consumer Cyclical"
+        "Basic Materials",
+        "Industrials",
+        "Communication Services",
+        "Healthcare",
+        "Real Estate",
+        "Technology",
+        "Energy",
+        "Utilities",
+        "Financial Services",
+        "Consumer Defensive",
+        "Consumer Cyclical",
     },
     "industry": SECTOR_INDUSTY_MAPPING,
     "peer_group": {
@@ -568,120 +547,139 @@ EQUITY_SCREENER_EQ_MAP = {
         "Utilities",
         "Pharmaceuticals",
         "Software & Services",
-        "Banks"
-    }
+        "Banks",
+    },
 }
-EQUITY_SCREENER_EQ_MAP['region'] = EQUITY_SCREENER_EQ_MAP['exchange'].keys()
-ordered_keys = ['region'] + [k for k in EQUITY_SCREENER_EQ_MAP.keys() if k != 'region']
-EQUITY_SCREENER_EQ_MAP = {k:EQUITY_SCREENER_EQ_MAP[k] for k in ordered_keys}
+EQUITY_SCREENER_EQ_MAP["region"] = tuple(EQUITY_SCREENER_EQ_MAP["exchange"])
+ordered_keys = ["region"] + [key for key in EQUITY_SCREENER_EQ_MAP if key != "region"]
+EQUITY_SCREENER_EQ_MAP = {k: EQUITY_SCREENER_EQ_MAP[k] for k in ordered_keys}
 FUND_SCREENER_EQ_MAP = {
     "exchange": {
-        'ae': {'DFM'},
-        'ar': {'BUE'},
-        'at': {'VIE'},
-        'au': {'ASX','CXA'},
-        'be': {'BRU'},
-        'br': {'SAO'},
-        'ca': {'CNQ','NEO','TOR','VAN'},
-        'ch': {'EBS'},
-        'cl': {'SGO'},
-        'co': {'BVC'},
-        'cn': {'SHH','SHZ'},
-        'cz': {'PRA'},
-        'de': {'BER','DUS','EUX','FRA','GER','HAM','HAN','MUN','STU',},
-        'dk': {'CPH'},
-        'ee': {'TAL'},
-        'eg': {'CAI'},
-        'es': {'BAR','MAD','MCE'},
-        'fi': {'HEL'},
-        'fr': {'ENX','PAR'},
-        'gb': {'CXE','IOB','LSE'},
-        'gr': {'ATH'},
-        'hk': {'HKG'},
-        'hu': {'BUD'},
-        'id': {'JKT'},
-        'ie': {'ISE'},
-        'il': {'TLV'},
-        'in': {'BSE','NSI'},
-        'is': {'ICE'},
-        'it': {'MIL'},
-        'jp': {'FKA','JPX','OSA','SAP'},
-        'kr': {'KOE','KSC'},
-        'kw': {'KUW'},
-        'lk': {'CSE'},
-        'lt': {'LIT'},
-        'lv': {'RIS'},
-        'mx': {'MEX'},
-        'my': {'KLS'},
-        'nl': {'AMS'},
-        'no': {'OSL'},
-        'nz': {'NZE'},
-        'pe': {''},
-        'ph': {'PHP', 'PHS'},
-        'pk': {'KAR'},
-        'pl': {'WSE'},
-        'pt': {'LIS'},
-        'qa': {'DOH'},
-        'ro': {'BVB'},
-        'ru': {'MCX'},
-        'sa': {'SAU'},
-        'se': {'STO'},
-        'sg': {'SES'},
-        'sr': {''},
-        'th': {'SET'},
-        'tr': {'IST'},
-        'tw': {'TAI','TWO'},
-        'us': {'ASE','NAS','NCM','NGM','NMS','NYQ','OEM','OGM','OQB','PNK','WCB',},
-        've': {'CCS'},
-        'vn': {'VSE'},
-        'za': {'JNB'}
+        "ae": {"DFM"},
+        "ar": {"BUE"},
+        "at": {"VIE"},
+        "au": {"ASX", "CXA"},
+        "be": {"BRU"},
+        "br": {"SAO"},
+        "ca": {"CNQ", "NEO", "TOR", "VAN"},
+        "ch": {"EBS"},
+        "cl": {"SGO"},
+        "co": {"BVC"},
+        "cn": {"SHH", "SHZ"},
+        "cz": {"PRA"},
+        "de": {
+            "BER",
+            "DUS",
+            "EUX",
+            "FRA",
+            "GER",
+            "HAM",
+            "HAN",
+            "MUN",
+            "STU",
+        },
+        "dk": {"CPH"},
+        "ee": {"TAL"},
+        "eg": {"CAI"},
+        "es": {"BAR", "MAD", "MCE"},
+        "fi": {"HEL"},
+        "fr": {"ENX", "PAR"},
+        "gb": {"CXE", "IOB", "LSE"},
+        "gr": {"ATH"},
+        "hk": {"HKG"},
+        "hu": {"BUD"},
+        "id": {"JKT"},
+        "ie": {"ISE"},
+        "il": {"TLV"},
+        "in": {"BSE", "NSI"},
+        "is": {"ICE"},
+        "it": {"MIL"},
+        "jp": {"FKA", "JPX", "OSA", "SAP"},
+        "kr": {"KOE", "KSC"},
+        "kw": {"KUW"},
+        "lk": {"CSE"},
+        "lt": {"LIT"},
+        "lv": {"RIS"},
+        "mx": {"MEX"},
+        "my": {"KLS"},
+        "nl": {"AMS"},
+        "no": {"OSL"},
+        "nz": {"NZE"},
+        "pe": {""},
+        "ph": {"PHP", "PHS"},
+        "pk": {"KAR"},
+        "pl": {"WSE"},
+        "pt": {"LIS"},
+        "qa": {"DOH"},
+        "ro": {"BVB"},
+        "ru": {"MCX"},
+        "sa": {"SAU"},
+        "se": {"STO"},
+        "sg": {"SES"},
+        "sr": {""},
+        "th": {"SET"},
+        "tr": {"IST"},
+        "tw": {"TAI", "TWO"},
+        "us": {
+            "ASE",
+            "NAS",
+            "NCM",
+            "NGM",
+            "NMS",
+            "NYQ",
+            "OEM",
+            "OGM",
+            "OQB",
+            "PNK",
+            "WCB",
+        },
+        "ve": {"CCS"},
+        "vn": {"VSE"},
+        "za": {"JNB"},
     }
 }
 COMMON_SCREENER_FIELDS = {
-    "price":{
-        "eodprice",
-        "intradaypricechange",
-        "intradayprice"
-    },
-    "eq_fields": {
-        "exchange"}, 
+    "price": {"eodprice", "intradaypricechange", "intradayprice"},
+    "eq_fields": {"exchange"},
 }
-FUND_SCREENER_FIELDS = {
+fund_screener_fields = {
     "eq_fields": {
         "categoryname",
         "performanceratingoverall",
-        "initialinvestment", 
-        "annualreturnnavy1categoryrank", 
-        "riskratingoverall"}
+        "initialinvestment",
+        "annualreturnnavy1categoryrank",
+        "riskratingoverall",
+    }
 }
-FUND_SCREENER_FIELDS = merge_two_level_dicts(FUND_SCREENER_FIELDS, COMMON_SCREENER_FIELDS)
-EQUITY_SCREENER_FIELDS = {
-    "eq_fields": {
-        "region",
-        "sector",
-        "peer_group",
-        "industry"}, 
-    "price":{
+fund_screener_fields = merge_two_level_dicts(
+    fund_screener_fields, COMMON_SCREENER_FIELDS
+)
+equity_screener_fields = {
+    "eq_fields": {"region", "sector", "peer_group", "industry"},
+    "price": {
         "lastclosemarketcap.lasttwelvemonths",
         "percentchange",
         "lastclose52weekhigh.lasttwelvemonths",
         "fiftytwowkpercentchange",
         "lastclose52weeklow.lasttwelvemonths",
-        "intradaymarketcap"},
-    "trading":{
+        "intradaymarketcap",
+    },
+    "trading": {
         "beta",
         "avgdailyvol3m",
         "pctheldinsider",
         "pctheldinst",
         "dayvolume",
-        "eodvolume"},
-    "short_interest":{
+        "eodvolume",
+    },
+    "short_interest": {
         "short_percentage_of_shares_outstanding.value",
         "short_interest.value",
         "short_percentage_of_float.value",
         "days_to_cover_short.value",
-        "short_interest_percentage_change.value"},
-    "valuation":{
+        "short_interest_percentage_change.value",
+    },
+    "valuation": {
         "bookvalueshare.lasttwelvemonths",
         "lastclosemarketcaptotalrevenue.lasttwelvemonths",
         "lastclosetevtotalrevenue.lasttwelvemonths",
@@ -689,15 +687,17 @@ EQUITY_SCREENER_FIELDS = {
         "peratio.lasttwelvemonths",
         "lastclosepricetangiblebookvalue.lasttwelvemonths",
         "lastclosepriceearnings.lasttwelvemonths",
-        "pegratio_5y"},
-    "profitability":{
+        "pegratio_5y",
+    },
+    "profitability": {
         "consecutive_years_of_dividend_growth_count",
         "returnonassets.lasttwelvemonths",
         "returnonequity.lasttwelvemonths",
         "forward_dividend_per_share",
         "forward_dividend_yield",
-        "returnontotalcapital.lasttwelvemonths"},
-    "leverage":{
+        "returnontotalcapital.lasttwelvemonths",
+    },
+    "leverage": {
         "lastclosetevebit.lasttwelvemonths",
         "netdebtebitda.lasttwelvemonths",
         "totaldebtequity.lasttwelvemonths",
@@ -705,13 +705,15 @@ EQUITY_SCREENER_FIELDS = {
         "ebitinterestexpense.lasttwelvemonths",
         "ebitdainterestexpense.lasttwelvemonths",
         "lastclosetevebitda.lasttwelvemonths",
-        "totaldebtebitda.lasttwelvemonths"},
-    "liquidity":{
+        "totaldebtebitda.lasttwelvemonths",
+    },
+    "liquidity": {
         "quickratio.lasttwelvemonths",
         "altmanzscoreusingtheaveragestockinformationforaperiod.lasttwelvemonths",
         "currentratio.lasttwelvemonths",
-        "operatingcashflowtocurrentliabilities.lasttwelvemonths"},
-    "income_statement":{
+        "operatingcashflowtocurrentliabilities.lasttwelvemonths",
+    },
+    "income_statement": {
         "totalrevenues.lasttwelvemonths",
         "netincomemargin.lasttwelvemonths",
         "grossprofit.lasttwelvemonths",
@@ -729,9 +731,9 @@ EQUITY_SCREENER_FIELDS = {
         "ebitdamargin.lasttwelvemonths",
         "ebit.lasttwelvemonths",
         "basicepscontinuingoperations.lasttwelvemonths",
-        "netepsbasic.lasttwelvemonths"
-        "netepsdiluted.lasttwelvemonths"},
-    "balance_sheet":{
+        "netepsbasic.lasttwelvemonthsnetepsdiluted.lasttwelvemonths",
+    },
+    "balance_sheet": {
         "totalassets.lasttwelvemonths",
         "totalcommonsharesoutstanding.lasttwelvemonths",
         "totaldebt.lasttwelvemonths",
@@ -740,38 +742,59 @@ EQUITY_SCREENER_FIELDS = {
         "totalcashandshortterminvestments.lasttwelvemonths",
         "totalcommonequity.lasttwelvemonths",
         "totalcurrentliabilities.lasttwelvemonths",
-        "totalsharesoutstanding"},
-    "cash_flow":{
+        "totalsharesoutstanding",
+    },
+    "cash_flow": {
         "forward_dividend_yield",
         "leveredfreecashflow.lasttwelvemonths",
         "capitalexpenditure.lasttwelvemonths",
         "cashfromoperations.lasttwelvemonths",
         "leveredfreecashflow1yrgrowth.lasttwelvemonths",
         "unleveredfreecashflow.lasttwelvemonths",
-        "cashfromoperations1yrgrowth.lasttwelvemonths"},
-    "esg":{
+        "cashfromoperations1yrgrowth.lasttwelvemonths",
+    },
+    "esg": {
         "esg_score",
         "environmental_score",
         "governance_score",
         "social_score",
-        "highest_controversy"}
+        "highest_controversy",
+    },
 }
-EQUITY_SCREENER_FIELDS = merge_two_level_dicts(EQUITY_SCREENER_FIELDS, COMMON_SCREENER_FIELDS)
+equity_screener_fields = merge_two_level_dicts(
+    equity_screener_fields, COMMON_SCREENER_FIELDS
+)
+
+# Preserve backwards-compatible public names without creating invalid Python identifiers.
+globals()["FUND_SCREENER_FIELDS"] = fund_screener_fields
+globals()["EQUITY_SCREENER_FIELDS"] = equity_screener_fields
 
 USER_AGENTS = [
     # Chrome
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+    ),
     # Firefox
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:135.0) Gecko/20100101 Firefox/135.0",
     "Mozilla/5.0 (X11; Linux i686; rv:135.0) Gecko/20100101 Firefox/135.0",
-
     # Safari
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15",
-
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_4) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
+    ),
     # Edge
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/131.0.2903.86"
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/131.0.2903.86"
+    ),
 ]

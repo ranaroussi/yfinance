@@ -19,9 +19,12 @@
 # limitations under the License.
 #
 
+"""Public ticker object exposing Yahoo Finance data endpoints."""
+
 from __future__ import print_function
 
 from collections import namedtuple as _namedtuple
+from typing import Any, Dict, Optional, Union
 
 import pandas as _pd
 
@@ -29,17 +32,24 @@ from .base import TickerBase
 from .const import _BASE_URL_
 from .scrapers.funds import FundsData
 
+_DataFrameOrDict = Union[_pd.DataFrame, Dict[Any, Any]]
+_OptionalDataFrameOrDict = Optional[_DataFrameOrDict]
+
 
 class Ticker(TickerBase):
+    """Top-level ticker API facade with convenience properties."""
+
     def __init__(self, ticker, session=None):
-        super(Ticker, self).__init__(ticker, session=session)
+        """Initialize a ticker object."""
+        super().__init__(ticker, session=session)
         self._expirations = {}
-        self._underlying  = {}
+        self._underlying = {}
 
     def __repr__(self):
         return f'yfinance.Ticker object <{self.ticker}>'
 
     def _download_options(self, date=None):
+        """Download option chain data for the provided expiration date."""
         if date is None:
             url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}"
         else:
@@ -54,10 +64,11 @@ class Ticker(TickerBase):
 
             opt = r['optionChain']['result'][0].get('options', [])
 
-            return dict(**opt[0],underlying=self._underlying) if len(opt) > 0 else {}
+            return {**opt[0], "underlying": self._underlying} if len(opt) > 0 else {}
         return {}
 
     def _options2df(self, opt, tz=None):
+        """Convert Yahoo option rows into a normalized DataFrame."""
         data = _pd.DataFrame(opt).reindex(columns=[
             'contractSymbol',
             'lastTradeDate',
@@ -81,6 +92,7 @@ class Ticker(TickerBase):
         return data
 
     def option_chain(self, date=None, tz=None):
+        """Return option calls, puts, and underlying quote for an expiration."""
         if date is None:
             options = self._download_options()
         else:
@@ -104,221 +116,191 @@ class Ticker(TickerBase):
             "underlying": options['underlying']
         })
 
-    # ------------------------
-
-    @property
-    def isin(self):
-        return self.get_isin()
-
-    @property
-    def major_holders(self) -> _pd.DataFrame:
-        return self.get_major_holders()
-
-    @property
-    def institutional_holders(self) -> _pd.DataFrame:
-        return self.get_institutional_holders()
-
-    @property
-    def mutualfund_holders(self) -> _pd.DataFrame:
-        return self.get_mutualfund_holders()
-
-    @property
-    def insider_purchases(self) -> _pd.DataFrame:
-        return self.get_insider_purchases()
-
-    @property
-    def insider_transactions(self) -> _pd.DataFrame:
-        return self.get_insider_transactions()
-
-    @property
-    def insider_roster_holders(self) -> _pd.DataFrame:
-        return self.get_insider_roster_holders()
-
-    @property
-    def dividends(self) -> _pd.Series:
-        return self.get_dividends()
-
-    @property
-    def capital_gains(self) -> _pd.Series:
-        return self.get_capital_gains()
-
-    @property
-    def splits(self) -> _pd.Series:
-        return self.get_splits()
-
-    @property
-    def actions(self) -> _pd.DataFrame:
-        return self.get_actions()
-
-    @property
-    def shares(self) -> _pd.DataFrame:
-        return self.get_shares()
-
-    @property
-    def info(self) -> dict:
-        return self.get_info()
-
-    @property
-    def fast_info(self):
-        return self.get_fast_info()
-
-    @property
-    def calendar(self) -> dict:
-        """
-        Returns a dictionary of events, earnings, and dividends for the ticker
-        """
-        return self.get_calendar()
-
-    @property
-    def sec_filings(self) -> dict:
-        return self.get_sec_filings()
-
-    @property
-    def recommendations(self):
-        return self.get_recommendations()
-
-    @property
-    def recommendations_summary(self):
-        return self.get_recommendations_summary()
-
-    @property
-    def upgrades_downgrades(self):
-        return self.get_upgrades_downgrades()
-
-    @property
-    def earnings(self) -> _pd.DataFrame:
-        return self.get_earnings()
-
-    @property
-    def quarterly_earnings(self) -> _pd.DataFrame:
-        return self.get_earnings(freq='quarterly')
-
-    @property
-    def income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(pretty=True)
-
-    @property
-    def quarterly_income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(pretty=True, freq='quarterly')
-
-    @property
-    def ttm_income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(pretty=True, freq='trailing')
-
-    @property
-    def incomestmt(self) -> _pd.DataFrame:
-        return self.income_stmt
-
-    @property
-    def quarterly_incomestmt(self) -> _pd.DataFrame:
-        return self.quarterly_income_stmt
-
-    @property
-    def ttm_incomestmt(self) -> _pd.DataFrame:
-        return self.ttm_income_stmt
-
-    @property
-    def financials(self) -> _pd.DataFrame:
-        return self.income_stmt
-
-    @property
-    def quarterly_financials(self) -> _pd.DataFrame:
-        return self.quarterly_income_stmt
-
-    @property
-    def ttm_financials(self) -> _pd.DataFrame:
-        return self.ttm_income_stmt
-
-    @property
-    def balance_sheet(self) -> _pd.DataFrame:
-        return self.get_balance_sheet(pretty=True)
-
-    @property
-    def quarterly_balance_sheet(self) -> _pd.DataFrame:
-        return self.get_balance_sheet(pretty=True, freq='quarterly')
-
-    @property
-    def balancesheet(self) -> _pd.DataFrame:
-        return self.balance_sheet
-
-    @property
-    def quarterly_balancesheet(self) -> _pd.DataFrame:
-        return self.quarterly_balance_sheet
-
-    @property
-    def cash_flow(self) -> _pd.DataFrame:
-        return self.get_cash_flow(pretty=True, freq="yearly")
-
-    @property
-    def quarterly_cash_flow(self) -> _pd.DataFrame:
-        return self.get_cash_flow(pretty=True, freq='quarterly')
-
-    @property
-    def ttm_cash_flow(self) -> _pd.DataFrame:
-        return self.get_cash_flow(pretty=True, freq='trailing')
-
-    @property
-    def cashflow(self) -> _pd.DataFrame:
-        return self.cash_flow
-
-    @property
-    def quarterly_cashflow(self) -> _pd.DataFrame:
-        return self.quarterly_cash_flow
-
-    @property
-    def ttm_cashflow(self) -> _pd.DataFrame:
-        return self.ttm_cash_flow
-
-    @property
-    def analyst_price_targets(self) -> dict:
-        return self.get_analyst_price_targets()
-
-    @property
-    def earnings_estimate(self) -> _pd.DataFrame:
-        return self.get_earnings_estimate()
-
-    @property
-    def revenue_estimate(self) -> _pd.DataFrame:
-        return self.get_revenue_estimate()
-
-    @property
-    def earnings_history(self) -> _pd.DataFrame:
-        return self.get_earnings_history()
-
-    @property
-    def eps_trend(self) -> _pd.DataFrame:
-        return self.get_eps_trend()
-
-    @property
-    def eps_revisions(self) -> _pd.DataFrame:
-        return self.get_eps_revisions()
-
-    @property
-    def growth_estimates(self) -> _pd.DataFrame:
-        return self.get_growth_estimates()
-
-    @property
-    def sustainability(self) -> _pd.DataFrame:
-        return self.get_sustainability()
-
     @property
     def options(self) -> tuple:
+        """Return available option expiration dates."""
         if not self._expirations:
             self._download_options()
         return tuple(self._expirations.keys())
 
     @property
     def news(self) -> list:
+        """Return ticker news articles."""
         return self.get_news()
 
     @property
-    def earnings_dates(self) -> _pd.DataFrame:
+    def earnings_dates(self) -> Optional[_pd.DataFrame]:
+        """Return upcoming and historical earnings dates."""
         return self.get_earnings_dates()
 
     @property
     def history_metadata(self) -> dict:
+        """Return metadata from the latest historical price query."""
         return self.get_history_metadata()
 
     @property
-    def funds_data(self) -> FundsData:
+    def funds_data(self) -> Optional[FundsData]:
+        """Return funds metadata for ETF and mutual-fund tickers."""
         return self.get_funds_data()
+
+
+def _method_property(method_name, doc, *args, **kwargs):
+    """Build a property that calls a getter method on ``Ticker``."""
+
+    def _getter(self):
+        method = getattr(self, method_name)
+        return method(*args, **kwargs)
+
+    return property(_getter, doc=doc)
+
+
+def _attr_property(attribute_name, doc):
+    """Build a property that proxies another ``Ticker`` attribute."""
+
+    def _getter(self):
+        return getattr(self, attribute_name)
+
+    return property(_getter, doc=doc)
+
+
+Ticker.isin = _method_property("get_isin", "Return the ticker ISIN, if available.")
+Ticker.major_holders = _method_property("get_major_holders", "Return major holders data.")
+Ticker.institutional_holders = _method_property(
+    "get_institutional_holders",
+    "Return institutional holders data.",
+)
+Ticker.mutualfund_holders = _method_property(
+    "get_mutualfund_holders",
+    "Return mutual fund holders data.",
+)
+Ticker.insider_purchases = _method_property(
+    "get_insider_purchases",
+    "Return insider purchase data.",
+)
+Ticker.insider_transactions = _method_property(
+    "get_insider_transactions",
+    "Return insider transaction data.",
+)
+Ticker.insider_roster_holders = _method_property(
+    "get_insider_roster_holders",
+    "Return insider roster holder data.",
+)
+Ticker.dividends = _method_property("get_dividends", "Return historical dividends.")
+Ticker.capital_gains = _method_property("get_capital_gains", "Return historical capital gains.")
+Ticker.splits = _method_property("get_splits", "Return historical stock splits.")
+Ticker.actions = _method_property("get_actions", "Return historical corporate actions.")
+Ticker.shares = _method_property("get_shares", "Return shares outstanding data.")
+Ticker.info = _method_property("get_info", "Return ticker information dictionary.")
+Ticker.fast_info = _method_property("get_fast_info", "Return lazily fetched fast info.")
+Ticker.calendar = _method_property("get_calendar", "Return calendar events for the ticker.")
+Ticker.sec_filings = _method_property("get_sec_filings", "Return SEC filing metadata.")
+Ticker.recommendations = _method_property(
+    "get_recommendations",
+    "Return analyst recommendations.",
+)
+Ticker.recommendations_summary = _method_property(
+    "get_recommendations_summary",
+    "Return analyst recommendations summary.",
+)
+Ticker.upgrades_downgrades = _method_property(
+    "get_upgrades_downgrades",
+    "Return analyst upgrade and downgrade actions.",
+)
+Ticker.earnings = _method_property("get_earnings", "Return yearly earnings.")
+Ticker.quarterly_earnings = _method_property(
+    "get_earnings",
+    "Return quarterly earnings.",
+    freq="quarterly",
+)
+Ticker.income_stmt = _method_property(
+    "get_income_stmt",
+    "Return yearly income statement.",
+    pretty=True,
+)
+Ticker.quarterly_income_stmt = _method_property(
+    "get_income_stmt",
+    "Return quarterly income statement.",
+    pretty=True,
+    freq="quarterly",
+)
+Ticker.ttm_income_stmt = _method_property(
+    "get_income_stmt",
+    "Return trailing income statement.",
+    pretty=True,
+    freq="trailing",
+)
+Ticker.incomestmt = _attr_property("income_stmt", "Alias for ``income_stmt``.")
+Ticker.quarterly_incomestmt = _attr_property(
+    "quarterly_income_stmt",
+    "Alias for ``quarterly_income_stmt``.",
+)
+Ticker.ttm_incomestmt = _attr_property("ttm_income_stmt", "Alias for ``ttm_income_stmt``.")
+Ticker.financials = _attr_property("income_stmt", "Alias for ``income_stmt``.")
+Ticker.quarterly_financials = _attr_property(
+    "quarterly_income_stmt",
+    "Alias for ``quarterly_income_stmt``.",
+)
+Ticker.ttm_financials = _attr_property("ttm_income_stmt", "Alias for ``ttm_income_stmt``.")
+Ticker.balance_sheet = _method_property(
+    "get_balance_sheet",
+    "Return yearly balance sheet.",
+    pretty=True,
+)
+Ticker.quarterly_balance_sheet = _method_property(
+    "get_balance_sheet",
+    "Return quarterly balance sheet.",
+    pretty=True,
+    freq="quarterly",
+)
+Ticker.balancesheet = _attr_property("balance_sheet", "Alias for ``balance_sheet``.")
+Ticker.quarterly_balancesheet = _attr_property(
+    "quarterly_balance_sheet",
+    "Alias for ``quarterly_balance_sheet``.",
+)
+Ticker.cash_flow = _method_property(
+    "get_cash_flow",
+    "Return yearly cash flow statement.",
+    pretty=True,
+    freq="yearly",
+)
+Ticker.quarterly_cash_flow = _method_property(
+    "get_cash_flow",
+    "Return quarterly cash flow statement.",
+    pretty=True,
+    freq="quarterly",
+)
+Ticker.ttm_cash_flow = _method_property(
+    "get_cash_flow",
+    "Return trailing cash flow statement.",
+    pretty=True,
+    freq="trailing",
+)
+Ticker.cashflow = _attr_property("cash_flow", "Alias for ``cash_flow``.")
+Ticker.quarterly_cashflow = _attr_property(
+    "quarterly_cash_flow",
+    "Alias for ``quarterly_cash_flow``.",
+)
+Ticker.ttm_cashflow = _attr_property("ttm_cash_flow", "Alias for ``ttm_cash_flow``.")
+Ticker.analyst_price_targets = _method_property(
+    "get_analyst_price_targets",
+    "Return analyst price target summary.",
+)
+Ticker.earnings_estimate = _method_property(
+    "get_earnings_estimate",
+    "Return earnings estimates.",
+)
+Ticker.revenue_estimate = _method_property(
+    "get_revenue_estimate",
+    "Return revenue estimates.",
+)
+Ticker.earnings_history = _method_property(
+    "get_earnings_history",
+    "Return earnings history.",
+)
+Ticker.eps_trend = _method_property("get_eps_trend", "Return EPS trend data.")
+Ticker.eps_revisions = _method_property("get_eps_revisions", "Return EPS revision data.")
+Ticker.growth_estimates = _method_property(
+    "get_growth_estimates",
+    "Return growth estimates.",
+)
+Ticker.sustainability = _method_property("get_sustainability", "Return sustainability data.")

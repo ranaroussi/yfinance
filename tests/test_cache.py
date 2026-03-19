@@ -18,12 +18,15 @@ import os
 class TestCache(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls._original_cache_dir = yf.cache._TzDBManager.get_location()
         cls.tempCacheDir = tempfile.TemporaryDirectory()
         yf.set_tz_cache_location(cls.tempCacheDir.name)
 
     @classmethod
     def tearDownClass(cls):
-        yf.cache._TzDBManager.close_db()
+        # Restore original cache location before deleting the temp dir so that
+        # subsequent tests don't inherit a stale (closed/deleted) DB connection.
+        yf.set_tz_cache_location(cls._original_cache_dir)
         cls.tempCacheDir.cleanup()
 
     def test_storeTzNoRaise(self):
@@ -32,6 +35,7 @@ class TestCache(unittest.TestCase):
         tz1 = "America/New_York"
         tz2 = "London/Europe"
         cache = yf.cache.get_tz_cache()
+        assert cache is not None
         cache.store(tkr, tz1)
         cache.store(tkr, tz2)
 
@@ -41,6 +45,7 @@ class TestCache(unittest.TestCase):
         tkr = 'AMZN'
         tz1 = "America/New_York"
         cache = yf.cache.get_tz_cache()
+        assert cache is not None
         cache.store(tkr, tz1)
 
         self.assertTrue(os.path.exists(os.path.join(self.tempCacheDir.name, "tkr-tz.db")))

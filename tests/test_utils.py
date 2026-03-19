@@ -26,13 +26,15 @@ class TestPandas(unittest.TestCase):
         series = pd.Series(self.date_strings)
         series = series.map(pd.Timestamp)
         converted = pd.to_datetime(series)
-        self.assertIsNotNone(converted[0].tz)
+        first = pd.Timestamp(converted.iloc[0])
+        self.assertIsNotNone(first.tz)
 
     def test_mixed_timezones_to_datetime(self):
         series = pd.Series(self.date_strings)
         series = series.map(pd.Timestamp)
         converted = pd.to_datetime(series, utc=True)
-        self.assertIsNotNone(converted[0].tz)
+        first = pd.Timestamp(converted.iloc[0])
+        self.assertIsNotNone(first.tz)
         i = 0
         for dt in converted:
             dt: datetime

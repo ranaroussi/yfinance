@@ -1,9 +1,9 @@
 from __future__ import print_function
 
 import pandas as _pd
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
-from ..config import YfConfig
+from ..config import YF_CONFIG as YfConfig
 from ..const import SECTOR_INDUSTY_MAPPING_LC
 from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_logger
 
@@ -28,8 +28,8 @@ class Sector(Domain):
         """
         super(Sector, self).__init__(key, session)
         self._query_url: str = f'{_QUERY_URL_}/sectors/{self._key}'
-        self._top_etfs: Optional[Dict] = None
-        self._top_mutual_funds: Optional[Dict] = None
+        self._top_etfs: Optional[Dict[str, str]] = None
+        self._top_mutual_funds: Optional[Dict[str, str]] = None
         self._industries: Optional[_pd.DataFrame] = None
 
     def __repr__(self):
@@ -50,6 +50,8 @@ class Sector(Domain):
             Dict[str, str]: A dictionary of ETF symbols and names.
         """
         self._ensure_fetched(self._top_etfs)
+        if self._top_etfs is None:
+            return {}
         return self._top_etfs
 
     @property
@@ -61,6 +63,8 @@ class Sector(Domain):
             Dict[str, str]: A dictionary of mutual fund symbols and names.
         """
         self._ensure_fetched(self._top_mutual_funds)
+        if self._top_mutual_funds is None:
+            return {}
         return self._top_mutual_funds
 
     @dynamic_docstring({"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING_LC,bullets=True)})
@@ -75,9 +79,11 @@ class Sector(Domain):
         {sector_industry}
         """
         self._ensure_fetched(self._industries)
+        if self._industries is None:
+            raise ValueError(f"Failed to retrieve industries for sector '{self._key}'")
         return self._industries
     
-    def _parse_top_etfs(self, top_etfs: Dict) -> Dict[str, str]:
+    def _parse_top_etfs(self, top_etfs: List[Dict]) -> Dict[str, str]:
         """
         Parses top ETF data from the API response.
 
@@ -87,9 +93,15 @@ class Sector(Domain):
         Returns:
             Dict[str, str]: A dictionary of ETF symbols and names.
         """
-        return {e.get('symbol'): e.get('name') for e in top_etfs}
+        parsed: Dict[str, str] = {}
+        for e in top_etfs:
+            symbol = e.get('symbol')
+            name = e.get('name')
+            if isinstance(symbol, str) and isinstance(name, str):
+                parsed[symbol] = name
+        return parsed
 
-    def _parse_top_mutual_funds(self, top_mutual_funds: Dict) -> Dict[str, str]:
+    def _parse_top_mutual_funds(self, top_mutual_funds: List[Dict]) -> Dict[str, str]:
         """
         Parses top mutual funds data from the API response.
 
@@ -99,9 +111,15 @@ class Sector(Domain):
         Returns:
             Dict[str, str]: A dictionary of mutual fund symbols and names.
         """
-        return {e.get('symbol'): e.get('name') for e in top_mutual_funds}
+        parsed: Dict[str, str] = {}
+        for e in top_mutual_funds:
+            symbol = e.get('symbol')
+            name = e.get('name')
+            if isinstance(symbol, str) and isinstance(name, str):
+                parsed[symbol] = name
+        return parsed
     
-    def _parse_industries(self, industries: Dict) -> _pd.DataFrame:
+    def _parse_industries(self, industries: List[Dict]) -> _pd.DataFrame:
         """
         Parses industry data from the API response into a DataFrame.
 
@@ -137,9 +155,9 @@ class Sector(Domain):
             data = result['data']
             self._parse_and_assign_common(data)
 
-            self._top_etfs = self._parse_top_etfs(data.get('topETFs', {}))
-            self._top_mutual_funds = self._parse_top_mutual_funds(data.get('topMutualFunds', {}))
-            self._industries = self._parse_industries(data.get('industries', {}))
+            self._top_etfs = self._parse_top_etfs(data.get('topETFs') or [])
+            self._top_mutual_funds = self._parse_top_mutual_funds(data.get('topMutualFunds') or [])
+            self._industries = self._parse_industries(data.get('industries') or [])
 
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:

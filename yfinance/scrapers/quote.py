@@ -3,9 +3,10 @@ import datetime
 import json
 import numpy as _np
 import pandas as pd
+from typing import Any, Optional
 
 from yfinance import utils
-from yfinance.config import YfConfig
+from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
@@ -145,10 +146,10 @@ class FastInfo:
 
         dnow = pd.Timestamp.now('UTC').tz_convert(self.timezone).date()
         d1 = dnow
-        d0 = (d1 + datetime.timedelta(days=1)) - utils._interval_to_timedelta("1y")
+        d0 = (pd.Timestamp(d1) + pd.Timedelta(days=1) - datetime.timedelta(days=365)).date()
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
-            d1 -= utils._interval_to_timedelta("1d")
+            d1 -= datetime.timedelta(days=1)
         return self._prices_1y.loc[str(d0):str(d1)]
 
     def _get_1wk_1h_prepost_prices(self):
@@ -231,7 +232,7 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date()-pd.Timedelta(days=548))
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date() - datetime.timedelta(days=548))
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
@@ -476,7 +477,9 @@ class FastInfo:
             if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
                 self._mcap = self._tkr._quote._retired_info[k]
         else:
-            self._mcap = float(shares * self.last_price)
+            last_price = self.last_price
+            if last_price is not None:
+                self._mcap = float(shares * last_price)
         return self._mcap
 
 
@@ -502,8 +505,7 @@ class Quote:
         if self._info is None:
             self._fetch_info()
             self._fetch_complementary()
-
-        return self._info
+        return {} if self._info is None else self._info
 
     @property
     def sustainability(self) -> pd.DataFrame:
@@ -563,7 +565,7 @@ class Quote:
     def calendar(self) -> dict:
         if self._calendar is None:
             self._fetch_calendar()
-        return self._calendar
+        return {} if self._calendar is None else self._calendar
 
     @property
     def sec_filings(self) -> dict:
@@ -576,31 +578,33 @@ class Quote:
     def valid_modules():
         return quote_summary_valid_modules
 
-    def _fetch(self, modules: list):
+    def _fetch(self, modules: list[str]) -> Optional[dict[str, Any]]:
         if not isinstance(modules, list):
             raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
 
-        modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
-        if len(modules) == 0:
+        modules_str = ','.join([m for m in modules if m in quote_summary_valid_modules])
+        if len(modules_str) == 0:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
+        params_dict = {"modules": modules_str, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            utils.get_yf_logger().error(str(e) + e.response.text)
+            response_text = e.response.text if e.response is not None else ""
+            utils.get_yf_logger().error(str(e) + response_text)
             return None
         return result
 
-    def _fetch_additional_info(self):
+    def _fetch_additional_info(self) -> Optional[dict[str, Any]]:
         params_dict = {"symbols": self._symbol, "formatted": "false"}
         try:
             result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            utils.get_yf_logger().error(str(e) + e.response.text)
+            response_text = e.response.text if e.response is not None else ""
+            utils.get_yf_logger().error(str(e) + response_text)
             return None
         return result
 
@@ -615,18 +619,31 @@ class Quote:
             result.update(additional_info)
         else:
             result = additional_info
+        if result is None:
+            self._info = {}
+            return
 
-        query1_info = {}
+        query1_info: dict[str, Any] = {}
         for quote in ["quoteSummary", "quoteResponse"]:
-            if quote in result and len(result[quote]["result"]) > 0:
-                result[quote]["result"][0]["symbol"] = self._symbol
-                query_info = next(
-                    (info for info in result.get(quote, {}).get("result", [])
-                    if info["symbol"] == self._symbol),
-                    None,
-                )
-                if query_info:
-                    query1_info.update(query_info)
+            quote_data = result.get(quote)
+            if not isinstance(quote_data, dict):
+                continue
+            quote_results = quote_data.get("result")
+            if not isinstance(quote_results, list) or len(quote_results) == 0:
+                continue
+            first_result = quote_results[0]
+            if isinstance(first_result, dict):
+                first_result["symbol"] = self._symbol
+            query_info = next(
+                (
+                    info
+                    for info in quote_results
+                    if isinstance(info, dict) and info.get("symbol") == self._symbol
+                ),
+                None,
+            )
+            if query_info:
+                query1_info.update(query_info)
 
         # Normalize and flatten nested dictionaries while converting maxAge from days (1) to seconds (86400).
         # This handles Yahoo Finance API inconsistency where maxAge is sometimes expressed in days instead of seconds.

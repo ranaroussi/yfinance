@@ -1,11 +1,12 @@
 import datetime
 import json
 import warnings
+from typing import Optional
 
 import pandas as pd
 
 from yfinance import utils, const
-from yfinance.config import YfConfig
+from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
@@ -16,20 +17,19 @@ class Fundamentals:
         self._symbol = symbol
 
         self._earnings = None
-        self._financials = None
         self._shares = None
 
         self._financials_data = None
         self._fin_data_quote = None
         self._basics_already_scraped = False
-        self._financials = Financials(data, symbol)
+        self._financials: "Financials" = Financials(data, symbol)
 
     @property
     def financials(self) -> "Financials":
         return self._financials
 
     @property
-    def earnings(self) -> dict:
+    def earnings(self) -> None:
         warnings.warn("'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", DeprecationWarning)
         return None
 
@@ -94,7 +94,7 @@ class Financials:
             utils.get_yf_logger().error(f"{self._symbol}: Failed to create {name} financials table for reason: {e}")
         return pd.DataFrame()
 
-    def _create_financials_table(self, name, timescale):
+    def _create_financials_table(self, name, timescale) -> Optional[pd.DataFrame]:
         if name == "income":
             # Yahoo stores the 'income' table internally under 'financials' key
             name = "financials"
@@ -106,7 +106,7 @@ class Financials:
         except Exception:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            pass
+            return None
 
     def _get_financials_time_series(self, timescale, keys: list) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly", "trailing": "trailing"}
@@ -142,8 +142,6 @@ class Financials:
         dates = pd.to_datetime(timestamps, unit="s")
         df = pd.DataFrame(columns=dates, index=list(data_unpacked.keys()))
         for k, v in data_unpacked.items():
-            if df is None:
-                df = pd.DataFrame(columns=dates, index=[k])
             df.loc[k] = {pd.Timestamp(x["asOfDate"]): x["reportedValue"]["raw"] for x in v}
 
         df.index = df.index.str.replace("^" + timescale, "", regex=True)
@@ -160,4 +158,4 @@ class Financials:
         if (timescale == "trailing"):
             df = df.iloc[:, [0]]
 
-        return df
+        return pd.DataFrame(df)
