@@ -109,7 +109,11 @@ def _split_zero_rows(
     zero_mask = (df[data_cols] == 0).any(axis=1).to_numpy()
     if not zero_mask.any():
         return df, original_df, None
-    return df[~zero_mask], original_df[~zero_mask], df[zero_mask]
+    return (
+        cast(pd.DataFrame, df[~zero_mask]),
+        cast(pd.DataFrame, original_df[~zero_mask]),
+        cast(pd.DataFrame, df[zero_mask]),
+    )
 
 
 def _get_unit_mixup_masks(
@@ -316,10 +320,11 @@ def _filter_intraday_reserve_rows(
     nan_pct = grp.sum() / grp.count()
     ignored_dates = nan_pct.index[nan_pct > 0.5]
     reserve_mask = np.isin(df_dates, ignored_dates)
-    reserve_df = df[reserve_mask]
-    filtered_df = df[~reserve_mask].copy()
+    reserve_df = cast(pd.DataFrame, df[reserve_mask])
+    filtered_df = cast(pd.DataFrame, df[~reserve_mask].copy())
     filtered_mask = (
-        (filtered_df[price_cols] == 0.0) | filtered_df[price_cols].isna()
+        (filtered_df[price_cols] == 0.0)
+        | cast(pd.DataFrame, filtered_df[price_cols]).isna()
     ).to_numpy()
     return filtered_df, reserve_df, filtered_mask
 

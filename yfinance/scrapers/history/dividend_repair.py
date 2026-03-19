@@ -337,12 +337,14 @@ class _DividendRepairRunner:
             div_status[possibility["state"].replace("-", "_")] = True
         return div_status
     def _add_adjustment_flags(self):
+        status_idx = cast(pd.Series, self.div_status_df["idx"])
+        status_div = cast(pd.Series, self.div_status_df["div"])
         for i in range(len(self.div_status_df)):
-            div_idx = self.div_status_df["idx"].iloc[i]
+            div_idx = int(status_idx.iloc[i])
             if div_idx == 0:
                 continue
             dt = self.div_status_df.index[i]
-            div = self.div_status_df["div"].iloc[i]
+            div = float(status_div.iloc[i])
             div_pct = div / self.df2["Close"].iloc[div_idx - 1]
             pre_adj = self.df2["Adj Close"].iloc[div_idx - 1] / self.df2["Close"].iloc[div_idx - 1]
             post_adj = self.df2["Adj Close"].iloc[div_idx] / self.df2["Close"].iloc[div_idx]
@@ -440,19 +442,19 @@ class _DividendRepairRunner:
         if "phantom" in self.checks:
             self.checks.remove("phantom")
     def _remove_flagged_phantoms(self, f_phantom):
-        div_dts = self.div_status_df.index[f_phantom]
+        div_dts = pd.DatetimeIndex(self.div_status_df.index[f_phantom])
+        present_adj = cast(pd.Series, self.div_status_df["present adj"])
         msg = f"Removing phantom div(s): {[str(dt.date()) for dt in div_dts]}"
         self.logger.info(msg, extra=self.log_extras)
         for dt in div_dts:
             enddt = dt - _datetime.timedelta(seconds=1)
-            present_adj = self.div_status_df["present adj"].loc[dt]
-            self.df2.loc[:enddt, "Adj Close"] /= present_adj
+            self.df2.loc[:enddt, "Adj Close"] /= present_adj.loc[dt]
             self.df2.loc[:enddt, "Repaired?"] = True
-            self.df2_nan.loc[:enddt, "Adj Close"] /= present_adj
+            self.df2_nan.loc[:enddt, "Adj Close"] /= present_adj.loc[dt]
             self.df2_nan.loc[:enddt, "Repaired?"] = True
             self.df2.loc[dt, "Dividends"] = 0
             self.df_modified = True
-            self.div_status_df = self.div_status_df.drop(dt)
+            self.div_status_df = cast(pd.DataFrame, self.div_status_df.drop(dt))
     def _infer_small_dividends(self):
         if self._has_failed_checks() or len(self.div_status_df) <= 1:
             return
@@ -464,12 +466,13 @@ class _DividendRepairRunner:
                 div_dt = self.div_status_df.index[i]
                 self.div_status_df.loc[div_dt, "div_too_small"] = True
     def _neighbor_ratio_pair(self, index):
+        div_pct = cast(pd.Series, self.div_status_df["%"])
         r_pre = None
         r_post = None
         if index > 0:
-            r_pre = self.div_status_df["%"].iloc[index - 1] / self.div_status_df["%"].iloc[index]
+            r_pre = div_pct.iloc[index - 1] / div_pct.iloc[index]
         if index < len(self.div_status_df) - 1:
-            r_post = self.div_status_df["%"].iloc[index + 1] / self.div_status_df["%"].iloc[index]
+            r_post = div_pct.iloc[index + 1] / div_pct.iloc[index]
         if r_pre is None:
             r_pre = r_post
         if r_post is None:
@@ -478,8 +481,9 @@ class _DividendRepairRunner:
     def _has_failed_checks(self):
         return bool(cast(pd.Series, self.div_status_df[self.checks].any(axis=1)).any())
     def _analyze_price_relationships(self):
+        status_idx = cast(pd.Series, self.div_status_df["idx"])
         for i in range(len(self.div_status_df)):
-            div_idx = self.div_status_df["idx"].iloc[i]
+            div_idx = int(status_idx.iloc[i])
             if div_idx == 0:
                 continue
             dt = self.div_status_df.index[i]
@@ -489,7 +493,7 @@ class _DividendRepairRunner:
             "div_too_big" in self.div_status_df.columns
             and "div_date_wrong" in self.div_status_df.columns
         ):
-            mask = self.div_status_df["div_date_wrong"].to_numpy()
+            mask = cast(pd.Series, self.div_status_df["div_date_wrong"]).to_numpy()
             self.div_status_df.loc[mask, "div_too_big"] = False
         self.checks += ["adj_exceeds_prices", "div_date_wrong"]
     def _price_relationship_status(self, div_idx, dt):
@@ -550,21 +554,21 @@ class _DividendRepairRunner:
             if status is not None:
                 return status
         return False, False, pd.NaT
-    def _scan_reversal_candidate(self, dt, frame, idx, adj_div):
+    def _scan_reversal_candidate(self, dt, frame: pd.DataFrame, idx, adj_div):
         adj_delta_drop = frame["adjDelta"].iloc[idx]
         if adj_delta_drop <= 1.001 * frame["delta"].iloc[idx]:
             return None
-        ratios = (-1 * frame["adjDelta"]) / adj_delta_drop
+        ratios = cast(pd.Series, (-1 * frame["adjDelta"]) / adj_delta_drop)
         f_near1_or_above = ratios >= 0.8
         split = self.df2["Stock Splits"].loc[dt]
-        pre_split = self.div_status_df["div_pre_split"].loc[dt]
+        pre_split = cast(pd.Series, self.div_status_df["div_pre_split"]).loc[dt]
         if (split == 0.0 or (not pre_split)) and f_near1_or_above.any():
             reversal_idx = self._best_reversal_index(ratios, dt, f_near1_or_above)
             return False, True, ratios.index[reversal_idx]
         if adj_delta_drop > 0.39 * adj_div and (frame["Adj"] < 1.0).any():
             return True, False, pd.NaT
         return None
-    def _best_reversal_index(self, ratios, dt, f_near1_or_above):
+    def _best_reversal_index(self, ratios: pd.Series, dt, f_near1_or_above):
         near_indices = np.where(f_near1_or_above)[0]
         if len(near_indices) == 1:
             return near_indices[0]
@@ -601,22 +605,23 @@ class _DividendRepairRunner:
             self.div_status_df = self.div_status_df.drop("div_true_date", axis=1)
         self.checks = [column for column in self.checks if column in self.div_status_df.columns]
     def _validate_clusters(self):
-        self.div_status_df = self.div_status_df.sort_values("%")
+        self.div_status_df = cast(pd.DataFrame, self.div_status_df.sort_values(by="%"))
         self.div_status_df["cluster"] = _cluster_dividends(self.div_status_df, column="%")
-        for cid in self.div_status_df["cluster"].unique():
-            fc = self.div_status_df["cluster"] == cid
-            cluster = self.div_status_df[fc].sort_index()
+        cluster_ids = cast(pd.Series, self.div_status_df["cluster"])
+        for cid in cluster_ids.unique():
+            fc = cast(pd.Series, cluster_ids == cid)
+            cluster = cast(pd.DataFrame, self.div_status_df[fc].sort_index())
             cluster_checks = self._active_cluster_checks(cluster)
             for column in cluster_checks:
                 self._apply_cluster_rule(fc, cluster, column)
-    def _active_cluster_checks(self, cluster):
+    def _active_cluster_checks(self, cluster: pd.DataFrame):
         cluster_checks = []
         for column in self.checks:
             cluster_col = cast(pd.Series, cluster[column])
             if bool(cluster_col.to_numpy().any()):
                 cluster_checks.append(column)
         return cluster_checks
-    def _apply_cluster_rule(self, fc, cluster, column):
+    def _apply_cluster_rule(self, fc: pd.Series, cluster: pd.DataFrame, column):
         n = len(cluster)
         f_fail = cast(np.ndarray, cast(pd.Series, cluster[column]).to_numpy())
         n_fail = np.sum(f_fail)
@@ -631,7 +636,7 @@ class _DividendRepairRunner:
             return
         if self._should_skip_cluster_column(column, cluster, n_fail):
             return
-    def _validate_too_big_cluster(self, fc, cluster, f_fail, pct_fail):
+    def _validate_too_big_cluster(self, fc: pd.Series, cluster: pd.DataFrame, f_fail, pct_fail):
         true_threshold = 1.0
         fals_threshold = 0.25
         if (
@@ -653,7 +658,10 @@ class _DividendRepairRunner:
             n = np.sum(f_adj_exceeds_prices)
             pct_fail = np.sum(f_fail[f_adj_exceeds_prices]) / n
             if pct_fail > 0.5:
-                mask = fc & self.div_status_df["adj_exceeds_prices"].to_numpy()
+                mask = fc.to_numpy() & cast(
+                    pd.Series,
+                    self.div_status_df["adj_exceeds_prices"],
+                ).to_numpy()
                 self.div_status_df.loc[mask, "div_too_big"] = True
             return
         if "div_exceeds_adj" in cluster.columns and bool(
@@ -671,7 +679,7 @@ class _DividendRepairRunner:
             fals_threshold = 0.5
         thresholds = {"true": true_threshold, "false": fals_threshold}
         self._apply_cluster_thresholds(fc, pct_fail, thresholds, "div_too_big")
-    def _validate_too_small_cluster(self, fc, cluster, pct_fail):
+    def _validate_too_small_cluster(self, fc: pd.Series, cluster: pd.DataFrame, pct_fail):
         true_threshold = 1.0
         fals_threshold = 0.1
         if "adj_exceeds_div" not in cluster.columns:
@@ -679,7 +687,7 @@ class _DividendRepairRunner:
             fals_threshold = 0.5
         thresholds = {"true": true_threshold, "false": fals_threshold}
         self._apply_cluster_thresholds(fc, pct_fail, thresholds, "div_too_small")
-    def _apply_cluster_thresholds(self, fc, pct_fail, thresholds, column):
+    def _apply_cluster_thresholds(self, fc: pd.Series, pct_fail, thresholds, column):
         if pct_fail >= thresholds["true"]:
             self.div_status_df.loc[fc, column] = True
             if column == "div_too_big" and "div_date_wrong" in self.div_status_df.columns:
@@ -733,15 +741,18 @@ class _DividendRepairRunner:
         self.div_status_df = self.div_status_df.drop("div_too_big_and_pre_split", axis=1)
         self.checks.remove("div_too_big_and_pre_split")
     def _filter_failed_rows(self):
-        self.div_status_df = self.div_status_df.sort_index()
-        self.div_status_df = self.div_status_df[self.div_status_df[self.checks].any(axis=1)]
+        self.div_status_df = cast(pd.DataFrame, self.div_status_df.sort_index())
+        self.div_status_df = cast(
+            pd.DataFrame,
+            self.div_status_df[self.div_status_df[self.checks].any(axis=1)],
+        )
     def _apply_repairs(self):
         for cid in list(cast(pd.Series, self.div_status_df["cluster"]).unique()):
             cluster = cast(
                 pd.DataFrame,
-                self.div_status_df[self.div_status_df["cluster"] == cid].sort_index(
-                    ascending=False
-                ),
+                self.div_status_df[
+                    cast(pd.Series, self.div_status_df["cluster"] == cid)
+                ].sort_index(ascending=False),
             )
             cluster["Fixed?"] = False
             for i in range(len(cluster) - 1, -1, -1):

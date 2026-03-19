@@ -533,16 +533,22 @@ def _extract_actions(
 def _floor_quote_start(quotes: pd.DataFrame, tz_exchange: str) -> pd.Timestamp:
     first_quote_dt = cast(pd.Timestamp, pd.DatetimeIndex(quotes.index)[0])
     try:
-        return first_quote_dt.floor("D")
-    except ValueError:
+        floored = first_quote_dt.floor("D")
+        if pd.isna(floored):
+            raise ValueError("Quote index floor returned NaT")
+        return cast(pd.Timestamp, floored)
+    except ValueError as exc:
         quotes_tz = pd.DatetimeIndex(quotes.index).tz
         if quotes_tz is None:
             quotes_tz = tz_exchange
-        return pd.Timestamp(first_quote_dt.date()).tz_localize(
+        localized = pd.Timestamp(first_quote_dt.date()).tz_localize(
             quotes_tz,
             ambiguous=True,
             nonexistent="shift_forward",
         )
+        if pd.isna(localized):
+            raise ValueError("Quote index localization returned NaT") from exc
+        return cast(pd.Timestamp, localized)
 
 
 def _slice_actions_to_window(
@@ -554,14 +560,14 @@ def _slice_actions_to_window(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if state.start is not None and not quotes.empty:
         start_d = _floor_quote_start(quotes, state.tz_exchange)
-        dividends = dividends.loc[start_d:]
-        capital_gains = capital_gains.loc[start_d:]
-        splits = splits.loc[start_d:]
+        dividends = cast(pd.DataFrame, dividends.loc[start_d:])
+        capital_gains = cast(pd.DataFrame, capital_gains.loc[start_d:])
+        splits = cast(pd.DataFrame, splits.loc[start_d:])
     if state.end is not None and state.end_dt is not None:
         end_dt_sub1 = state.end_dt - pd.Timedelta(1)
-        dividends = dividends[:end_dt_sub1]
-        capital_gains = capital_gains[:end_dt_sub1]
-        splits = splits[:end_dt_sub1]
+        dividends = cast(pd.DataFrame, dividends[:end_dt_sub1])
+        capital_gains = cast(pd.DataFrame, capital_gains[:end_dt_sub1])
+        splits = cast(pd.DataFrame, splits[:end_dt_sub1])
     return dividends, splits, capital_gains
 
 
@@ -774,7 +780,7 @@ def fetch_history(price_history, request: _HistoryRequest) -> pd.DataFrame:
             "lastTrade",
             {"Price": last_trade["Close"], "Time": last_trade.name},
         )
-    df = df[~df.index.duplicated(keep="first")]
+    df = cast(pd.DataFrame, df[~df.index.duplicated(keep="first")])
     df = _repair_prices_if_needed(state, df)
     df = _apply_price_adjustment(state, df)
     return _finalize_history_df(state, df)

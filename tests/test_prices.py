@@ -42,6 +42,16 @@ def _index_weekdays(index: _pd.Index) -> _np.ndarray:
     return _np.array([ts.weekday() for ts in dt_index], dtype=int)
 
 
+def _first_index_date(index: _pd.Index) -> _dt.date:
+    dt_index = _as_datetime_index(index)
+    return cast(_pd.Timestamp, list(dt_index)[0]).date()
+
+
+def _last_index_date(index: _pd.Index) -> _dt.date:
+    dt_index = _as_datetime_index(index)
+    return cast(_pd.Timestamp, list(dt_index)[-1]).date()
+
+
 def _ticker_timezone(dat: yf.Ticker) -> str:
     metadata = dat.get_history_metadata()
     tz_name = metadata.get("exchangeTimezoneName")
@@ -243,12 +253,12 @@ class TestPriceHistory(unittest.TestCase):
                 interval="1d",
                 actions=True,
             )
-            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            df_daily_divs = cast(_pd.Series, df_daily["Dividends"][df_daily["Dividends"] != 0])
             if df_daily_divs.shape[0] == 0:
                 continue
 
-            start_d = df_daily_divs.index[0].date()
-            end_d = df_daily_divs.index[-1].date() + _dt.timedelta(days=1)
+            start_d = _first_index_date(df_daily_divs.index)
+            end_d = _last_index_date(df_daily_divs.index) + _dt.timedelta(days=1)
             df_intraday = yf.Ticker(tkr, session=self.session).history(
                 start=start_d,
                 end=end_d,
@@ -257,9 +267,12 @@ class TestPriceHistory(unittest.TestCase):
             )
             self.assertTrue((df_intraday["Dividends"] != 0.0).any())
 
-            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
-            self.assertIsInstance(df_intraday_divs, _pd.Series)
-            df_intraday_divs.index = _pd.to_datetime([dt.date() for dt in df_intraday_divs.index])
+            df_intraday_divs = cast(
+                _pd.Series,
+                df_intraday["Dividends"][df_intraday["Dividends"] != 0],
+            )
+            intraday_div_index = _as_datetime_index(df_intraday_divs.index)
+            df_intraday_divs.index = _pd.to_datetime([dt.date() for dt in intraday_div_index])
             self.assertTrue(df_daily_divs.index.equals(df_intraday_divs.index))
 
             test_run = True
@@ -282,12 +295,12 @@ class TestPriceHistory(unittest.TestCase):
                 interval="1d",
                 actions=True,
             )
-            df_daily_divs = df_daily["Dividends"][df_daily["Dividends"] != 0]
+            df_daily_divs = cast(_pd.Series, df_daily["Dividends"][df_daily["Dividends"] != 0])
             if df_daily_divs.shape[0] == 0:
                 continue
 
-            start_d = df_daily_divs.index[0].date()
-            end_d = df_daily_divs.index[-1].date() + _dt.timedelta(days=1)
+            start_d = _first_index_date(df_daily_divs.index)
+            end_d = _last_index_date(df_daily_divs.index) + _dt.timedelta(days=1)
             df_intraday = yf.Ticker(tkr, session=self.session).history(
                 start=start_d,
                 end=end_d,
@@ -296,8 +309,12 @@ class TestPriceHistory(unittest.TestCase):
             )
             self.assertTrue((df_intraday["Dividends"] != 0.0).any())
 
-            df_intraday_divs = df_intraday["Dividends"][df_intraday["Dividends"] != 0]
-            df_intraday_divs.index = _pd.to_datetime([dt.date() for dt in df_intraday_divs.index])
+            df_intraday_divs = cast(
+                _pd.Series,
+                df_intraday["Dividends"][df_intraday["Dividends"] != 0],
+            )
+            intraday_div_index = _as_datetime_index(df_intraday_divs.index)
+            df_intraday_divs.index = _pd.to_datetime([dt.date() for dt in intraday_div_index])
             self.assertTrue(df_daily_divs.index.equals(df_intraday_divs.index))
 
             test_run = True

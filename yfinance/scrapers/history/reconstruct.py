@@ -355,7 +355,10 @@ def _prepare_grouped_fine_data(
     ].copy()
     df_fine["ctr"] = 0
     grp_col = _add_grouping_column(df_fine, df_block, context.interval)
-    df_fine = df_fine[~df_fine[price_cols + ["Dividends"]].isna().all(axis=1)]
+    df_fine = cast(
+        pd.DataFrame,
+        df_fine[~df_fine[price_cols + ["Dividends"]].isna().all(axis=1)],
+    )
     df_fine_grp = df_fine.groupby(grp_col)
     df_new = cast(
         pd.DataFrame,
@@ -367,7 +370,7 @@ def _prepare_grouped_fine_data(
             High=("High", "max"),
             Dividends=("Dividends", "sum"),
             Volume=("Volume", "sum"),
-        ).rename(columns={"AdjClose": "Adj Close"}),
+        ).rename({"AdjClose": "Adj Close"}, axis=1),
     )
     df_new.index = _build_df_new_index(df_fine, df_new.index, grp_col)
     return df_fine, df_new, df_fine_grp
@@ -575,7 +578,8 @@ def _repair_one_bad_row(
     df_new_row = cast(pd.Series, context.df_new.loc[idx])
     previous_week = _previous_week_close(context.df_new, context.df_fine, idx, context.interval)
     source_row = cast(pd.Series, context.state.source_df.loc[idx])
-    bad_fields = source_row[source_row == context.state.tag].index.to_numpy()
+    bad_mask = cast(pd.Series, source_row == context.state.tag)
+    bad_fields = cast(pd.Index, source_row.index[bad_mask]).to_numpy()
     if "High" in bad_fields:
         context.state.repaired_df.loc[idx, "High"] = df_new_row["High"]
     if "Low" in bad_fields:
@@ -595,7 +599,7 @@ def _repair_one_bad_row(
     elif "Adj Close" in bad_fields:
         context.state.repaired_df.loc[idx, "Adj Close"] = df_new_row["Adj Close"]
     if "Volume" in bad_fields:
-        context.state.repaired_df.loc[idx, "Volume"] = round(float(df_new_row["Volume"]))
+        context.state.repaired_df.loc[idx, "Volume"] = round(float(cast(Any, df_new_row["Volume"])))
     context.state.repaired_df.loc[idx, "Repaired?"] = True
 
 
@@ -626,7 +630,7 @@ def _reconstruct_group(
     group: list[pd.Timestamp],
     context: _ReconstructContext,
 ) -> None:
-    df_block = state.source_df[state.source_df.index.isin(group)]
+    df_block = cast(pd.DataFrame, state.source_df[state.source_df.index.isin(group)])
     context.logger.debug("df_block:\n" + str(df_block))
     start_dt = group[0]
     start_d = start_dt.date()
@@ -743,7 +747,7 @@ def _build_batch_repair_plan(
             tag=tag,
             min_dt=target_info.min_dt,
         ),
-        df_good=source_df[good_rows],
+        df_good=cast(pd.DataFrame, source_df[good_rows]),
         dts_to_repair=dts_to_repair,
     )
 

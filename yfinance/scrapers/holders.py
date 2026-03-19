@@ -1,6 +1,6 @@
 """Holders and insider-activity scraper helpers."""
 
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -175,7 +175,7 @@ class Holders:
         df = pd.DataFrame.from_dict(data, orient="index")
         if not df.empty:
             df.columns.name = "Breakdown"
-            first_col = df.columns[0]
+            first_col = cast(str, df.columns[0])
             df.rename(columns={first_col: "Value"}, inplace=True)
         self._tables["major"] = df
 

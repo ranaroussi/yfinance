@@ -215,146 +215,145 @@ def _attr_property(attribute_name, doc):
 
 if TYPE_CHECKING:
     from .scrapers.quote import FastInfo
-
-
-Ticker.isin = _method_property("get_isin", "Return the ticker ISIN, if available.")
-Ticker.major_holders = _method_property("get_major_holders", "Return major holders data.")
-Ticker.institutional_holders = _method_property(
-    "get_institutional_holders",
-    "Return institutional holders data.",
-)
-Ticker.mutualfund_holders = _method_property(
-    "get_mutualfund_holders",
-    "Return mutual fund holders data.",
-)
-Ticker.insider_purchases = _method_property(
-    "get_insider_purchases",
-    "Return insider purchase data.",
-)
-Ticker.insider_transactions = _method_property(
-    "get_insider_transactions",
-    "Return insider transaction data.",
-)
-Ticker.insider_roster_holders = _method_property(
-    "get_insider_roster_holders",
-    "Return insider roster holder data.",
-)
-Ticker.dividends = _method_property("get_dividends", "Return historical dividends.")
-Ticker.capital_gains = _method_property("get_capital_gains", "Return historical capital gains.")
-Ticker.splits = _method_property("get_splits", "Return historical stock splits.")
-Ticker.actions = _method_property("get_actions", "Return historical corporate actions.")
-Ticker.shares = _method_property("get_shares", "Return shares outstanding data.")
-Ticker.info = _method_property("get_info", "Return ticker information dictionary.")
-Ticker.fast_info = _method_property("get_fast_info", "Return lazily fetched fast info.")
-Ticker.calendar = _method_property("get_calendar", "Return calendar events for the ticker.")
-Ticker.sec_filings = _method_property("get_sec_filings", "Return SEC filing metadata.")
-Ticker.recommendations = _method_property(
-    "get_recommendations",
-    "Return analyst recommendations.",
-)
-Ticker.recommendations_summary = _method_property(
-    "get_recommendations_summary",
-    "Return analyst recommendations summary.",
-)
-Ticker.upgrades_downgrades = _method_property(
-    "get_upgrades_downgrades",
-    "Return analyst upgrade and downgrade actions.",
-)
-Ticker.earnings = _method_property("get_earnings", "Return yearly earnings.")
-Ticker.quarterly_earnings = _method_property(
-    "get_earnings",
-    "Return quarterly earnings.",
-    freq="quarterly",
-)
-Ticker.income_stmt = _method_property(
-    "get_income_stmt",
-    "Return yearly income statement.",
-    pretty=True,
-)
-Ticker.quarterly_income_stmt = _method_property(
-    "get_income_stmt",
-    "Return quarterly income statement.",
-    pretty=True,
-    freq="quarterly",
-)
-Ticker.ttm_income_stmt = _method_property(
-    "get_income_stmt",
-    "Return trailing income statement.",
-    pretty=True,
-    freq="trailing",
-)
-Ticker.incomestmt = _attr_property("income_stmt", "Alias for ``income_stmt``.")
-Ticker.quarterly_incomestmt = _attr_property(
-    "quarterly_income_stmt",
-    "Alias for ``quarterly_income_stmt``.",
-)
-Ticker.ttm_incomestmt = _attr_property("ttm_income_stmt", "Alias for ``ttm_income_stmt``.")
-Ticker.financials = _attr_property("income_stmt", "Alias for ``income_stmt``.")
-Ticker.quarterly_financials = _attr_property(
-    "quarterly_income_stmt",
-    "Alias for ``quarterly_income_stmt``.",
-)
-Ticker.ttm_financials = _attr_property("ttm_income_stmt", "Alias for ``ttm_income_stmt``.")
-Ticker.balance_sheet = _method_property(
-    "get_balance_sheet",
-    "Return yearly balance sheet.",
-    pretty=True,
-)
-Ticker.quarterly_balance_sheet = _method_property(
-    "get_balance_sheet",
-    "Return quarterly balance sheet.",
-    pretty=True,
-    freq="quarterly",
-)
-Ticker.balancesheet = _attr_property("balance_sheet", "Alias for ``balance_sheet``.")
-Ticker.quarterly_balancesheet = _attr_property(
-    "quarterly_balance_sheet",
-    "Alias for ``quarterly_balance_sheet``.",
-)
-Ticker.cash_flow = _method_property(
-    "get_cash_flow",
-    "Return yearly cash flow statement.",
-    pretty=True,
-    freq="yearly",
-)
-Ticker.quarterly_cash_flow = _method_property(
-    "get_cash_flow",
-    "Return quarterly cash flow statement.",
-    pretty=True,
-    freq="quarterly",
-)
-Ticker.ttm_cash_flow = _method_property(
-    "get_cash_flow",
-    "Return trailing cash flow statement.",
-    pretty=True,
-    freq="trailing",
-)
-Ticker.cashflow = _attr_property("cash_flow", "Alias for ``cash_flow``.")
-Ticker.quarterly_cashflow = _attr_property(
-    "quarterly_cash_flow",
-    "Alias for ``quarterly_cash_flow``.",
-)
-Ticker.ttm_cashflow = _attr_property("ttm_cash_flow", "Alias for ``ttm_cash_flow``.")
-Ticker.analyst_price_targets = _method_property(
-    "get_analyst_price_targets",
-    "Return analyst price target summary.",
-)
-Ticker.earnings_estimate = _method_property(
-    "get_earnings_estimate",
-    "Return earnings estimates.",
-)
-Ticker.revenue_estimate = _method_property(
-    "get_revenue_estimate",
-    "Return revenue estimates.",
-)
-Ticker.earnings_history = _method_property(
-    "get_earnings_history",
-    "Return earnings history.",
-)
-Ticker.eps_trend = _method_property("get_eps_trend", "Return EPS trend data.")
-Ticker.eps_revisions = _method_property("get_eps_revisions", "Return EPS revision data.")
-Ticker.growth_estimates = _method_property(
-    "get_growth_estimates",
-    "Return growth estimates.",
-)
-Ticker.sustainability = _method_property("get_sustainability", "Return sustainability data.")
+else:
+    Ticker.isin = _method_property("get_isin", "Return the ticker ISIN, if available.")
+    Ticker.major_holders = _method_property("get_major_holders", "Return major holders data.")
+    Ticker.institutional_holders = _method_property(
+        "get_institutional_holders",
+        "Return institutional holders data.",
+    )
+    Ticker.mutualfund_holders = _method_property(
+        "get_mutualfund_holders",
+        "Return mutual fund holders data.",
+    )
+    Ticker.insider_purchases = _method_property(
+        "get_insider_purchases",
+        "Return insider purchase data.",
+    )
+    Ticker.insider_transactions = _method_property(
+        "get_insider_transactions",
+        "Return insider transaction data.",
+    )
+    Ticker.insider_roster_holders = _method_property(
+        "get_insider_roster_holders",
+        "Return insider roster holder data.",
+    )
+    Ticker.dividends = _method_property("get_dividends", "Return historical dividends.")
+    Ticker.capital_gains = _method_property("get_capital_gains", "Return historical capital gains.")
+    Ticker.splits = _method_property("get_splits", "Return historical stock splits.")
+    Ticker.actions = _method_property("get_actions", "Return historical corporate actions.")
+    Ticker.shares = _method_property("get_shares", "Return shares outstanding data.")
+    Ticker.info = _method_property("get_info", "Return ticker information dictionary.")
+    Ticker.fast_info = _method_property("get_fast_info", "Return lazily fetched fast info.")
+    Ticker.calendar = _method_property("get_calendar", "Return calendar events for the ticker.")
+    Ticker.sec_filings = _method_property("get_sec_filings", "Return SEC filing metadata.")
+    Ticker.recommendations = _method_property(
+        "get_recommendations",
+        "Return analyst recommendations.",
+    )
+    Ticker.recommendations_summary = _method_property(
+        "get_recommendations_summary",
+        "Return analyst recommendations summary.",
+    )
+    Ticker.upgrades_downgrades = _method_property(
+        "get_upgrades_downgrades",
+        "Return analyst upgrade and downgrade actions.",
+    )
+    Ticker.earnings = _method_property("get_earnings", "Return yearly earnings.")
+    Ticker.quarterly_earnings = _method_property(
+        "get_earnings",
+        "Return quarterly earnings.",
+        freq="quarterly",
+    )
+    Ticker.income_stmt = _method_property(
+        "get_income_stmt",
+        "Return yearly income statement.",
+        pretty=True,
+    )
+    Ticker.quarterly_income_stmt = _method_property(
+        "get_income_stmt",
+        "Return quarterly income statement.",
+        pretty=True,
+        freq="quarterly",
+    )
+    Ticker.ttm_income_stmt = _method_property(
+        "get_income_stmt",
+        "Return trailing income statement.",
+        pretty=True,
+        freq="trailing",
+    )
+    Ticker.incomestmt = _attr_property("income_stmt", "Alias for ``income_stmt``.")
+    Ticker.quarterly_incomestmt = _attr_property(
+        "quarterly_income_stmt",
+        "Alias for ``quarterly_income_stmt``.",
+    )
+    Ticker.ttm_incomestmt = _attr_property("ttm_income_stmt", "Alias for ``ttm_income_stmt``.")
+    Ticker.financials = _attr_property("income_stmt", "Alias for ``income_stmt``.")
+    Ticker.quarterly_financials = _attr_property(
+        "quarterly_income_stmt",
+        "Alias for ``quarterly_income_stmt``.",
+    )
+    Ticker.ttm_financials = _attr_property("ttm_income_stmt", "Alias for ``ttm_income_stmt``.")
+    Ticker.balance_sheet = _method_property(
+        "get_balance_sheet",
+        "Return yearly balance sheet.",
+        pretty=True,
+    )
+    Ticker.quarterly_balance_sheet = _method_property(
+        "get_balance_sheet",
+        "Return quarterly balance sheet.",
+        pretty=True,
+        freq="quarterly",
+    )
+    Ticker.balancesheet = _attr_property("balance_sheet", "Alias for ``balance_sheet``.")
+    Ticker.quarterly_balancesheet = _attr_property(
+        "quarterly_balance_sheet",
+        "Alias for ``quarterly_balance_sheet``.",
+    )
+    Ticker.cash_flow = _method_property(
+        "get_cash_flow",
+        "Return yearly cash flow statement.",
+        pretty=True,
+        freq="yearly",
+    )
+    Ticker.quarterly_cash_flow = _method_property(
+        "get_cash_flow",
+        "Return quarterly cash flow statement.",
+        pretty=True,
+        freq="quarterly",
+    )
+    Ticker.ttm_cash_flow = _method_property(
+        "get_cash_flow",
+        "Return trailing cash flow statement.",
+        pretty=True,
+        freq="trailing",
+    )
+    Ticker.cashflow = _attr_property("cash_flow", "Alias for ``cash_flow``.")
+    Ticker.quarterly_cashflow = _attr_property(
+        "quarterly_cash_flow",
+        "Alias for ``quarterly_cash_flow``.",
+    )
+    Ticker.ttm_cashflow = _attr_property("ttm_cash_flow", "Alias for ``ttm_cash_flow``.")
+    Ticker.analyst_price_targets = _method_property(
+        "get_analyst_price_targets",
+        "Return analyst price target summary.",
+    )
+    Ticker.earnings_estimate = _method_property(
+        "get_earnings_estimate",
+        "Return earnings estimates.",
+    )
+    Ticker.revenue_estimate = _method_property(
+        "get_revenue_estimate",
+        "Return revenue estimates.",
+    )
+    Ticker.earnings_history = _method_property(
+        "get_earnings_history",
+        "Return earnings history.",
+    )
+    Ticker.eps_trend = _method_property("get_eps_trend", "Return EPS trend data.")
+    Ticker.eps_revisions = _method_property("get_eps_revisions", "Return EPS revision data.")
+    Ticker.growth_estimates = _method_property(
+        "get_growth_estimates",
+        "Return growth estimates.",
+    )
+    Ticker.sustainability = _method_property("get_sustainability", "Return sustainability data.")

@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 import datetime
 import json
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as _np
 import pandas as pd
@@ -526,8 +526,8 @@ class FastInfo:
                 self._cache["mcap"] = float(shares * last_price)
         return self._cache["mcap"]
 
-
-FastInfo.toJSON = FastInfo.to_json
+if not TYPE_CHECKING:
+    FastInfo.toJSON = FastInfo.to_json
 
 
 class Quote:

@@ -467,7 +467,7 @@ def download(tickers, *args, **kwargs) -> Union[_pd.DataFrame, None]:
 
     data = _create_download_dataframe(options["ignore_tz"])
     # switch names back to isins if applicable
-    data = cast(_pd.DataFrame, data.rename(columns=_get_isins()))
+    data = cast(_pd.DataFrame, data.rename(cast(dict[str, str], _get_isins()), axis=1))
 
     if options["group_by"] == "column":
         if isinstance(data.columns, _pd.MultiIndex):

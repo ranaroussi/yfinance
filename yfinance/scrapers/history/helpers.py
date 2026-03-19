@@ -82,6 +82,10 @@ def _safe_timestamp(ts_value: Any) -> pd.Timestamp:
     return cast(pd.Timestamp, ts)
 
 
+def _index_date(index: pd.Index, position: int) -> _datetime.date:
+    return _safe_timestamp(index[position]).date()
+
+
 def _get_scipy_ndimage():
     return importlib.import_module("scipy.ndimage")
 
@@ -267,7 +271,7 @@ def _prune_split_correction_ranges(
     kept_ranges = []
     prefix = "" if context.column is None else f"{context.column} "
     for range_item in ranges:
-        if context.index[range_item[0]].date() < context.start_min:
+        if _index_date(context.index, range_item[0]) < context.start_min:
             context.logger.debug(
                 f"Pruning {prefix}range {context.index[range_item[0]]}"
                 f"->{context.index[range_item[1] - 1]} because too old.",
@@ -386,8 +390,11 @@ def _local_volatility_lookback(interval: str) -> int:
 
 def _clean_local_changes(changes_local: pd.DataFrame, column: str) -> np.ndarray:
     if column == "n/a":
-        return changes_local["1D %"][~changes_local["f"]].to_numpy()
-    return changes_local[column + " 1D %"][~changes_local[column + "_f"]].to_numpy()
+        return cast(pd.Series, changes_local["1D %"][~changes_local["f"]]).to_numpy()
+    return cast(
+        pd.Series,
+        changes_local[column + " 1D %"][~changes_local[column + "_f"]],
+    ).to_numpy()
 
 
 def _largest_change_pct(sd_pct: float, context: _LocalVolatilityContext) -> float:
@@ -705,7 +712,7 @@ def _log_ohlc_split_range(
     if context.interday:
         msg = (
             f"Corrected {context.fix_type} on col={column} range="
-            f"[{df2.index[range_item[1] - 1].date()}:{df2.index[range_item[0]].date()}] "
+            f"[{_index_date(df2.index, range_item[1] - 1)}:{_index_date(df2.index, range_item[0])}] "
             f"m={multiplier:.4f}"
         )
     else:
@@ -781,7 +788,7 @@ def _log_full_split_range(
 ) -> None:
     if range_item[0] == range_item[1] - 1:
         if context.interday:
-            msg = f"Corrected {context.fix_type} on interval {df2.index[range_item[0]].date()}"
+            msg = f"Corrected {context.fix_type} on interval {_index_date(df2.index, range_item[0])}"
         else:
             msg = f"Corrected {context.fix_type} on interval {df2.index[range_item[0]]}"
     else:
@@ -790,7 +797,7 @@ def _log_full_split_range(
         if context.interday:
             msg = (
                 f"Corrected {context.fix_type} across intervals "
-                f"{start.date()} -> {end.date()} (inclusive)"
+                f"{_safe_timestamp(start).date()} -> {_safe_timestamp(end).date()} (inclusive)"
             )
         else:
             msg = (
@@ -887,7 +894,10 @@ def _repair_split_ranges(
     if len(ranges) <= 2:
         msg = "Corrected:"
         for range_item in ranges:
-            msg += f" {df2.index[range_item[1] - 1].date()} -> {df2.index[range_item[0]].date()}"
+            msg += (
+                f" {_index_date(df2.index, range_item[1] - 1)}"
+                f" -> {_index_date(df2.index, range_item[0])}"
+            )
     else:
         msg = f"Corrected: {n_corrected}x"
     context.logger.info(msg, extra=context.log_extras)
