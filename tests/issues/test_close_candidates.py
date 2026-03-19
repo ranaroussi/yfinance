@@ -17,6 +17,7 @@ class TestIssue2688(unittest.TestCase):
     """Verify repair logic handles read-only numpy arrays."""
 
     def test_price_repair_copies_read_only_price_data(self):
+        """Repair logic should copy price arrays before mutating them."""
         price_columns = ["Open", "High", "Low", "Close"]
         frame = pd.DataFrame(
             {
@@ -32,6 +33,7 @@ class TestIssue2688(unittest.TestCase):
         original_to_numpy = pd.DataFrame.to_numpy
 
         def patched_to_numpy(dataframe, *args, **kwargs):
+            """Return a read-only array for the selected price columns."""
             result = original_to_numpy(dataframe, *args, **kwargs)
             if list(getattr(dataframe, "columns", [])) == price_columns:
                 result.setflags(write=False)
@@ -49,12 +51,14 @@ class TestIssue1924(unittest.TestCase):
     """Verify cookie fetch can survive fc.yahoo.com DNS blocking."""
 
     def setUp(self):
+        """Reset the cookie state before each test."""
         self.data = YfData()
         setattr(self.data, "_cookie", None)
         setattr(self.data, "_crumb", None)
         setattr(self.data, "_cookie_strategy", "basic")
 
     def test_get_cookie_basic_handles_dns_error(self):
+        """Basic cookie fetch should fail cleanly on DNS errors."""
         with (
             patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
             patch.object(
@@ -65,9 +69,66 @@ class TestIssue1924(unittest.TestCase):
         ):
             self.assertFalse(call_private(self.data, "_get_cookie_basic", timeout=1))
 
+    def test_get_cookie_basic_handles_timeout_error(self):
+        """Basic cookie fetch should fail cleanly on timeout errors."""
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(
+                getattr(self.data, "_session"),
+                "get",
+                side_effect=requests.exceptions.Timeout("fc.yahoo.com timeout"),
+            ),
+        ):
+            self.assertFalse(call_private(self.data, "_get_cookie_basic", timeout=1))
+
+    def test_get_cookie_basic_handles_connection_error(self):
+        """Basic cookie fetch should fail cleanly on connection errors."""
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(
+                getattr(self.data, "_session"),
+                "get",
+                side_effect=requests.exceptions.ConnectionError("fc.yahoo.com unreachable"),
+            ),
+        ):
+            self.assertFalse(call_private(self.data, "_get_cookie_basic", timeout=1))
+
     def test_cookie_flow_falls_back_to_csrf_after_basic_failure(self):
+        """Cookie flow should switch to csrf after a basic-mode failure."""
         with (
             patch.object(self.data, "_get_cookie_and_crumb_basic", return_value=None),
+            patch.object(self.data, "_get_crumb_csrf", return_value="csrf-crumb"),
+        ):
+            crumb, strategy = call_private(self.data, "_get_cookie_and_crumb", timeout=1)
+
+        self.assertEqual(crumb, "csrf-crumb")
+        self.assertEqual(strategy, "csrf")
+
+    def test_cookie_flow_falls_back_to_csrf_after_timeout_error(self):
+        """Cookie flow should switch to csrf after a timeout in basic mode."""
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(
+                getattr(self.data, "_session"),
+                "get",
+                side_effect=requests.exceptions.Timeout("fc.yahoo.com timeout"),
+            ),
+            patch.object(self.data, "_get_crumb_csrf", return_value="csrf-crumb"),
+        ):
+            crumb, strategy = call_private(self.data, "_get_cookie_and_crumb", timeout=1)
+
+        self.assertEqual(crumb, "csrf-crumb")
+        self.assertEqual(strategy, "csrf")
+
+    def test_cookie_flow_falls_back_to_csrf_after_connection_error(self):
+        """Cookie flow should switch to csrf after a connection error in basic mode."""
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(
+                getattr(self.data, "_session"),
+                "get",
+                side_effect=requests.exceptions.ConnectionError("fc.yahoo.com unreachable"),
+            ),
             patch.object(self.data, "_get_crumb_csrf", return_value="csrf-crumb"),
         ):
             crumb, strategy = call_private(self.data, "_get_cookie_and_crumb", timeout=1)
@@ -80,6 +141,7 @@ class TestIssue1801(SessionTickerTestCase):
     """Verify download no longer emits utcfromtimestamp deprecation warnings."""
 
     def test_download_does_not_emit_utcfromtimestamp_warning(self):
+        """Download should not emit utcfromtimestamp deprecation warnings."""
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always", DeprecationWarning)
             data = yf.download(
@@ -91,6 +153,8 @@ class TestIssue1801(SessionTickerTestCase):
                 session=self.session,
             )
 
+        if data is None:
+            self.fail("yf.download() returned None")
         self.assertFalse(data.empty)
         matching = [
             warning
@@ -104,6 +168,7 @@ class TestIssue1951(SessionTickerTestCase):
     """Verify unavailable quotes no longer crash fast_info access."""
 
     def test_fast_info_handles_unavailable_quote(self):
+        """fast_info access should tolerate unavailable quotes."""
         ticker = yf.Ticker("DJI", session=self.session)
         fast_info = ticker.fast_info
 
@@ -115,13 +180,20 @@ class TestIssue930(SessionTickerTestCase):
     """Verify AAPL dividend events are still present in history output."""
 
     def test_aapl_dividend_dates_2022(self):
+        """Dividend dates should match between history and dividends properties."""
         ticker = yf.Ticker("AAPL", session=self.session)
         start = dt.date(2022, 1, 1)
         end = dt.date(2023, 1, 1)
 
         history = ticker.history(start=start, end=end, interval="1d", actions=True)
-        history_dividends = history[history["Dividends"] != 0].index.date.tolist()
-        property_dividends = ticker.dividends.loc[str(start):str(end)].index.date.tolist()
+        history_dividends = [
+            pd.Timestamp(value).date()
+            for value in history[history["Dividends"] != 0].index.tolist()
+        ]
+        property_dividends = [
+            pd.Timestamp(value).date()
+            for value in ticker.dividends.loc[str(start):str(end)].index.tolist()
+        ]
 
         expected = [
             dt.date(2022, 2, 4),

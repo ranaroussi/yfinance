@@ -235,10 +235,12 @@ class YfData(metaclass=SingletonMeta):
             self._session.get(
                 url="https://fc.yahoo.com", timeout=timeout, allow_redirects=True
             )
-        except requests.exceptions.DNSError as e:
-            # Possible because url on some privacy/ad blocklists.
-            # Can ignore because have second strategy.
-            utils.get_yf_logger().debug("Handling DNS error on cookie fetch: %s", e)
+        except requests.exceptions.RequestException as e:
+            # Possible because fc.yahoo.com is blocked, unreachable, or timing out.
+            # Allow caller to fall back to the alternate CSRF cookie strategy.
+            utils.get_yf_logger().debug(
+                "Handling cookie fetch error in basic strategy: %s", e
+            )
             return False
         self._save_cookie_curl_cffi()
         return True
