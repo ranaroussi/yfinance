@@ -7,10 +7,10 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from yfinance import const, utils
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
+from .. import const, utils
 
 
 class Fundamentals:

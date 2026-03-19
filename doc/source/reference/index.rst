@@ -11,24 +11,24 @@ The `yfinance` package provides easy access to Yahoo! Finance's API to retrieve 
 Public API
 ==========
 
-The following are the publicly available classes, and functions exposed by the `yfinance` package:
+The following are the publicly available classes, and functions exposed by the `yfinance.client` module:
 
-- :attr:`Ticker <yfinance.Ticker>`: Class for accessing single ticker data.
-- :attr:`Tickers <yfinance.Tickers>`: Class for handling multiple tickers.
-- :attr:`Market <yfinance.Market>`: Class for accessing market summary.
-- :attr:`Calendars <yfinance.Calendars>`: Class for accessing calendar events data.
-- :attr:`download <yfinance.download>`: Function to download market data for multiple tickers.
-- :attr:`Search <yfinance.Search>`: Class for accessing search results.
-- :attr:`Lookup <yfinance.Lookup>`: Class for looking up tickers.
-- :class:`WebSocket <yfinance.WebSocket>`: Class for synchronously streaming live market data.
-- :class:`AsyncWebSocket <yfinance.AsyncWebSocket>`: Class for asynchronously streaming live market data.
-- :attr:`Sector <yfinance.Sector>`: Domain class for accessing sector information.
-- :attr:`Industry <yfinance.Industry>`: Domain class for accessing industry information.
-- :attr:`EquityQuery <yfinance.EquityQuery>`: Class to build equity query filters.
-- :attr:`FundQuery <yfinance.FundQuery>`: Class to build fund query filters.
-- :attr:`screen <yfinance.screen>`: Run equity/fund queries.
-- :attr:`config.debug.logging <yfinance.config>`: Enable verbose debug logging (``yf.config.debug.logging = True``).
-- :attr:`set_tz_cache_location <yfinance.set_tz_cache_location>`: Function to set the timezone cache location.
+- :attr:`Ticker <yfinance.client.Ticker>`: Class for accessing single ticker data.
+- :attr:`Tickers <yfinance.client.Tickers>`: Class for handling multiple tickers.
+- :attr:`Market <yfinance.client.Market>`: Class for accessing market summary.
+- :attr:`Calendars <yfinance.client.Calendars>`: Class for accessing calendar events data.
+- :attr:`download <yfinance.client.download>`: Function to download market data for multiple tickers.
+- :attr:`Search <yfinance.client.Search>`: Class for accessing search results.
+- :attr:`Lookup <yfinance.client.Lookup>`: Class for looking up tickers.
+- :class:`WebSocket <yfinance.client.WebSocket>`: Class for synchronously streaming live market data.
+- :class:`AsyncWebSocket <yfinance.client.AsyncWebSocket>`: Class for asynchronously streaming live market data.
+- :attr:`Sector <yfinance.client.Sector>`: Domain class for accessing sector information.
+- :attr:`Industry <yfinance.client.Industry>`: Domain class for accessing industry information.
+- :attr:`EquityQuery <yfinance.client.EquityQuery>`: Class to build equity query filters.
+- :attr:`FundQuery <yfinance.client.FundQuery>`: Class to build fund query filters.
+- :attr:`screen <yfinance.client.screen>`: Run equity/fund queries.
+- :attr:`config.debug.logging <yfinance.client.config>`: Enable verbose debug logging (``yf.config.debug.logging = True``).
+- :attr:`set_tz_cache_location <yfinance.client.set_tz_cache_location>`: Function to set the timezone cache location.
 
 .. toctree::
    :maxdepth: 1

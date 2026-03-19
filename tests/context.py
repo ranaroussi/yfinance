@@ -6,7 +6,7 @@ import sys
 
 import platformdirs as _ad
 
-import yfinance
+import yfinance.client as yfinance
 # from requests_ratelimiter import LimiterSession
 # from pyrate_limiter import Duration, RequestRate, Limiter
 

@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta as _relativedelta
 import numpy as np
 import pandas as pd
 
-from yfinance import utils
+from ... import utils
 
 
 _HISTORY_ARG_NAMES = (

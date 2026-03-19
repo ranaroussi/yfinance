@@ -2,7 +2,7 @@
 Analysis & Holdings
 ===================
 
-.. currentmodule:: yfinance.Ticker
+.. currentmodule:: yfinance.client.Ticker
 
 Analysis
 --------

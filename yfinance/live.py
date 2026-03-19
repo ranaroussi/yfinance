@@ -12,9 +12,9 @@ from websockets.asyncio.client import connect as async_connect
 from websockets.exceptions import WebSocketException
 from websockets.sync.client import connect as sync_connect
 
-from yfinance import utils
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.pricing_pb2 import PricingData
+from . import utils
 
 
 class _AsyncWebSocketProtocol(Protocol):

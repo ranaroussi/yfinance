@@ -2,7 +2,7 @@
 Financials
 ==========
 
-.. currentmodule:: yfinance.Ticker
+.. currentmodule:: yfinance.client.Ticker
 
 .. autosummary::
    :toctree: api/

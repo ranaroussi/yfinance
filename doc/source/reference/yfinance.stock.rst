@@ -2,7 +2,7 @@
 Stock
 =====
 
-.. currentmodule:: yfinance.Ticker
+.. currentmodule:: yfinance.client.Ticker
 
 Ticker stock methods
 --------------------

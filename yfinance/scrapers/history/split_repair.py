@@ -3,10 +3,9 @@
 import numpy as np
 import pandas as pd
 
-from yfinance import utils
-
 from yfinance.scrapers.history.helpers import _PriceChangeRepairSettings, _safe_timestamp
 from yfinance.scrapers.history.price_repair import fix_prices_sudden_change
+from ... import utils
 
 
 def _split_scan_cutoff(interval, split_idx, row_count):

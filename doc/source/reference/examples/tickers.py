@@ -1,6 +1,6 @@
 """Multiple ticker example."""
 
-import yfinance as yf
+import yfinance.client as yf
 
 
 def main():

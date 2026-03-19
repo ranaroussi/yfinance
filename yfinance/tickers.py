@@ -27,7 +27,8 @@ from typing import Dict
 
 import pandas as _pd
 
-from . import Ticker, multi
+from . import multi
+from .ticker import Ticker
 from .live import WebSocket
 from .data import YfData
 

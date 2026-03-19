@@ -7,5 +7,5 @@ If debugging, you can switch to debug mode with custom formatting using:
 
 .. code-block:: python
 
-   import yfinance as yf
+   import yfinance.client as yf
    yf.config.debug.logging = True

@@ -2,7 +2,7 @@
 Screener & Query
 =========================
 
-.. currentmodule:: yfinance
+.. currentmodule:: yfinance.client
 
 Query Market Data
 ~~~~~~~~~~~~~~~~~~~~~
@@ -16,12 +16,12 @@ The `Sector` and `Industry` modules allow you to access the sector and industry 
    screen
 
 .. seealso::
-   :attr:`EquityQuery.valid_fields <yfinance.EquityQuery.valid_fields>`
+   :attr:`EquityQuery.valid_fields <yfinance.client.EquityQuery.valid_fields>`
       supported operand values for query
-   :attr:`EquityQuery.valid_values <yfinance.EquityQuery.valid_values>`
+   :attr:`EquityQuery.valid_values <yfinance.client.EquityQuery.valid_values>`
       supported `EQ query operand parameters`
-   :attr:`FundQuery.valid_fields <yfinance.FundQuery.valid_fields>`
+   :attr:`FundQuery.valid_fields <yfinance.client.FundQuery.valid_fields>`
       supported operand values for query
-   :attr:`FundQuery.valid_values <yfinance.FundQuery.valid_values>`
+   :attr:`FundQuery.valid_values <yfinance.client.FundQuery.valid_values>`
       supported `EQ query operand parameters`
    

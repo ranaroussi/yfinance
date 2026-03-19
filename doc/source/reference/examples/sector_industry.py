@@ -1,6 +1,6 @@
 """Sector and industry lookup examples."""
 
-import yfinance as yf
+import yfinance.client as yf
 
 
 def main():

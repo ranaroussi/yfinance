@@ -1,6 +1,6 @@
 """Search example."""
 
-import yfinance as yf
+import yfinance.client as yf
 
 # get list of quotes
 quotes = yf.Search("AAPL", max_results=10).quotes

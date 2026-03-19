@@ -2,7 +2,7 @@
 Search & Lookup
 =====================
 
-.. currentmodule:: yfinance
+.. currentmodule:: yfinance.client
 
 
 Class

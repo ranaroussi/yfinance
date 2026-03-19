@@ -33,7 +33,7 @@ Showing a small sample of yfinance API, the full API is much bigger and covered 
 
 .. code-block:: python
 
-   import yfinance as yf
+   import yfinance.client as yf
    dat = yf.Ticker("MSFT")
 
 

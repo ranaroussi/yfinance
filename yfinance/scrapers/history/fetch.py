@@ -12,7 +12,6 @@ from curl_cffi import requests
 import numpy as np
 import pandas as pd
 
-from yfinance import shared, utils
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
 from yfinance.exceptions import (
@@ -27,6 +26,7 @@ from yfinance.scrapers.history.helpers import (
     _interval_to_supported_delta,
     _safe_timestamp,
 )
+from ... import shared, utils
 
 _FetchState = SimpleNamespace
 

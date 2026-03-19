@@ -11,10 +11,9 @@ import dateutil as _dateutil
 import numpy as np
 import pandas as pd
 
-from yfinance import utils
 from yfinance.const import _PRICE_COLNAMES_
-
 from yfinance.scrapers.history.helpers import _interval_to_timedelta
+from ... import utils
 
 
 _RECONSTRUCT_INTERVALS = ["1wk", "1d", "1h", "30m", "15m", "5m", "2m", "1m"]

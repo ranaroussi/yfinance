@@ -37,7 +37,6 @@ import pytz as _tz
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
-from yfinance import const
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.exceptions import YFException
 from yfinance.utils_doc import (
@@ -61,6 +60,7 @@ from yfinance.utils_price import (
     format_history_metadata_impl as _format_history_metadata_impl,
     safe_merge_dfs_impl as _safe_merge_dfs_impl,
 )
+from . import const
 
 ProgressBar = _ProgressBar
 dynamic_docstring = _dynamic_docstring

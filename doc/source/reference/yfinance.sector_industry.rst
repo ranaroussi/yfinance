@@ -2,7 +2,7 @@
 Sector and Industry
 =======================
 
-.. currentmodule:: yfinance
+.. currentmodule:: yfinance.client
 
 Sector class
 --------------
@@ -16,7 +16,7 @@ The `Sector` and `Industry` modules provide access to the Sector and Industry in
    Industry
 
 .. seealso::
-   :attr:`Sector.industries <yfinance.Sector.industries>`
+   :attr:`Sector.industries <yfinance.client.Sector.industries>`
       Map of sector and industry
 
 Sample Code

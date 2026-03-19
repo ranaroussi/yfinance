@@ -2,7 +2,7 @@
 
 import asyncio
 
-import yfinance as yf
+import yfinance.client as yf
 
 
 def message_handler(message):

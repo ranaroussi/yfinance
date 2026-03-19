@@ -4,7 +4,7 @@ import datetime as _datetime
 
 import numpy as np
 
-from yfinance import utils
+from ... import utils
 
 
 def _capital_gains_debug_frame(df, price_drop_pct_mean):

@@ -6,7 +6,7 @@ Config
 
 .. code-block:: python
 
-  >>> import yfinance as yf
+  >>> import yfinance.client as yf
   >>> yf.config
   {
     "network": {

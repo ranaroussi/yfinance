@@ -3,8 +3,6 @@
 import dateutil as _dateutil
 import numpy as np
 
-from yfinance import utils
-
 from yfinance.scrapers.history.helpers import (
     _LocalVolatilityContext,
     _PriceChangeRepairSettings,
@@ -23,6 +21,7 @@ from yfinance.scrapers.history.helpers import (
     _repair_split_ranges_by_column,
     _should_abort_due_to_nearby_split,
 )
+from ... import utils
 
 
 def _price_repair_setup(price_history, df, change, interval):

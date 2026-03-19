@@ -2,7 +2,7 @@
 Ticker and Tickers
 =====================
 
-.. currentmodule:: yfinance
+.. currentmodule:: yfinance.client
 
 
 Class

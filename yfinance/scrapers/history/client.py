@@ -10,9 +10,9 @@ from dateutil.relativedelta import relativedelta as _relativedelta
 import numpy as np
 import pandas as pd
 
-from yfinance import utils
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import _PRICE_COLNAMES_
+from ... import utils
 from .capital_gains import repair_capital_gains
 from .dividend_repair import fix_bad_div_adjust
 from .fetch import fetch_history

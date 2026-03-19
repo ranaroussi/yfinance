@@ -2,7 +2,7 @@
 Functions and Utilities
 =========================
 
-.. currentmodule:: yfinance
+.. currentmodule:: yfinance.client
    
 Download Market Data
 ~~~~~~~~~~~~~~~~~~~~~

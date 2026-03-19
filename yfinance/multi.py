@@ -32,11 +32,12 @@ import multitasking as _multitasking
 import pandas as _pd
 from curl_cffi import requests
 
-from . import Ticker, utils
+from . import utils
 from . import shared
 from .config import YF_CONFIG
 from .data import YfData
 from .exceptions import YFException
+from .ticker import Ticker
 
 _SHARED_DFS_ATTR = "_DFS"
 _SHARED_PROGRESS_BAR_ATTR = "_PROGRESS_BAR"

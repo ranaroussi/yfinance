@@ -9,11 +9,11 @@ import curl_cffi
 import numpy as _np
 import pandas as pd
 
-from yfinance import utils
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
+from .. import utils
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 

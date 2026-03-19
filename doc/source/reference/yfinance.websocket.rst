@@ -2,7 +2,7 @@
 WebSocket
 =====================
 
-.. currentmodule:: yfinance
+.. currentmodule:: yfinance.client
 
 The `WebSocket` module allows you to stream live price data from Yahoo Finance using both synchronous and asynchronous clients.
 

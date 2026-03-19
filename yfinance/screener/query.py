@@ -4,9 +4,9 @@ from abc import ABC, abstractmethod
 import numbers
 from typing import Collection, Dict, List, Mapping, Sequence, TypeVar, Union
 
-from yfinance import const
 from yfinance.exceptions import YFNotImplementedError
 
+from .. import const
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
 OperandValue = Union[str, int, float]

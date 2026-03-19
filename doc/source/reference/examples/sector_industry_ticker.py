@@ -1,6 +1,6 @@
 """Ticker to sector and industry example."""
 
-import yfinance as yf
+import yfinance.client as yf
 
 
 def main():

@@ -5,12 +5,12 @@ from typing import Any, Dict, List, Optional
 import curl_cffi
 import pandas as pd
 
-from yfinance import utils
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import quote_summary_valid_modules
 from yfinance.data import YfData
 from yfinance.exceptions import YFException
 from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
+from .. import utils
 
 
 class Analysis:

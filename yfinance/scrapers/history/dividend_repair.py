@@ -8,7 +8,7 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
-from yfinance import utils
+from ... import utils
 
 
 def fix_bad_div_adjust(price_history, df, interval, _currency):

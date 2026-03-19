@@ -177,7 +177,7 @@ class Calendars:
 
     ### Simple example default params:
     ```python
-    import yfinance as yf
+    import yfinance.client as yf
     calendars = yf.Calendars()
     earnings_calendar = calendars.get_earnings_calendar(limit=50)
     print(earnings_calendar)
