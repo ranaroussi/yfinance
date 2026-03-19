@@ -1,6 +1,6 @@
 """Package version metadata."""
 
-VERSION = "1.2.0"
+VERSION = "2.0.0"
 
 
 def __getattr__(name):
