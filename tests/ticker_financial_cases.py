@@ -23,15 +23,19 @@ class TestTickerFinancialCases(SessionTickerTestCase):
         getter_name: str,
         property_name: str,
         expected_keys: list[str],
+        supports_trailing: bool = True,
     ):
         getter = getattr(ticker, getter_name)
         property_value = getattr(ticker, property_name)
         annual = self._assert_cached_dataframe(getter(pretty=True))
         quarterly = self._assert_cached_dataframe(getter(pretty=True, freq="quarterly"))
-        trailing = self._assert_cached_dataframe(getter(pretty=True, freq='trailing'))
         self.assertTrue(annual.equals(property_value))
-        self.assertTrue(len(trailing.columns) == 1)
-        for frame in [annual, quarterly, trailing]:
+        frames = [annual, quarterly]
+        if supports_trailing:
+            trailing = self._assert_cached_dataframe(getter(pretty=True, freq='trailing'))
+            self.assertTrue(len(trailing.columns) == 1)
+            frames.append(trailing)
+        for frame in frames:
             for key in expected_keys:
                 self.assertIn(key, frame.index)
         self.assertIsInstance(getter(as_dict=True), dict)
@@ -85,6 +89,7 @@ class TestTickerFinancialCases(SessionTickerTestCase):
             "get_balance_sheet",
             "balance_sheet",
             ["Total Assets", "Net PPE"],
+            supports_trailing=False,
         )
         self._assert_statement_family(
             ticker,

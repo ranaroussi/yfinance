@@ -26,6 +26,7 @@ from __future__ import print_function
 import logging
 import time as _time
 import traceback
+import warnings
 from typing import Union, cast
 
 import multitasking as _multitasking
@@ -35,7 +36,6 @@ from curl_cffi import requests
 from .options import bind_options
 from . import utils
 from . import shared
-from .config import YF_CONFIG
 from .data import YfData
 from .exceptions import YFException
 from .ticker import Ticker
@@ -552,30 +552,29 @@ def _download_one(ticker, *args, **kwargs):
     errors = _get_errors()
     tracebacks = _get_tracebacks()
     symbol = ticker.upper()
-    backup = YF_CONFIG.debug.hide_exceptions
-    YF_CONFIG.debug.hide_exceptions = False
 
     try:
-        data = Ticker(ticker).history(
-            period=options["period"],
-            interval=options["interval"],
-            start=options["start"],
-            end=options["end"],
-            prepost=options["prepost"],
-            actions=options["actions"],
-            auto_adjust=options["auto_adjust"],
-            back_adjust=options["back_adjust"],
-            repair=options["repair"],
-            rounding=options["rounding"],
-            keepna=options["keepna"],
-            timeout=options["timeout"],
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            data = Ticker(ticker).history(
+                period=options["period"],
+                interval=options["interval"],
+                start=options["start"],
+                end=options["end"],
+                prepost=options["prepost"],
+                actions=options["actions"],
+                auto_adjust=options["auto_adjust"],
+                back_adjust=options["back_adjust"],
+                repair=options["repair"],
+                rounding=options["rounding"],
+                keepna=options["keepna"],
+                timeout=options["timeout"],
+                raise_errors=True,
+            )
         dfs[symbol] = data
     except _RECOVERABLE_EXCEPTIONS as error:
         dfs[symbol] = utils.empty_df()
         errors[symbol] = repr(error)
         tracebacks[symbol] = traceback.format_exc()
-    finally:
-        YF_CONFIG.debug.hide_exceptions = backup
 
     return data

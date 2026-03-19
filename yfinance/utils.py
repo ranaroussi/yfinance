@@ -590,18 +590,12 @@ globals()["fix_Yahoo_returning_prepost_unrequested"] = (
 
 def safe_merge_dfs(df_main, df_sub, interval):
     """Safely merge event dataframes into a prices dataframe by interval."""
-    def _interval_to_timedelta_strict(interval: str) -> _pd.Timedelta:
-        result = _interval_to_timedelta(interval)
-        if not isinstance(result, _pd.Timedelta):
-            raise TypeError(f"Expected Timedelta, got {type(result)} for interval {interval!r}")
-        return result
-
     return _safe_merge_dfs_impl(
         df_main,
         df_sub,
         interval,
         _MergeContext(
-            interval_to_timedelta=_interval_to_timedelta_strict,
+            interval_to_timedelta=_interval_to_timedelta,
             logger_getter=get_yf_logger,
             price_colnames=_PRICE_COLNAMES,
             exception_cls=YFException,

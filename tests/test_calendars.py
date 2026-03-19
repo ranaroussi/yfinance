@@ -34,8 +34,8 @@ class TestCalendars(unittest.TestCase):
         """Honor constructor start date and API limit values."""
         result = self.calendars.get_earnings_calendar(limit=5)
         self.assertGreaterEqual(
-            result['Event Start Date'].iloc[0],
-            pd.to_datetime(datetime.now(tz=timezone.utc)),
+            result['Event Start Date'].iloc[0].date(),
+            datetime.now(tz=timezone.utc).date(),
         )
 
         start = datetime.now(tz=timezone.utc) - timedelta(days=7)

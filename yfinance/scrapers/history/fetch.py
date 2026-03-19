@@ -524,7 +524,7 @@ def _extract_actions(
     if not state.expect_capital_gains:
         capital_gains = pd.DataFrame(
             columns=["Capital Gains"],
-            index=pd.DatetimeIndex([]),
+            index=pd.DatetimeIndex([], tz=state.tz_exchange),
         )
     dividends = _normalize_dividend_currency(state, dividends)
     return dividends, splits, capital_gains

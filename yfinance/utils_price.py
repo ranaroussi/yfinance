@@ -21,7 +21,7 @@ class _LiveSeparateContext:
 
 @dataclass(frozen=True)
 class _MergeContext:
-    interval_to_timedelta: Callable[[str], _pd.Timedelta]
+    interval_to_timedelta: Callable[[str], Any]
     logger_getter: Callable[[], Any]
     price_colnames: Sequence[str]
     exception_cls: type[Exception]
@@ -31,7 +31,7 @@ class _MergeContext:
 class _OutOfRangeContext:
     interval: str
     intraday: bool
-    td: _pd.Timedelta
+    td: Any
     data_col: str
     merge_context: _MergeContext
 
@@ -341,6 +341,11 @@ def safe_merge_dfs_impl(df_main, df_sub, interval, context):
     new_index = df_main.index[indices]
     df_sub = _reindex_events(df_sub, new_index, data_col, context.exception_cls)
 
+    if df_sub.empty:
+        if data_col not in df_main.columns:
+            df_main[data_col] = 0.0
+        return df_main
+
     df = df_main.join(df_sub)
     f_na = df[data_col].isna()
     data_lost = sum(~f_na) < df_sub.shape[0]
@@ -410,11 +415,7 @@ def _format_trading_periods(trading_periods, tz):
         return None
 
     start_dates = _pd.to_datetime(cast(_pd.Series, df["start"]).dt.date)
-    if isinstance(start_dates, _pd.Series):
-        df.index = _pd.DatetimeIndex(start_dates)
-    else:
-        df.index = start_dates
-    df.index = df.index.tz_localize(tz)
+    df.index = _pd.DatetimeIndex(start_dates).tz_localize(tz)
     df.index.name = "Date"
     return df
 

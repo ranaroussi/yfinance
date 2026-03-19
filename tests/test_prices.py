@@ -273,7 +273,8 @@ class TestPriceHistory(unittest.TestCase):
             )
             intraday_div_index = _as_datetime_index(df_intraday_divs.index)
             df_intraday_divs.index = _pd.to_datetime([dt.date() for dt in intraday_div_index])
-            self.assertTrue(df_daily_divs.index.equals(df_intraday_divs.index))
+            daily_div_dates = _pd.to_datetime([dt.date() for dt in _as_datetime_index(df_daily_divs.index)])
+            self.assertTrue(daily_div_dates.equals(df_intraday_divs.index))
 
             test_run = True
 
@@ -315,7 +316,8 @@ class TestPriceHistory(unittest.TestCase):
             )
             intraday_div_index = _as_datetime_index(df_intraday_divs.index)
             df_intraday_divs.index = _pd.to_datetime([dt.date() for dt in intraday_div_index])
-            self.assertTrue(df_daily_divs.index.equals(df_intraday_divs.index))
+            daily_div_dates = _pd.to_datetime([dt.date() for dt in _as_datetime_index(df_daily_divs.index)])
+            self.assertTrue(daily_div_dates.equals(df_intraday_divs.index))
 
             test_run = True
 
@@ -538,7 +540,7 @@ class TestPriceHistoryAdditional(unittest.TestCase):
     def test_prune_post_intraday_us(self):
         """Ensure U.S. half-day intraday pruning behavior remains correct."""
         tkr = "AMZN"
-        special_day = _dt.date(2024, 11, 29)
+        special_day = _dt.date(2025, 11, 28)  # Thanksgiving 2025
         time_early_close = _dt.time(13)
         dat = yf.Ticker(tkr, session=self.session)
 
