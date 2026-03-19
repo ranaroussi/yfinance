@@ -568,7 +568,7 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]
                 except (KeyError, IndexError) as exc:
-                    if not YfConfig.debug.hide_exceptions:
+                    if YfConfig.debug.raise_on_error:
                         raise
                     raise YFDataException(
                         f"Failed to parse json response from Yahoo Finance: {result}"
@@ -587,7 +587,7 @@ class Quote:
                 try:
                     data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
                 except (KeyError, IndexError) as exc:
-                    if not YfConfig.debug.hide_exceptions:
+                    if YfConfig.debug.raise_on_error:
                         raise
                     raise YFDataException(
                         f"Failed to parse json response from Yahoo Finance: {result}"
@@ -624,7 +624,7 @@ class Quote:
                     df.index = pd.to_datetime(df.index, unit='s')
                     self._upgrades_downgrades = df
                 except (KeyError, IndexError) as exc:
-                    if not YfConfig.debug.hide_exceptions:
+                    if YfConfig.debug.raise_on_error:
                         raise
                     raise YFDataException(
                         f"Failed to parse json response from Yahoo Finance: {result}"
@@ -828,7 +828,7 @@ class Quote:
                 self._calendar["Revenue Low"] = earnings.get("revenueLow")
                 self._calendar["Revenue Average"] = earnings.get("revenueAverage")
         except (KeyError, IndexError) as exc:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             raise YFDataException(
                 f"Failed to parse json response from Yahoo Finance: {result}"

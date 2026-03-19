@@ -202,11 +202,11 @@ class FundsData:
             self._parse_top_holdings(data.get("topHoldings", {}))
             self._parse_fund_profile(data.get("fundProfile", {}))
         except KeyError as exc:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             raise YFDataException(f"{self._symbol}: No Fund data found.") from exc
         except (TypeError, ValueError, IndexError, AttributeError) as error:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             logger = utils.get_yf_logger()
             logger.error(

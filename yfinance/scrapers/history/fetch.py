@@ -5,7 +5,6 @@ from __future__ import annotations
 import datetime as _datetime
 import time as _time
 from types import SimpleNamespace
-import warnings
 from typing import Any, Optional, cast
 
 from curl_cffi import requests
@@ -50,7 +49,6 @@ def _build_fetch_state(price_history, request: _HistoryRequest) -> _FetchState:
         keepna=request.keepna,
         rounding=request.rounding,
         timeout=request.timeout,
-        raise_errors=request.raise_errors,
         interval_user=request.interval,
         period_user=request.period,
         start_user=request.start,
@@ -70,14 +68,6 @@ def _build_fetch_state(price_history, request: _HistoryRequest) -> _FetchState:
     )
 
 
-def _warn_raise_errors(state: _FetchState) -> None:
-    if state.raise_errors:
-        warnings.warn(
-            "'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False",
-            DeprecationWarning,
-            stacklevel=5,
-        )
-
 
 def _return_error_df(
     state: _FetchState,
@@ -87,7 +77,7 @@ def _return_error_df(
     err_msg = str(exception)
     shared.set_df(state.price_history.ticker, utils.empty_df())
     shared.set_error(state.price_history.ticker, err_msg.split(": ", 1)[1])
-    if state.raise_errors or (not YfConfig.debug.hide_exceptions):
+    if YfConfig.debug.raise_on_error:
         raise exception
     state.logger.error(err_msg)
     if clear_reconstruct:
@@ -248,7 +238,7 @@ def _fetch_chart_data(state: _FetchState) -> Optional[dict[str, Any]]:
         if isinstance(data_json, dict):
             return cast(dict[str, Any], data_json)
     except (AttributeError, TypeError, ValueError, requests.exceptions.RequestException):
-        if state.raise_errors or (not YfConfig.debug.hide_exceptions):
+        if YfConfig.debug.raise_on_error:
             raise
     return None
 
@@ -679,7 +669,7 @@ def _apply_price_adjustment(state: _FetchState, df: pd.DataFrame) -> pd.DataFram
         if state.back_adjust:
             return cast(pd.DataFrame, utils.back_adjust(df))
     except (AttributeError, KeyError, TypeError, ValueError) as error:
-        if state.raise_errors or (not YfConfig.debug.hide_exceptions):
+        if YfConfig.debug.raise_on_error:
             raise
         err_msg = (
             f"auto_adjust failed with {error}"
@@ -734,7 +724,6 @@ def _finalize_history_df(state: _FetchState, df: pd.DataFrame) -> pd.DataFrame:
 def fetch_history(price_history, request: _HistoryRequest) -> pd.DataFrame:
     """Fetch chart data from Yahoo and return a normalized history dataframe."""
     state = _build_fetch_state(price_history, request)
-    _warn_raise_errors(state)
     failed_df = _normalize_repair_request(state)
     if failed_df is not None:
         return failed_df

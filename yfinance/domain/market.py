@@ -76,7 +76,7 @@ class Market:
             summary_result = summary_payload["marketSummaryResponse"]["result"]
             self._summary = {item["exchange"]: item for item in summary_result}
         except _PARSE_ERROR_TYPES as err:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._logger.error("%s: Failed to parse market summary", self.market)
             self._logger.debug("%s: %s", type(err).__name__, err)
@@ -87,7 +87,7 @@ class Market:
             del status["time"]  # Redundant with open and close fields.
             self._status = status
         except _PARSE_ERROR_TYPES as err:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._logger.error("%s: Failed to parse market status", self.market)
             self._logger.debug("%s: %s", type(err).__name__, err)
@@ -108,7 +108,7 @@ class Market:
             )
             self._status = status
         except _PARSE_ERROR_TYPES as err:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._logger.error("%s: Failed to update market status", self.market)
             self._logger.debug("%s: %s", type(err).__name__, err)

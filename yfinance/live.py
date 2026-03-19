@@ -71,7 +71,7 @@ class BaseWebSocket:
             pricing_data.ParseFromString(decoded_bytes)
             return cast(dict, MessageToDict(pricing_data, preserving_proto_field_name=True))
         except (binascii.Error, DecodeError, TypeError, ValueError) as error:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self.logger.error("Failed to decode message: %s", error, exc_info=True)
             if self.verbose:
@@ -114,7 +114,7 @@ class AsyncWebSocket(BaseWebSocket):
                 if self.verbose:
                     print("Connected to WebSocket.")
         except (OSError, WebSocketException) as error:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self.logger.error("Failed to connect to WebSocket: %s", error, exc_info=True)
             if self.verbose:
@@ -136,7 +136,7 @@ class AsyncWebSocket(BaseWebSocket):
                     if self.verbose:
                         print(f"Heartbeat subscription sent for symbols: {self._subscriptions}")
             except (OSError, RuntimeError, TypeError, ValueError) as error:
-                if not YfConfig.debug.hide_exceptions:
+                if YfConfig.debug.raise_on_error:
                     raise
                 self.logger.error("Error in heartbeat subscription: %s", error, exc_info=True)
                 if self.verbose:
@@ -204,7 +204,7 @@ class AsyncWebSocket(BaseWebSocket):
                 else:
                     self._message_handler(decoded_message)
             except (RuntimeError, TypeError, ValueError) as handler_error:
-                if not YfConfig.debug.hide_exceptions:
+                if YfConfig.debug.raise_on_error:
                     raise
                 self.logger.error(
                     "Error in message handler: %s",
@@ -263,7 +263,7 @@ class AsyncWebSocket(BaseWebSocket):
                 break
 
             except (json.JSONDecodeError, OSError, RuntimeError, TypeError, ValueError) as error:
-                if not YfConfig.debug.hide_exceptions:
+                if YfConfig.debug.raise_on_error:
                     raise
                 await self._recover_async_listener(error)
 
@@ -374,7 +374,7 @@ class WebSocket(BaseWebSocket):
             try:
                 message_handler(decoded_message)
             except (RuntimeError, TypeError, ValueError) as handler_error:
-                if not YfConfig.debug.hide_exceptions:
+                if YfConfig.debug.raise_on_error:
                     raise
                 self.logger.error(
                     "Error in message handler: %s",
@@ -415,7 +415,7 @@ class WebSocket(BaseWebSocket):
                 break
 
             except (json.JSONDecodeError, OSError, RuntimeError, TypeError, ValueError) as error:
-                if not YfConfig.debug.hide_exceptions:
+                if YfConfig.debug.raise_on_error:
                     raise
                 self.logger.error("Error while listening to messages: %s", error, exc_info=True)
                 if self.verbose:

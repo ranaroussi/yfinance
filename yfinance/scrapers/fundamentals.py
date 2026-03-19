@@ -99,7 +99,7 @@ class Financials:
             if statement is not None:
                 return statement
         except YFException as err:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             utils.get_yf_logger().error(
                 "%s: Failed to create %s financials table for reason: %s",
@@ -124,7 +124,7 @@ class Financials:
         try:
             return self._get_financials_time_series(timescale, keys)
         except (KeyError, TypeError, ValueError, IndexError, json.JSONDecodeError):
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             return None
 

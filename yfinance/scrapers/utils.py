@@ -20,7 +20,7 @@ def get_raw_json_or_none(
     try:
         return data.get_raw_json(url, params=params)
     except curl_cffi.requests.exceptions.HTTPError as err:
-        if not YfConfig.debug.hide_exceptions:
+        if YfConfig.debug.raise_on_error:
             raise
         response_text = err.response.text if err.response is not None else ""
         utils.get_yf_logger().error("%s%s", err, response_text)

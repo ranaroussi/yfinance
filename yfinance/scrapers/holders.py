@@ -89,7 +89,7 @@ class Holders:
         try:
             result = self._fetch()
         except YFDataException:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._set_all_tables_empty()
             return
@@ -106,7 +106,7 @@ class Holders:
                 data.get("netSharePurchaseActivity", {})
             )
         except (KeyError, IndexError) as exc:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             raise YFDataException("Failed to parse holders json data.") from exc
 

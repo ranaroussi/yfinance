@@ -17,7 +17,7 @@ def parse_json_response(
     try:
         return response.json()
     except _json.JSONDecodeError:
-        if not YfConfig.debug.hide_exceptions:
+        if YfConfig.debug.raise_on_error:
             raise
         logger.error(error_message, *error_args)
         return {}

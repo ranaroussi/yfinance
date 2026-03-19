@@ -35,7 +35,7 @@ class ConfigMgr:
         self._initialised = True
         self.options = {
             "network": {"proxy": None, "retries": 0},
-            "debug": {"hide_exceptions": True, "logging": False},
+            "debug": {"raise_on_error": False, "logging": False},
         }
 
     def __getattr__(self, key):

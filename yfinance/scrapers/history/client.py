@@ -82,8 +82,6 @@ class PriceHistory:
             timeout : None or float
               | Optional: timeout fetches after N seconds
               | Default: 10 seconds
-            raise_errors : bool
-                If True, then raise errors as Exceptions instead of logging.
         """
         request = _parse_history_request("history", args, kwargs)
         return fetch_history(self, request)
@@ -323,7 +321,7 @@ class PriceHistory:
             ratio = self._history_metadata["regularMarketPrice"] / last_row["Close"]
             return abs((ratio * multiplier) - 1) >= 0.1
         except (KeyError, TypeError, ValueError, ZeroDivisionError):
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             return True
 

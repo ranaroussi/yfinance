@@ -97,7 +97,7 @@ class Analysis:
                 raise KeyError("Missing quoteSummary data")
             financial_data = data["quoteSummary"]["result"][0]["financialData"]
         except (TypeError, KeyError, IndexError):
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._cache["analyst_price_targets"] = {}
             return self._cache["analyst_price_targets"]
@@ -126,7 +126,7 @@ class Analysis:
                 raise KeyError("Missing quoteSummary data")
             history = data["quoteSummary"]["result"][0]["earningsHistory"]["history"]
         except (TypeError, KeyError, IndexError):
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._cache["earnings_history"] = pd.DataFrame()
             return self._cache["earnings_history"]
@@ -193,7 +193,7 @@ class Analysis:
                 raise KeyError("Missing quoteSummary data")
             trends = trends_response["quoteSummary"]["result"][0]
         except (TypeError, KeyError, IndexError):
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._cache["growth_estimates"] = pd.DataFrame()
             return self._cache["growth_estimates"]
@@ -232,6 +232,6 @@ class Analysis:
             trend = data["quoteSummary"]["result"][0]["earningsTrend"]["trend"]
             self._cache["earnings_trend"] = trend
         except (TypeError, KeyError, IndexError):
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._cache["earnings_trend"] = []

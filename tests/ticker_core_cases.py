@@ -22,8 +22,8 @@ class TestTickerCore(SessionTickerTestCase):
     """Validate core ticker construction and top-level accessors."""
 
     def tearDown(self):
-        """Restore hide_exceptions to default after each test."""
-        YF_CONFIG.debug.hide_exceptions = True
+        """Restore raise_on_error to default after each test."""
+        YF_CONFIG.debug.raise_on_error = False
 
     def test_get_tz(self):
         """Fetch and cache timezone data for several tickers."""
@@ -68,7 +68,7 @@ class TestTickerCore(SessionTickerTestCase):
     def test_invalid_period(self):
         """Reject invalid custom period aliases."""
         ticker = yf.Ticker('VALE', session=self.session)
-        YF_CONFIG.debug.hide_exceptions = False
+        YF_CONFIG.debug.raise_on_error = True
         for invalid_period in ["2wks", "2mos"]:
             with self.assertRaises(YFInvalidPeriodError):
                 ticker.history(period=invalid_period, interval="1d")
@@ -93,7 +93,7 @@ class TestTickerCore(SessionTickerTestCase):
             ("10y", "1wk"),
         ]
         ticker = yf.Ticker("AAPL", session=self.session)
-        YF_CONFIG.debug.hide_exceptions = False
+        YF_CONFIG.debug.raise_on_error = True
 
         for period, interval in valid_periods:
             with self.subTest(period=period, interval=interval):
@@ -122,7 +122,7 @@ class TestTickerCore(SessionTickerTestCase):
         """Raise a ticker-missing style error for unavailable historical data."""
         ticker = yf.Ticker('ATVI', session=self.session)
         with self.assertRaises((YFTickerMissingError, YFTzMissingError, YFPricesMissingError)):
-            YF_CONFIG.debug.hide_exceptions = False
+            YF_CONFIG.debug.raise_on_error = True
             ticker.history(period="3mo", interval="1d")
 
     def test_good_ticker(self):

@@ -117,6 +117,6 @@ class Industry(Domain):
                 data.get("topGrowthCompanies") or []
             )
         except _PARSE_ERROR_TYPES as err:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._log_fetch_error(utils.get_yf_logger(), "industry", err, result)

@@ -16,7 +16,6 @@ HISTORY_REQUEST_ARG_NAMES = (
     "keepna",
     "rounding",
     "timeout",
-    "raise_errors",
 )
 HISTORY_REQUEST_DEFAULTS = {
     "period": None,
@@ -31,7 +30,6 @@ HISTORY_REQUEST_DEFAULTS = {
     "keepna": False,
     "rounding": False,
     "timeout": 10,
-    "raise_errors": False,
 }
 
 TICKERS_DOWNLOAD_ARG_NAMES = (

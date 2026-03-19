@@ -29,7 +29,6 @@ class _HistoryRequest:
     keepna: bool = False
     rounding: bool = False
     timeout: Optional[float] = 10
-    raise_errors: bool = False
 
 
 def _parse_options(function_name, arg_names, defaults, args, kwargs):

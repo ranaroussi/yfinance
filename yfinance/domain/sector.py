@@ -106,6 +106,6 @@ class Sector(Domain):
             self._industries = self._parse_industries(data.get("industries") or [])
 
         except _PARSE_ERROR_TYPES as err:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             self._log_fetch_error(get_yf_logger(), "sector", err, result)

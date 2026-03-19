@@ -201,7 +201,7 @@ class TickerBase:
             TypeError,
             ValueError,
         ) as error:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             logger.error("Failed to get ticker '%s' reason: %s", self.ticker, error)
             return None
@@ -218,7 +218,7 @@ class TickerBase:
         try:
             return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
         except (IndexError, KeyError, TypeError) as error:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             logger.error(
                 "Could not get exchangeTimezoneName for ticker '%s' reason: %s",
@@ -569,14 +569,14 @@ class TickerBase:
             response = self._data.cache_get(url=shares_url)
             json_data = response.json()
         except (_json.JSONDecodeError, AttributeError, requests.exceptions.RequestException):
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             logger.error("%s: Yahoo web request for share count failed", self.ticker)
             return None
 
         is_bad_request = json_data.get("finance", {}).get("error", {}).get("code") == "Bad Request"
         if is_bad_request:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise requests.exceptions.HTTPError(
                     "Yahoo web request for share count returned 'Bad Request'"
                 )
@@ -594,7 +594,7 @@ class TickerBase:
                 index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"),
             )
         except (KeyError, TypeError, ValueError) as error:
-            if not YfConfig.debug.hide_exceptions:
+            if YfConfig.debug.raise_on_error:
                 raise
             logger.error("%s: Failed to parse shares count data: %s", self.ticker, error)
             return None

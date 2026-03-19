@@ -14,14 +14,12 @@ class TestPandas(unittest.TestCase):
 
     date_strings = ["2024-08-07 09:05:00+02:00", "2024-08-07 09:05:00-04:00"]
 
-    @unittest.expectedFailure
     def test_mixed_timezones_to_datetime_fails(self):
-        """Document pandas behavior when utc=True is omitted."""
+        """pandas raises ValueError when utc=True is omitted with mixed-timezone data."""
         series = pd.Series(self.date_strings)
         series = series.map(pd.Timestamp)
-        converted = pd.to_datetime(series)
-        first = pd.Timestamp(converted.iloc[0])
-        self.assertIsNotNone(first.tz)
+        with self.assertRaises(ValueError):
+            pd.to_datetime(series)
 
     def test_mixed_timezones_to_datetime(self):
         """Preserve timezone-aware values when normalizing to UTC."""

@@ -38,6 +38,8 @@ from . import shared
 from .config import YF_CONFIG as YfConfig
 from .data import YfData
 from .exceptions import YFException
+from .scrapers.history.fetch import fetch_history
+from .scrapers.history.helpers import _HistoryRequest
 from .ticker import Ticker
 
 _SHARED_DFS_ATTR = "_DFS"
@@ -269,10 +271,15 @@ def _resolve_ignore_tz(ignore_tz, interval):
 
 
 def _download_all_tickers(tickers, options):
-    if options["threads"]:
-        _download_all_tickers_threaded(tickers, options)
-        return
-    _download_all_tickers_synchronously(tickers, options)
+    prev_raise_on_error = YfConfig.debug.raise_on_error
+    YfConfig.debug.raise_on_error = True
+    try:
+        if options["threads"]:
+            _download_all_tickers_threaded(tickers, options)
+        else:
+            _download_all_tickers_synchronously(tickers, options)
+    finally:
+        YfConfig.debug.raise_on_error = prev_raise_on_error
 
 
 def _download_all_tickers_threaded(tickers, options):
@@ -553,29 +560,27 @@ def _download_one(ticker, *args, **kwargs):
     tracebacks = _get_tracebacks()
     symbol = ticker.upper()
 
-    prev_hide = YfConfig.debug.hide_exceptions
+    request = _HistoryRequest(
+        period=options["period"],
+        interval=options["interval"],
+        start=options["start"],
+        end=options["end"],
+        prepost=options["prepost"],
+        actions=options["actions"],
+        auto_adjust=options["auto_adjust"],
+        back_adjust=options["back_adjust"],
+        repair=options["repair"],
+        rounding=options["rounding"],
+        keepna=options["keepna"],
+        timeout=options["timeout"],
+    )
     try:
-        YfConfig.debug.hide_exceptions = False
-        data = Ticker(ticker).history(
-            period=options["period"],
-            interval=options["interval"],
-            start=options["start"],
-            end=options["end"],
-            prepost=options["prepost"],
-            actions=options["actions"],
-            auto_adjust=options["auto_adjust"],
-            back_adjust=options["back_adjust"],
-            repair=options["repair"],
-            rounding=options["rounding"],
-            keepna=options["keepna"],
-            timeout=options["timeout"],
-        )
-        dfs[symbol] = data
+        price_history = Ticker(ticker)._lazy_load_price_history()
+        data = fetch_history(price_history, request)
     except _RECOVERABLE_EXCEPTIONS as error:
-        dfs[symbol] = utils.empty_df()
+        data = utils.empty_df()
         errors[symbol] = repr(error)
         tracebacks[symbol] = traceback.format_exc()
-    finally:
-        YfConfig.debug.hide_exceptions = prev_hide
+    dfs[symbol] = data
 
     return data
