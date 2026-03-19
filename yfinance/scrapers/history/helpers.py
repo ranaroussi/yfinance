@@ -710,9 +710,11 @@ def _log_ohlc_split_range(
     context: _SplitRepairContext,
 ) -> None:
     if context.interday:
+        start_date = _index_date(df2.index, range_item[1] - 1)
+        end_date = _index_date(df2.index, range_item[0])
         msg = (
             f"Corrected {context.fix_type} on col={column} range="
-            f"[{_index_date(df2.index, range_item[1] - 1)}:{_index_date(df2.index, range_item[0])}] "
+            f"[{start_date}:{end_date}] "
             f"m={multiplier:.4f}"
         )
     else:
