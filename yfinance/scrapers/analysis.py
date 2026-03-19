@@ -2,15 +2,11 @@
 
 from typing import Any, Dict, List, Optional
 
-import curl_cffi
 import pandas as pd
 
 from yfinance.config import YF_CONFIG as YfConfig
-from yfinance.const import quote_summary_valid_modules
 from yfinance.data import YfData
-from yfinance.exceptions import YFException
-from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
-from .. import utils
+from yfinance.scrapers.utils import fetch_quote_summary
 
 
 class Analysis:
@@ -225,39 +221,7 @@ class Analysis:
 
     def _fetch(self, modules: List[str]) -> Optional[Dict[str, Any]]:
         """Fetch quoteSummary JSON for a set of valid modules."""
-        if not isinstance(modules, list):
-            raise YFException(
-                "Should provide a list of modules, see available modules using "
-                "`valid_modules`"
-            )
-
-        valid_modules = [module for module in modules if module in quote_summary_valid_modules]
-        module_param = ",".join(valid_modules)
-        if len(module_param) == 0:
-            raise YFException(
-                "No valid modules provided, see available modules using "
-                "`valid_modules`"
-            )
-
-        params_dict = {
-            "modules": module_param,
-            "corsDomain": "finance.yahoo.com",
-            "formatted": "false",
-            "symbol": self._symbol,
-        }
-        try:
-            result = self._data.get_raw_json(
-                f"{_QUOTE_SUMMARY_URL_}/{self._symbol}",
-                params=params_dict,
-            )
-        except curl_cffi.requests.exceptions.HTTPError as err:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            response = err.response
-            response_text = response.text if response is not None else ""
-            utils.get_yf_logger().error("%s%s", err, response_text)
-            return None
-        return result
+        return fetch_quote_summary(self._data, self._symbol, modules)
 
     def _fetch_earnings_trend(self) -> None:
         """Populate cached earningsTrend payload."""

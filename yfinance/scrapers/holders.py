@@ -1,17 +1,15 @@
 """Holders and insider-activity scraper helpers."""
 
-from typing import Any, Hashable, cast
+from typing import Any
 
 import curl_cffi
 import pandas as pd
 
 from yfinance.config import YF_CONFIG as YfConfig
-from yfinance.const import _BASE_URL_
+from yfinance.const import _QUOTE_SUMMARY_URL_, holders_quote_summary_modules
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
 from .. import utils
-
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 
 class Holders:
@@ -79,17 +77,7 @@ class Holders:
         return self._get_table("insider_roster")
 
     def _fetch(self) -> dict[str, Any]:
-        modules = ",".join(
-            [
-                "institutionOwnership",
-                "fundOwnership",
-                "majorDirectHolders",
-                "majorHoldersBreakdown",
-                "insiderTransactions",
-                "insiderHolders",
-                "netSharePurchaseActivity",
-            ]
-        )
+        modules = ",".join(holders_quote_summary_modules)
         params_dict = {
             "modules": modules,
             "corsDomain": "finance.yahoo.com",
@@ -193,7 +181,7 @@ class Holders:
         if not df.empty:
             df.columns.name = "Breakdown"
             first_col = df.columns[0]
-            df.rename(columns={cast(Hashable, first_col): "Value"}, inplace=True)
+            df.rename(columns={first_col: "Value"}, inplace=True)
         self._tables["major"] = df
 
     def _parse_insider_transactions(self, data: dict[str, Any]) -> None:

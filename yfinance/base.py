@@ -35,10 +35,11 @@ from curl_cffi import requests
 from frozendict import frozendict
 
 from . import cache, utils
+from .http import log_response_payload, parse_json_response
 from .config import YF_CONFIG as YfConfig
 from .const import _BASE_URL_, _MIC_TO_YAHOO_SUFFIX, _QUERY1_URL_, _ROOT_URL_
 from .data import YfData
-from .exceptions import YFDataException, YFEarningsDateMissing
+from .exceptions import YFEarningsDateMissing
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
@@ -224,10 +225,7 @@ class TickerBase:
                 self.ticker,
                 error,
             )
-            logger.debug("Got response: ")
-            logger.debug("-------------")
-            logger.debug(" %s", data)
-            logger.debug("-------------")
+            log_response_payload(logger, data)
         return None
 
     def get_recommendations(self, as_dict=False):
@@ -691,18 +689,12 @@ class TickerBase:
         }
 
         data = self._data.post(url, body=payload)
-        if data is None or "Will be right back" in data.text:
-            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
-        try:
-            data = data.json()
-        except _json.JSONDecodeError:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            logger.error(
-                "%s: Failed to retrieve the news and received faulty response instead.",
-                self.ticker,
-            )
-            data = {}
+        data = parse_json_response(
+            data,
+            logger,
+            "%s: Failed to retrieve the news and received faulty response instead.",
+            self.ticker,
+        )
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
 

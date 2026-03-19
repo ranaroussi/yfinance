@@ -11,39 +11,8 @@ from dateutil.relativedelta import relativedelta as _relativedelta
 import numpy as np
 import pandas as pd
 
+from ...options import HISTORY_REQUEST_ARG_NAMES, HISTORY_REQUEST_DEFAULTS, bind_options
 from ... import utils
-
-
-_HISTORY_ARG_NAMES = (
-    "period",
-    "interval",
-    "start",
-    "end",
-    "prepost",
-    "actions",
-    "auto_adjust",
-    "back_adjust",
-    "repair",
-    "keepna",
-    "rounding",
-    "timeout",
-    "raise_errors",
-)
-_HISTORY_DEFAULTS = {
-    "period": None,
-    "interval": "1d",
-    "start": None,
-    "end": None,
-    "prepost": False,
-    "actions": True,
-    "auto_adjust": True,
-    "back_adjust": False,
-    "repair": False,
-    "keepna": False,
-    "rounding": False,
-    "timeout": 10,
-    "raise_errors": False,
-}
 
 
 @dataclass(frozen=True)
@@ -64,24 +33,7 @@ class _HistoryRequest:
 
 
 def _parse_options(function_name, arg_names, defaults, args, kwargs):
-    if len(args) > len(arg_names):
-        raise TypeError(
-            f"{function_name}() takes at most {len(arg_names)} positional arguments "
-            f"({len(args)} given)"
-        )
-
-    options = defaults.copy()
-    remaining_kwargs = dict(kwargs)
-
-    for key, value in zip(arg_names, args):
-        if key in remaining_kwargs:
-            raise TypeError(f"{function_name}() got multiple values for argument '{key}'")
-        options[key] = value
-
-    for key in arg_names:
-        if key in remaining_kwargs:
-            options[key] = remaining_kwargs.pop(key)
-
+    options, remaining_kwargs = bind_options(function_name, arg_names, defaults, args, kwargs)
     if remaining_kwargs:
         unexpected = next(iter(remaining_kwargs))
         raise TypeError(f"{function_name}() got an unexpected keyword argument '{unexpected}'")
@@ -90,7 +42,13 @@ def _parse_options(function_name, arg_names, defaults, args, kwargs):
 
 
 def _parse_history_request(function_name, args, kwargs) -> _HistoryRequest:
-    options = _parse_options(function_name, _HISTORY_ARG_NAMES, _HISTORY_DEFAULTS, args, kwargs)
+    options = _parse_options(
+        function_name,
+        HISTORY_REQUEST_ARG_NAMES,
+        HISTORY_REQUEST_DEFAULTS,
+        args,
+        kwargs,
+    )
     return _HistoryRequest(**options)
 
 

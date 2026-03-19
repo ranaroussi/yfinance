@@ -5,11 +5,24 @@ from .fundamentals_keys import fundamentals_keys as _fundamentals_keys
 _QUERY1_URL_ = "https://query1.finance.yahoo.com"
 _BASE_URL_ = "https://query2.finance.yahoo.com"
 _ROOT_URL_ = "https://finance.yahoo.com"
+_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 _SENTINEL_ = object()
 fundamentals_keys = _fundamentals_keys
 
 _PRICE_COLNAMES_ = ["Open", "High", "Low", "Close", "Adj Close"]
+
+holders_quote_summary_modules = (
+    "institutionOwnership",  # institutional ownership, holders and shares outstanding
+    "fundOwnership",  # mutual fund ownership, holders and shares outstanding
+    "majorDirectHolders",
+    "majorHoldersBreakdown",
+    # Insider transactions, including shares bought/sold by company executives.
+    "insiderTransactions",
+    "insiderHolders",  # insider holders, such as the number of shares held by company executives
+    # Net share purchase activity by company executives.
+    "netSharePurchaseActivity",
+)
 
 quote_summary_valid_modules = (
     "summaryProfile",  # contains general information about the company
@@ -32,15 +45,7 @@ quote_summary_valid_modules = (
     "calendarEvents",  # future earnings date
     "secFilings",  # SEC filings, such as 10K and 10Q reports
     "upgradeDowngradeHistory",  # upgrades and downgrades that analysts have given a company's stock
-    "institutionOwnership",  # institutional ownership, holders and shares outstanding
-    "fundOwnership",  # mutual fund ownership, holders and shares outstanding
-    "majorDirectHolders",
-    "majorHoldersBreakdown",
-    # Insider transactions, including shares bought/sold by company executives.
-    "insiderTransactions",
-    "insiderHolders",  # insider holders, such as the number of shares held by company executives
-    # Net share purchase activity by company executives.
-    "netSharePurchaseActivity",
+    *holders_quote_summary_modules,
     "earnings",  # earnings history
     "earningsHistory",
     "earningsTrend",  # earnings trend

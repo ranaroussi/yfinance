@@ -32,6 +32,7 @@ import multitasking as _multitasking
 import pandas as _pd
 from curl_cffi import requests
 
+from .options import bind_options
 from . import utils
 from . import shared
 from .config import YF_CONFIG
@@ -161,24 +162,7 @@ _RECOVERABLE_EXCEPTIONS = (
 
 
 def _parse_options(function_name, arg_names, defaults, args, kwargs):
-    if len(args) > len(arg_names):
-        raise TypeError(
-            f"{function_name}() takes at most {len(arg_names)} positional arguments "
-            f"({len(args)} given)"
-        )
-
-    options = defaults.copy()
-    remaining_kwargs = dict(kwargs)
-
-    for key, value in zip(arg_names, args):
-        if key in remaining_kwargs:
-            raise TypeError(f"{function_name}() got multiple values for argument '{key}'")
-        options[key] = value
-
-    for key in arg_names:
-        if key in remaining_kwargs:
-            options[key] = remaining_kwargs.pop(key)
-
+    options, remaining_kwargs = bind_options(function_name, arg_names, defaults, args, kwargs)
     if remaining_kwargs:
         unexpected = ", ".join(sorted(remaining_kwargs))
         raise TypeError(f"{function_name}() got unexpected keyword argument(s): {unexpected}")

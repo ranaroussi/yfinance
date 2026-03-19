@@ -21,15 +21,12 @@
 
 """Yahoo Finance search endpoint wrapper."""
 
-import json as _json
-
 from frozendict import frozendict
 
 from . import utils
-from .config import YF_CONFIG as YfConfig
+from .http import parse_json_response
 from .const import _BASE_URL_
 from .data import YfData
-from .exceptions import YFDataException
 
 
 class Search:
@@ -148,17 +145,12 @@ class Search:
         )
 
         response = self._data.cache_get(url=url, params=params, timeout=self._config["timeout"])
-        if response is None:
-            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
-        if "Will be right back" in response.text:
-            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
-        try:
-            data = response.json()
-        except _json.JSONDecodeError:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            self._logger.error("%s: 'search' fetch received faulty data", self._config["query"])
-            data = {}
+        data = parse_json_response(
+            response,
+            self._logger,
+            "%s: 'search' fetch received faulty data",
+            self._config["query"],
+        )
 
         quotes = [quote for quote in data.get("quotes", []) if "symbol" in quote]
         self._results["response"] = data

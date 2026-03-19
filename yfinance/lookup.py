@@ -21,11 +21,10 @@
 
 """Yahoo Finance lookup endpoint wrapper."""
 
-import json as _json
 import pandas as pd
 
 from . import utils
-from .config import YF_CONFIG as YfConfig
+from .http import parse_json_response
 from .const import _QUERY1_URL_
 from .data import YfData
 from .exceptions import YFDataException
@@ -90,15 +89,12 @@ class Lookup:
         )
 
         data = self._data.get(url=url, params=params, timeout=self.timeout)
-        if data is None or "Will be right back" in data.text:
-            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
-        try:
-            data = data.json()
-        except _json.JSONDecodeError:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            self._logger.error("%s: 'lookup' fetch received faulty data", self.query)
-            data = {}
+        data = parse_json_response(
+            data,
+            self._logger,
+            "%s: 'lookup' fetch received faulty data",
+            self.query,
+        )
 
         # Error returned
         if data.get("finance", {}).get("error", {}):

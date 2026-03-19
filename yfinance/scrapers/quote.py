@@ -5,17 +5,15 @@ import datetime
 import json
 from typing import Any, Optional
 
-import curl_cffi
 import numpy as _np
 import pandas as pd
 
 from yfinance.config import YF_CONFIG as YfConfig
-from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
+from yfinance.const import quote_summary_valid_modules, _QUERY1_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
+from yfinance.scrapers.utils import fetch_quote_summary, get_raw_json_or_none
 from .. import utils
-
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
 
 class FastInfo:
@@ -655,52 +653,16 @@ class Quote:
 
     def _fetch(self, modules: list[str]) -> Optional[dict[str, Any]]:
         """Fetch selected quote-summary modules."""
-        if not isinstance(modules, list):
-            raise YFException(
-                "Should provide a list of modules, "
-                "see available modules using `valid_modules`"
-            )
-
-        modules_str = ",".join(m for m in modules if m in quote_summary_valid_modules)
-        if len(modules_str) == 0:
-            raise YFException(
-                "No valid modules provided, "
-                "see available modules using `valid_modules`"
-            )
-        params_dict = {
-            "modules": modules_str,
-            "corsDomain": "finance.yahoo.com",
-            "formatted": "false",
-            "symbol": self._symbol,
-        }
-        try:
-            result = self._data.get_raw_json(
-                f"{_QUOTE_SUMMARY_URL_}/{self._symbol}",
-                params=params_dict,
-            )
-        except curl_cffi.requests.exceptions.HTTPError as e:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            response_text = e.response.text if e.response is not None else ""
-            utils.get_yf_logger().error("%s%s", e, response_text)
-            return None
-        return result
+        return fetch_quote_summary(self._data, self._symbol, modules)
 
     def _fetch_additional_info(self) -> Optional[dict[str, Any]]:
         """Fetch quote-response fields that complement quote-summary modules."""
         params_dict = {"symbols": self._symbol, "formatted": "false"}
-        try:
-            result = self._data.get_raw_json(
-                f"{_QUERY1_URL_}/v7/finance/quote?",
-                params=params_dict,
-            )
-        except curl_cffi.requests.exceptions.HTTPError as e:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            response_text = e.response.text if e.response is not None else ""
-            utils.get_yf_logger().error("%s%s", e, response_text)
-            return None
-        return result
+        return get_raw_json_or_none(
+            self._data,
+            f"{_QUERY1_URL_}/v7/finance/quote?",
+            params_dict,
+        )
 
     def _extract_query_info_section(
         self,

@@ -1,15 +1,14 @@
 """Market status and summary accessors."""
 
 import datetime as dt
-import json as _json
 from typing import Any, Dict, Optional
 
 from frozendict import frozendict
 
+from ..http import parse_json_response
 from ..config import YF_CONFIG as YfConfig
 from ..const import _QUERY1_URL_
 from ..data import YfData, utils
-from ..exceptions import YFDataException
 
 _PARSE_ERROR_TYPES = (IndexError, KeyError, TypeError, ValueError)
 
@@ -32,18 +31,12 @@ class Market:
     def _fetch_json(self, url: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """Fetch JSON for a market endpoint and handle Yahoo downtime pages."""
         data = self._data.cache_get(url=url, params=frozendict(params), timeout=self.timeout)
-        if data is None or "Will be right back" in data.text:
-            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
-        try:
-            return data.json()
-        except _json.JSONDecodeError:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            self._logger.error(
-                "%s: Failed to retrieve market data and received faulty data.",
-                self.market,
-            )
-            return {}
+        return parse_json_response(
+            data,
+            self._logger,
+            "%s: Failed to retrieve market data and received faulty data.",
+            self.market,
+        )
 
     def _parse_data(self) -> None:
         """Fetch and parse market summary and market-time status payloads."""

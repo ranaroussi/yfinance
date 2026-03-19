@@ -27,6 +27,7 @@ from typing import Dict
 
 import pandas as _pd
 
+from .options import TICKERS_DOWNLOAD_ARG_NAMES, TICKERS_DOWNLOAD_DEFAULTS, bind_options
 from . import multi
 from .ticker import Ticker
 from .live import WebSocket
@@ -36,34 +37,8 @@ from .data import YfData
 class Tickers:
     """Wrapper around multiple :class:`Ticker` objects."""
 
-    _DOWNLOAD_ARG_NAMES = (
-        "period",
-        "interval",
-        "start",
-        "end",
-        "prepost",
-        "actions",
-        "auto_adjust",
-        "repair",
-        "threads",
-        "group_by",
-        "progress",
-        "timeout",
-    )
-    _DOWNLOAD_DEFAULTS = {
-        "period": None,
-        "interval": "1d",
-        "start": None,
-        "end": None,
-        "prepost": False,
-        "actions": True,
-        "auto_adjust": True,
-        "repair": False,
-        "threads": True,
-        "group_by": "column",
-        "progress": True,
-        "timeout": 10,
-    }
+    _DOWNLOAD_ARG_NAMES = TICKERS_DOWNLOAD_ARG_NAMES
+    _DOWNLOAD_DEFAULTS = TICKERS_DOWNLOAD_DEFAULTS
 
     def __repr__(self):
         return f"yfinance.Tickers object <{','.join(self.symbols)}>"
@@ -86,25 +61,13 @@ class Tickers:
         # )(*ticker_objects.values())
 
     def _parse_download_options(self, args, kwargs):
-        if len(args) > len(self._DOWNLOAD_ARG_NAMES):
-            raise TypeError(
-                "download() takes at most "
-                f"{len(self._DOWNLOAD_ARG_NAMES)} positional arguments "
-                f"({len(args)} given)"
-            )
-
-        options = dict(self._DOWNLOAD_DEFAULTS)
-        passthrough = dict(kwargs)
-
-        for key, value in zip(self._DOWNLOAD_ARG_NAMES, args):
-            if key in passthrough:
-                raise TypeError(f"download() got multiple values for argument '{key}'")
-            options[key] = value
-
-        for key in self._DOWNLOAD_ARG_NAMES:
-            if key in passthrough:
-                options[key] = passthrough.pop(key)
-
+        options, passthrough = bind_options(
+            "download",
+            self._DOWNLOAD_ARG_NAMES,
+            self._DOWNLOAD_DEFAULTS,
+            args,
+            kwargs,
+        )
         return options, passthrough
 
     def history(self, *args, **kwargs):

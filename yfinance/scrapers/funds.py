@@ -4,13 +4,12 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from yfinance.http import log_response_payload
 from yfinance.config import YF_CONFIG as YfConfig
-from yfinance.const import _BASE_URL_
+from yfinance.const import _QUOTE_SUMMARY_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
 from .. import utils
-
-_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
 
 class FundsData:
     """
@@ -182,7 +181,7 @@ class FundsData:
             "formatted": "false",
         }
         result = self._data.get_raw_json(
-            _QUOTE_SUMMARY_URL_ + self._symbol,
+            f"{_QUOTE_SUMMARY_URL_}/{self._symbol}",
             params=params_dict,
         )
         return result
@@ -215,10 +214,7 @@ class FundsData:
                 self._symbol,
                 error,
             )
-            logger.debug("Got response: ")
-            logger.debug("-------------")
-            logger.debug(" %s", data)
-            logger.debug("-------------")
+            log_response_payload(logger, data)
 
     @staticmethod
     def _parse_raw_values(data, default=None):
