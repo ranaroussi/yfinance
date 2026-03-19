@@ -777,7 +777,9 @@ def _apply_split_volume_corrections(
         )
     if f_open_xor_closed_fixed.any():
         df2.loc[f_open_xor_closed_fixed, "Volume"] = (
-            (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype("int")
+            (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp)
+            .round()
+            .astype("int")
         )
 
 
@@ -788,7 +790,10 @@ def _log_full_split_range(
 ) -> None:
     if range_item[0] == range_item[1] - 1:
         if context.interday:
-            msg = f"Corrected {context.fix_type} on interval {_index_date(df2.index, range_item[0])}"
+            msg = (
+                f"Corrected {context.fix_type} on interval "
+                f"{_index_date(df2.index, range_item[0])}"
+            )
         else:
             msg = f"Corrected {context.fix_type} on interval {df2.index[range_item[0]]}"
     else:
