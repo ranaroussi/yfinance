@@ -6,6 +6,7 @@ yfinance.egg-info
 .coverage
 .idea/
 .vscode/
+.claude/
 build/
 *.html
 *.css
