@@ -26,7 +26,6 @@ from __future__ import print_function
 import logging
 import time as _time
 import traceback
-import warnings
 from typing import Union, cast
 
 import multitasking as _multitasking
@@ -36,6 +35,7 @@ from curl_cffi import requests
 from .options import bind_options
 from . import utils
 from . import shared
+from .config import YF_CONFIG as YfConfig
 from .data import YfData
 from .exceptions import YFException
 from .ticker import Ticker
@@ -553,28 +553,29 @@ def _download_one(ticker, *args, **kwargs):
     tracebacks = _get_tracebacks()
     symbol = ticker.upper()
 
+    prev_hide = YfConfig.debug.hide_exceptions
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            data = Ticker(ticker).history(
-                period=options["period"],
-                interval=options["interval"],
-                start=options["start"],
-                end=options["end"],
-                prepost=options["prepost"],
-                actions=options["actions"],
-                auto_adjust=options["auto_adjust"],
-                back_adjust=options["back_adjust"],
-                repair=options["repair"],
-                rounding=options["rounding"],
-                keepna=options["keepna"],
-                timeout=options["timeout"],
-                raise_errors=True,
-            )
+        YfConfig.debug.hide_exceptions = False
+        data = Ticker(ticker).history(
+            period=options["period"],
+            interval=options["interval"],
+            start=options["start"],
+            end=options["end"],
+            prepost=options["prepost"],
+            actions=options["actions"],
+            auto_adjust=options["auto_adjust"],
+            back_adjust=options["back_adjust"],
+            repair=options["repair"],
+            rounding=options["rounding"],
+            keepna=options["keepna"],
+            timeout=options["timeout"],
+        )
         dfs[symbol] = data
     except _RECOVERABLE_EXCEPTIONS as error:
         dfs[symbol] = utils.empty_df()
         errors[symbol] = repr(error)
         tracebacks[symbol] = traceback.format_exc()
+    finally:
+        YfConfig.debug.hide_exceptions = prev_hide
 
     return data
