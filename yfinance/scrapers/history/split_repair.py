@@ -1,12 +1,12 @@
-"""Stock-split repair helpers extracted from history.py."""
+"""Stock-split repair helpers for the history package."""
 
 import numpy as np
 import pandas as pd
 
 from yfinance import utils
 
-from .history_helpers import _PriceChangeRepairSettings, _safe_timestamp
-from .history_price_repair import fix_prices_sudden_change
+from yfinance.scrapers.history.helpers import _PriceChangeRepairSettings, _safe_timestamp
+from yfinance.scrapers.history.price_repair import fix_prices_sudden_change
 
 
 def _split_scan_cutoff(interval, split_idx, row_count):

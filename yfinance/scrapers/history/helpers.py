@@ -107,6 +107,11 @@ def _interval_to_timedelta(interval: str) -> _datetime.timedelta:
     delta = utils.interval_to_timedelta(interval)
     if isinstance(delta, _datetime.timedelta):
         return delta
+    if isinstance(delta, _relativedelta):
+        if delta.years or delta.months:
+            raise ValueError(f"Interval '{interval}' does not map to a fixed timedelta")
+        anchor = _datetime.datetime(2000, 1, 1)
+        return (anchor + delta) - anchor
     if isinstance(delta, pd.Timedelta):
         return _datetime.timedelta(seconds=float(delta.total_seconds()))
     raise ValueError(f"Interval '{interval}' does not map to a timedelta")

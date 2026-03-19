@@ -13,17 +13,17 @@ import pandas as pd
 from yfinance import utils
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import _PRICE_COLNAMES_
-
-from .history_helpers import (
+from .capital_gains import repair_capital_gains
+from .dividend_repair import fix_bad_div_adjust
+from .fetch import fetch_history
+from .helpers import (
     _PriceChangeRepairSettings,
     _parse_history_request,
 )
-from .history_capital_gains import repair_capital_gains
-from .history_flow import fetch_history, reconstruct_intervals_batch
-from .history_dividend_repair import fix_bad_div_adjust
-from .history_price_repair import fix_prices_sudden_change
-from .history_repair_workflows import fix_unit_random_mixups, fix_zeroes
-from .history_split_repair import fix_bad_stock_splits
+from .price_repair import fix_prices_sudden_change
+from .reconstruct import reconstruct_intervals_batch
+from .repair_workflows import fix_unit_random_mixups, fix_zeroes
+from .split_repair import fix_bad_stock_splits
 
 
 class PriceHistory:

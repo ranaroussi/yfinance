@@ -13,7 +13,7 @@ from requests import Response, Session, exceptions
 
 from .const import _QUERY1_URL_
 from .utils import log_indent_decorator, get_yf_logger, _parse_user_dt
-from .screener import screen
+from .screener import client as screener_client
 from .data import YfData
 from .exceptions import YFException
 
@@ -410,7 +410,7 @@ class Calendars:
         self._logger.debug("Fetching 200 most_active for earnings calendar")
 
         try:
-            json_raw: dict = screen(query="MOST_ACTIVES", count=200)
+            json_raw: dict = screener_client.screen(query="MOST_ACTIVES", count=200)
         except exceptions.HTTPError:
             self._logger.error("Failed to retrieve most active stocks.")
             return self._most_active_qy

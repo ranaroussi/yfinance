@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from yfinance.screener.query import EquityQuery
-from yfinance.screener.screener import screen
+from yfinance.screener.client import screen
 
 
 class TestScreener(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestScreener(unittest.TestCase):
         cls.query = EquityQuery('gt', operand)
         cls.predefined = 'aggressive_small_caps'
 
-    @patch('yfinance.screener.screener.YfData.post')
+    @patch('yfinance.screener.client.YfData.post')
     def test_set_large_size_in_body(self, _mock_post):
         """Reject request bodies with unsupported `size` values."""
         with self.assertRaises(ValueError):

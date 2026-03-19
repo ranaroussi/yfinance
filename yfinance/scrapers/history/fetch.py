@@ -1,4 +1,4 @@
-"""Chart fetch and normalization workflow extracted from history_flow.py."""
+"""Chart fetch and normalization workflow extracted from the history package."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from yfinance.exceptions import (
     YFTzMissingError,
 )
 
-from .history_helpers import (
+from yfinance.scrapers.history.helpers import (
     _HistoryRequest,
     _interval_to_supported_delta,
     _safe_timestamp,

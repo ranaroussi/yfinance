@@ -1,4 +1,4 @@
-"""Yahoo screener helpers for predefined and custom query payloads."""
+"""Yahoo screener implementation for predefined and custom query payloads."""
 
 from dataclasses import dataclass
 from json import dumps

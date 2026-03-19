@@ -43,7 +43,7 @@ from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
 from .scrapers.funds import FundsData
-from .scrapers.history import PriceHistory
+from .scrapers.history.client import PriceHistory
 from .scrapers.holders import Holders
 from .scrapers.quote import FastInfo, Quote
 

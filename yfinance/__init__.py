@@ -39,7 +39,7 @@ from .domain.market import Market
 from .config import YF_CONFIG as config
 
 from .screener.query import EquityQuery, FundQuery
-from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
+from .screener.client import screen, PREDEFINED_SCREENER_QUERIES
 
 __version__ = VERSION
 __author__ = "Ran Aroussi"

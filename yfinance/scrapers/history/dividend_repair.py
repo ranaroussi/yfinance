@@ -1,4 +1,4 @@
-"""Dividend-adjustment repair helpers extracted from history.py."""
+"""Dividend-adjustment repair helpers for the history package."""
 
 import bisect
 import datetime as _datetime

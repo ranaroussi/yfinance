@@ -1,4 +1,4 @@
-"""Price repair workflows extracted from history.py."""
+"""Price repair workflows for the history package."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pandas as pd
 from yfinance import utils
 from yfinance.const import _PRICE_COLNAMES_
 
-from .history_helpers import _get_scipy_ndimage
+from yfinance.scrapers.history.helpers import _get_scipy_ndimage
 
 
 @dataclass

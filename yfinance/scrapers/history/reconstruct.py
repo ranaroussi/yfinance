@@ -1,4 +1,4 @@
-"""Interval reconstruction helpers extracted from history_flow.py."""
+"""Interval reconstruction helpers extracted from the history package."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import pandas as pd
 from yfinance import utils
 from yfinance.const import _PRICE_COLNAMES_
 
-from .history_helpers import _interval_to_timedelta
+from yfinance.scrapers.history.helpers import _interval_to_timedelta
 
 
 _RECONSTRUCT_INTERVALS = ["1wk", "1d", "1h", "30m", "15m", "5m", "2m", "1m"]

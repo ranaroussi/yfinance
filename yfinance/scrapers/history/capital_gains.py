@@ -1,4 +1,4 @@
-"""Capital-gains repair helpers extracted from history.py."""
+"""Capital-gains repair helpers for the history package."""
 
 import datetime as _datetime
 

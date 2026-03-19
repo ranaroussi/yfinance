@@ -1,11 +1,11 @@
-"""Shared price-repair operations extracted from history.py."""
+"""Shared price-repair operations for the history package."""
 
 import dateutil as _dateutil
 import numpy as np
 
 from yfinance import utils
 
-from .history_helpers import (
+from yfinance.scrapers.history.helpers import (
     _LocalVolatilityContext,
     _PriceChangeRepairSettings,
     _SplitAbortContext,
