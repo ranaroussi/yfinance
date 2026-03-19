@@ -38,8 +38,6 @@ from . import shared
 from .config import YF_CONFIG as YfConfig
 from .data import YfData
 from .exceptions import YFException
-from .scrapers.history.fetch import fetch_history
-from .scrapers.history.helpers import _HistoryRequest
 from .ticker import Ticker
 
 _SHARED_DFS_ATTR = "_DFS"
@@ -560,23 +558,21 @@ def _download_one(ticker, *args, **kwargs):
     tracebacks = _get_tracebacks()
     symbol = ticker.upper()
 
-    request = _HistoryRequest(
-        period=options["period"],
-        interval=options["interval"],
-        start=options["start"],
-        end=options["end"],
-        prepost=options["prepost"],
-        actions=options["actions"],
-        auto_adjust=options["auto_adjust"],
-        back_adjust=options["back_adjust"],
-        repair=options["repair"],
-        rounding=options["rounding"],
-        keepna=options["keepna"],
-        timeout=options["timeout"],
-    )
     try:
-        price_history = Ticker(ticker)._lazy_load_price_history()
-        data = fetch_history(price_history, request)
+        data = Ticker(ticker).history(
+            period=options["period"],
+            interval=options["interval"],
+            start=options["start"],
+            end=options["end"],
+            prepost=options["prepost"],
+            actions=options["actions"],
+            auto_adjust=options["auto_adjust"],
+            back_adjust=options["back_adjust"],
+            repair=options["repair"],
+            rounding=options["rounding"],
+            keepna=options["keepna"],
+            timeout=options["timeout"],
+        )
     except _RECOVERABLE_EXCEPTIONS as error:
         data = utils.empty_df()
         errors[symbol] = repr(error)

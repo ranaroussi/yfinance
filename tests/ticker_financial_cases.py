@@ -20,11 +20,11 @@ class TestTickerFinancialCases(SessionTickerTestCase):
     def _assert_statement_family(
         self,
         ticker,
-        getter_name: str,
-        property_name: str,
+        statement_names: tuple[str, str],
         expected_keys: list[str],
         supports_trailing: bool = True,
     ):
+        getter_name, property_name = statement_names
         getter = getattr(ticker, getter_name)
         property_value = getattr(ticker, property_name)
         annual = self._assert_cached_dataframe(getter(pretty=True))
@@ -80,21 +80,18 @@ class TestTickerFinancialCases(SessionTickerTestCase):
         ticker = yf.Ticker("GOOGL", session=self.session)
         self._assert_statement_family(
             ticker,
-            "get_income_stmt",
-            "income_stmt",
+            ("get_income_stmt", "income_stmt"),
             ["Total Revenue", "Basic EPS"],
         )
         self._assert_statement_family(
             ticker,
-            "get_balance_sheet",
-            "balance_sheet",
+            ("get_balance_sheet", "balance_sheet"),
             ["Total Assets", "Net PPE"],
             supports_trailing=False,
         )
         self._assert_statement_family(
             ticker,
-            "get_cashflow",
-            "cashflow",
+            ("get_cashflow", "cashflow"),
             ["Operating Cash Flow", "Net PPE Purchase And Sale"],
         )
 
