@@ -2,14 +2,13 @@
 
 from typing import Any
 
-import curl_cffi
 import pandas as pd
 
 from yfinance.config import YF_CONFIG as YfConfig
-from yfinance.const import _QUOTE_SUMMARY_URL_, holders_quote_summary_modules
+from yfinance.const import holders_quote_summary_modules
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException
-from .. import utils
+from yfinance.scrapers.utils import fetch_quote_summary
 
 
 class Holders:
@@ -77,25 +76,21 @@ class Holders:
         return self._get_table("insider_roster")
 
     def _fetch(self) -> dict[str, Any]:
-        modules = ",".join(holders_quote_summary_modules)
-        params_dict = {
-            "modules": modules,
-            "corsDomain": "finance.yahoo.com",
-            "formatted": "false",
-        }
-        return self._data.get_raw_json(
-            f"{_QUOTE_SUMMARY_URL_}/{self._symbol}",
-            params=params_dict,
+        result = fetch_quote_summary(
+            self._data,
+            self._symbol,
+            list(holders_quote_summary_modules),
         )
+        if result is None:
+            raise YFDataException("Failed to fetch holders json data.")
+        return result
 
     def _fetch_and_parse(self) -> None:
         try:
             result = self._fetch()
-        except curl_cffi.requests.exceptions.HTTPError as err:
+        except YFDataException:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            response_text = err.response.text if err.response is not None else ""
-            utils.get_yf_logger().error("%s%s", err, response_text)
             self._set_all_tables_empty()
             return
 
