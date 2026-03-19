@@ -2,7 +2,6 @@
 
 from datetime import datetime
 import unittest
-from unittest import TestSuite
 
 import pandas as pd
 
@@ -215,7 +214,7 @@ class TestDateIntervalCheck(unittest.TestCase):
 
 def suite():
     """Build the test suite for this module."""
-    ts: TestSuite = unittest.TestSuite()
+    ts: unittest.TestSuite = unittest.TestSuite()
     ts.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPandas))
     ts.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestUtils))
     ts.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestDateIntervalCheck))
