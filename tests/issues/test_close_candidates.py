@@ -394,6 +394,71 @@ class TestIssue1852(ProxyNetworkIssueTestCase):
             self.assertTrue(call_private(self.data, "_get_cookie_csrf", timeout=1))
 
 
+class TestIssue2500(ProxyNetworkIssueTestCase):
+    """Verify callable proxy configuration works with shared network config."""
+
+    def test_callable_proxy_string_is_normalized_for_cookie_bootstrap(self):
+        """A callable proxy returning a URL should populate both schemes."""
+        expected_proxy = "http://proxy-a.local:8080"
+        YF_CONFIG.network.proxy = lambda: expected_proxy
+        self.session.proxies = None
+
+        def fake_get(**kwargs):
+            self.assertEqual(
+                self.session.proxies,
+                {"http": expected_proxy, "https": expected_proxy},
+            )
+            self.assertEqual(kwargs["url"], "https://fc.yahoo.com")
+            return Mock(status_code=200)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            self.assertTrue(call_private(self.data, "_get_cookie_basic", timeout=1))
+
+    def test_callable_proxy_is_resolved_per_request(self):
+        """Callable proxies should be re-evaluated for each network request."""
+        proxy_urls = iter(
+            [
+                "http://proxy-a.local:8080",
+                "http://proxy-b.local:8080",
+                "http://proxy-c.local:8080",
+            ]
+        )
+        seen_proxies = []
+
+        def proxy_provider():
+            return next(proxy_urls)
+
+        YF_CONFIG.network.proxy = proxy_provider
+        self.session.proxies = None
+
+        def fake_get(**kwargs):
+            seen_proxies.append(dict(self.session.proxies))
+            self.assertEqual(kwargs["url"], "https://fc.yahoo.com")
+            return Mock(status_code=200)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            for _ in range(3):
+                self.assertTrue(call_private(self.data, "_get_cookie_basic", timeout=1))
+                setattr(self.data, "_cookie", None)
+
+        self.assertEqual(
+            seen_proxies,
+            [
+                {"http": "http://proxy-a.local:8080", "https": "http://proxy-a.local:8080"},
+                {"http": "http://proxy-b.local:8080", "https": "http://proxy-b.local:8080"},
+                {"http": "http://proxy-c.local:8080", "https": "http://proxy-c.local:8080"},
+            ],
+        )
+
+
 class TestIssue1951(SessionTickerTestCase):
     """Verify unavailable quotes no longer crash fast_info access."""
 

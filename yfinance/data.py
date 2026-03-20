@@ -135,7 +135,15 @@ class YfData(metaclass=SingletonMeta):
             self._sync_session_proxy()
 
     def _sync_session_proxy(self) -> None:
-        self._session.proxies = YfConfig.network.proxy
+        self._session.proxies = self._resolve_proxy_config()
+
+    def _resolve_proxy_config(self) -> Any:
+        proxy_config = YfConfig.network.proxy
+        if callable(proxy_config):
+            proxy_config = proxy_config()
+        if isinstance(proxy_config, str):
+            return {"http": proxy_config, "https": proxy_config}
+        return proxy_config
 
     def _get_network_request_options(self) -> Dict[str, Any]:
         self._sync_session_proxy()
