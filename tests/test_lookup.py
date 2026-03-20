@@ -1,10 +1,12 @@
 """Lookup integration tests."""
 
 import unittest
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
 from tests.context import SESSION_GBL, yfinance as yf
+from yfinance.exceptions import YFDataException
 
 
 class TestLookup(unittest.TestCase):
@@ -77,6 +79,61 @@ class TestLookup(unittest.TestCase):
 
         self.assertIsInstance(result, pd.DataFrame)
         self.assertEqual(len(result), 1000)
+
+    @patch("yfinance.lookup.time.sleep", return_value=None)
+    @patch("yfinance.data.YfData.get")
+    def test_retries_transient_internal_server_error(self, mock_get, _mock_sleep):
+        """Retry transient Yahoo lookup failures encoded in the JSON payload."""
+        error_response = MagicMock()
+        error_response.json.return_value = {
+            "finance": {
+                "error": {
+                    "code": "Internal Server Error",
+                    "description": "Server caught an exception",
+                }
+            }
+        }
+        success_response = MagicMock()
+        success_response.json.return_value = {
+            "finance": {
+                "result": [
+                    {
+                        "documents": [
+                            {"symbol": "A", "name": "Alpha"},
+                        ]
+                    }
+                ]
+            }
+        }
+        mock_get.side_effect = [error_response, success_response]
+
+        lookup = yf.Lookup(query=self.query, session=SESSION_GBL)
+        result = lookup.get_all(count=1)
+
+        self.assertEqual(mock_get.call_count, 2)
+        self.assertListEqual(result.index.tolist(), ["A"])
+
+    @patch("yfinance.lookup.time.sleep", return_value=None)
+    @patch("yfinance.data.YfData.get")
+    def test_raises_after_retry_budget_exhausted(self, mock_get, _mock_sleep):
+        """Raise once transient lookup retries are exhausted."""
+        error_response = MagicMock()
+        error_response.json.return_value = {
+            "finance": {
+                "error": {
+                    "code": "Internal Server Error",
+                    "description": "Server caught an exception",
+                }
+            }
+        }
+        mock_get.side_effect = [error_response, error_response, error_response]
+
+        lookup = yf.Lookup(query=self.query, session=SESSION_GBL)
+
+        with self.assertRaises(YFDataException):
+            lookup.get_all(count=1)
+
+        self.assertEqual(mock_get.call_count, 3)
 
 
 if __name__ == "__main__":

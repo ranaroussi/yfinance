@@ -1,25 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# yfinance - market data downloader
-# https://github.com/ranaroussi/yfinance
-#
-# Copyright 2017-2019 Ran Aroussi
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 """Yahoo Finance lookup endpoint wrapper."""
+
+import time
 
 import pandas as pd
 
@@ -39,6 +20,10 @@ LOOKUP_TYPES = [
     "currency",
     "cryptocurrency",
 ]
+
+_LOOKUP_RETRYABLE_ERROR_CODES = {"Internal Server Error"}
+_LOOKUP_MAX_ERROR_RETRIES = 2
+_LOOKUP_RETRY_DELAY_SECONDS = 0.5
 
 
 class Lookup:
@@ -65,12 +50,25 @@ class Lookup:
 
         self._cache = {}
 
+    def _request_lookup(self, params: dict) -> dict:
+        url = f"{_QUERY1_URL_}/v1/finance/lookup"
+        data = self._data.get(url=url, params=params, timeout=self.timeout)
+        return parse_json_response(
+            data,
+            self._logger,
+            "%s: 'lookup' fetch received faulty data",
+            self.query,
+        )
+
+    @staticmethod
+    def _extract_error(data: dict) -> dict:
+        return data.get("finance", {}).get("error", {})
+
     def _fetch_lookup(self, lookup_type="all", count=25) -> dict:
         cache_key = (lookup_type, count)
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        url = f"{_QUERY1_URL_}/v1/finance/lookup"
         params = {
             "query": self.query,
             "type": lookup_type,
@@ -88,18 +86,28 @@ class Lookup:
             dict(params),
         )
 
-        data = self._data.get(url=url, params=params, timeout=self.timeout)
-        data = parse_json_response(
-            data,
-            self._logger,
-            "%s: 'lookup' fetch received faulty data",
-            self.query,
-        )
+        data = {}
+        error = {}
+        for attempt in range(_LOOKUP_MAX_ERROR_RETRIES + 1):
+            data = self._request_lookup(params)
+            error = self._extract_error(data)
+            if not error:
+                break
 
-        # Error returned
-        if data.get("finance", {}).get("error", {}):
-            error = data.get("finance", {}).get("error", {})
-            raise YFDataException(f"{self.query}: 'lookup' fetch returned error: {error}")
+            if (
+                error.get("code") not in _LOOKUP_RETRYABLE_ERROR_CODES
+                or attempt == _LOOKUP_MAX_ERROR_RETRIES
+            ):
+                raise YFDataException(f"{self.query}: 'lookup' fetch returned error: {error}")
+
+            self._logger.debug(
+                "Retrying Lookup for ticker (%s) after transient error: %s (attempt %d/%d)",
+                self.query,
+                error,
+                attempt + 1,
+                _LOOKUP_MAX_ERROR_RETRIES,
+            )
+            time.sleep(_LOOKUP_RETRY_DELAY_SECONDS * (attempt + 1))
 
         self._cache[cache_key] = data
         return data
