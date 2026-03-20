@@ -130,15 +130,19 @@ class FastInfo:
             self._prices_1y = self._tkr.history(period="1y", auto_adjust=False, keepna=True)
             self._md = self._tkr.get_history_metadata()
             try:
-                ctp = self._md["currentTradingPeriod"]
-                self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
-                self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
-                self._today_midnight = self._today_close.ceil("D")
+                ctp = self._md.get("currentTradingPeriod")
+                if ctp is not None and "regular" in ctp and self.timezone is not None:
+                    self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
+                    self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
+                    self._today_midnight = self._today_close.ceil("D")
+                else:
+                    self._today_open = None
+                    self._today_close = None
+                    self._today_midnight = None
             except Exception:
                 self._today_open = None
                 self._today_close = None
                 self._today_midnight = None
-                raise
 
         if self._prices_1y.empty:
             return self._prices_1y
@@ -198,7 +202,7 @@ class FastInfo:
             return self._currency
 
         md = self._tkr.get_history_metadata()
-        self._currency = md["currency"]
+        self._currency = md.get("currency")
         return self._currency
 
     @property
@@ -207,7 +211,7 @@ class FastInfo:
             return self._quote_type
 
         md = self._tkr.get_history_metadata()
-        self._quote_type = md["instrumentType"]
+        self._quote_type = md.get("instrumentType")
         return self._quote_type
 
     @property
@@ -215,7 +219,8 @@ class FastInfo:
         if self._exchange is not None:
             return self._exchange
 
-        self._exchange = self._get_exchange_metadata()["exchangeName"]
+        md = self._get_exchange_metadata()
+        self._exchange = md.get("exchangeName") if md is not None else None
         return self._exchange
 
     @property
@@ -223,7 +228,8 @@ class FastInfo:
         if self._timezone is not None:
             return self._timezone
 
-        self._timezone = self._get_exchange_metadata()["exchangeTimezoneName"]
+        md = self._get_exchange_metadata()
+        self._timezone = md.get("exchangeTimezoneName") if md is not None else None
         return self._timezone
 
     @property
