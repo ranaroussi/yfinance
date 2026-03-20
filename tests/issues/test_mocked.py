@@ -1,5 +1,6 @@
 """Mocked issue-specific verification tests for upstream close candidates."""
 
+import json
 import unittest
 from unittest.mock import Mock, patch
 
@@ -15,7 +16,7 @@ from ..close_candidates_support import call_private, require_dataframe
 
 def _make_response(payload):
     response = Mock(status_code=200)
-    response.text = "{}"
+    response.text = json.dumps(payload)
     response.json.return_value = payload
     return response
 
@@ -491,3 +492,64 @@ class TestIssue930(unittest.TestCase):
             0.22,
         )
         self.assertEqual(float(pd.to_numeric(dividends.iloc[-1], errors="raise")), 0.22)
+
+
+class TestIssue2605(unittest.TestCase):
+    """Verify quarterly balance-sheet keys survive the public pretty-label path."""
+
+    def test_quarterly_balance_sheet_exposes_new_brkb_keys(self):
+        """New balance-sheet schema keys should appear on the public quarterly view."""
+        as_of_date = "2025-06-30"
+        as_of_timestamp = int(pd.Timestamp(as_of_date).timestamp())
+        expected_rows = {
+            "Fixed Maturity Investments": 101.0,
+            "Equity Investments": 202.0,
+            "Net Loan": 303.0,
+            "Deferred Assets": 404.0,
+            "Other Assets": 505.0,
+        }
+        payload = {
+            "timeseries": {
+                "result": [
+                    {
+                        "meta": {"symbol": "BRK-B"},
+                        "timestamp": [as_of_timestamp],
+                        "quarterlyFixedMaturityInvestments": [
+                            {"asOfDate": as_of_date, "reportedValue": {"raw": 101.0}}
+                        ],
+                        "quarterlyEquityInvestments": [
+                            {"asOfDate": as_of_date, "reportedValue": {"raw": 202.0}}
+                        ],
+                        "quarterlyNetLoan": [
+                            {"asOfDate": as_of_date, "reportedValue": {"raw": 303.0}}
+                        ],
+                        "quarterlyDeferredAssets": [
+                            {"asOfDate": as_of_date, "reportedValue": {"raw": 404.0}}
+                        ],
+                        "quarterlyOtherAssets": [
+                            {"asOfDate": as_of_date, "reportedValue": {"raw": 505.0}}
+                        ],
+                    }
+                ]
+            }
+        }
+
+        def fake_cache_get(_data, url):
+            self.assertIn("BRK-B", url)
+            self.assertIn("quarterlyFixedMaturityInvestments", url)
+            self.assertIn("quarterlyEquityInvestments", url)
+            self.assertIn("quarterlyNetLoan", url)
+            self.assertIn("quarterlyDeferredAssets", url)
+            self.assertIn("quarterlyOtherAssets", url)
+            return _make_response(payload)
+
+        with patch.object(YfData, "cache_get", autospec=True, side_effect=fake_cache_get):
+            frame = yf.Ticker("BRK-B").quarterly_balance_sheet
+
+        frame = require_dataframe(frame, "ticker.quarterly_balance_sheet returned None")
+        self.assertFalse(frame.empty)
+        column_date = pd.Timestamp(as_of_date)
+        self.assertEqual(frame.columns.tolist(), [column_date])
+        self.assertEqual(set(frame.index.tolist()), set(expected_rows.keys()))
+        for row_name, expected_value in expected_rows.items():
+            self.assertEqual(frame.at[row_name, column_date], expected_value)
