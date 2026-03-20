@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as _np
 import pandas as pd
+from bs4 import BeautifulSoup
 
 from yfinance.config import YF_CONFIG as YfConfig
-from yfinance.const import quote_summary_valid_modules, _QUERY1_URL_
+from yfinance.const import quote_summary_valid_modules, _QUERY1_URL_, _ROOT_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
 from yfinance.scrapers.utils import fetch_quote_summary, get_raw_json_or_none
@@ -802,6 +803,33 @@ class Quote:
                     self._info[k] = keydict[k][-1]["reportedValue"]["raw"]
                 else:
                     self._info[k] = None
+
+        if not self._info.get("pegRatio"):
+            self._info["pegRatio"] = self._scrape_peg_ratio()
+
+    def _scrape_peg_ratio(self) -> Optional[float]:
+        """Scrape pegRatio from the key-statistics HTML page.
+
+        Yahoo stopped returning pegRatio via the quoteSummary API in mid-2025.
+        The value (labelled 'PEG Ratio (5yr expected)') is still rendered in the
+        Valuation Measures table on the key-statistics page, so we fetch that page
+        and parse the current value out of the DOM.
+        """
+        url = f"{_ROOT_URL_}/quote/{self._symbol}/key-statistics/"
+        try:
+            response = self._data.cache_get(url=url)
+            soup = BeautifulSoup(response.text, "html.parser")
+            section = soup.find("section", {"data-testid": "qsp-statistics"})
+            if section is None:
+                return None
+            for row in section.find_all("tr"):
+                cells = row.find_all("td")
+                if cells and "PEG" in cells[0].get_text():
+                    raw = cells[1].get_text(strip=True)
+                    return float(raw) if raw not in ("", "N/A", "--") else None
+        except Exception:  # noqa: BLE001
+            pass
+        return None
 
     def _fetch_calendar(self):
         """Fetch earnings and dividend calendar details."""
