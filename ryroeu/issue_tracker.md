@@ -31,9 +31,9 @@ This file tracks whether the large refactor in this fork appears to resolve any 
 
 These counts apply to the full tracker across all sections, not just the working list.
 
-- resolved in fork: 44
+- resolved in fork: 45
 - needs reproduction: 8
-- not resolved: 21
+- not resolved: 20
 - not addressed: 7
 - invalid usage: 5
 - new feature requests: 27
@@ -41,8 +41,8 @@ These counts apply to the full tracker across all sections, not just the working
 ## Verification Tests
 
 - issue-specific verification modules: `tests/issues/test.py`, `tests/issues/test_history.py`, `tests/issues/test_fast_info.py`, `tests/issues/test_mocked.py`
-- current result: `55 passed, 93 subtests passed in 26.18s`
-- confirmed by tests so far: `#2699`, `#2688`, `#2526`, `#2500`, `#2495`, `#2463`, `#2426`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`
+- current result: `57 passed, 93 subtests passed`
+- confirmed by tests so far: `#2699`, `#2688`, `#2526`, `#2500`, `#2495`, `#2463`, `#2426`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`, `#2353`
 
 ## Confirmed Resolved
 
@@ -92,6 +92,7 @@ These counts apply to the full tracker across all sections, not just the working
 | [#469](https://github.com/ranaroussi/yfinance/issues/469) | Option expiration dates randomly missing | options | Verified against the original `GILD` report and additional liquid option symbols: the current fork repeatedly returns a stable expiration list, and each listed expiration remains fetchable through `option_chain()` across repeated passes instead of intermittently disappearing from the available-expiration set. | Covered by issue-specific verification tests. |
 | [#445](https://github.com/ranaroussi/yfinance/issues/445) | _requests.get() times out | network | The old direct `_requests.get(...)` path has been replaced by a centralized transport layer that classifies transient timeout and connection failures and retries them with backoff before surfacing an error. The chart-request timeout path is now covered by a deterministic regression that forces repeated `Timeout` exceptions before a successful retry. | Covered by issue-specific verification tests. |
 | [#515](https://github.com/ranaroussi/yfinance/issues/515) | Last row of dataframe becomes NaN upon downloading large list of stocks | download/dataframe-shape | Verified on a current large daily multi-download with more than 100 valid tickers plus several failed downloads. The final `AAPL` row remains populated and matches the single-ticker download exactly on the same date instead of turning into an all-NaN row. | Covered by issue-specific verification tests. |
+| [#2353](https://github.com/ranaroussi/yfinance/issues/2353) | yfinance does not return the latest (current day during market session) day's data using 'max' parameter. | history/market-session | Three factors combine: (1) `period='max'` resolves to explicit `period1`/`period2` epoch timestamps (`_resolve_max_period_request` sets `period2=time.time()`), so Yahoo includes the current in-progress daily bar in its response; shorter periods use `{"range": "Xy"}` and Yahoo omits the partial bar. (2) Yahoo intermittently returns the in-progress bar with null OHLC but a non-zero volume accumulator, a transient server-side race between Yahoo's volume and OHLC pipelines. (3) The `keepna=False` filter in `_finalize_history_df` only dropped rows where every data column was NaN or zero; a row with NaN OHLC but non-zero Volume escaped the filter. Fixed by extending the mask to also drop rows where all four OHLC columns are NaN, regardless of Volume. | Covered by two issue-specific mocked regression tests: single-ticker path drops the NaN-OHLC partial bar, and the multi-ticker download path drops it for the ticker that catches Yahoo's transient state. |
 
 
 ## Confirmed but untested
@@ -113,7 +114,6 @@ None currently.
 
 | Issue | Title | Updated | Area | Status | Confidence | Notes | Next step |
 |---|---|---|---|---|---|---|---|
-| [#2353](https://github.com/ranaroussi/yfinance/issues/2353) | yfinance does not return the latest (current day during market session) day's data using 'max' parameter. | 2026-03-20 | history/market-session | not resolved | high | Reproduced during active US market hours at about `13:38 ET` with the issue's `yf.download(['SPY', 'QQQ'], period='max', group_by='ticker', auto_adjust=True, threads=False)` pattern. The failure is intermittent across repeated calls: one ticker randomly returns today's row with `Volume` populated but `Open`/`High`/`Low`/`Close` all `NaN`, while the same ticker's single-symbol `period='max'` download and shorter `1y`/`5y` downloads return a fully populated current-day row. | Leave open; investigate the multi-ticker combine path for live-session `period='max'` daily rows. |
 | [#2327](https://github.com/ranaroussi/yfinance/issues/2327) | Yahoo data changed from EST to UTC? | 2025-03-17 | history/timezone | not resolved | high | The exact reported `yf.download('SPY', '2025-02-08', '2025-02-22', interval='1h')` pattern still returns a UTC-indexed `DatetimeIndex`, so the prior EST/EDT-style local timestamps are not restored in this fork. | Leave open unless `download()` is intentionally changed back to exchange-local timestamps for this path. |
 | [#2261](https://github.com/ranaroussi/yfinance/issues/2261) | Unit test action can fail to fetch | 2025-02-17 | network/proxy | needs reproduction | low | Network/proxy stack changed, but environment-dependent issues need targeted reproduction. | Reproduce in the original failing environment. |
 | [#2156](https://github.com/ranaroussi/yfinance/issues/2156) | session cache not working with start param | 2024-11-27 | cache/session | not resolved | high | Same underlying limitation as request_cache support; custom cached sessions are not supported. | Leave open; would require supported caching design. |

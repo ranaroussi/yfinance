@@ -1149,3 +1149,135 @@ class TestIssue2426(unittest.TestCase):
             info = yf.Ticker("INTC").info
 
         self.assertEqual(info["forwardPE"], 63.29)
+
+
+class TestIssue2353(unittest.TestCase):
+    """Verify that a partial in-progress daily bar with NaN OHLC is not returned."""
+
+    def _make_chart_payload(self, symbol, *, include_partial_bar):
+        """Return a minimal chart payload.
+
+        When *include_partial_bar* is True the final timestamp has null OHLC
+        values but a non-zero volume, mimicking what Yahoo's chart API returns
+        for the current in-progress trading day when called with an explicit
+        period2 epoch (i.e. period='max' mid-session).
+        """
+        # Two completed daily bars followed by an optional in-progress bar.
+        timestamps = [1739217000, 1739303400]
+        opens: list[float | None] = [184.0, 186.0]
+        highs: list[float | None] = [185.0, 187.0]
+        lows: list[float | None] = [183.5, 185.5]
+        closes: list[float | None] = [184.5, 186.5]
+        adjs: list[float | None] = [184.5, 186.5]
+        vols   = [1_000_000, 1_200_000]
+
+        if include_partial_bar:
+            timestamps.append(1739389800)
+            opens.append(None)
+            highs.append(None)
+            lows.append(None)
+            closes.append(None)
+            adjs.append(None)
+            vols.append(850_000)
+
+        return {
+            "chart": {
+                "result": [
+                    {
+                        "meta": {
+                            "symbol": symbol,
+                            "currency": "USD",
+                            "instrumentType": "EQUITY",
+                            "exchangeTimezoneName": "America/New_York",
+                            "validRanges": ["1d", "5d", "1mo", "max"],
+                        },
+                        "timestamp": timestamps,
+                        "indicators": {
+                            "quote": [
+                                {
+                                    "open": opens,
+                                    "high": highs,
+                                    "low": lows,
+                                    "close": closes,
+                                    "volume": vols,
+                                }
+                            ],
+                            "adjclose": [{"adjclose": adjs}],
+                        },
+                    }
+                ],
+                "error": None,
+            }
+        }
+
+    def test_single_ticker_history_drops_nan_ohlc_partial_bar(self):
+        """Ticker.history() must not return today's row when OHLC are all NaN."""
+        payload = self._make_chart_payload("SPY", include_partial_bar=True)
+
+        ticker = yf.Ticker("SPY")
+        with patch.object(ticker, "_get_ticker_tz", return_value="America/New_York"):
+            history = call_private(ticker, "_lazy_load_price_history")
+        client = history.get_data_client()
+
+        response = _make_response(payload)
+        with (
+            patch.object(client, "get", return_value=response),
+            patch.object(client, "cache_get", return_value=response),
+        ):
+            data = history.history(period="max", interval="1d", auto_adjust=True)
+
+        data = require_dataframe(data, "Ticker.history() returned None")
+        # The partial bar (NaN OHLC, Volume=850_000) must be absent.
+        self.assertEqual(len(data), 2, "partial bar must be dropped when keepna=False")
+        self.assertFalse(
+            data[["Open", "High", "Low", "Close"]].isna().any(axis=None),
+            "no NaN OHLC values should remain in the output",
+        )
+
+    def test_multi_ticker_download_drops_nan_ohlc_partial_bar_for_one_ticker(self):
+        """download() must not expose a NaN-OHLC row when only one ticker gets the partial bar."""
+        spy_payload = self._make_chart_payload("SPY", include_partial_bar=False)
+        qqq_payload = self._make_chart_payload("QQQ", include_partial_bar=True)
+
+        def fake_get_tz(data_client, symbol, timeout):
+            del data_client, timeout
+            self.assertIn(symbol, {"SPY", "QQQ"})
+            return "America/New_York"
+
+        def fake_get(_data, url, params=None, timeout=30):
+            del _data, timeout
+            if url.endswith("/SPY"):
+                return _make_response(spy_payload)
+            if url.endswith("/QQQ"):
+                return _make_response(qqq_payload)
+            raise AssertionError(f"Unexpected get url: {url}, params={params}")
+
+        with (
+            patch.object(yf_download_worker, "get_ticker_tz", side_effect=fake_get_tz),
+            patch.object(YfData, "get", autospec=True, side_effect=fake_get),
+        ):
+            frame = yf.download(
+                ["SPY", "QQQ"],
+                period="max",
+                group_by="ticker",
+                auto_adjust=True,
+                threads=False,
+                progress=False,
+            )
+
+        frame = require_dataframe(frame, "yf.download() returned None")
+        self.assertFalse(frame.empty)
+
+        spy_close = frame["SPY"]["Close"]
+        qqq_close = frame["QQQ"]["Close"]
+
+        # Both tickers should expose the same two completed bars.
+        self.assertEqual(len(spy_close.dropna()), 2)
+        self.assertEqual(len(qqq_close.dropna()), 2)
+
+        # Neither ticker should have a NaN-OHLC partial bar row.
+        qqq_open = frame["QQQ"]["Open"]
+        self.assertFalse(
+            qqq_open.isna().any(),
+            "QQQ must not expose the partial bar with NaN OHLC",
+        )

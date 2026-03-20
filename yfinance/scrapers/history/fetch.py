@@ -699,19 +699,26 @@ def _finalize_history_df(state: _FetchState, df: pd.DataFrame) -> pd.DataFrame:
             errors="ignore",
         )
     if not state.keepna:
-        data_cols = [
-            column
-            for column in (
-                _PRICE_COLNAMES_
-                + ["Volume", "Dividends", "Stock Splits", "Capital Gains"]
-            )
-            if column in df.columns
+        price_cols = [c for c in _PRICE_COLNAMES_ if c in df.columns]
+        data_cols = price_cols + [
+            c
+            for c in ["Volume", "Dividends", "Stock Splits", "Capital Gains"]
+            if c in df.columns
         ]
-        mask_nan_or_zero = cast(
+        mask_all_empty = cast(
             pd.Series,
             (df[data_cols].isna() | (df[data_cols] == 0)).all(axis=1),
         )
-        df = df.loc[~mask_nan_or_zero]
+        # Also drop rows where all OHLC are NaN regardless of Volume.
+        # Yahoo sometimes returns a partial in-progress daily bar with null OHLC
+        # but a non-zero volume accumulator (e.g. period='max' mid-session).
+        # Such a row carries no usable price data and should not reach the caller.
+        mask_no_prices = (
+            cast(pd.Series, df[price_cols].isna().all(axis=1))
+            if price_cols
+            else pd.Series(False, index=df.index)
+        )
+        df = df.loc[~(mask_all_empty | mask_no_prices)]
     if state.interval != state.interval_user:
         df = state.history_obj.resample_history(
             df,
