@@ -1072,3 +1072,19 @@ class TestIssue2495(unittest.TestCase):
             "fresh-basic-crumb",
         )
         self.assertNotIn("Invalid Cookie", chart_request[1]["crumb"])
+
+
+class TestIssue2486(unittest.TestCase):
+    """Verify incompatible request_cache sessions are rejected explicitly."""
+
+    def test_request_cache_session_is_rejected_with_clear_error(self):
+        """Passing a requests_cache-style session should raise a clear YFDataException."""
+
+        caching_session = Mock()
+        caching_session.cache = object()
+
+        with self.assertRaisesRegex(
+            yfinance_pkg.YFDataException,
+            "request_cache sessions don't work with curl_cffi",
+        ):
+            YfData(session=caching_session)

@@ -33,15 +33,15 @@ These counts apply to the full tracker across all sections, not just the working
 
 - resolved in fork: 41
 - needs reproduction: 9
-- not resolved: 24
+- not resolved: 23
 - not addressed: 8
-- invalid usage: 4
+- invalid usage: 5
 - new feature requests: 26
 
 ## Verification Tests
 
 - issue-specific verification modules: `tests/issues/test.py`, `tests/issues/test_history.py`, `tests/issues/test_fast_info.py`, `tests/issues/test_mocked.py`
-- current result: `52 passed, 93 subtests passed in 24.45s`
+- current result: `53 passed, 93 subtests passed in 24.45s`
 - confirmed by tests so far: `#2699`, `#2688`, `#2526`, `#2500`, `#2495`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`
 
 ## Confirmed Resolved
@@ -110,7 +110,6 @@ None currently.
 
 | Issue | Title | Updated | Area | Status | Confidence | Notes | Next step |
 |---|---|---|---|---|---|---|---|
-| [#2486](https://github.com/ranaroussi/yfinance/issues/2486) | Unable to use request_cache to cache the yfinance response | 2025-05-17 | cache/session | not resolved | high | The fork now explicitly rejects request_cache sessions with curl_cffi instead of supporting them. | Leave open or restate as unsupported by design. |
 | [#2463](https://github.com/ranaroussi/yfinance/issues/2463) | [0.2.59] CertificateVerifyError('Failed to perform, curl: (60) SSL certificate problem: self signed certificate in certificate chain. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.') | 2026-01-05 | network/certificates | not resolved | low | Certificate verification behavior is not clearly addressed in the refactor. | Leave open. |
 | [#2449](https://github.com/ranaroussi/yfinance/issues/2449) | [0.2.59] curl_cffi won't compile | 2025-05-26 | packaging | not resolved | high | The fork relies on curl_cffi; compile/install problems are not addressed by the refactor. | Leave open. |
 | [#2426](https://github.com/ranaroussi/yfinance/issues/2426) | error data | 2025-05-04 | info/fundamentals | not resolved | low | No direct evidence that the refactor changed this public schema/field behavior. | Leave open unless verified. |
@@ -189,5 +188,6 @@ None currently.
 |---|---|---|---|
 | [#2060](https://github.com/ranaroussi/yfinance/issues/2060) | HTTP 404 error on Ticker.info in Version: 0.2.43 | The report uses `SP500` as though it were a Yahoo Finance ticker. Yahoo returns `404 Quote not found for symbol: SP500`, while the actual S&P 500 index symbol is `^GSPC`. This is not a regression in `Ticker.info`. | Use `yf.Ticker("^GSPC")` for the S&P 500 index, or pass real ticker symbols to `yf.Tickers(...)`. |
 | [#2717](https://github.com/ranaroussi/yfinance/issues/2717) | Issue with historical data. Misalignment between tool and Yahoo Finance. | Current `SLVR.DE` 6-month history on this fork matches the underlying Yahoo chart API payload exactly, including identical first/last closes and the same `28.7692%` return. There are no dividends or splits over that window, so neither adjustment nor repair logic is changing the series. With no dated Yahoo values showing a library-side mismatch, this reads as a Yahoo UI interpretation/comparison issue rather than a reproducible yfinance defect. | Compare against the raw Yahoo chart series, not a website summary widget, and include dated source values if reporting a genuine data mismatch. |
+| [#2486](https://github.com/ranaroussi/yfinance/issues/2486) | Unable to use request_cache to cache the yfinance response | The report depends on passing a `requests_cache`-style session into a fork that now requires `curl_cffi` sessions for Yahoo access. That custom session type is explicitly unsupported: `YfData._set_session()` detects caching sessions and raises a clear `YFDataException` instead of pretending the combination should work. | Do not pass `requests_cache` sessions directly to `yf.Ticker(..., session=...)`. Let yfinance manage its own curl_cffi session, or build caching around a compatible curl_cffi transport instead of a `requests_cache` session object. |
 | [#2510](https://github.com/ranaroussi/yfinance/issues/2510) | yf 0.2.60 incorrect data form historical when close not= to adj close | The report is describing the default `auto_adjust=True` behavior, where OHLC values are adjusted and adjusted close is exposed as `Close`. That is current API behavior, not evidence of a broken raw-price download path. | Use `yf.download(..., auto_adjust=False, actions=False)` or `Ticker.history(..., auto_adjust=False)` when you want raw `Close` plus a separate `Adj Close` column. |
 | [#2070](https://github.com/ranaroussi/yfinance/issues/2070) | Adjusted Close from yfinance is not the same as total return from Yahoo Finance | The report assumes Yahoo chart-history `Adj Close` should equal Yahoo website “total return” calculations. Those are different concepts: yfinance exposes Yahoo price-history adjustments, but it does not reproduce website-specific total-return or DRIP/growth-of-10,000 calculations. | Use raw prices plus dividends for a custom non-DRIP total return, or implement a reinvestment model explicitly if you need DRIP-style total return rather than Yahoo `Adj Close`. |
