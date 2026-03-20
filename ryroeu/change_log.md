@@ -85,6 +85,7 @@ The root cause: pytest scanned the module's namespace, found TestSuite (imported
 58. `confirmed that these known issues are fixed`: 2426
 59. `fixed weekly resampling index drift for ytd periods (#2387)`: `_resample_period_and_origin` was returning `("7D", origin=year_start)` for `1wk/ytd`, but pandas silently ignores the `origin` keyword for non-Tick-like frequencies like `"7D"`, causing epoch-aligned Friday-based week labels instead of Jan-1-aligned labels. Fixed by computing the weekday of Jan 1 and using the equivalent `"W-{weekday}"` calendar-aligned frequency (e.g. `"W-THU"` for 2026 where Jan 1 is Thursday). Also relaxed `resample_mismatch_debug` in the test to allow a missing first week when it is a zero-volume holiday placeholder (e.g. Chinese New Year for 2330.TW with period='1mo').
 60. `confirmed that these known issues are fixed`: 2387
+61. `confirmed that these known issues are fixed`: 2353
 
 ### python -m pytest tests/ --ignore=tests/test_price_repair.py --ignore=tests/test_live.py --ignore=tests/test_cache_noperms.py
 * 100 passed in 86.40s (0:01:26)
@@ -93,7 +94,7 @@ The root cause: pytest scanned the module's namespace, found TestSuite (imported
 * 116 passed, 71 subtests passed in 132.79s (0:02:12)
 
 ### python -m pytest tests/issues/test.py tests/issues/test_history.py tests/issues/test_fast_info.py tests/issues/test_mocked.py -q
-* 55 passed, 93 subtests passed in 26.18s
+* 57 passed, 93 subtests passed in 28.31s
 
 ### python -m unittest discover -k test
 * Ran 176 tests in 261.436s
