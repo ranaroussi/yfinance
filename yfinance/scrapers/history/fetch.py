@@ -299,11 +299,14 @@ def _build_price_debug(state: _FetchState) -> None:
 
 
 def _missing_quote_payload(data: dict[str, Any]) -> bool:
+    chart = data.get("chart")
+    if not isinstance(chart, dict):
+        return True
+    result = chart.get("result")
     return (
-        "chart" not in data
-        or data["chart"]["result"] is None
-        or not data["chart"]["result"]
-        or not data["chart"]["result"][0]["indicators"]["quote"][0]
+        result is None
+        or not result
+        or not result[0]["indicators"]["quote"][0]
     )
 
 
@@ -325,7 +328,7 @@ def _validate_chart_data(
         state.price_data_debug += f"(Yahoo status_code = {data['status_code']})"
         exception = YFPricesMissingError(state.price_history.ticker, state.price_data_debug)
         return _return_error_df(state, exception, clear_reconstruct=True)
-    if "chart" in data and data["chart"]["error"]:
+    if isinstance(data.get("chart"), dict) and data["chart"].get("error"):
         state.price_data_debug += (
             ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
         )
