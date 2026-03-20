@@ -402,20 +402,20 @@ class PriceHistory:
         if dividends.shape[0] > 0:
             df = utils.safe_merge_dfs(df, dividends, interval)
         if "Dividends" in df.columns:
-            df.loc[df["Dividends"].isna(), "Dividends"] = 0
+            df["Dividends"] = pd.to_numeric(df["Dividends"], errors="coerce").fillna(0)
         else:
             df["Dividends"] = 0.0
         if splits.shape[0] > 0:
             df = utils.safe_merge_dfs(df, splits, interval)
         if "Stock Splits" in df.columns:
-            df.loc[df["Stock Splits"].isna(), "Stock Splits"] = 0
+            df["Stock Splits"] = pd.to_numeric(df["Stock Splits"], errors="coerce").fillna(0)
         else:
             df["Stock Splits"] = 0.0
         if expect_capital_gains:
             if capital_gains.shape[0] > 0:
                 df = utils.safe_merge_dfs(df, capital_gains, interval)
             if "Capital Gains" in df.columns:
-                df.loc[df["Capital Gains"].isna(), "Capital Gains"] = 0
+                df["Capital Gains"] = pd.to_numeric(df["Capital Gains"], errors="coerce").fillna(0)
             else:
                 df["Capital Gains"] = 0.0
         if df.empty:

@@ -1156,6 +1156,12 @@ class TestTickerInfo(unittest.TestCase):
     #                     else:
     #                         raise
 
+
+class TestEmptySeries(unittest.TestCase):
+    def test_empty_dividends(self):
+        self.assertTrue(yf.Ticker("AET").dividends.empty)
+
+
 class TestTickerFundsData(unittest.TestCase):
     session = None
 
@@ -1244,6 +1250,7 @@ def suite():
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
     suite.addTest(TestTickerInfo('Test info & fast_info'))
     suite.addTest(TestTickerFundsData('Test Funds Data'))
+    suite.addTest(TestEmptySeries('Test Empty Series'))
     return suite
 
 
