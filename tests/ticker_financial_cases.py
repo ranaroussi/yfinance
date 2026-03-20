@@ -68,8 +68,8 @@ class TestTickerFinancialCases(SessionTickerTestCase):
 
     def test_misc_financial_metadata(self):
         """Return basic string, tuple, and series metadata for financial helpers."""
-        ticker = yf.Ticker("GOOGL", session=self.session)
-        self.assertEqual(ticker.isin, "CA02080M1005")
+        ticker = yf.Ticker("AAPL", session=self.session)
+        self.assertEqual(ticker.isin, "US0378331005")
         self.assertTrue(len(ticker.options) > 1)
         shares = as_non_none(ticker.get_shares_full())
         self.assertIsInstance(shares, pd.Series)

@@ -23,9 +23,12 @@
 
 from __future__ import print_function
 
+import html as _html
 import json as _json
 from io import StringIO
+import re as _re
 from typing import Optional, Union, cast
+import unicodedata as _unicodedata
 from urllib.parse import quote as urlencode
 
 from bs4 import BeautifulSoup
@@ -49,6 +52,170 @@ from .scrapers.holders import Holders
 from .scrapers.quote import FastInfo, Quote
 
 _TZ_INFO_FETCH_CTR = {"count": 0}
+
+_BUSINESS_INSIDER_ROW_RE = _re.compile(
+    r'new Array\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", '
+    r'"((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", '
+    r'"((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"\)'
+)
+_ISIN_NAME_STOPWORDS = {
+    "company",
+    "corp",
+    "corporation",
+    "inc",
+    "incorporated",
+    "limited",
+    "ltd",
+    "nv",
+    "plc",
+    "s",
+    "sa",
+    "se",
+    "societe",
+}
+_ISIN_NOISE_TERMS = {
+    "adr": 35,
+    "depository": 45,
+    "depositary": 45,
+    "fidelite": 60,
+    "hedged": 20,
+    "prime": 25,
+    "receipt": 30,
+    "reg": 10,
+    "unsponsored": 50,
+}
+
+
+def _decode_business_insider_field(value: str) -> str:
+    """Decode simple escaped fields from the BusinessInsider suggest payload."""
+    return _html.unescape(value.replace(r'\"', '"')).strip()
+
+
+def _normalize_isin_name(value: str) -> str:
+    """Normalize company-name text for fuzzy ISIN candidate matching."""
+    normalized = _unicodedata.normalize("NFKD", value)
+    normalized = normalized.encode("ascii", "ignore").decode("ascii")
+    normalized = _re.sub(r"[^a-zA-Z0-9]+", " ", normalized).lower()
+    tokens = [token for token in normalized.split() if token not in _ISIN_NAME_STOPWORDS]
+    return " ".join(tokens)
+
+
+def _parse_isin_candidates(payload: str) -> list[dict[str, str]]:
+    """Parse structured stock candidates from the BusinessInsider suggest payload."""
+    candidates: list[dict[str, str]] = []
+    for name, category, keywords, bias, extension, ids in _BUSINESS_INSIDER_ROW_RE.findall(payload):
+        decoded_name = _decode_business_insider_field(name)
+        decoded_category = _decode_business_insider_field(category)
+        decoded_keywords = _decode_business_insider_field(keywords)
+        if decoded_name == "Name" and decoded_category == "Category":
+            continue
+        if decoded_category != "Stocks":
+            continue
+
+        keyword_parts = decoded_keywords.split("|")
+        symbol = keyword_parts[0].strip().upper() if keyword_parts else ""
+        isin = keyword_parts[1].strip().upper() if len(keyword_parts) > 1 else ""
+        if not utils.is_isin(isin):
+            continue
+
+        candidates.append(
+            {
+                "name": decoded_name,
+                "category": decoded_category,
+                "keywords": decoded_keywords,
+                "bias": _decode_business_insider_field(bias),
+                "extension": _decode_business_insider_field(extension),
+                "ids": _decode_business_insider_field(ids),
+                "symbol": symbol,
+                "isin": isin,
+                "normalized_name": _normalize_isin_name(decoded_name),
+                "normalized_keywords": _normalize_isin_name(decoded_keywords),
+            }
+        )
+
+    return candidates
+
+
+def _score_isin_candidate(
+    candidate: dict[str, str],
+    ticker: str,
+    normalized_targets: list[str],
+) -> int:
+    """Score a parsed BusinessInsider stock candidate for one Yahoo ticker."""
+    score = 0
+    candidate_symbol = candidate["symbol"]
+    ticker_upper = ticker.upper()
+    ticker_base = ticker_upper.split(".")[0]
+    if candidate_symbol == ticker_upper:
+        score += 220
+    elif candidate_symbol == ticker_base:
+        score += 160
+    elif candidate_symbol:
+        score += 10
+
+    candidate_name = candidate["normalized_name"]
+    candidate_tokens = set(candidate_name.split())
+    for target in normalized_targets:
+        if not target:
+            continue
+        target_tokens = set(target.split())
+        if candidate_name == target:
+            score += 150
+            continue
+        if candidate_name and (candidate_name in target or target in candidate_name):
+            score += 120
+            continue
+        if candidate_tokens and target_tokens:
+            overlap = len(candidate_tokens & target_tokens) / len(target_tokens)
+            score += int(round(overlap * 100))
+
+    searchable_tokens = set(
+        f"{candidate['normalized_name']} {candidate['normalized_keywords']}".split()
+    )
+    for term, penalty in _ISIN_NOISE_TERMS.items():
+        if term in searchable_tokens:
+            score -= penalty
+
+    return score
+
+
+def _select_isin_candidate(
+    candidates: list[dict[str, str]],
+    ticker: str,
+    quote_info: dict,
+) -> Optional[dict[str, str]]:
+    """Select the most likely stock candidate for a ticker from parsed results."""
+    if not candidates:
+        return None
+
+    normalized_targets: list[str] = []
+    for key in ("symbol", "shortName", "longName"):
+        value = quote_info.get(key)
+        if isinstance(value, str):
+            normalized = _normalize_isin_name(value)
+            if normalized and normalized not in normalized_targets:
+                normalized_targets.append(normalized)
+
+    scored = [
+        (_score_isin_candidate(candidate, ticker, normalized_targets), candidate)
+        for candidate in candidates
+    ]
+    best_score, best_candidate = max(scored, key=lambda item: item[0])
+    if best_score <= 0:
+        return None
+    return best_candidate
+
+
+def _select_exact_symbol_candidate(
+    candidates: list[dict[str, str]],
+    ticker: str,
+) -> Optional[dict[str, str]]:
+    """Return an exact symbol match from parsed BusinessInsider candidates."""
+    ticker_upper = ticker.upper()
+    for candidate in candidates:
+        if candidate["symbol"] == ticker_upper:
+            return candidate
+    return None
 
 
 class TickerBase:
@@ -634,32 +801,47 @@ class TickerBase:
             self._isin = '-'
             return self._isin
 
-        q = ticker
-
         if self._quote.info is None:
             # Don't print error message cause self._quote.info will print one
             return None
-        if "shortName" in self._quote.info:
-            q = self._quote.info['shortName']
 
+        quote_info = self._quote.info
+        query_values = [ticker]
+        for key in ("shortName", "longName"):
+            value = quote_info.get(key)
+            if isinstance(value, str) and value != "" and value not in query_values:
+                query_values.append(value)
+
+        # First try exact symbol queries so share classes such as GOOG/GOOGL do
+        # not collapse to a broad company-name result.
         url = (
             "https://markets.businessinsider.com/ajax/SearchController_Suggest"
-            f"?max_results=25&query={urlencode(q)}"
+            f"?max_results=25&query={urlencode(query_values[0])}"
         )
         data = self._data.cache_get(url=url).text
+        candidates = _parse_isin_candidates(data)
+        candidate = _select_exact_symbol_candidate(candidates, ticker)
 
-        search_str = f'"{ticker}|'
-        if search_str not in data:
-            if q.lower() in data.lower():
-                search_str = '"|'
-                if search_str not in data:
-                    self._isin = '-'
-                    return self._isin
-            else:
-                self._isin = '-'
-                return self._isin
+        if candidate is None:
+            for query_value in query_values[1:]:
+                url = (
+                    "https://markets.businessinsider.com/ajax/SearchController_Suggest"
+                    f"?max_results=25&query={urlencode(query_value)}"
+                )
+                data = self._data.cache_get(url=url).text
+                candidate = _select_isin_candidate(
+                    _parse_isin_candidates(data),
+                    ticker,
+                    quote_info,
+                )
+                if candidate is not None:
+                    break
 
-        self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
+        if candidate is None:
+            self._isin = '-'
+            return self._isin
+
+        self._isin = candidate["isin"]
         return self._isin
 
     def get_news(self, count=10, tab="news") -> list:

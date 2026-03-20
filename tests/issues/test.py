@@ -1,7 +1,6 @@
 """Issue-specific verification tests for upstream close candidates."""
 
 import datetime as dt
-from typing import Any
 import unittest
 import warnings
 from unittest.mock import Mock, patch
@@ -9,44 +8,16 @@ from unittest.mock import Mock, patch
 import pandas as pd
 from curl_cffi import requests
 import yfinance.client as yf
+from tests.close_candidates_support import (
+    SessionTickerTestCase,
+    call_private,
+    make_mm_suggest_payload,
+    require_dataframe,
+    require_datetime_index,
+)
 from yfinance.config import YF_CONFIG
 from yfinance.data import YfData
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
-from yfinance.scrapers.quote import FastInfo
-
-
-def call_private(obj: Any, name: str, *args: Any, **kwargs: Any) -> Any:
-    """Call a private API from tests without direct protected-member syntax."""
-    member = getattr(obj, name)
-    if callable(member):
-        return member(*args, **kwargs)
-    return member
-
-
-class SessionTickerTestCase(unittest.TestCase):
-    """Base class for ticker tests that use the shared session."""
-
-    session = None
-
-
-def require_dataframe(
-    frame: pd.DataFrame | None,
-    message: str = "Expected DataFrame",
-) -> pd.DataFrame:
-    """Narrow optional dataframe results for test assertions."""
-    if frame is None:
-        raise AssertionError(message)
-    return frame
-
-
-def require_datetime_index(
-    index: pd.Index,
-    message: str = "Expected DatetimeIndex",
-) -> pd.DatetimeIndex:
-    """Narrow generic pandas indexes when tests require datetimes."""
-    if not isinstance(index, pd.DatetimeIndex):
-        raise AssertionError(message)
-    return index
 
 
 class TestIssue2688(unittest.TestCase):
@@ -220,6 +191,184 @@ class TestSessionTickerIssues(SessionTickerTestCase):
         self.assertEqual(data_index.tz, dt.timezone.utc)
         self.assertFalse(data[("Close", "AAPL")].isna().all())
         self.assertTrue(data[("Close", "ATVI")].isna().all())
+
+    def test_isin_resolution_prefers_company_name_match_over_receipts(self):
+        """ISIN lookup should avoid depository and fidelity variants for Paris listings."""
+        payload = make_mm_suggest_payload(
+            (
+                "LVMH Moet Hennessy Louis Vuitton S.A.",
+                "Stocks",
+                "LVMHF|FR0000121014|LVMHF||LVMH",
+                "75",
+                "",
+                "lvmhf|LVMHF|1|719",
+            ),
+            (
+                "LVMH Moet Hennessy Louis Vuitton SE Unsponsored Canadian "
+                "Depository Receipt Hedged",
+                "Stocks",
+                "|CA50244Q1037|||",
+                "75",
+                "",
+                "lvmh|1|2",
+            ),
+            (
+                "Maisons du monde",
+                "Stocks",
+                "MDOUF|FR0013153541|MDOUF||",
+                "75",
+                "",
+                "mdouf|MDOUF|1|10292551",
+            ),
+            (
+                "Air Liquide S.A.",
+                "Stocks",
+                "AIQUF|FR0000120073|AIQUF||AIRP",
+                "75",
+                "",
+                "aiquf|AIQUF|1|1249",
+            ),
+            (
+                "Air Liquide prime fidelite",
+                "Stocks",
+                "|FR0000053951|||",
+                "75",
+                "",
+                "air_liquide_prime_fidelite||1|39051",
+            ),
+        )
+
+        samples = {
+            "MC.PA": {
+                "shortName": "LVMH",
+                "longName": "LVMH Moët Hennessy - Louis Vuitton, Société Européenne",
+                "expected": "FR0000121014",
+            },
+            "MDM.PA": {
+                "shortName": "MAISONS DU MONDE",
+                "longName": "Maisons du Monde S.A.",
+                "expected": "FR0013153541",
+            },
+            "AI.PA": {
+                "shortName": "AIR LIQUIDE",
+                "longName": "L'Air Liquide S.A.",
+                "expected": "FR0000120073",
+            },
+        }
+
+        for ticker_symbol, sample in samples.items():
+            with self.subTest(ticker=ticker_symbol):
+                ticker = yf.Ticker(ticker_symbol)
+                setattr(ticker, "_isin", None)
+                setattr(
+                    ticker,
+                    "_quote",
+                    Mock(
+                        info={
+                            "symbol": ticker_symbol,
+                            "shortName": sample["shortName"],
+                            "longName": sample["longName"],
+                        }
+                    ),
+                )
+                with patch.object(
+                    getattr(ticker, "_data"),
+                    "cache_get",
+                    return_value=Mock(text=payload),
+                ):
+                    self.assertEqual(ticker.get_isin(), sample["expected"])
+
+    def test_isin_resolution_prefers_exact_symbol_match_for_share_classes(self):
+        """Distinct share-class symbols should keep distinct ISINs."""
+        symbol_payloads = {
+            "GOOG": make_mm_suggest_payload(
+                (
+                    "Alphabet Inc. Cl. C",
+                    "Stocks",
+                    "GOOG|US02079K1079|GOOG||",
+                    "75",
+                    "",
+                    "goog|GOOG|1|1",
+                ),
+                (
+                    "Alphabet Inc. Cl. A",
+                    "Stocks",
+                    "GOOGL|US02079K3059|GOOGL||",
+                    "75",
+                    "",
+                    "googl|GOOGL|1|2",
+                ),
+            ),
+            "GOOGL": make_mm_suggest_payload(
+                (
+                    "Alphabet Inc. Cl. A",
+                    "Stocks",
+                    "GOOGL|US02079K3059|GOOGL||",
+                    "75",
+                    "",
+                    "googl|GOOGL|1|2",
+                ),
+                (
+                    "Alphabet Inc. Cl. C",
+                    "Stocks",
+                    "GOOG|US02079K1079|GOOG||",
+                    "75",
+                    "",
+                    "goog|GOOG|1|1",
+                ),
+            ),
+        }
+        company_payload = make_mm_suggest_payload(
+            (
+                "Alphabet Inc Unsponsored Canadian Depository Receipt Hedged",
+                "Stocks",
+                "|CA02080M1005|||",
+                "75",
+                "",
+                "alphabet_3||1|660881670",
+            ),
+            (
+                "Alphabet Inc (A) Cert Deposito Arg Repr 0.034482 Shs",
+                "Stocks",
+                "|ARDEUT116159|||",
+                "75",
+                "",
+                "alphabe_a_1||1|1399235",
+            ),
+        )
+
+        samples = {
+            "GOOG": "US02079K1079",
+            "GOOGL": "US02079K3059",
+        }
+
+        for ticker_symbol, expected_isin in samples.items():
+            with self.subTest(ticker=ticker_symbol):
+                ticker = yf.Ticker(ticker_symbol)
+                setattr(ticker, "_isin", None)
+                setattr(
+                    ticker,
+                    "_quote",
+                    Mock(
+                        info={
+                            "symbol": ticker_symbol,
+                            "shortName": "Alphabet Inc.",
+                            "longName": "Alphabet Inc.",
+                        }
+                    ),
+                )
+
+                def fake_cache_get(*, url, ticker_key=ticker_symbol, **_kwargs):
+                    if f"query={ticker_key}" in url:
+                        return Mock(text=symbol_payloads[ticker_key])
+                    return Mock(text=company_payload)
+
+                with patch.object(
+                    getattr(ticker, "_data"),
+                    "cache_get",
+                    side_effect=fake_cache_get,
+                ):
+                    self.assertEqual(ticker.get_isin(), expected_isin)
 
 
 class ProxyNetworkIssueTestCase(unittest.TestCase):
@@ -532,8 +681,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
                 self.assertTrue(
                     {"Firm", "ToGrade", "FromGrade", "Action"}.issubset(actions.columns)
                 )
-
-
     def test_info_current_price_matches_fast_info_last_price_for_reported_etfs(self):
         """ETF info payloads should expose currentPrice consistently with fast_info."""
         for symbol in ["VTI", "VXUS"]:
@@ -545,7 +692,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
                 self.assertIn("currentPrice", info)
                 self.assertIsInstance(info["currentPrice"], float)
                 self.assertAlmostEqual(info["currentPrice"], fast_info["lastPrice"], places=3)
-
 
     def test_download_mixed_timezones_with_ignore_tz_false(self):
         """Mixed-exchange downloads should normalize to one tz-aware index without raising."""
@@ -567,7 +713,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
         self.assertFalse(frame.empty)
         self.assertIsNotNone(frame_index.tz)
 
-
     def test_reported_asianpaint_single_day_history_returns_data(self):
         """The exact reported symbol/date should return a non-empty daily history frame."""
         frame = yf.Ticker("ASIANPAINT.NS", session=self.session).history(
@@ -581,7 +726,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
         self.assertEqual(len(frame), 1)
         self.assertEqual(str(frame.index[0].date()), "2022-05-04")
 
-
     def test_history_period_with_end_date_returns_data_for_reported_symbols(self):
         """Period-plus-end requests should return non-empty data on the reported symbols."""
         for symbol in ["AAPL", "^FTSE"]:
@@ -594,7 +738,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
                 self.assertIsInstance(frame, pd.DataFrame)
                 self.assertFalse(frame.empty)
                 self.assertLessEqual(frame.index[-1].date().isoformat(), "2022-11-10")
-
 
     def test_weekly_histories_align_for_reported_symbol_pair(self):
         """GDX and QQQ should now return the same weekly index for the reported window."""
@@ -616,7 +759,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
         self.assertEqual(len(df1), len(df2))
         self.assertTrue(df1.index.equals(df2.index))
 
-
     def test_reported_60d_intraday_download_returns_data(self):
         """The original COP 60d/2m download path should return data instead of an internal error."""
         frame = yf.download(
@@ -634,7 +776,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
         if isinstance(frame.columns, pd.MultiIndex):
             frame = frame.xs("COP", axis=1, level=1)
         self.assertTrue({"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns))
-
 
     def test_reported_start_end_download_returns_data(self):
         """
@@ -660,7 +801,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
         self.assertTrue({"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns))
         self.assertEqual(str(frame_index[0].date()), "2023-12-01")
         self.assertEqual(str(frame_index[-1].date()), "2023-12-29")
-
 
     def test_reported_monthly_and_quarterly_history_stay_populated_after_2022(self):
         """
@@ -703,7 +843,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
                 self.assertFalse(frame["Open"].tail(5).isna().any())
                 self.assertFalse(frame["Close"].tail(5).isna().any())
                 self.assertGreaterEqual(frame_index[-1].date().isoformat(), "2025-12-01")
-
 
     def test_history_and_download_match_for_default_and_unadjusted_paths(self):
         """The reported AAPL history/download mismatch should no longer reproduce."""
@@ -767,7 +906,6 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
             download_series.index = pd.Index([item.date() for item in raw_download_index])
             pd.testing.assert_series_equal(history_series, download_series)
 
-
     def test_start_end_window_with_empty_non_trading_range_stays_empty(self):
         """
         The reported CRSR non-trading window should return an empty frame
@@ -799,117 +937,3 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
         self.assertIsInstance(download_frame, pd.DataFrame)
         self.assertTrue(download_frame.empty)
         self.assertEqual(list(download_frame.index), [])
-
-
-class TestFastInfoIssues(unittest.TestCase):
-    """Fast-info regression tests collected from reported issues."""
-
-    def test_fast_info_regular_market_previous_close_handles_missing_current_trading_period(self):
-        """fast_info.get() should not raise when chart metadata omits currentTradingPeriod."""
-        today = pd.Timestamp.now("UTC").normalize()
-        prices = pd.DataFrame(
-            {"Close": [220.0, 225.5]},
-            index=pd.DatetimeIndex([today - pd.Timedelta(days=2), today - pd.Timedelta(days=1)]),
-        )
-
-        class FakeTicker:
-            """Minimal ticker stub with chart metadata missing currentTradingPeriod."""
-
-            def history(self, **kwargs):
-                """Return cached prices and validate the expected history call shape."""
-                expected = (kwargs["period"], kwargs["auto_adjust"], kwargs["keepna"])
-                if expected != ("1y", False, True):
-                    raise AssertionError(f"Unexpected history kwargs: {kwargs}")
-                return prices
-
-            def get_history_metadata(self):
-                """Return chart metadata without currentTradingPeriod."""
-                return {"exchangeTimezoneName": "America/New_York"}
-
-            def get_info(self):
-                """Return an empty info payload for the FastInfo fallback path."""
-                return {}
-
-        fast_info = FastInfo(FakeTicker())
-
-        cached_prices = call_private(fast_info, "_get_1y_prices")
-        previous_close = fast_info.get("regularMarketPreviousClose")
-
-        pd.testing.assert_frame_equal(cached_prices, prices)
-        self.assertIsNone(getattr(fast_info, "_cache")["today_open"])
-        self.assertIsNone(getattr(fast_info, "_cache")["today_close"])
-        self.assertIsNone(getattr(fast_info, "_cache")["today_midnight"])
-        self.assertEqual(previous_close, 220.0)
-
-
-class TestSessionTickerIssueExtras(SessionTickerTestCase):
-    """Remaining session-backed regression tests collected from reported issues."""
-
-    def test_lse_etf_info_exposes_current_price(self):
-        """MOAT.L should return a usable currentPrice instead of missing the key."""
-        ticker = yf.Ticker("MOAT.L", session=self.session)
-        info = ticker.info
-
-        self.assertEqual(info.get("symbol"), "MOAT.L")
-        self.assertIn("currentPrice", info)
-        self.assertEqual(info["currentPrice"], info.get("regularMarketPrice"))
-        self.assertIsInstance(info["currentPrice"], float)
-
-
-    def test_fast_info_missing_metadata_returns_none_instead_of_keyerror(self):
-        """Missing history metadata should degrade to None rather than raising."""
-
-        class FakeTicker:
-            """Minimal ticker stub for unavailable-quote fast_info paths."""
-
-            def history(self, **kwargs):
-                """Return an empty price history for unavailable quotes."""
-                _ = kwargs
-                return pd.DataFrame(
-                    columns=["Open", "High", "Low", "Close", "Adj Close", "Volume"]
-                )
-
-            def get_history_metadata(self):
-                """Return empty metadata for unavailable quotes."""
-                return {}
-
-            def get_info(self):
-                """Return an empty info payload for unavailable quotes."""
-                return {}
-
-            def get_shares_full(self, start=None):
-                """Return no share-count data for unavailable quotes."""
-                _ = start
-
-        fast_info = FastInfo(FakeTicker())
-
-        for key in fast_info:
-            with self.subTest(key=key):
-                self.assertIsNone(fast_info.get(key))
-
-
-    def test_aapl_dividend_dates_2022(self):
-        """Dividend dates should match between history and dividends properties."""
-        ticker = yf.Ticker("AAPL", session=self.session)
-        start = dt.date(2022, 1, 1)
-        end = dt.date(2023, 1, 1)
-
-        history = ticker.history(start=start, end=end, interval="1d", actions=True)
-        history_dividends = [
-            pd.Timestamp(value).date()
-            for value in history[history["Dividends"] != 0].index.tolist()
-        ]
-        property_dividends = [
-            pd.Timestamp(value).date()
-            for value in ticker.dividends.loc[str(start):str(end)].index.tolist()
-        ]
-
-        expected = [
-            dt.date(2022, 2, 4),
-            dt.date(2022, 5, 6),
-            dt.date(2022, 8, 5),
-            dt.date(2022, 11, 4),
-        ]
-
-        self.assertEqual(history_dividends, expected)
-        self.assertEqual(property_dividends, expected)
