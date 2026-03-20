@@ -1,6 +1,7 @@
 """Issue-specific verification tests for upstream close candidates."""
 
 import datetime as dt
+from typing import cast
 import unittest
 import warnings
 from unittest.mock import Mock, patch
@@ -8,16 +9,17 @@ from unittest.mock import Mock, patch
 import pandas as pd
 from curl_cffi import requests
 import yfinance.client as yf
-from tests.close_candidates_support import (
+from yfinance.config import YF_CONFIG
+from yfinance.data import YfData
+from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
+
+from ..close_candidates_support import (
     SessionTickerTestCase,
     call_private,
     make_mm_suggest_payload,
     require_dataframe,
     require_datetime_index,
 )
-from yfinance.config import YF_CONFIG
-from yfinance.data import YfData
-from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
 
 
 class TestIssue2688(unittest.TestCase):
@@ -146,6 +148,76 @@ class TestIssue1924(unittest.TestCase):
 
 class TestSessionTickerIssues(SessionTickerTestCase):
     """Session-backed regression tests collected from reported issues."""
+
+    def test_large_multi_download_keeps_valid_last_row_populated(self):
+        """Large downloads with failed symbols should not blank the final valid row."""
+        tickers = [
+            "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "BRK-B",
+            "LLY", "AVGO", "JPM", "V", "MA", "XOM", "COST", "WMT", "NFLX",
+            "HD", "PG", "JNJ", "ABBV", "BAC", "KO", "CVX", "MRK", "ORCL",
+            "AMD", "PEP", "TMO", "CSCO", "ADBE", "MCD", "CRM", "LIN", "ACN",
+            "ABT", "QCOM", "INTU", "TXN", "NOW", "IBM", "AMAT", "GE", "CAT",
+            "SPGI", "PLD", "GS", "RTX", "BKNG", "ISRG", "BLK", "PGR", "SYK",
+            "AXP", "AMGN", "DE", "TJX", "MDT", "GILD", "MMC", "UNP", "LOW",
+            "HON", "LRCX", "ADI", "ETN", "VRTX", "MU", "SCHW", "CB", "ANET",
+            "COP", "PANW", "TMUS", "KLAC", "INTC", "CMCSA", "UPS", "SO", "DHR",
+            "BA", "NKE", "ELV", "C", "ADP", "MO", "ICE", "MMM", "DUK", "MCO",
+            "WM", "PH", "CVS", "PYPL", "AON", "FI", "WFC", "MDLZ", "USB", "CSX",
+            "PNC", "BDX", "ZTS", "REGN", "FDX", "EW", "SLB", "APD", "SHW", "EOG",
+            "CL", "ITW", "BSX", "GD", "EMR", "AEP", "MAR", "MCK", "TGT", "CI",
+            "ROP", "HCA", "SPY", "QQQ", "IWM", "DIA", "XLF", "XLE", "XLK", "XLV",
+            "XLI", "XLP", "XLU", "XLY", "XLB", "XLRE", "ARKK", "GLD", "TLT", "IEF",
+            "EFA", "EEM", "FXI", "KWEB", "INVALIDZZZ", "ATVI", "DELISTEDXYZ",
+        ]
+        end_date = dt.date.today()
+        start_date = end_date - dt.timedelta(days=384)
+
+        bulk = yf.download(
+            tickers,
+            start=start_date,
+            end=end_date,
+            group_by="ticker",
+            auto_adjust=False,
+            progress=False,
+            threads=True,
+            session=self.session,
+        )
+        bulk = require_dataframe(bulk, "bulk yf.download() returned None")
+
+        single = yf.download(
+            "AAPL",
+            start=start_date,
+            end=end_date,
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+            session=self.session,
+        )
+        single = require_dataframe(single, "single yf.download() returned None")
+        single_index = require_datetime_index(single.index)
+        self.assertFalse(single.empty)
+
+        aapl = cast(
+            pd.DataFrame,
+            bulk["AAPL"] if isinstance(bulk.columns, pd.MultiIndex) else bulk,
+        )
+        last_date = single_index[-1]
+
+        self.assertIn(last_date, aapl.index)
+        self.assertFalse(aapl.loc[last_date].isna().all())
+        self.assertFalse(single.loc[last_date].isna().all())
+
+        aapl_row = cast(pd.Series, aapl.loc[last_date])
+        single_row = cast(
+            pd.Series,
+            single.xs("AAPL", axis=1, level=1).loc[last_date].reindex(aapl_row.index),
+        )
+        pd.testing.assert_series_equal(
+            aapl_row,
+            single_row,
+            check_names=False,
+            check_dtype=False,
+        )
 
     def test_download_does_not_emit_utcfromtimestamp_warning(self):
         """Download should not emit utcfromtimestamp deprecation warnings."""
