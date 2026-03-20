@@ -31,8 +31,8 @@ This file tracks whether the large refactor in this fork appears to resolve any 
 
 These counts apply to the full tracker across all sections, not just the working list.
 
-- resolved in fork: 46
-- needs reproduction: 8
+- resolved in fork: 47
+- needs reproduction: 7
 - not resolved: 19
 - not addressed: 7
 - invalid usage: 5
@@ -41,8 +41,8 @@ These counts apply to the full tracker across all sections, not just the working
 ## Verification Tests
 
 - issue-specific verification modules: `tests/issues/test.py`, `tests/issues/test_history.py`, `tests/issues/test_fast_info.py`, `tests/issues/test_mocked.py`, `tests/issues/test_mocked_download.py`
-- current result: `60 passed, 93 subtests passed in 5.05s`
-- confirmed by tests so far: `#2699`, `#2688`, `#2526`, `#2500`, `#2495`, `#2463`, `#2426`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`, `#2353`, `#2327`
+- current result: `63 passed, 93 subtests passed in 25.55s`
+- confirmed by tests so far: `#2699`, `#2688`, `#2526`, `#2500`, `#2495`, `#2463`, `#2426`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`, `#2353`, `#2327`, `#2261`
 
 ## Confirmed Resolved
 
@@ -68,6 +68,7 @@ These counts apply to the full tracker across all sections, not just the working
 | [#2350](https://github.com/ranaroussi/yfinance/issues/2350) | TypeError: 'str' object is not callable | network/proxy | Verified with a deterministic mocked chart response. The simplified public repro `yf.Ticker('GOOGL').history(auto_adjust=True).astype(float).round(3)` now succeeds on a normal chart payload and returns a populated adjusted-history DataFrame instead of raising `TypeError: 'str' object is not callable`. This path is now covered by an issue-specific regression test. | Covered by issue-specific verification tests. |
 | [#2333](https://github.com/ranaroussi/yfinance/issues/2333) | release unlocked lock | network/proxy | The cookie-strategy fallback path no longer poisons the shared cookie lock. This is covered by an issue-specific regression that forces the CSRF crumb fetch to fail, verifies fallback to the basic strategy succeeds, and confirms the shared `_cookie_lock` remains usable for a second request instead of breaking subsequent calls with `release unlocked lock` / unlocked-lock failures. | Covered by issue-specific verification tests. |
 | [#2327](https://github.com/ranaroussi/yfinance/issues/2327) | Yahoo data changed from EST to UTC? | history/timezone | `_finalize_history_df` in `fetch.py` now converts the intraday index to UTC before returning, so `Ticker.history()` with any intraday interval produces the same UTC `DatetimeIndex` that `download()` has always produced. The first regular-session SPY bar for 2025-02-14 is `2025-02-14 14:30:00+00:00` from both paths. Daily/weekly data remains exchange-local-midnight to avoid date-shifting on non-UTC exchanges. | Covered by three issue-specific mocked regression tests: `history()` UTC index, `download()` UTC index, and identical timestamp alignment between the two paths. |
+| [#2261](https://github.com/ranaroussi/yfinance/issues/2261) | Unit test action can fail to fetch | network/test | The original failure was CI fetch flakiness: the live `earnings_dates` test path against `finance.yahoo.com/calendar/earnings` could fail with a JSON-decode error when Yahoo returned an unexpected response. Three deterministic mocked regressions now replace the live-network dependency: (1) a well-formed HTML earnings table is correctly parsed into a tz-aware indexed DataFrame with the expected columns; (2) repeated `get_earnings_dates(limit=12)` calls return the same cached object without re-fetching; (3) a page with no `<table>` element returns `None` instead of crashing. The HTML scrape path is now exercised without any network dependency. | Covered by issue-specific verification tests. |
 | [#2146](https://github.com/ranaroussi/yfinance/issues/2146) | Fail to download index data through proxy setting | proxy/network | Direct cookie/consent requests now resync the shared session proxy from config, and the `^GSPC` timezone bootstrap path is covered by issue-specific verification tests. | Covered by issue-specific verification tests. |
 | [#1957](https://github.com/ranaroussi/yfinance/issues/1957) | 404 Client Error (only on certain tickers - which are still active/not delisted) | quote/info | Verified against the originally reported ticker set: `upgrades_downgrades` now returns populated DataFrames for the symbols that previously raised 404-style failures. | Covered by issue-specific verification tests. |
 | [#1924](https://github.com/ranaroussi/yfinance/issues/1924) | fc.yahoo.com on port 443 (https) is not reachable | network/cookies | Cookie fetch now handles fc.yahoo.com DNS failure and fallback cleanly. The issue-specific tests cover DNS, timeout, and connection failures in the basic cookie flow and verify fallback to the alternate CSRF strategy. | Covered by issue-specific verification tests. |
@@ -96,11 +97,8 @@ These counts apply to the full tracker across all sections, not just the working
 | [#515](https://github.com/ranaroussi/yfinance/issues/515) | Last row of dataframe becomes NaN upon downloading large list of stocks | download/dataframe-shape | Verified on a current large daily multi-download with more than 100 valid tickers plus several failed downloads. The final `AAPL` row remains populated and matches the single-ticker download exactly on the same date instead of turning into an all-NaN row. | Covered by issue-specific verification tests. |
 
 
-## Confirmed but untested
-
-These issues look resolved in the fork based on direct code review, targeted live verification, or prior changelog confirmation, but they do not yet have dedicated issue-specific regression coverage under `tests/issues`.
-
-None currently.
+## Confirmed but untested.
+None at the moment
 
 
 ## Test during pre-market hours
@@ -115,7 +113,6 @@ None currently.
 
 | Issue | Title | Updated | Area | Status | Confidence | Notes | Next step |
 |---|---|---|---|---|---|---|---|
-| [#2261](https://github.com/ranaroussi/yfinance/issues/2261) | Unit test action can fail to fetch | 2025-02-17 | network/proxy | needs reproduction | low | Network/proxy stack changed, but environment-dependent issues need targeted reproduction. | Reproduce in the original failing environment. |
 | [#2156](https://github.com/ranaroussi/yfinance/issues/2156) | session cache not working with start param | 2024-11-27 | cache/session | not resolved | high | Same underlying limitation as request_cache support; custom cached sessions are not supported. | Leave open; would require supported caching design. |
 | [#2155](https://github.com/ranaroussi/yfinance/issues/2155) | Wrong time stamp for 1h time frame for versions after 0.2.44 | 2026-03-20 | history/timezone | not resolved | high | The reporter expected exchange-local timestamps to be restored; this fork standardizes on UTC instead. `yf.download('AAPL', period='1mo', interval='1h')` returns UTC, and `Ticker.history()` now returns the same UTC intraday index. The prior EST/EDT-style output will not be restored. | Treat as a documentation/expectation mismatch rather than a bug once UTC is the documented standard. |
 | [#2118](https://github.com/ranaroussi/yfinance/issues/2118) | AttributeError: module 'pandas._libs.properties' has no attribute 'tz' | 2024-12-07 | compatibility/pandas | not resolved | medium | No direct evidence for this pandas internals compatibility issue. | Leave open unless reproduced fixed. |
