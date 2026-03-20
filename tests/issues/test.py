@@ -24,6 +24,25 @@ from ..close_candidates_support import (
 class TestSessionTickerIssues(SessionTickerTestCase):
     """Session-backed regression tests collected from reported issues."""
 
+    def test_indian_price_to_book_matches_price_over_book_value(self):
+        """Indian ticker info should not mix a local price with a mismatched book value."""
+        symbols = ["INFY.NS", "TCS.NS", "HDFCBANK.NS"]
+
+        for symbol in symbols:
+            with self.subTest(symbol=symbol):
+                info = yf.Ticker(symbol, session=self.session).info
+                book_value = info.get("bookValue")
+                current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+                price_to_book = info.get("priceToBook")
+
+                if book_value is None or current_price is None or price_to_book is None:
+                    self.fail("Ticker info missing required price-to-book fields")
+
+                self.assertNotEqual(book_value, 0)
+
+                calculated_ratio = current_price / book_value
+                self.assertAlmostEqual(price_to_book, calculated_ratio, places=5)
+
     def test_option_expirations_remain_fetchable_across_repeated_passes(self):
         """Listed expirations should remain fetchable on repeated option-chain requests."""
         ticker = yf.Ticker("GILD", session=self.session)
