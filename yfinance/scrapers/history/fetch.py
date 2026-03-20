@@ -726,6 +726,8 @@ def _finalize_history_df(state: _FetchState, df: pd.DataFrame) -> pd.DataFrame:
             state.interval_user,
             state.period_user,
         )
+    if state.intraday and pd.DatetimeIndex(df.index).tz is not None:
+        df.index = pd.DatetimeIndex(df.index).tz_convert("UTC")
     _log_ohlc_range(state, "yfinance returning OHLC", df)
     state.history_obj.clear_reconstruct_start_interval(state.interval)
     return df

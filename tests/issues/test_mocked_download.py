@@ -1,6 +1,7 @@
 """Additional mocked issue-specific verification tests for upstream close candidates."""
 
 import concurrent.futures
+import datetime
 import json
 import threading
 import time
@@ -352,4 +353,156 @@ class TestIssue2353(unittest.TestCase):
         self.assertFalse(
             qqq_open.isna().any(),
             "QQQ must not expose the partial bar with NaN OHLC",
+        )
+
+
+class TestIssue2327(unittest.TestCase):
+    """Verify download() and history() both return UTC-indexed intraday frames."""
+
+    # 2025-02-14 regular NYSE session: 14:30, 15:30, 16:30 UTC
+    _TIMESTAMPS = [1739543400, 1739547000, 1739550600]
+    _CLOSES = [595.0, 597.0, 596.0]
+
+    def _make_intraday_payload(self, symbol):
+        return {
+            "chart": {
+                "result": [
+                    {
+                        "meta": {
+                            "symbol": symbol,
+                            "currency": "USD",
+                            "instrumentType": "EQUITY",
+                            "exchangeTimezoneName": "America/New_York",
+                            "validRanges": ["1h", "1d"],
+                        },
+                        "timestamp": self._TIMESTAMPS,
+                        "indicators": {
+                            "quote": [
+                                {
+                                    "open": self._CLOSES,
+                                    "high": self._CLOSES,
+                                    "low": self._CLOSES,
+                                    "close": self._CLOSES,
+                                    "volume": [1_000_000] * 3,
+                                }
+                            ],
+                            "adjclose": [{"adjclose": self._CLOSES}],
+                        },
+                    }
+                ],
+                "error": None,
+            }
+        }
+
+    def test_history_intraday_returns_utc_index(self):
+        """Ticker.history() with interval='1h' must return a UTC DatetimeIndex."""
+        payload = self._make_intraday_payload("SPY")
+        ticker = yf.Ticker("SPY")
+        with patch.object(ticker, "_get_ticker_tz", return_value="America/New_York"):
+            history = call_private(ticker, "_lazy_load_price_history")
+        client = history.get_data_client()
+        response = _make_response(payload)
+        with (
+            patch.object(client, "get", return_value=response),
+            patch.object(client, "cache_get", return_value=response),
+        ):
+            data = history.history(
+                start="2025-02-08",
+                end="2025-02-22",
+                interval="1h",
+                auto_adjust=False,
+            )
+
+        data = require_dataframe(data, "Ticker.history() returned None")
+        idx = pd.DatetimeIndex(data.index)
+        self.assertEqual(idx.tz, datetime.timezone.utc)
+        self.assertEqual(idx[0], pd.Timestamp("2025-02-14 14:30:00", tz="UTC"))
+
+    def test_download_intraday_returns_utc_index(self):
+        """yf.download() with interval='1h' must return a UTC DatetimeIndex."""
+        payload = self._make_intraday_payload("SPY")
+
+        def fake_get_tz(data_client, symbol, timeout):
+            del data_client, symbol, timeout
+            return "America/New_York"
+
+        def fake_get(_data, url, params=None, timeout=30):
+            del _data, timeout, params
+            if url.endswith("/SPY"):
+                return _make_response(payload)
+            raise AssertionError(f"Unexpected url: {url}")
+
+        with (
+            patch.object(yf_download_worker, "get_ticker_tz", side_effect=fake_get_tz),
+            patch.object(YfData, "get", autospec=True, side_effect=fake_get),
+        ):
+            frame = yf.download(
+                "SPY",
+                start="2025-02-08",
+                end="2025-02-22",
+                interval="1h",
+                auto_adjust=False,
+                progress=False,
+                threads=False,
+                multi_level_index=False,
+            )
+
+        frame = require_dataframe(frame, "yf.download() returned None")
+        idx = pd.DatetimeIndex(frame.index)
+        self.assertEqual(idx.tz, datetime.timezone.utc)
+        self.assertEqual(idx[0], pd.Timestamp("2025-02-14 14:30:00", tz="UTC"))
+
+    def test_history_and_download_intraday_have_identical_timestamps(self):
+        """download() and history() must expose the same UTC timestamps for the same window."""
+        payload = self._make_intraday_payload("SPY")
+
+        ticker = yf.Ticker("SPY")
+        with patch.object(ticker, "_get_ticker_tz", return_value="America/New_York"):
+            history_obj = call_private(ticker, "_lazy_load_price_history")
+        client = history_obj.get_data_client()
+        response = _make_response(payload)
+        with (
+            patch.object(client, "get", return_value=response),
+            patch.object(client, "cache_get", return_value=response),
+        ):
+            history_data = history_obj.history(
+                start="2025-02-08",
+                end="2025-02-22",
+                interval="1h",
+                auto_adjust=False,
+            )
+
+        def fake_get_tz(data_client, symbol, timeout):
+            del data_client, symbol, timeout
+            return "America/New_York"
+
+        def fake_get(_data, url, params=None, timeout=30):
+            del _data, url, timeout, params
+            return _make_response(payload)
+
+        with (
+            patch.object(yf_download_worker, "get_ticker_tz", side_effect=fake_get_tz),
+            patch.object(YfData, "get", autospec=True, side_effect=fake_get),
+        ):
+            download_data = yf.download(
+                "SPY",
+                start="2025-02-08",
+                end="2025-02-22",
+                interval="1h",
+                auto_adjust=False,
+                progress=False,
+                threads=False,
+                multi_level_index=False,
+            )
+
+        history_data = require_dataframe(history_data, "history() returned None")
+        download_data = require_dataframe(download_data, "download() returned None")
+
+        history_idx = pd.DatetimeIndex(history_data.index)
+        download_idx = pd.DatetimeIndex(download_data.index)
+        self.assertEqual(history_idx.tz, datetime.timezone.utc)
+        self.assertEqual(download_idx.tz, datetime.timezone.utc)
+        self.assertTrue(
+            history_idx.equals(download_idx),
+            "history() and download() must produce identical UTC timestamps",
         )
