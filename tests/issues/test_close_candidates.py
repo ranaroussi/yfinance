@@ -1,18 +1,52 @@
 """Issue-specific verification tests for upstream close candidates."""
 
 import datetime as dt
+from typing import Any
 import unittest
 import warnings
 from unittest.mock import Mock, patch
 
 import pandas as pd
 from curl_cffi import requests
-
-from tests.ticker_support import SessionTickerTestCase, call_private, yf
+import yfinance.client as yf
 from yfinance.config import YF_CONFIG
 from yfinance.data import YfData
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
 from yfinance.scrapers.quote import FastInfo
+
+
+def call_private(obj: Any, name: str, *args: Any, **kwargs: Any) -> Any:
+    """Call a private API from tests without direct protected-member syntax."""
+    member = getattr(obj, name)
+    if callable(member):
+        return member(*args, **kwargs)
+    return member
+
+
+class SessionTickerTestCase(unittest.TestCase):
+    """Base class for ticker tests that use the shared session."""
+
+    session = None
+
+
+def require_dataframe(
+    frame: pd.DataFrame | None,
+    message: str = "Expected DataFrame",
+) -> pd.DataFrame:
+    """Narrow optional dataframe results for test assertions."""
+    if frame is None:
+        raise AssertionError(message)
+    return frame
+
+
+def require_datetime_index(
+    index: pd.Index,
+    message: str = "Expected DatetimeIndex",
+) -> pd.DatetimeIndex:
+    """Narrow generic pandas indexes when tests require datetimes."""
+    if not isinstance(index, pd.DatetimeIndex):
+        raise AssertionError(message)
+    return index
 
 
 class TestIssue2688(unittest.TestCase):
@@ -139,8 +173,8 @@ class TestIssue1924(unittest.TestCase):
         self.assertEqual(strategy, "csrf")
 
 
-class TestIssue1801(SessionTickerTestCase):
-    """Verify download no longer emits utcfromtimestamp deprecation warnings."""
+class TestSessionTickerIssues(SessionTickerTestCase):
+    """Session-backed regression tests collected from reported issues."""
 
     def test_download_does_not_emit_utcfromtimestamp_warning(self):
         """Download should not emit utcfromtimestamp deprecation warnings."""
@@ -165,10 +199,6 @@ class TestIssue1801(SessionTickerTestCase):
         ]
         self.assertEqual(matching, [])
 
-
-class TestIssue1382(unittest.TestCase):
-    """Verify mixed empty and populated downloads keep a datetime index."""
-
     def test_download_with_one_empty_ticker_keeps_datetime_index(self):
         """A mixed download should not degrade the combined index to object dtype."""
         data = yf.download(
@@ -181,11 +211,13 @@ class TestIssue1382(unittest.TestCase):
             progress=False,
             threads=True,
         )
+        data = require_dataframe(data, "yf.download() returned None")
+        data_index = require_datetime_index(data.index)
 
         self.assertFalse(data.empty)
-        self.assertIsInstance(data.index, pd.DatetimeIndex)
-        self.assertEqual(str(data.index.dtype), "datetime64[s, UTC]")
-        self.assertEqual(data.index.tz, dt.timezone.utc)
+        self.assertIsInstance(data_index, pd.DatetimeIndex)
+        self.assertEqual(str(data_index.dtype), "datetime64[s, UTC]")
+        self.assertEqual(data_index.tz, dt.timezone.utc)
         self.assertFalse(data[("Close", "AAPL")].isna().all())
         self.assertTrue(data[("Close", "ATVI")].isna().all())
 
@@ -484,8 +516,8 @@ class TestIssue2500(ProxyNetworkIssueTestCase):
         )
 
 
-class TestIssue1957(SessionTickerTestCase):
-    """Verify upgrade/downgrade fetches no longer fail on reported active tickers."""
+class TestSessionTickerIssueScenarios(SessionTickerTestCase):
+    """Additional session-backed regression tests collected from reported issues."""
 
     def test_reported_404_tickers_return_upgrade_downgrade_data(self):
         """Reported active tickers should not raise 404-style failures anymore."""
@@ -502,9 +534,6 @@ class TestIssue1957(SessionTickerTestCase):
                 )
 
 
-class TestIssue1518(SessionTickerTestCase):
-    """Verify info exposes the last price for ETF-style symbols."""
-
     def test_info_current_price_matches_fast_info_last_price_for_reported_etfs(self):
         """ETF info payloads should expose currentPrice consistently with fast_info."""
         for symbol in ["VTI", "VXUS"]:
@@ -517,9 +546,6 @@ class TestIssue1518(SessionTickerTestCase):
                 self.assertIsInstance(info["currentPrice"], float)
                 self.assertAlmostEqual(info["currentPrice"], fast_info["lastPrice"], places=3)
 
-
-class TestIssue1820(SessionTickerTestCase):
-    """Verify mixed-timezone downloads work when ignore_tz is False."""
 
     def test_download_mixed_timezones_with_ignore_tz_false(self):
         """Mixed-exchange downloads should normalize to one tz-aware index without raising."""
@@ -534,14 +560,13 @@ class TestIssue1820(SessionTickerTestCase):
             threads=False,
             session=self.session,
         )
+        frame = require_dataframe(frame, "yf.download() returned None")
+        frame_index = require_datetime_index(frame.index)
 
         self.assertIsInstance(frame, pd.DataFrame)
         self.assertFalse(frame.empty)
-        self.assertIsNotNone(pd.DatetimeIndex(frame.index).tz)
+        self.assertIsNotNone(frame_index.tz)
 
-
-class TestIssue2044(SessionTickerTestCase):
-    """Verify reported ASIANPAINT.NS one-day history fetch no longer fails."""
 
     def test_reported_asianpaint_single_day_history_returns_data(self):
         """The exact reported symbol/date should return a non-empty daily history frame."""
@@ -557,9 +582,6 @@ class TestIssue2044(SessionTickerTestCase):
         self.assertEqual(str(frame.index[0].date()), "2022-05-04")
 
 
-class TestIssue1115(SessionTickerTestCase):
-    """Verify history(period=..., end=...) returns bounded data instead of empty output."""
-
     def test_history_period_with_end_date_returns_data_for_reported_symbols(self):
         """Period-plus-end requests should return non-empty data on the reported symbols."""
         for symbol in ["AAPL", "^FTSE"]:
@@ -573,9 +595,6 @@ class TestIssue1115(SessionTickerTestCase):
                 self.assertFalse(frame.empty)
                 self.assertLessEqual(frame.index[-1].date().isoformat(), "2022-11-10")
 
-
-class TestIssue521(SessionTickerTestCase):
-    """Verify weekly histories line up for the original mismatch example."""
 
     def test_weekly_histories_align_for_reported_symbol_pair(self):
         """GDX and QQQ should now return the same weekly index for the reported window."""
@@ -598,9 +617,6 @@ class TestIssue521(SessionTickerTestCase):
         self.assertTrue(df1.index.equals(df2.index))
 
 
-class TestIssue1718(SessionTickerTestCase):
-    """Verify the reported 60d intraday download no longer fails internally."""
-
     def test_reported_60d_intraday_download_returns_data(self):
         """The original COP 60d/2m download path should return data instead of an internal error."""
         frame = yf.download(
@@ -611,6 +627,7 @@ class TestIssue1718(SessionTickerTestCase):
             threads=False,
             session=self.session,
         )
+        frame = require_dataframe(frame, "yf.download() returned None")
 
         self.assertIsInstance(frame, pd.DataFrame)
         self.assertFalse(frame.empty)
@@ -618,9 +635,6 @@ class TestIssue1718(SessionTickerTestCase):
             frame = frame.xs("COP", axis=1, level=1)
         self.assertTrue({"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns))
 
-
-class TestIssue1813(SessionTickerTestCase):
-    """Verify the reported start/end download path returns data."""
 
     def test_reported_start_end_download_returns_data(self):
         """
@@ -636,18 +650,17 @@ class TestIssue1813(SessionTickerTestCase):
             threads=False,
             session=self.session,
         )
+        frame = require_dataframe(frame, "yf.download() returned None")
+        frame_index = require_datetime_index(frame.index)
 
         self.assertIsInstance(frame, pd.DataFrame)
         self.assertFalse(frame.empty)
         if isinstance(frame.columns, pd.MultiIndex):
             frame = frame.xs("CL=F", axis=1, level=1)
         self.assertTrue({"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns))
-        self.assertEqual(str(frame.index[0].date()), "2023-12-01")
-        self.assertEqual(str(frame.index[-1].date()), "2023-12-29")
+        self.assertEqual(str(frame_index[0].date()), "2023-12-01")
+        self.assertEqual(str(frame_index[-1].date()), "2023-12-29")
 
-
-class TestIssue1895(SessionTickerTestCase):
-    """Verify long-range monthly and quarterly history no longer degrade after 2022."""
 
     def test_reported_monthly_and_quarterly_history_stay_populated_after_2022(self):
         """
@@ -673,6 +686,7 @@ class TestIssue1895(SessionTickerTestCase):
                         threads=False,
                         session=self.session,
                     )
+                    frame = require_dataframe(frame, "yf.download() returned None")
                     if isinstance(frame.columns, pd.MultiIndex):
                         frame = frame.xs("AAPL", axis=1, level=1)
                 else:
@@ -681,17 +695,15 @@ class TestIssue1895(SessionTickerTestCase):
                         interval=interval,
                         actions=True,
                     )
+                frame_index = require_datetime_index(frame.index)
 
                 self.assertIsInstance(frame, pd.DataFrame)
                 self.assertFalse(frame.empty)
                 self.assertTrue({"Open", "High", "Low", "Close"}.issubset(frame.columns))
                 self.assertFalse(frame["Open"].tail(5).isna().any())
                 self.assertFalse(frame["Close"].tail(5).isna().any())
-                self.assertGreaterEqual(frame.index[-1].date().isoformat(), "2025-12-01")
+                self.assertGreaterEqual(frame_index[-1].date().isoformat(), "2025-12-01")
 
-
-class TestIssue860(SessionTickerTestCase):
-    """Verify history and download expose consistent daily close semantics."""
 
     def test_history_and_download_match_for_default_and_unadjusted_paths(self):
         """The reported AAPL history/download mismatch should no longer reproduce."""
@@ -712,6 +724,7 @@ class TestIssue860(SessionTickerTestCase):
             threads=False,
             session=self.session,
         )
+        default_download = require_dataframe(default_download, "yf.download() returned None")
         if isinstance(default_download.columns, pd.MultiIndex):
             default_download = default_download.xs("AAPL", axis=1, level=1)
 
@@ -720,7 +733,8 @@ class TestIssue860(SessionTickerTestCase):
         default_history_close = default_history["Close"].copy()
         default_download_close = default_download["Close"].copy()
         default_history_close.index = pd.Index([item.date() for item in default_history.index])
-        default_download_close.index = pd.Index([item.date() for item in default_download.index])
+        default_download_index = require_datetime_index(default_download.index)
+        default_download_close.index = pd.Index([item.date() for item in default_download_index])
         pd.testing.assert_series_equal(default_history_close, default_download_close)
 
         raw_history = yf.Ticker("AAPL", session=self.session).history(
@@ -739,21 +753,20 @@ class TestIssue860(SessionTickerTestCase):
             threads=False,
             session=self.session,
         )
+        raw_download = require_dataframe(raw_download, "yf.download() returned None")
         if isinstance(raw_download.columns, pd.MultiIndex):
             raw_download = raw_download.xs("AAPL", axis=1, level=1)
 
         self.assertTrue({"Close", "Adj Close"}.issubset(raw_history.columns))
         self.assertTrue({"Close", "Adj Close"}.issubset(raw_download.columns))
+        raw_download_index = require_datetime_index(raw_download.index)
         for column in ["Close", "Adj Close"]:
             history_series = raw_history[column].copy()
             download_series = raw_download[column].copy()
             history_series.index = pd.Index([item.date() for item in raw_history.index])
-            download_series.index = pd.Index([item.date() for item in raw_download.index])
+            download_series.index = pd.Index([item.date() for item in raw_download_index])
             pd.testing.assert_series_equal(history_series, download_series)
 
-
-class TestIssue1272(SessionTickerTestCase):
-    """Verify start/end requests do not leak rows outside the requested window."""
 
     def test_start_end_window_with_empty_non_trading_range_stays_empty(self):
         """
@@ -777,6 +790,7 @@ class TestIssue1272(SessionTickerTestCase):
             threads=False,
             session=self.session,
         )
+        download_frame = require_dataframe(download_frame, "yf.download() returned None")
 
         self.assertIsInstance(history_frame, pd.DataFrame)
         self.assertTrue(history_frame.empty)
@@ -787,8 +801,8 @@ class TestIssue1272(SessionTickerTestCase):
         self.assertEqual(list(download_frame.index), [])
 
 
-class TestIssue2348(unittest.TestCase):
-    """Verify fast_info tolerates missing currentTradingPeriod metadata."""
+class TestFastInfoIssues(unittest.TestCase):
+    """Fast-info regression tests collected from reported issues."""
 
     def test_fast_info_regular_market_previous_close_handles_missing_current_trading_period(self):
         """fast_info.get() should not raise when chart metadata omits currentTradingPeriod."""
@@ -828,8 +842,8 @@ class TestIssue2348(unittest.TestCase):
         self.assertEqual(previous_close, 220.0)
 
 
-class TestIssue1855(SessionTickerTestCase):
-    """Verify .L suffix tickers expose currentPrice through info."""
+class TestSessionTickerIssueExtras(SessionTickerTestCase):
+    """Remaining session-backed regression tests collected from reported issues."""
 
     def test_lse_etf_info_exposes_current_price(self):
         """MOAT.L should return a usable currentPrice instead of missing the key."""
@@ -841,9 +855,6 @@ class TestIssue1855(SessionTickerTestCase):
         self.assertEqual(info["currentPrice"], info.get("regularMarketPrice"))
         self.assertIsInstance(info["currentPrice"], float)
 
-
-class TestIssue1951(SessionTickerTestCase):
-    """Verify unavailable quotes no longer crash fast_info access."""
 
     def test_fast_info_missing_metadata_returns_none_instead_of_keyerror(self):
         """Missing history metadata should degrade to None rather than raising."""
@@ -876,9 +887,6 @@ class TestIssue1951(SessionTickerTestCase):
             with self.subTest(key=key):
                 self.assertIsNone(fast_info.get(key))
 
-
-class TestIssue930(SessionTickerTestCase):
-    """Verify AAPL dividend events are still present in history output."""
 
     def test_aapl_dividend_dates_2022(self):
         """Dividend dates should match between history and dividends properties."""
