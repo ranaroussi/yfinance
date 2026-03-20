@@ -155,7 +155,6 @@ class FastInfo:
                 self._cache["today_open"] = None
                 self._cache["today_close"] = None
                 self._cache["today_midnight"] = None
-                raise
 
         if self._prices_1y.empty:
             return self._prices_1y
@@ -756,6 +755,8 @@ class Quote:
             key: self._format_info_value(key, value)
             for key, value in normalized_info.items()
         }
+        if "currentPrice" not in self._info and "regularMarketPrice" in self._info:
+            self._info["currentPrice"] = self._info["regularMarketPrice"]
 
     def _fetch_complementary(self):
         """Fetch complementary info fields not returned by quote-summary."""

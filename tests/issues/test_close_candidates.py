@@ -12,6 +12,7 @@ from tests.ticker_support import SessionTickerTestCase, call_private, yf
 from yfinance.config import YF_CONFIG
 from yfinance.data import YfData
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
+from yfinance.scrapers.quote import FastInfo
 
 
 class TestIssue2688(unittest.TestCase):
@@ -457,6 +458,79 @@ class TestIssue2500(ProxyNetworkIssueTestCase):
                 {"http": "http://proxy-c.local:8080", "https": "http://proxy-c.local:8080"},
             ],
         )
+
+
+class TestIssue1957(SessionTickerTestCase):
+    """Verify upgrade/downgrade fetches no longer fail on reported active tickers."""
+
+    def test_reported_404_tickers_return_upgrade_downgrade_data(self):
+        """Reported active tickers should not raise 404-style failures anymore."""
+        symbols = ["COF", "CRL", "COO", "FANG", "LIN", "LULU"]
+        tickers = yf.Tickers(" ".join(symbols), session=self.session)
+
+        for symbol in symbols:
+            with self.subTest(symbol=symbol):
+                actions = tickers.tickers[symbol].upgrades_downgrades
+                self.assertIsInstance(actions, pd.DataFrame)
+                self.assertFalse(actions.empty)
+                self.assertTrue(
+                    {"Firm", "ToGrade", "FromGrade", "Action"}.issubset(actions.columns)
+                )
+
+
+class TestIssue2348(unittest.TestCase):
+    """Verify fast_info tolerates missing currentTradingPeriod metadata."""
+
+    def test_fast_info_regular_market_previous_close_handles_missing_current_trading_period(self):
+        """fast_info.get() should not raise when chart metadata omits currentTradingPeriod."""
+        today = pd.Timestamp.now("UTC").normalize()
+        prices = pd.DataFrame(
+            {"Close": [220.0, 225.5]},
+            index=pd.DatetimeIndex([today - pd.Timedelta(days=2), today - pd.Timedelta(days=1)]),
+        )
+
+        class FakeTicker:
+            """Minimal ticker stub with chart metadata missing currentTradingPeriod."""
+
+            def history(self, **kwargs):
+                """Return cached prices and validate the expected history call shape."""
+                expected = (kwargs["period"], kwargs["auto_adjust"], kwargs["keepna"])
+                if expected != ("1y", False, True):
+                    raise AssertionError(f"Unexpected history kwargs: {kwargs}")
+                return prices
+
+            def get_history_metadata(self):
+                """Return chart metadata without currentTradingPeriod."""
+                return {"exchangeTimezoneName": "America/New_York"}
+
+            def get_info(self):
+                """Return an empty info payload for the FastInfo fallback path."""
+                return {}
+
+        fast_info = FastInfo(FakeTicker())
+
+        cached_prices = call_private(fast_info, "_get_1y_prices")
+        previous_close = fast_info.get("regularMarketPreviousClose")
+
+        pd.testing.assert_frame_equal(cached_prices, prices)
+        self.assertIsNone(getattr(fast_info, "_cache")["today_open"])
+        self.assertIsNone(getattr(fast_info, "_cache")["today_close"])
+        self.assertIsNone(getattr(fast_info, "_cache")["today_midnight"])
+        self.assertEqual(previous_close, 220.0)
+
+
+class TestIssue1855(SessionTickerTestCase):
+    """Verify .L suffix tickers expose currentPrice through info."""
+
+    def test_lse_etf_info_exposes_current_price(self):
+        """MOAT.L should return a usable currentPrice instead of missing the key."""
+        ticker = yf.Ticker("MOAT.L", session=self.session)
+        info = ticker.info
+
+        self.assertEqual(info.get("symbol"), "MOAT.L")
+        self.assertIn("currentPrice", info)
+        self.assertEqual(info["currentPrice"], info.get("regularMarketPrice"))
+        self.assertIsInstance(info["currentPrice"], float)
 
 
 class TestIssue1951(SessionTickerTestCase):
