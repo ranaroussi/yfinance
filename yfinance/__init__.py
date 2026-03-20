@@ -23,7 +23,7 @@
 
 from .ticker import Ticker
 from .tickers import Tickers
-from .multi import download
+from .http import download
 from .search import Search
 from .lookup import Lookup
 from .domain.sector import Sector

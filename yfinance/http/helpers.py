@@ -1,10 +1,10 @@
-"""Internal HTTP response helpers for Yahoo Finance endpoints."""
+"""Shared HTTP-layer helpers for Yahoo response handling."""
 
 import json as _json
 from typing import Any, Dict
 
-from .config import YF_CONFIG as YfConfig
-from .exceptions import YFDataException
+from ..config import YF_CONFIG as YfConfig
+from ..exceptions import YFDataException
 
 
 def parse_json_response(

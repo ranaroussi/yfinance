@@ -28,7 +28,7 @@ from typing import Dict
 import pandas as _pd
 
 from .options import TICKERS_DOWNLOAD_ARG_NAMES, TICKERS_DOWNLOAD_DEFAULTS, bind_options
-from . import multi
+from .http.worker import download as _download
 from .ticker import Ticker
 from .live import WebSocket
 from .data import YfData
@@ -80,7 +80,7 @@ class Tickers:
 
         options, passthrough = self._parse_download_options(args, kwargs)
 
-        data = multi.download(
+        data = _download(
             self.symbols,
             start=options["start"],
             end=options["end"],

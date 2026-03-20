@@ -7,13 +7,11 @@ from typing import Optional, Union, cast
 
 import pandas as pd
 from curl_cffi import requests
-from frozendict import frozendict
 
 from . import cache, utils
 from .base_lookup import TickerBaseLookupMixin
-from .http import log_response_payload
 from .config import YF_CONFIG as YfConfig
-from .const import _BASE_URL_, _MIC_TO_YAHOO_SUFFIX
+from .const import _MIC_TO_YAHOO_SUFFIX
 from .data import YfData
 from .live import WebSocket
 from .scrapers.analysis import Analysis
@@ -22,8 +20,8 @@ from .scrapers.funds import FundsData
 from .scrapers.history.client import PriceHistory
 from .scrapers.holders import Holders
 from .scrapers.quote import FastInfo, Quote
+from .utils_tz import fetch_ticker_tz, get_ticker_tz
 
-_TZ_INFO_FETCH_CTR = {"count": 0}
 class TickerBase(TickerBaseLookupMixin):
     """Internal base class that provides all data access methods for a ticker."""
 
@@ -120,86 +118,19 @@ class TickerBase(TickerBaseLookupMixin):
 
     def _get_ticker_tz(self, timeout):
         """Resolve and cache the ticker exchange timezone."""
-        if self._tz is not None:
-            return self._tz
-        c = cache.get_tz_cache()
-        tz = c.lookup(self.ticker)
-
-        if tz is not None and (not isinstance(tz, str) or not utils.is_valid_timezone(tz)):
-            # Clear from cache and force re-fetch
-            c.store(self.ticker, None)
-            tz = None
-
-        if tz is None:
-            tz = self._fetch_ticker_tz(timeout)
-            if tz is None:
-                # _fetch_ticker_tz works in 99.999% of cases.
-                # For rare fail get from info.
-                if _TZ_INFO_FETCH_CTR["count"] < 2:
-                    # ... but limit. If _fetch_ticker_tz() always
-                    # failing then bigger problem.
-                    _TZ_INFO_FETCH_CTR["count"] += 1
-                    info = self._quote.info
-                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
-                        value = info.get(k)
-                        if isinstance(value, str):
-                            tz = value
-                            break
-            if isinstance(tz, str) and utils.is_valid_timezone(tz):
-                c.store(self.ticker, tz)
-            else:
-                tz = None
-
-        self._tz = tz
-        return tz
+        if self._tz is None:
+            self._tz = get_ticker_tz(
+                self._data,
+                self.ticker,
+                timeout,
+                info_provider=lambda: self._quote.info,
+            )
+        return self._tz
 
     @utils.log_indent_decorator
     def _fetch_ticker_tz(self, timeout):
         """Fetch exchange timezone directly from Yahoo chart metadata."""
-        # Query Yahoo for fast price data just to get returned timezone
-        logger = utils.get_yf_logger()
-
-        params = frozendict({"range": "1d", "interval": "1d"})
-
-        # Getting data from json
-        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
-
-        try:
-            data = self._data.cache_get(url=url, params=params, timeout=timeout)
-            data = data.json()
-        except (
-            _json.JSONDecodeError,
-            requests.exceptions.RequestException,
-            AttributeError,
-            TypeError,
-            ValueError,
-        ) as error:
-            if YfConfig.debug.raise_on_error:
-                raise
-            logger.error("Failed to get ticker '%s' reason: %s", self.ticker, error)
-            return None
-        error = data.get('chart', {}).get('error', None)
-        if error:
-            # explicit error from yahoo API
-            logger.debug(
-                "Got error from yahoo api for ticker %s, Error: %s",
-                self.ticker,
-                error,
-            )
-            return None
-
-        try:
-            return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-        except (IndexError, KeyError, TypeError) as error:
-            if YfConfig.debug.raise_on_error:
-                raise
-            logger.error(
-                "Could not get exchangeTimezoneName for ticker '%s' reason: %s",
-                self.ticker,
-                error,
-            )
-            log_response_payload(logger, data)
-        return None
+        return fetch_ticker_tz(self._data, self.ticker, timeout)
 
     def get_recommendations(self, as_dict=False):
         """

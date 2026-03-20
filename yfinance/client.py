@@ -9,7 +9,7 @@ from .lookup import Lookup
 from .ticker import Ticker
 from .calendars import Calendars
 from .tickers import Tickers
-from .multi import download
+from .http import download
 from .live import WebSocket, AsyncWebSocket
 from .utils import enable_debug_mode
 from .cache import set_tz_cache_location

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import numpy as _np
 import pandas as pd
 from bs4 import BeautifulSoup
+from curl_cffi import requests
 
 from yfinance.config import YF_CONFIG as YfConfig
 from yfinance.const import quote_summary_valid_modules, _QUERY1_URL_, _ROOT_URL_
@@ -827,7 +828,13 @@ class Quote:
                 if cells and "PEG" in cells[0].get_text():
                     raw = cells[1].get_text(strip=True)
                     return float(raw) if raw not in ("", "N/A", "--") else None
-        except Exception:  # noqa: BLE001
+        except (
+            AttributeError,
+            IndexError,
+            TypeError,
+            ValueError,
+            requests.exceptions.RequestException,
+        ):
             pass
         return None
 
