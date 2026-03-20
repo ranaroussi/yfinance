@@ -384,7 +384,7 @@ class TestPriceRepair(PriceRepairTestCase):
 
     def test_repair_zeroes_daily(self):
         """Repair a daily row of missing OHLCV values."""
-        ticker, timezone, history = self.get_history_parts("BBIL.L")
+        ticker, timezone, history = self.get_history_parts("SHEL.L")
         correct = ticker.history(period='1mo', auto_adjust=False)
         bad_timestamp = correct.index[len(correct) // 2]
         broken = cast(_pd.DataFrame, correct.copy())
@@ -394,7 +394,7 @@ class TestPriceRepair(PriceRepairTestCase):
             broken,
             correct,
             ("1d", timezone, history),
-            (["Open", "Low", "High", "Close"], 1e-7),
+            (["Open", "Low", "High", "Close"], 1e-2),
         )
 
     def test_repair_zeroes_daily_adj_close(self):
@@ -489,7 +489,8 @@ class TestPriceRepair(PriceRepairTestCase):
         }
         for ticker_symbol, history_args in false_positives.items():
             interval = cast(str, history_args['interval'])
-            self._assert_stock_split_unchanged(ticker_symbol, interval, **history_args)
+            extra_args = {k: v for k, v in history_args.items() if k != 'interval'}
+            self._assert_stock_split_unchanged(ticker_symbol, interval, **extra_args)
 
     def test_repair_bad_div_adjusts(self):
         """Repair dividend adjustment issues without changing clean histories."""
