@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 from curl_cffi import requests
+import yfinance as yfinance_pkg
 import yfinance.client as yf
 from yfinance.base import TickerBase
 from yfinance.data import YfData
@@ -553,3 +554,47 @@ class TestIssue2605(unittest.TestCase):
         self.assertEqual(set(frame.index.tolist()), set(expected_rows.keys()))
         for row_name, expected_value in expected_rows.items():
             self.assertEqual(frame.at[row_name, column_date], expected_value)
+
+
+class TestIssue2601(unittest.TestCase):
+    """Verify sector and industry helpers are scoped through the public package."""
+
+    def test_top_level_sector_accepts_region_and_forwards_it_to_domain_fetch(self):
+        """The public yfinance package should expose Sector and forward the region scope."""
+        payload = {
+            "data": {
+                "name": "Technology",
+                "symbol": "^TECH",
+                "overview": {},
+                "topCompanies": [
+                    {
+                        "symbol": "VOD.L",
+                        "name": "Vodafone",
+                        "rating": "BUY",
+                        "marketWeight": {"raw": 1.23},
+                    }
+                ],
+                "researchReports": [],
+                "topETFs": [],
+                "topMutualFunds": [],
+                "industries": [],
+            }
+        }
+        requests_seen = []
+
+        def fake_get_raw_json(_data, query_url, params=None):
+            requests_seen.append((query_url, dict(params or {})))
+            return payload
+
+        self.assertTrue(hasattr(yfinance_pkg, "Sector"))
+        self.assertTrue(hasattr(yfinance_pkg, "Industry"))
+        self.assertTrue(hasattr(yfinance_pkg, "Market"))
+
+        with patch.object(YfData, "get_raw_json", autospec=True, side_effect=fake_get_raw_json):
+            top_companies = yfinance_pkg.Sector("technology", region="GB").top_companies
+
+        top_companies = require_dataframe(top_companies, "Sector.top_companies returned None")
+        self.assertEqual(len(requests_seen), 1)
+        self.assertEqual(requests_seen[0][1]["region"], "GB")
+        self.assertEqual(requests_seen[0][1]["lang"], "en-US")
+        self.assertIn("VOD.L", top_companies.index)

@@ -26,6 +26,9 @@ from .tickers import Tickers
 from .multi import download
 from .search import Search
 from .lookup import Lookup
+from .domain.sector import Sector
+from .domain.industry import Industry
+from .domain.market import Market
 from .live import AsyncWebSocket, BaseWebSocket, WebSocket
 from .config import ConfigMgr, NestedConfig, YF_CONFIG
 from .exceptions import (
@@ -46,6 +49,9 @@ __all__ = [
     "download",
     "Search",
     "Lookup",
+    "Sector",
+    "Industry",
+    "Market",
     "AsyncWebSocket",
     "BaseWebSocket",
     "WebSocket",
