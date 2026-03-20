@@ -31,9 +31,9 @@ This file tracks whether the large refactor in this fork appears to resolve any 
 
 These counts apply to the full tracker across all sections, not just the working list.
 
-- resolved in fork: 39
+- resolved in fork: 41
 - needs reproduction: 9
-- not resolved: 26
+- not resolved: 24
 - not addressed: 8
 - invalid usage: 4
 - new feature requests: 26
@@ -41,8 +41,8 @@ These counts apply to the full tracker across all sections, not just the working
 ## Verification Tests
 
 - issue-specific verification modules: `tests/issues/test.py`, `tests/issues/test_history.py`, `tests/issues/test_fast_info.py`, `tests/issues/test_mocked.py`
-- current result: `50 passed, 93 subtests passed in 27.16s`
-- confirmed by tests so far: `#2699`, `#2688`, `#2500`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`
+- current result: `52 passed, 93 subtests passed in 24.45s`
+- confirmed by tests so far: `#2699`, `#2688`, `#2526`, `#2500`, `#2495`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`
 
 ## Confirmed Resolved
 
@@ -50,7 +50,9 @@ These counts apply to the full tracker across all sections, not just the working
 |---|---|---|---|---|
 | [#2688](https://github.com/ranaroussi/yfinance/issues/2688) | Output array is read-only when repair=True | history/repair | The price-repair path now copies read-only NumPy-backed price arrays before mutation. This is covered by an issue-specific regression that patches `DataFrame.to_numpy()` to return a read-only array for the OHLC columns and verifies `_prepare_adjusted_price_data()` still succeeds. | Covered by issue-specific verification tests. |
 | [#2699](https://github.com/ranaroussi/yfinance/issues/2699) | Earnings Forecast currency does not always match financialCurrency | fundamentals/earnings | Verified with a deterministic mocked regression and a fresh live `TM` check on the public API. The analysis scraper now preserves scalar forecast metadata from Yahoo's `earningsTrend` payload, so `Ticker('TM').earnings_estimate` exposes the source-provided `earningsCurrency` column (`USD`) alongside the numeric estimate fields instead of dropping the currency entirely. | Covered by issue-specific verification tests. |
+| [#2526](https://github.com/ranaroussi/yfinance/issues/2526) | Still "Too Many Requests" Error also in Version 0.2.62 | rate-limit | Verified with a deterministic cached-timezone regression against the public `Ticker.history()` path. The current fork no longer depends on timezone bootstrap side effects to initialize authentication state: even when `AAPL` timezone lookup is satisfied entirely from `tkr-tz.db`, the history request still goes through crumb initialization and sends the crumb on the chart request instead of bypassing cookie/crumb setup. | Covered by issue-specific verification tests. |
 | [#2500](https://github.com/ranaroussi/yfinance/issues/2500) | Enable set_config proxy to take a function | proxy/network | Shared network config now accepts a callable proxy provider, normalizes single proxy URLs to both schemes, and re-evaluates the provider per request so rotating proxy services work. | Covered by issue-specific verification tests. |
+| [#2495](https://github.com/ranaroussi/yfinance/issues/2495) | [0.2.61]"error":{"code":"Unauthorized","description":"Invalid Cookie"} | network/cookies | Verified with a deterministic mocked regression on the request stack. The cookie handlers now reject `401 Unauthorized` crumb responses instead of caching the JSON error body as the next crumb, so the fallback retry path fetches a fresh valid crumb and avoids re-sending `{"finance":..."Invalid Cookie"}` as a request parameter. | Covered by issue-specific verification tests. |
 | [#2670](https://github.com/ranaroussi/yfinance/issues/2670) | NoneType protection fails | history/fetch | Verified with a deterministic mocked chart response. When the history data client returns `{'chart': None}` for `PriceHistory.history(period='5d', interval='1d')`, the current fork now degrades cleanly to the standard empty DataFrame path with the usual no-price-data message instead of raising `TypeError: 'NoneType' object is not subscriptable`. The fetch guards now validate `chart` before any subscript access in both `_missing_quote_payload()` and `_validate_chart_data()`, and this path is now covered by an issue-specific regression test. | Covered by issue-specific verification tests. |
 | [#2605](https://github.com/ranaroussi/yfinance/issues/2605) | Missing keys in quarterly balance sheet. | fundamentals | Verified with a deterministic mocked fundamentals-timeseries response. The public `Ticker('BRK-B').quarterly_balance_sheet` path now requests the added quarterly balance-sheet schema keys and exposes the reported rows `Fixed Maturity Investments`, `Equity Investments`, `Net Loan`, `Deferred Assets`, and `Other Assets` on the pretty-labeled DataFrame once Yahoo returns them. | Covered by issue-specific verification tests. |
 | [#2601](https://github.com/ranaroussi/yfinance/issues/2601) | To set which market is in scope. | domain/sector | Verified with a deterministic mocked regression on the public package API. The top-level `yfinance` package now exposes `Sector`, `Industry`, and `Market`, and `yf.Sector('technology', region='GB').top_companies` forwards the requested non-US region through the domain fetch path instead of forcing `US`. | Covered by issue-specific verification tests. |
@@ -108,8 +110,6 @@ None currently.
 
 | Issue | Title | Updated | Area | Status | Confidence | Notes | Next step |
 |---|---|---|---|---|---|---|---|
-| [#2526](https://github.com/ranaroussi/yfinance/issues/2526) | Still "Too Many Requests" Error also in Version 0.2.62 | 2026-01-15 | rate-limit | not resolved | low | The refactor adds retries and alternate cookie strategy, but does not solve Yahoo rate limiting. | Leave open. |
-| [#2495](https://github.com/ranaroussi/yfinance/issues/2495) | [0.2.61]"error":{"code":"Unauthorized","description":"Invalid Cookie"} | 2025-05-29 | network/cookies | not resolved | low | Unauthorized/invalid-cookie cases are still possible even with the new cookie strategy. | Needs targeted repro; do not close. |
 | [#2486](https://github.com/ranaroussi/yfinance/issues/2486) | Unable to use request_cache to cache the yfinance response | 2025-05-17 | cache/session | not resolved | high | The fork now explicitly rejects request_cache sessions with curl_cffi instead of supporting them. | Leave open or restate as unsupported by design. |
 | [#2463](https://github.com/ranaroussi/yfinance/issues/2463) | [0.2.59] CertificateVerifyError('Failed to perform, curl: (60) SSL certificate problem: self signed certificate in certificate chain. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.') | 2026-01-05 | network/certificates | not resolved | low | Certificate verification behavior is not clearly addressed in the refactor. | Leave open. |
 | [#2449](https://github.com/ranaroussi/yfinance/issues/2449) | [0.2.59] curl_cffi won't compile | 2025-05-26 | packaging | not resolved | high | The fork relies on curl_cffi; compile/install problems are not addressed by the refactor. | Leave open. |

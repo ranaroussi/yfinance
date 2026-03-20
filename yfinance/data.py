@@ -284,12 +284,24 @@ class YfData(metaclass=SingletonMeta):
         get_args.update(self._get_network_request_options())
         crumb_response = self._session.get(**get_args)
         self._crumb = crumb_response.text
+        if crumb_response.status_code >= 400:
+            utils.get_yf_logger().debug(
+                "Didn't receive crumb because response code=%s body=%s",
+                crumb_response.status_code,
+                self._crumb,
+            )
+            self._crumb = None
+            if crumb_response.status_code == 429:
+                raise YFRateLimitError()
+            return None
         if crumb_response.status_code == 429 or "Too Many Requests" in self._crumb:
             utils.get_yf_logger().debug(f"Didn't receive crumb {self._crumb}")
+            self._crumb = None
             raise YFRateLimitError()
 
         if self._crumb is None or "<html>" in self._crumb:
             utils.get_yf_logger().debug("Didn't receive crumb")
+            self._crumb = None
             return None
 
         utils.get_yf_logger().debug(f"crumb = '{self._crumb}'")
@@ -411,12 +423,25 @@ class YfData(metaclass=SingletonMeta):
         r = self._session.get(**get_args)
         self._crumb = r.text
 
+        if r.status_code >= 400:
+            utils.get_yf_logger().debug(
+                "Didn't receive crumb because response code=%s body=%s",
+                r.status_code,
+                self._crumb,
+            )
+            self._crumb = None
+            if r.status_code == 429:
+                raise YFRateLimitError()
+            return None
+
         if r.status_code == 429 or "Too Many Requests" in self._crumb:
             utils.get_yf_logger().debug(f"Didn't receive crumb {self._crumb}")
+            self._crumb = None
             raise YFRateLimitError()
 
         if self._crumb is None or "<html>" in self._crumb or self._crumb == "":
             utils.get_yf_logger().debug("Didn't receive crumb")
+            self._crumb = None
             return None
 
         utils.get_yf_logger().debug(f"crumb = '{self._crumb}'")

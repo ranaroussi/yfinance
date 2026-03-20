@@ -922,3 +922,153 @@ class TestIssue2699(unittest.TestCase):
         number_of_analysts = cast(int, estimate.loc["+1q", "numberOfAnalysts"])
         self.assertEqual(avg, 2.686)
         self.assertEqual(number_of_analysts, 1)
+
+
+class TestIssue2526(unittest.TestCase):
+    """Verify cached timezone lookups do not bypass request authentication setup."""
+
+    def test_history_with_cached_timezone_still_initializes_crumb(self):
+        """A cache hit for timezone should not skip crumb initialization on history fetch."""
+        timezone_cache = yf.cache.get_tz_cache()
+        timezone_cache.store("AAPL", "America/New_York")
+        request_log = []
+
+        response = _make_response(
+            {
+                "chart": {
+                    "result": [
+                        {
+                            "meta": {
+                                "currency": "USD",
+                                "instrumentType": "EQUITY",
+                                "exchangeTimezoneName": "America/New_York",
+                                "validRanges": ["1d", "5d", "1mo"],
+                                "regularMarketPrice": 190.0,
+                                "currentTradingPeriod": {
+                                    "pre": {
+                                        "timezone": "EST",
+                                        "start": 0,
+                                        "end": 0,
+                                        "gmtoffset": -18000,
+                                    },
+                                    "regular": {
+                                        "timezone": "EST",
+                                        "start": 0,
+                                        "end": 0,
+                                        "gmtoffset": -18000,
+                                    },
+                                    "post": {
+                                        "timezone": "EST",
+                                        "start": 0,
+                                        "end": 0,
+                                        "gmtoffset": -18000,
+                                    },
+                                },
+                            },
+                            "timestamp": [1704067200],
+                            "indicators": {
+                                "quote": [
+                                    {
+                                        "open": [1.0],
+                                        "high": [1.0],
+                                        "low": [1.0],
+                                        "close": [1.0],
+                                        "volume": [1],
+                                    }
+                                ],
+                                "adjclose": [{"adjclose": [1.0]}],
+                            },
+                        }
+                    ],
+                    "error": None,
+                }
+            }
+        )
+
+        def fake_get_cookie_and_crumb(self, timeout=30):
+            del self
+            request_log.append(("crumb", timeout))
+            return "crumb-token", "basic"
+
+        def fake_request_with_retry(self, request_method, request_args):
+            del self, request_method
+            request_log.append(("request", dict(request_args.get("params", {}))))
+            return response
+
+        with (
+            patch(
+                "yfinance.utils_tz.fetch_ticker_tz",
+                side_effect=AssertionError("timezone fetch should be skipped on cache hit"),
+            ),
+            patch.object(YfData, "_get_cookie_and_crumb", new=fake_get_cookie_and_crumb),
+            patch.object(YfData, "_request_with_retry", new=fake_request_with_retry),
+        ):
+            frame = yf.Ticker("AAPL").history(period="1d")
+
+        frame = require_dataframe(frame, "Ticker.history() returned None")
+
+        self.assertFalse(frame.empty)
+        self.assertIn(("crumb", 10), request_log)
+        request_entries = [entry for entry in request_log if entry[0] == "request"]
+        self.assertEqual(len(request_entries), 1)
+        self.assertEqual(request_entries[0][1].get("crumb"), "crumb-token")
+
+
+class TestIssue2495(unittest.TestCase):
+    """Verify invalid-cookie crumb responses are rejected cleanly."""
+
+    def setUp(self):
+        """Reset cookie state before each test."""
+        self.data = YfData()
+        setattr(self.data, "_cookie", None)
+        setattr(self.data, "_crumb", None)
+        setattr(self.data, "_cookie_strategy", "basic")
+
+    def test_make_request_does_not_reuse_unauthorized_json_as_crumb(self):
+        """A 401 invalid-cookie crumb body should not become the next request crumb."""
+        invalid_cookie_body = (
+            '{"finance":{"result":null,"error":{"code":"Unauthorized",'
+            '"description":"Invalid Cookie"}}}'
+        )
+        request_log = []
+        responses = iter(
+            [
+                Mock(status_code=401, text=invalid_cookie_body),
+                Mock(status_code=200, text="fresh-basic-crumb"),
+                Mock(status_code=200, text="{}"),
+            ]
+        )
+
+        def fake_session_get(**kwargs):
+            request_log.append((kwargs["url"], dict(kwargs.get("params", {}))))
+            response = next(responses)
+            if response.text == "{}":
+                response.json.return_value = {"quoteSummary": {"result": [{}], "error": None}}
+            return response
+
+        with (
+            patch.object(self.data, "_get_cookie_basic", return_value=True),
+            patch.object(self.data, "_get_cookie_csrf", return_value=True),
+            patch.object(getattr(self.data, "_session"), "get", side_effect=fake_session_get),
+        ):
+            response = call_private(
+                self.data,
+                "_make_request",
+                getattr(self.data, "_session").get,
+                {
+                    "url": "https://query2.finance.yahoo.com/v10/finance/quoteSummary/AAPL",
+                    "params": {
+                        "modules": "financialData,quoteType,defaultKeyStatistics,assetProfile,summaryDetail",
+                        "formatted": "false",
+                    },
+                    "timeout": 1,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        chart_request = request_log[-1]
+        self.assertEqual(
+            chart_request[1].get("crumb"),
+            "fresh-basic-crumb",
+        )
+        self.assertNotIn("Invalid Cookie", chart_request[1]["crumb"])
