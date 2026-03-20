@@ -48,9 +48,13 @@ class Analysis:
                 continue
 
             for field, value in values.items():
-                if not isinstance(value, dict) or len(value) == 0:
+                if isinstance(value, dict):
+                    if len(value) == 0:
+                        continue
+                    row[field] = value.get("raw")
                     continue
-                row[field] = value.get("raw")
+                if value is not None:
+                    row[field] = value
             data.append(row)
 
         if len(data) == 0:

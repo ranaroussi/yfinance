@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import threading
 import time
+from typing import cast
 import unittest
 from unittest.mock import Mock, patch
 
@@ -865,3 +866,59 @@ class TestIssue2557(unittest.TestCase):
         self.assertEqual(str(first.index.min().date()), "2023-01-01")
         self.assertEqual(str(second.index.min().date()), "2022-12-01")
         self.assertFalse(first.equals(second))
+
+
+class TestIssue2699(unittest.TestCase):
+    """Verify earnings estimate exposes forecast currency metadata."""
+
+    def test_earnings_estimate_includes_earnings_currency(self):
+        """Ticker.earnings_estimate should retain earningsCurrency from earningsTrend."""
+        payload = {
+            "quoteSummary": {
+                "result": [
+                    {
+                        "earningsTrend": {
+                            "trend": [
+                                {
+                                    "period": "0q",
+                                    "earningsEstimate": {
+                                        "avg": {"raw": 2.686, "fmt": "2.69"},
+                                        "low": {"raw": 2.686, "fmt": "2.69"},
+                                        "high": {"raw": 2.686, "fmt": "2.69"},
+                                        "numberOfAnalysts": {"raw": 1, "fmt": "1"},
+                                        "yearAgoEps": {},
+                                        "growth": {},
+                                        "earningsCurrency": "USD",
+                                    },
+                                },
+                                {
+                                    "period": "+1q",
+                                    "earningsEstimate": {
+                                        "avg": {"raw": 4.765, "fmt": "4.77"},
+                                        "low": {"raw": 4.765, "fmt": "4.77"},
+                                        "high": {"raw": 4.765, "fmt": "4.77"},
+                                        "numberOfAnalysts": {"raw": 1, "fmt": "1"},
+                                        "yearAgoEps": {"raw": 4.37944, "fmt": "4.38"},
+                                        "growth": {"raw": 0.0880, "fmt": "8.80%"},
+                                        "earningsCurrency": "USD",
+                                    },
+                                },
+                            ]
+                        }
+                    }
+                ],
+                "error": None,
+            }
+        }
+
+        with patch("yfinance.scrapers.analysis.fetch_quote_summary", return_value=payload):
+            estimate = yf.Ticker("TM").earnings_estimate
+
+        estimate = require_dataframe(estimate, "Ticker.earnings_estimate returned None")
+
+        self.assertIn("earningsCurrency", estimate.columns)
+        self.assertEqual(list(estimate["earningsCurrency"]), ["USD", "USD"])
+        avg = cast(float, estimate.loc["0q", "avg"])
+        number_of_analysts = cast(int, estimate.loc["+1q", "numberOfAnalysts"])
+        self.assertEqual(avg, 2.686)
+        self.assertEqual(number_of_analysts, 1)
