@@ -1,5 +1,6 @@
 """Mocked issue-specific verification tests for upstream close candidates."""
 
+from datetime import datetime, timezone
 import json
 import unittest
 from unittest.mock import Mock, patch
@@ -344,9 +345,11 @@ class TestIssue2360(unittest.TestCase):
         self.assertTrue(isinstance(frame.columns, pd.MultiIndex))
         self.assertIn("CBA.AX", frame.columns.get_level_values(0))
         self.assertIn("FBU.AX", frame.columns.get_level_values(0))
-        self.assertFalse(frame["CBA.AX"].tail(1).isna().all().all())
-        self.assertFalse(frame["FBU.AX"].tail(1).isna().all().all())
-        self.assertAlmostEqual(float(frame["FBU.AX"]["Close"].iloc[-1]), 17.85)
+        cba_frame = pd.DataFrame(frame["CBA.AX"])
+        fbu_frame = pd.DataFrame(frame["FBU.AX"])
+        self.assertFalse(bool(cba_frame.tail(1).isna().to_numpy().all()))
+        self.assertFalse(bool(fbu_frame.tail(1).isna().to_numpy().all()))
+        self.assertAlmostEqual(float(fbu_frame["Close"].to_numpy(dtype=float)[-1]), 17.85)
         self.assertIn(("get_tz", "FBU.AX"), request_log)
         self.assertIn(
             (
@@ -371,14 +374,14 @@ class TestIssue930(unittest.TestCase):
     ):
         """Unsorted Yahoo dividend events should still produce the full AAPL dividend history."""
 
-        dividend_dates = [
-            pd.Timestamp("2021-02-05 14:30:00", tz="UTC"),
-            pd.Timestamp("2021-05-07 13:30:00", tz="UTC"),
-            pd.Timestamp("2021-08-06 13:30:00", tz="UTC"),
-            pd.Timestamp("2021-11-05 13:30:00", tz="UTC"),
+        dividend_datetimes = [
+            datetime(2021, 2, 5, 14, 30, tzinfo=timezone.utc),
+            datetime(2021, 5, 7, 13, 30, tzinfo=timezone.utc),
+            datetime(2021, 8, 6, 13, 30, tzinfo=timezone.utc),
+            datetime(2021, 11, 5, 13, 30, tzinfo=timezone.utc),
         ]
-        expected_dates = [timestamp.date() for timestamp in dividend_dates]
-        timestamps = [int(timestamp.timestamp()) for timestamp in dividend_dates]
+        expected_dates = [timestamp.date() for timestamp in dividend_datetimes]
+        timestamps = [int(timestamp.timestamp()) for timestamp in dividend_datetimes]
         chart_payload = {
             "chart": {
                 "result": [
@@ -485,14 +488,14 @@ class TestIssue930(unittest.TestCase):
             expected_dates,
         )
         self.assertEqual(
-            float(pd.to_numeric(history.loc[history.index[-1], "Dividends"], errors="raise")),
+            float(history.loc[:, "Dividends"].to_numpy(dtype=float)[-1]),
             0.22,
         )
         self.assertEqual(
-            float(pd.to_numeric(download.loc[download.index[-1], "Dividends"], errors="raise")),
+            float(download.loc[:, "Dividends"].to_numpy(dtype=float)[-1]),
             0.22,
         )
-        self.assertEqual(float(pd.to_numeric(dividends.iloc[-1], errors="raise")), 0.22)
+        self.assertEqual(float(dividends.to_numpy(dtype=float)[-1]), 0.22)
 
 
 class TestIssue2605(unittest.TestCase):
@@ -501,7 +504,9 @@ class TestIssue2605(unittest.TestCase):
     def test_quarterly_balance_sheet_exposes_new_brkb_keys(self):
         """New balance-sheet schema keys should appear on the public quarterly view."""
         as_of_date = "2025-06-30"
-        as_of_timestamp = int(pd.Timestamp(as_of_date).timestamp())
+        as_of_timestamp = int(
+            datetime.fromisoformat(as_of_date).replace(tzinfo=timezone.utc).timestamp()
+        )
         expected_rows = {
             "Fixed Maturity Investments": 101.0,
             "Equity Investments": 202.0,
