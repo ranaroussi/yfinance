@@ -1,7 +1,10 @@
 """Mocked issue-specific verification tests for upstream close candidates."""
 
+import concurrent.futures
 from datetime import datetime, timezone
 import json
+import threading
+import time
 import unittest
 from unittest.mock import Mock, patch
 
@@ -9,9 +12,11 @@ import pandas as pd
 from curl_cffi import requests
 import yfinance as yfinance_pkg
 import yfinance.client as yf
+import yfinance.http.worker as yf_download_worker
 from yfinance.base import TickerBase
 from yfinance.data import YfData
 from yfinance.scrapers.quote import Quote
+from yfinance.scrapers.history import PriceHistory
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
 
 from ..close_candidates_support import call_private, require_dataframe
@@ -310,14 +315,14 @@ class TestIssue2360(unittest.TestCase):
         timezone_cache.store("FBU.AX", None)
         request_log = []
 
-        def fake_get_tz(ticker_base, timeout):
-            del timeout
-            request_log.append(("get_tz", ticker_base.ticker))
-            if ticker_base.ticker == "CBA.AX":
+        def fake_get_tz(data_client, symbol, timeout):
+            del data_client, timeout
+            request_log.append(("get_tz", symbol))
+            if symbol == "CBA.AX":
                 return "Australia/Sydney"
-            if ticker_base.ticker == "FBU.AX":
+            if symbol == "FBU.AX":
                 return None
-            raise AssertionError(f"Unexpected ticker bootstrap: {ticker_base.ticker}")
+            raise AssertionError(f"Unexpected ticker bootstrap: {symbol}")
 
         def fake_get(_data, url, params=None, timeout=30):
             del _data, timeout
@@ -329,7 +334,7 @@ class TestIssue2360(unittest.TestCase):
             raise AssertionError(f"Unexpected get url: {url}")
 
         with (
-            patch.object(TickerBase, "_get_ticker_tz", autospec=True, side_effect=fake_get_tz),
+            patch.object(yf_download_worker, "get_ticker_tz", side_effect=fake_get_tz),
             patch.object(YfData, "get", autospec=True, side_effect=fake_get),
         ):
             frame = yf.download(
@@ -793,3 +798,70 @@ class TestIssue2570(unittest.TestCase):
             ["quoteType", "symbol", "underlyingSymbol", "uuid", "maxAge", "trailingPegRatio"],
             info.keys(),
         )
+
+
+class TestIssue2557(unittest.TestCase):
+    """Verify concurrent download() calls keep isolated state."""
+
+    def test_concurrent_download_calls_do_not_overwrite_each_other(self):
+        """Concurrent single-ticker downloads should return their own date windows."""
+
+        def make_df(start_value):
+            return pd.DataFrame(
+                {
+                    "Open": [1.0],
+                    "High": [1.0],
+                    "Low": [1.0],
+                    "Close": [1.0],
+                    "Adj Close": [1.0],
+                    "Volume": [1],
+                },
+                index=pd.DatetimeIndex([pd.Timestamp(start_value)]),
+            )
+
+        def fake_history(self, *args, **kwargs):
+            del self, args
+            start = kwargs.get("start")
+            if start == "2023-01-01":
+                return make_df("2023-01-01")
+            if start == "2022-12-01":
+                return make_df("2022-12-01")
+            raise AssertionError(start)
+
+        original_create = getattr(yf_download_worker, "_create_download_dataframe")
+
+        def patched_create(dfs, ignore_tz):
+            if threading.current_thread().name == "first":
+                time.sleep(0.2)
+            return original_create(dfs, ignore_tz)
+
+        def run_download(start, thread_name):
+            threading.current_thread().name = thread_name
+            return yf.download(
+                "AAPL",
+                start=start,
+                end="2023-01-10",
+                progress=False,
+                threads=False,
+                auto_adjust=False,
+                multi_level_index=False,
+            )
+
+        with (
+            patch.object(PriceHistory, "history", new=fake_history),
+            patch.object(yf_download_worker, "get_ticker_tz", return_value="America/New_York"),
+            patch.object(yf_download_worker, "_create_download_dataframe", new=patched_create),
+        ):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                first_future = executor.submit(run_download, "2023-01-01", "first")
+                time.sleep(0.05)
+                second_future = executor.submit(run_download, "2022-12-01", "second")
+                first = first_future.result()
+                second = second_future.result()
+
+        first = require_dataframe(first, "first concurrent yf.download() returned None")
+        second = require_dataframe(second, "second concurrent yf.download() returned None")
+
+        self.assertEqual(str(first.index.min().date()), "2023-01-01")
+        self.assertEqual(str(second.index.min().date()), "2022-12-01")
+        self.assertFalse(first.equals(second))
