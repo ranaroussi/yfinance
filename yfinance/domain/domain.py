@@ -15,9 +15,10 @@ _QUERY_URL_ = f"{_QUERY1_URL_}/v1/finance"
 class Domain(ABC):
     """Abstract base class for sector and industry domain entities."""
 
-    def __init__(self, key: str, session=None):
+    def __init__(self, key: str, session=None, region: str = "US"):
         """Initialize a domain entity with key and optional HTTP session."""
         self._key: str = key
+        self._region: str = region
         self._data: YfData = YfData(session=session)
 
         self._name: Optional[str] = None
@@ -80,7 +81,7 @@ class Domain(ABC):
             "formatted": "true",
             "withReturns": "true",
             "lang": "en-US",
-            "region": "US",
+            "region": self._region,
         }
         result = self._data.get_raw_json(query_url, params=params_dict)
         return result

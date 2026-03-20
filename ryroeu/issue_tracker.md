@@ -33,8 +33,8 @@ These counts apply to the full tracker across all sections, not just the working
 
 - resolved in fork: 34
 - needs reproduction: 9
-- not resolved: 30
-- not addressed: 9
+- not resolved: 31
+- not addressed: 8
 - invalid usage: 4
 - new feature requests: 26
 
@@ -104,7 +104,7 @@ None currently.
 | Issue | Title | Updated | Area | Status | Confidence | Notes | Next step |
 |---|---|---|---|---|---|---|---|
 | [#2699](https://github.com/ranaroussi/yfinance/issues/2699) | Earnings Forecast currency does not always match financialCurrency | 2026-03-20 | fundamentals/earnings | not resolved | high | The issue still reproduces on the current fork for `TM`: `info['currency']` is `USD`, `info['financialCurrency']` is `JPY`, and `earnings_estimate` still returns the same forecast figures reported upstream with no currency metadata to disambiguate them. The root cause is unchanged in code: `Analysis._get_periodic_df()` only copies raw numeric fields out of `earningsTrend[*]['earningsEstimate']`, and `get_earnings_estimate()` returns that DataFrame unchanged, while the separate financials path still injects `financialCurrency` only into `get_earnings(as_dict=True)`. | Leave open; would require forecast-currency metadata or a new analysis-currency schema/accessor. |
-| [#2601](https://github.com/ranaroussi/yfinance/issues/2601) | To set which market is in scope. | 2025-09-28 | general | not addressed | low | No evidence this issue was a target of the refactor. | Keep open or triage separately. |
+| [#2601](https://github.com/ranaroussi/yfinance/issues/2601) | To set which market is in scope. | 2026-03-20 | domain/sector | not resolved | high | The exact reported workflow is still unresolved. `Sector` and `Industry` now coexist with a new standalone `yf.Market` helper and the screener stack supports explicit `region`/`exchange` filters, but the sector-domain fetch path still hard-codes `region='US'` in `domain.py` when requesting Yahoo sector/industry payloads. That means `yf.Sector(sector_key).top_companies` still has no public way to scope the query to `GB`, `ASIA`, `EUROPE`, or other Yahoo market groups. | Leave open; would require plumbing a market/region parameter through `Domain`, `Sector`, and `Industry`, or documenting a screener-based alternative for non-US market scoping. |
 | [#2593](https://github.com/ranaroussi/yfinance/issues/2593) | Wrong price to book value is returned for the Indian companies | 2025-09-11 | fundamentals/info | not resolved | high | No evidence of a fix for incorrect price-to-book/book value semantics on Indian tickers. | Leave open; likely separate fundamentals mapping problem. |
 | [#2570](https://github.com/ranaroussi/yfinance/issues/2570) | pegRatio missing from yfinance.info since June 2025 (worked before) | 2026-02-08 | quote/info | not resolved | medium | Complementary fetch now requests trailingPegRatio, but there is no evidence the original pegRatio contract is restored consistently. | Leave open until verified on affected tickers. |
 | [#2557](https://github.com/ranaroussi/yfinance/issues/2557) | yfinance.download is not thread-safe. concurrent calls with same ticker and different parameters may overwrite results | 2025-10-14 | multi-download | not resolved | high | The fork still uses shared module-level download state in yfinance/shared.py, so concurrent yf.download() calls can still collide. | Leave open; requires per-call state isolation. |

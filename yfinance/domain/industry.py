@@ -15,9 +15,9 @@ _PARSE_ERROR_TYPES = (KeyError, TypeError, ValueError)
 class Industry(Domain):
     """Represents an industry within a sector."""
 
-    def __init__(self, key, session=None):
+    def __init__(self, key, session=None, region: str = "US"):
         """Initialize an industry by API key."""
-        super().__init__(key, session)
+        super().__init__(key, session, region)
         self._query_url = f"{_QUERY_URL_}/industries/{self._key}"
 
         self._sector_key: Optional[str] = None

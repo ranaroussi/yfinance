@@ -16,9 +16,9 @@ _PARSE_ERROR_TYPES = (KeyError, TypeError, ValueError)
 class Sector(Domain):
     """Represents a financial market sector."""
 
-    def __init__(self, key, session=None):
+    def __init__(self, key, session=None, region: str = "US"):
         """Initialize a sector by API key."""
-        super().__init__(key, session)
+        super().__init__(key, session, region)
         self._query_url: str = f"{_QUERY_URL_}/sectors/{self._key}"
         self._top_etfs: Optional[Dict[str, str]] = None
         self._top_mutual_funds: Optional[Dict[str, str]] = None
