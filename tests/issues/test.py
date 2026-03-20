@@ -149,6 +149,23 @@ class TestIssue1924(unittest.TestCase):
 class TestSessionTickerIssues(SessionTickerTestCase):
     """Session-backed regression tests collected from reported issues."""
 
+    def test_option_expirations_remain_fetchable_across_repeated_passes(self):
+        """Listed expirations should remain fetchable on repeated option-chain requests."""
+        ticker = yf.Ticker("GILD", session=self.session)
+
+        for _ in range(3):
+            expirations = ticker.options
+            self.assertGreater(len(expirations), 1)
+
+            for expiration in expirations:
+                with self.subTest(expiration=expiration):
+                    chain = ticker.option_chain(expiration)
+                    calls = require_dataframe(chain.calls, "option_chain().calls returned None")
+                    puts = require_dataframe(chain.puts, "option_chain().puts returned None")
+
+                    self.assertFalse(calls.empty)
+                    self.assertFalse(puts.empty)
+
     def test_large_multi_download_keeps_valid_last_row_populated(self):
         """Large downloads with failed symbols should not blank the final valid row."""
         tickers = [
@@ -451,6 +468,7 @@ class ProxyNetworkIssueTestCase(unittest.TestCase):
         self.data = YfData()
         self.session = getattr(self.data, "_session")
         self.original_proxy = YF_CONFIG.network.proxy
+        self.original_retries = YF_CONFIG.network.retries
         self.original_verify = YF_CONFIG.network.verify
         self.original_session_proxies = getattr(self.session, "proxies", None)
         setattr(self.data, "_cookie", None)
@@ -460,6 +478,7 @@ class ProxyNetworkIssueTestCase(unittest.TestCase):
     def tearDown(self):
         """Restore global proxy and singleton session state."""
         YF_CONFIG.network.proxy = self.original_proxy
+        YF_CONFIG.network.retries = self.original_retries
         YF_CONFIG.network.verify = self.original_verify
         self.session.proxies = self.original_session_proxies
         setattr(self.data, "_cookie", None)
@@ -610,6 +629,41 @@ class TestIssue2146(ProxyNetworkIssueTestCase):
             timezone = call_private(ticker, "_get_ticker_tz", timeout=1)
 
         self.assertEqual(timezone, "America/New_York")
+
+
+class TestIssue445(ProxyNetworkIssueTestCase):
+    """Verify transient chart timeouts are retried by the shared transport."""
+
+    def test_chart_request_retries_after_timeout(self):
+        """Chart requests should retry transient timeout failures before succeeding."""
+        YF_CONFIG.network.retries = 2
+        success = Mock(
+            status_code=200,
+            url="https://query2.finance.yahoo.com/v8/finance/chart/TKA.DE",
+        )
+
+        with (
+            patch.object(self.data, "_get_cookie_and_crumb", return_value=(None, "basic")),
+            patch.object(
+                self.session,
+                "get",
+                side_effect=[
+                    requests.exceptions.Timeout("query timeout"),
+                    requests.exceptions.Timeout("query timeout"),
+                    success,
+                ],
+            ) as mock_get,
+            patch("yfinance.data._time.sleep", return_value=None) as mock_sleep,
+        ):
+            response = self.data.get(
+                url="https://query2.finance.yahoo.com/v8/finance/chart/TKA.DE",
+                params={"range": "1mo", "interval": "1d"},
+                timeout=1,
+            )
+
+        self.assertIs(response, success)
+        self.assertEqual(mock_get.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
 
 
 class TestIssue1852(ProxyNetworkIssueTestCase):
