@@ -234,8 +234,10 @@ class PriceHistory:
         origin = "epoch"
         if target_interval == "1wk":
             if period == "ytd":
+                _weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
                 year_start = pd.Timestamp(f"{_datetime.datetime.now().year}-01-01")
-                return "7D", year_start.tz_localize(df_tz)
+                jan1_weekday = year_start.weekday()
+                return f"W-{_weekdays[jan1_weekday]}", origin
             return "W-MON", origin
         if target_interval == "5d":
             if period == "ytd":

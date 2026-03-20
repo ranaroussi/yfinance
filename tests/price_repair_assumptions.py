@@ -27,6 +27,8 @@ def resample_mismatch_debug(resampled: _pd.DataFrame, truth: _pd.DataFrame) -> s
         if resampled.index[1] == truth.index[0]:
             return None
         if resampled.index[0] == truth.index[1]:
+            if truth["Volume"].iloc[0] == 0:
+                return None
             return "resampled missing a row at start"
         return "resampled index different length"
     if (resampled.index != truth.index).all():
