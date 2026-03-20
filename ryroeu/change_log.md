@@ -72,6 +72,7 @@ The root cause: pytest scanned the module's namespace, found TestSuite (imported
 45. `confirmed that these known issues are fixed`: 515
 46. `confirmed that these known issues are fixed`: 469
 47. `confirmed that these known issues are fixed`: 445
+48. `confirmed that these known issues are fixed`: 2670, 2333, 2350, 2360
 
 ### python -m pytest tests/ --ignore=tests/test_price_repair.py --ignore=tests/test_live.py --ignore=tests/test_cache_noperms.py
 * 100 passed in 86.40s (0:01:26)
@@ -80,7 +81,7 @@ The root cause: pytest scanned the module's namespace, found TestSuite (imported
 * 116 passed, 71 subtests passed in 132.79s (0:02:12)
 
 ### python -m pytest tests/issues/test.py tests/issues/test_history.py tests/issues/test_fast_info.py -q
-* 37 passed, 90 subtests passed in 18.07s
+* 41 passed, 90 subtests passed in 17.23s
 
 ### pylint and pyright
 all python code passes pylint 10/10 and 0 pyright errors

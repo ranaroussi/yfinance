@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 from curl_cffi import requests
 import yfinance.client as yf
+from yfinance.base import TickerBase
 from yfinance.config import YF_CONFIG
 from yfinance.data import YfData
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
@@ -265,6 +266,114 @@ class TestIssue2350(unittest.TestCase):
             ["Open", "High", "Low", "Close", "Volume", "Dividends", "Stock Splits"],
         )
         self.assertAlmostEqual(float(data.iloc[0]["Close"]), 184.5)
+
+
+class TestIssue2360(unittest.TestCase):
+    """Verify paired downloads survive a missing timezone bootstrap."""
+
+    def test_dual_listed_download_recovers_after_timezone_bootstrap_miss(self):
+        """A missing timezone bootstrap payload should not force a failed paired download."""
+
+        def make_response(payload):
+            response = Mock(status_code=200)
+            response.text = "{}"
+            response.json.return_value = payload
+            return response
+
+        def make_chart_payload(close_price):
+            return {
+                "chart": {
+                    "result": [
+                        {
+                            "meta": {
+                                "currency": "AUD",
+                                "instrumentType": "EQUITY",
+                                "exchangeTimezoneName": "Australia/Sydney",
+                                "validRanges": ["1d", "5d", "1mo"],
+                            },
+                            "timestamp": [1741857038],
+                            "indicators": {
+                                "quote": [
+                                    {
+                                        "open": [close_price - 0.3],
+                                        "high": [close_price + 0.2],
+                                        "low": [close_price - 0.5],
+                                        "close": [close_price],
+                                        "volume": [1000],
+                                    }
+                                ],
+                                "adjclose": [{"adjclose": [close_price]}],
+                            },
+                        }
+                    ],
+                    "error": None,
+                }
+            }
+
+        timezone_cache = yf.cache.get_tz_cache()
+        timezone_cache.store("CBA.AX", None)
+        timezone_cache.store("FBU.AX", None)
+        request_log = []
+
+        def fake_get_tz(ticker_base, timeout):
+            del timeout
+            request_log.append(("get_tz", ticker_base.ticker))
+            if ticker_base.ticker == "CBA.AX":
+                return "Australia/Sydney"
+            if ticker_base.ticker == "FBU.AX":
+                return None
+            raise AssertionError(f"Unexpected ticker bootstrap: {ticker_base.ticker}")
+
+        def fake_get(_data, url, params=None, timeout=30):
+            del _data, timeout
+            request_log.append(("get", url, dict(params or {})))
+            if url.endswith("/CBA.AX"):
+                return make_response(make_chart_payload(152.4))
+            if url.endswith("/FBU.AX"):
+                return make_response(make_chart_payload(17.85))
+            raise AssertionError(f"Unexpected get url: {url}")
+
+        with (
+            patch.object(TickerBase, "_get_ticker_tz", autospec=True, side_effect=fake_get_tz),
+            patch.object(YfData, "get", autospec=True, side_effect=fake_get),
+        ):
+            frame = yf.download(
+                ["CBA.AX", "FBU.AX"],
+                period="1d",
+                auto_adjust=False,
+                group_by="ticker",
+                progress=False,
+                threads=False,
+            )
+
+        frame = require_dataframe(frame, "yf.download() returned None")
+        self.assertFalse(frame.empty)
+        self.assertTrue(isinstance(frame.columns, pd.MultiIndex))
+        self.assertIn("CBA.AX", frame.columns.get_level_values(0))
+        self.assertIn("FBU.AX", frame.columns.get_level_values(0))
+        self.assertFalse(frame["CBA.AX"].tail(1).isna().all().all())
+        self.assertFalse(frame["FBU.AX"].tail(1).isna().all().all())
+        self.assertAlmostEqual(float(frame["FBU.AX"]["Close"].iloc[-1]), 17.85)
+        self.assertIn(
+            (
+                "get_tz",
+                "FBU.AX",
+            ),
+            request_log,
+        )
+        self.assertIn(
+            (
+                "get",
+                "https://query2.finance.yahoo.com/v8/finance/chart/FBU.AX",
+                {
+                    "range": "1d",
+                    "interval": "1d",
+                    "includePrePost": False,
+                    "events": "div,splits,capitalGains",
+                },
+            ),
+            request_log,
+        )
 
 
 class TestSessionTickerIssues(SessionTickerTestCase):
