@@ -166,6 +166,30 @@ class TestIssue1801(SessionTickerTestCase):
         self.assertEqual(matching, [])
 
 
+class TestIssue1382(unittest.TestCase):
+    """Verify mixed empty and populated downloads keep a datetime index."""
+
+    def test_download_with_one_empty_ticker_keeps_datetime_index(self):
+        """A mixed download should not degrade the combined index to object dtype."""
+        data = yf.download(
+            ["AAPL", "ATVI"],
+            period="5d",
+            interval="1m",
+            group_by="column",
+            auto_adjust=False,
+            prepost=True,
+            progress=False,
+            threads=True,
+        )
+
+        self.assertFalse(data.empty)
+        self.assertIsInstance(data.index, pd.DatetimeIndex)
+        self.assertEqual(str(data.index.dtype), "datetime64[s, UTC]")
+        self.assertEqual(data.index.tz, dt.timezone.utc)
+        self.assertFalse(data[("Close", "AAPL")].isna().all())
+        self.assertTrue(data[("Close", "ATVI")].isna().all())
+
+
 class ProxyNetworkIssueTestCase(unittest.TestCase):
     """Shared setup for proxy-related regression tests."""
 
@@ -478,6 +502,291 @@ class TestIssue1957(SessionTickerTestCase):
                 )
 
 
+class TestIssue1518(SessionTickerTestCase):
+    """Verify info exposes the last price for ETF-style symbols."""
+
+    def test_info_current_price_matches_fast_info_last_price_for_reported_etfs(self):
+        """ETF info payloads should expose currentPrice consistently with fast_info."""
+        for symbol in ["VTI", "VXUS"]:
+            with self.subTest(symbol=symbol):
+                ticker = yf.Ticker(symbol, session=self.session)
+                info = ticker.info
+                fast_info = ticker.fast_info
+
+                self.assertIn("currentPrice", info)
+                self.assertIsInstance(info["currentPrice"], float)
+                self.assertAlmostEqual(info["currentPrice"], fast_info["lastPrice"], places=3)
+
+
+class TestIssue1820(SessionTickerTestCase):
+    """Verify mixed-timezone downloads work when ignore_tz is False."""
+
+    def test_download_mixed_timezones_with_ignore_tz_false(self):
+        """Mixed-exchange downloads should normalize to one tz-aware index without raising."""
+        frame = yf.download(
+            ["BMW.DE", "AAPL"],
+            period="5d",
+            interval="5m",
+            group_by="ticker",
+            prepost=True,
+            ignore_tz=False,
+            progress=False,
+            threads=False,
+            session=self.session,
+        )
+
+        self.assertIsInstance(frame, pd.DataFrame)
+        self.assertFalse(frame.empty)
+        self.assertIsNotNone(pd.DatetimeIndex(frame.index).tz)
+
+
+class TestIssue2044(SessionTickerTestCase):
+    """Verify reported ASIANPAINT.NS one-day history fetch no longer fails."""
+
+    def test_reported_asianpaint_single_day_history_returns_data(self):
+        """The exact reported symbol/date should return a non-empty daily history frame."""
+        frame = yf.Ticker("ASIANPAINT.NS", session=self.session).history(
+            start="2022-05-04",
+            end="2022-05-05",
+            interval="1d",
+        )
+
+        self.assertIsInstance(frame, pd.DataFrame)
+        self.assertFalse(frame.empty)
+        self.assertEqual(len(frame), 1)
+        self.assertEqual(str(frame.index[0].date()), "2022-05-04")
+
+
+class TestIssue1115(SessionTickerTestCase):
+    """Verify history(period=..., end=...) returns bounded data instead of empty output."""
+
+    def test_history_period_with_end_date_returns_data_for_reported_symbols(self):
+        """Period-plus-end requests should return non-empty data on the reported symbols."""
+        for symbol in ["AAPL", "^FTSE"]:
+            with self.subTest(symbol=symbol):
+                frame = yf.Ticker(symbol, session=self.session).history(
+                    period="5y",
+                    end="2022-11-11",
+                )
+
+                self.assertIsInstance(frame, pd.DataFrame)
+                self.assertFalse(frame.empty)
+                self.assertLessEqual(frame.index[-1].date().isoformat(), "2022-11-10")
+
+
+class TestIssue521(SessionTickerTestCase):
+    """Verify weekly histories line up for the original mismatch example."""
+
+    def test_weekly_histories_align_for_reported_symbol_pair(self):
+        """GDX and QQQ should now return the same weekly index for the reported window."""
+        df1 = yf.Ticker("GDX", session=self.session).history(
+            start="2014-12-29",
+            end="2020-11-29",
+            interval="1wk",
+            auto_adjust=False,
+        )
+        df2 = yf.Ticker("QQQ", session=self.session).history(
+            start="2014-12-29",
+            end="2020-11-29",
+            interval="1wk",
+            auto_adjust=False,
+        )
+
+        self.assertFalse(df1.empty)
+        self.assertFalse(df2.empty)
+        self.assertEqual(len(df1), len(df2))
+        self.assertTrue(df1.index.equals(df2.index))
+
+
+class TestIssue1718(SessionTickerTestCase):
+    """Verify the reported 60d intraday download no longer fails internally."""
+
+    def test_reported_60d_intraday_download_returns_data(self):
+        """The original COP 60d/2m download path should return data instead of an internal error."""
+        frame = yf.download(
+            "COP",
+            period="60d",
+            interval="2m",
+            progress=False,
+            threads=False,
+            session=self.session,
+        )
+
+        self.assertIsInstance(frame, pd.DataFrame)
+        self.assertFalse(frame.empty)
+        if isinstance(frame.columns, pd.MultiIndex):
+            frame = frame.xs("COP", axis=1, level=1)
+        self.assertTrue({"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns))
+
+
+class TestIssue1813(SessionTickerTestCase):
+    """Verify the reported start/end download path returns data."""
+
+    def test_reported_start_end_download_returns_data(self):
+        """
+        The original CL=F start/end request should return data instead of a
+        delisted-style empty frame.
+        """
+        frame = yf.download(
+            "CL=F",
+            start="2023-12-01",
+            end="2023-12-31",
+            interval="1d",
+            progress=False,
+            threads=False,
+            session=self.session,
+        )
+
+        self.assertIsInstance(frame, pd.DataFrame)
+        self.assertFalse(frame.empty)
+        if isinstance(frame.columns, pd.MultiIndex):
+            frame = frame.xs("CL=F", axis=1, level=1)
+        self.assertTrue({"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns))
+        self.assertEqual(str(frame.index[0].date()), "2023-12-01")
+        self.assertEqual(str(frame.index[-1].date()), "2023-12-29")
+
+
+class TestIssue1895(SessionTickerTestCase):
+    """Verify long-range monthly and quarterly history no longer degrade after 2022."""
+
+    def test_reported_monthly_and_quarterly_history_stay_populated_after_2022(self):
+        """
+        The reported AAPL max-range 1mo/3mo paths should keep valid OHLC rows
+        in recent periods.
+        """
+        cases = [
+            ("download", "1mo"),
+            ("download", "3mo"),
+            ("history", "1mo"),
+            ("history", "3mo"),
+        ]
+
+        for source, interval in cases:
+            with self.subTest(source=source, interval=interval):
+                if source == "download":
+                    frame = yf.download(
+                        "AAPL",
+                        period="max",
+                        interval=interval,
+                        actions=True,
+                        progress=False,
+                        threads=False,
+                        session=self.session,
+                    )
+                    if isinstance(frame.columns, pd.MultiIndex):
+                        frame = frame.xs("AAPL", axis=1, level=1)
+                else:
+                    frame = yf.Ticker("AAPL", session=self.session).history(
+                        period="max",
+                        interval=interval,
+                        actions=True,
+                    )
+
+                self.assertIsInstance(frame, pd.DataFrame)
+                self.assertFalse(frame.empty)
+                self.assertTrue({"Open", "High", "Low", "Close"}.issubset(frame.columns))
+                self.assertFalse(frame["Open"].tail(5).isna().any())
+                self.assertFalse(frame["Close"].tail(5).isna().any())
+                self.assertGreaterEqual(frame.index[-1].date().isoformat(), "2025-12-01")
+
+
+class TestIssue860(SessionTickerTestCase):
+    """Verify history and download expose consistent daily close semantics."""
+
+    def test_history_and_download_match_for_default_and_unadjusted_paths(self):
+        """The reported AAPL history/download mismatch should no longer reproduce."""
+        start = "2023-01-03"
+        end = "2023-02-01"
+
+        default_history = yf.Ticker("AAPL", session=self.session).history(
+            start=start,
+            end=end,
+            actions=False,
+        )
+        default_download = yf.download(
+            "AAPL",
+            start=start,
+            end=end,
+            actions=False,
+            progress=False,
+            threads=False,
+            session=self.session,
+        )
+        if isinstance(default_download.columns, pd.MultiIndex):
+            default_download = default_download.xs("AAPL", axis=1, level=1)
+
+        self.assertNotIn("Adj Close", default_history.columns)
+        self.assertNotIn("Adj Close", default_download.columns)
+        default_history_close = default_history["Close"].copy()
+        default_download_close = default_download["Close"].copy()
+        default_history_close.index = pd.Index([item.date() for item in default_history.index])
+        default_download_close.index = pd.Index([item.date() for item in default_download.index])
+        pd.testing.assert_series_equal(default_history_close, default_download_close)
+
+        raw_history = yf.Ticker("AAPL", session=self.session).history(
+            start=start,
+            end=end,
+            auto_adjust=False,
+            actions=False,
+        )
+        raw_download = yf.download(
+            "AAPL",
+            start=start,
+            end=end,
+            auto_adjust=False,
+            actions=False,
+            progress=False,
+            threads=False,
+            session=self.session,
+        )
+        if isinstance(raw_download.columns, pd.MultiIndex):
+            raw_download = raw_download.xs("AAPL", axis=1, level=1)
+
+        self.assertTrue({"Close", "Adj Close"}.issubset(raw_history.columns))
+        self.assertTrue({"Close", "Adj Close"}.issubset(raw_download.columns))
+        for column in ["Close", "Adj Close"]:
+            history_series = raw_history[column].copy()
+            download_series = raw_download[column].copy()
+            history_series.index = pd.Index([item.date() for item in raw_history.index])
+            download_series.index = pd.Index([item.date() for item in raw_download.index])
+            pd.testing.assert_series_equal(history_series, download_series)
+
+
+class TestIssue1272(SessionTickerTestCase):
+    """Verify start/end requests do not leak rows outside the requested window."""
+
+    def test_start_end_window_with_empty_non_trading_range_stays_empty(self):
+        """
+        The reported CRSR non-trading window should return an empty frame
+        rather than the prior trading day.
+        """
+        start = "2022-12-31"
+        end = "2023-01-01"
+
+        history_frame = yf.Ticker("CRSR", session=self.session).history(
+            start=start,
+            end=end,
+            interval="1d",
+        )
+        download_frame = yf.download(
+            "CRSR",
+            start=start,
+            end=end,
+            interval="1d",
+            progress=False,
+            threads=False,
+            session=self.session,
+        )
+
+        self.assertIsInstance(history_frame, pd.DataFrame)
+        self.assertTrue(history_frame.empty)
+        self.assertEqual(list(history_frame.index), [])
+
+        self.assertIsInstance(download_frame, pd.DataFrame)
+        self.assertTrue(download_frame.empty)
+        self.assertEqual(list(download_frame.index), [])
+
+
 class TestIssue2348(unittest.TestCase):
     """Verify fast_info tolerates missing currentTradingPeriod metadata."""
 
@@ -536,13 +845,36 @@ class TestIssue1855(SessionTickerTestCase):
 class TestIssue1951(SessionTickerTestCase):
     """Verify unavailable quotes no longer crash fast_info access."""
 
-    def test_fast_info_handles_unavailable_quote(self):
-        """fast_info access should tolerate unavailable quotes."""
-        ticker = yf.Ticker("DJI", session=self.session)
-        fast_info = ticker.fast_info
+    def test_fast_info_missing_metadata_returns_none_instead_of_keyerror(self):
+        """Missing history metadata should degrade to None rather than raising."""
+
+        class FakeTicker:
+            """Minimal ticker stub for unavailable-quote fast_info paths."""
+
+            def history(self, **kwargs):
+                """Return an empty price history for unavailable quotes."""
+                _ = kwargs
+                return pd.DataFrame(
+                    columns=["Open", "High", "Low", "Close", "Adj Close", "Volume"]
+                )
+
+            def get_history_metadata(self):
+                """Return empty metadata for unavailable quotes."""
+                return {}
+
+            def get_info(self):
+                """Return an empty info payload for unavailable quotes."""
+                return {}
+
+            def get_shares_full(self, start=None):
+                """Return no share-count data for unavailable quotes."""
+                _ = start
+
+        fast_info = FastInfo(FakeTicker())
 
         for key in fast_info:
-            _ = fast_info.get(key)
+            with self.subTest(key=key):
+                self.assertIsNone(fast_info.get(key))
 
 
 class TestIssue930(SessionTickerTestCase):

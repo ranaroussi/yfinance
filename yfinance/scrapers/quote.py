@@ -229,7 +229,7 @@ class FastInfo:
             return self._cache["currency"]
 
         md = self._tkr.get_history_metadata()
-        self._cache["currency"] = md["currency"]
+        self._cache["currency"] = md.get("currency")
         return self._cache["currency"]
 
     @property
@@ -239,7 +239,7 @@ class FastInfo:
             return self._cache["quote_type"]
 
         md = self._tkr.get_history_metadata()
-        self._cache["quote_type"] = md["instrumentType"]
+        self._cache["quote_type"] = md.get("instrumentType")
         return self._cache["quote_type"]
 
     @property
@@ -248,7 +248,7 @@ class FastInfo:
         if self._cache["exchange"] is not None:
             return self._cache["exchange"]
 
-        self._cache["exchange"] = self._get_exchange_metadata()["exchangeName"]
+        self._cache["exchange"] = self._get_exchange_metadata().get("exchangeName")
         return self._cache["exchange"]
 
     @property
@@ -257,7 +257,7 @@ class FastInfo:
         if self._cache["timezone"] is not None:
             return self._cache["timezone"]
 
-        self._cache["timezone"] = self._get_exchange_metadata()["exchangeTimezoneName"]
+        self._cache["timezone"] = self._get_exchange_metadata().get("exchangeTimezoneName")
         return self._cache["timezone"]
 
     @property
@@ -470,6 +470,9 @@ class FastInfo:
         prices = self._get_1y_prices(full_days_only=True)
         if prices.empty:
             prices = self._get_1y_prices(full_days_only=False)
+        if prices.empty:
+            self._cache["year_high"] = None
+            return self._cache["year_high"]
         self._cache["year_high"] = float(prices["High"].max())
         return self._cache["year_high"]
 
@@ -482,6 +485,9 @@ class FastInfo:
         prices = self._get_1y_prices(full_days_only=True)
         if prices.empty:
             prices = self._get_1y_prices(full_days_only=False)
+        if prices.empty:
+            self._cache["year_low"] = None
+            return self._cache["year_low"]
         self._cache["year_low"] = float(prices["Low"].min())
         return self._cache["year_low"]
 
