@@ -1,4 +1,4 @@
-"""Case modules for price repair assumptions tests."""
+"""Assumption tests for price repair."""
 
 import numpy as _np
 import pandas as _pd

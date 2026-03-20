@@ -1058,7 +1058,10 @@ class TestIssue2495(unittest.TestCase):
                 {
                     "url": "https://query2.finance.yahoo.com/v10/finance/quoteSummary/AAPL",
                     "params": {
-                        "modules": "financialData,quoteType,defaultKeyStatistics,assetProfile,summaryDetail",
+                        "modules": (
+                            "financialData,quoteType,defaultKeyStatistics,"
+                            "assetProfile,summaryDetail"
+                        ),
                         "formatted": "false",
                     },
                     "timeout": 1,
@@ -1088,3 +1091,61 @@ class TestIssue2486(unittest.TestCase):
             "request_cache sessions don't work with curl_cffi",
         ):
             YfData(session=caching_session)
+
+
+class TestIssue2426(unittest.TestCase):
+    """Verify stale valuation data is refreshed from key-statistics."""
+
+    def test_info_prefers_key_statistics_page_for_forward_pe(self):
+        """Ticker.info should treat key-statistics as the primary forwardPE source."""
+        quote_summary_payload = {
+            "quoteSummary": {
+                "result": [
+                    {
+                        "symbol": "INTC",
+                        "financialData": {},
+                        "quoteType": {},
+                        "defaultKeyStatistics": {
+                            "forwardPE": {"raw": 20.72165, "fmt": "20.72"},
+                        },
+                        "assetProfile": {},
+                        "summaryDetail": {},
+                    }
+                ],
+                "error": None,
+            }
+        }
+        trailing_peg_payload = {
+            "timeseries": {
+                "result": [{}],
+                "error": None,
+            }
+        }
+        key_statistics_html = """
+        <html><body>
+          <section data-testid="qsp-statistics">
+            <table>
+              <tr><td>Forward P/E</td><td>63.29</td></tr>
+              <tr><td>PEG Ratio (5 yr expected)</td><td>2.21</td></tr>
+            </table>
+          </section>
+        </body></html>
+        """
+
+        def fake_cache_get(_data, url):
+            if "fundamentals-timeseries" in url:
+                return _make_response(trailing_peg_payload)
+            if "/key-statistics/" in url:
+                response = Mock(status_code=200)
+                response.text = key_statistics_html
+                return response
+            raise AssertionError(f"Unexpected cache_get url: {url}")
+
+        with (
+            patch.object(Quote, "_fetch", return_value=quote_summary_payload),
+            patch.object(Quote, "_fetch_additional_info", return_value={}),
+            patch.object(YfData, "cache_get", autospec=True, side_effect=fake_cache_get),
+        ):
+            info = yf.Ticker("INTC").info
+
+        self.assertEqual(info["forwardPE"], 63.29)

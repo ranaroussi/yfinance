@@ -8,7 +8,7 @@ def load_tests(loader, standard_tests, pattern):
     del standard_tests, pattern
     return loader.loadTestsFromNames(
         [
-            "tests.price_repair_assumptions_cases",
+            "tests.price_repair_assumptions",
             "tests.price_repair_cases",
         ]
     )

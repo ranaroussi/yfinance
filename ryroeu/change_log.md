@@ -20,9 +20,9 @@ This fork is found at: https://github.com/ryroeu/yfinance
 7. `tests/test_search.py:test_fuzzy_query` — checked `search.quotes[0]['symbol'] == 'AAPL'` but Yahoo ranking changed. Fixed to check AAPL appears anywhere in results.
 8. `tests/test_prices.py:test_prune_post_intraday_asx` — used hardcoded 2024 date range which is now outside Yahoo's 730-day 1h data window. Fixed to use dynamic rolling 180-day window.
 9. `tests/test_ticker.py:assert_attribute_type` — `isinstance(Union[A,B], _GenericAlias)` returns False in Python 3.14. Fixed to use `getattr(expected_type, '__origin__', None) is Union`.
-10. `new files created to address too many lines and simplify future code changes` utils_doc, utils_financial, utils_price, fundamentals_keys, price_repair_assumptions_cases, price_repair_cases, price_repair_support, ticker_core_cases, ticker_financial_cases, ticker_info_cases, ticker_support
+10. `new files created to address too many lines and simplify future code changes` utils_doc, utils_financial, utils_price, fundamentals_keys, price_repair_assumptions, price_repair_cases, price_repair_support, ticker_core_cases, ticker_financial_cases, ticker_info_cases, ticker_support
 11. `extensive syntax remediation using pyright and pylint`
-12. `new files created to address too many lines and simplify future code changes` price_repair_assumptions_cases, price_repair_cases, price_repair_support, ticker_core_cases, ticker_financial_cases, ticker_info_cases, ticker_support, history/helpers, history/price_repair, history/flow, history/dividend_repair, history/capital_gains, history/reconstruct, history/repair_workflows, history/split_repair
+12. `new files created to address too many lines and simplify future code changes` price_repair_assumptions, price_repair_cases, price_repair_support, ticker_core_cases, ticker_financial_cases, ticker_info_cases, ticker_support, history/helpers, history/price_repair, history/flow, history/dividend_repair, history/capital_gains, history/reconstruct, history/repair_workflows, history/split_repair
 13. `extensive syntax remediation using pyright and pylint`
 14. `created new files to address duplication` utils, http, options
 15. `fixed broken code in test scripts`:
@@ -82,6 +82,7 @@ The root cause: pytest scanned the module's namespace, found TestSuite (imported
 55. `confirmed that these known issues are fixed`: 2526
 56. `confirmed that these known issues are fixed`: 2495
 57. `confirmed that these known issues are fixed`: 2463
+58. `confirmed that these known issues are fixed`: 2426
 
 ### python -m pytest tests/ --ignore=tests/test_price_repair.py --ignore=tests/test_live.py --ignore=tests/test_cache_noperms.py
 * 100 passed in 86.40s (0:01:26)
@@ -90,7 +91,7 @@ The root cause: pytest scanned the module's namespace, found TestSuite (imported
 * 116 passed, 71 subtests passed in 132.79s (0:02:12)
 
 ### python -m pytest tests/issues/test.py tests/issues/test_history.py tests/issues/test_fast_info.py tests/issues/test_mocked.py -q
-* 54 passed, 93 subtests passed in 24.55s
+* 55 passed, 93 subtests passed in 26.18s
 
 ### pylint and pyright
 all python code passes pylint 10/10 and 0 pyright errors

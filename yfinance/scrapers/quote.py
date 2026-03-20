@@ -805,32 +805,45 @@ class Quote:
                 else:
                     self._info[k] = None
 
-        peg_ratio = self._scrape_peg_ratio()
-        if peg_ratio is not None:
-            self._info["pegRatio"] = peg_ratio
-        elif self._info.get("pegRatio") is None:
-            self._info.pop("pegRatio", None)
+        key_statistics_values = self._scrape_key_statistics_values(
+            {
+                "pegRatio": "PEG Ratio (5 yr expected)",
+                "forwardPE": "Forward P/E",
+            }
+        )
+        for key, value in key_statistics_values.items():
+            if value is not None:
+                self._info[key] = value
+            elif self._info.get(key) is None:
+                self._info.pop(key, None)
 
-    def _scrape_peg_ratio(self) -> Optional[float]:
-        """Scrape pegRatio from the key-statistics HTML page.
-
-        Yahoo stopped returning pegRatio via the quoteSummary API in mid-2025.
-        The value (labelled 'PEG Ratio (5yr expected)') is still rendered in the
-        Valuation Measures table on the key-statistics page, so we fetch that page
-        and parse the current value out of the DOM.
-        """
+    def _scrape_key_statistics_values(
+        self, labels_by_key: dict[str, str]
+    ) -> dict[str, Optional[float]]:
+        """Scrape selected valuation measures from the key-statistics HTML page."""
+        values: dict[str, Optional[float]] = {}
+        for key in labels_by_key:
+            values[key] = None
         url = f"{_ROOT_URL_}/quote/{self._symbol}/key-statistics/"
         try:
             response = self._data.cache_get(url=url)
             soup = BeautifulSoup(response.text, "html.parser")
             section = soup.find("section", {"data-testid": "qsp-statistics"})
             if section is None:
-                return None
+                return values
             for row in section.find_all("tr"):
                 cells = row.find_all("td")
-                if cells and "PEG" in cells[0].get_text():
-                    raw = cells[1].get_text(strip=True)
-                    return float(raw) if raw not in ("", "N/A", "--") else None
+                if len(cells) < 2:
+                    continue
+                label = cells[0].get_text(" ", strip=True)
+                raw = cells[1].get_text(strip=True)
+                for key, expected_label in labels_by_key.items():
+                    if label != expected_label:
+                        continue
+                    if raw in ("", "N/A", "--"):
+                        values[key] = None
+                    else:
+                        values[key] = float(raw.replace(",", ""))
         except (
             AttributeError,
             IndexError,
@@ -839,7 +852,7 @@ class Quote:
             requests.exceptions.RequestException,
         ):
             pass
-        return None
+        return values
 
     def _fetch_calendar(self):
         """Fetch earnings and dividend calendar details."""

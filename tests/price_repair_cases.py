@@ -13,10 +13,66 @@ from tests.price_repair_support import (
     call_private,
     to_dataframe,
 )
+from yfinance.scrapers.history.repair_workflows import (
+    _TaggedRepairData,
+    _apply_split_expectation_mask,
+    _restore_tagged_values,
+)
+
+
+def _multiply_frame_value(frame: _pd.DataFrame, index_label: str, column: str, factor: float):
+    frame.loc[index_label, column] = cast(float, frame.loc[index_label, column]) * factor
 
 
 class TestPriceRepair(PriceRepairTestCase):
     """Verify price repair behavior across known data issues."""
+
+    def test_restore_tagged_values_aligns_by_index(self):
+        """Restore tagged values without assuming reconstructed rows match source length."""
+        source_index = _pd.date_range("2024-01-01", periods=2, freq="D", tz="UTC")
+        repaired_index = _pd.date_range("2024-01-01", periods=4, freq="D", tz="UTC")
+        source_df = _pd.DataFrame(
+            {
+                "Open": [10.0, 20.0],
+                "Close": [11.0, 21.0],
+            },
+            index=source_index,
+        )
+        repaired_df = _pd.DataFrame(
+            {
+                "Open": [-1.0, -1.0, 30.0, 40.0],
+                "Close": [-1.0, 22.0, -1.0, 41.0],
+            },
+            index=repaired_index,
+        )
+
+        restored = _restore_tagged_values(
+            repaired_df.copy(),
+            _TaggedRepairData(source_df=source_df, data_cols=["Open", "Close"], tag=-1.0),
+        )
+
+        self.assertEqual(restored.loc[source_index[0], "Open"], 10.0)
+        self.assertEqual(restored.loc[source_index[0], "Close"], 11.0)
+        self.assertEqual(restored.loc[source_index[1], "Open"], 20.0)
+        self.assertEqual(restored.loc[repaired_index[2], "Close"], -1.0)
+
+    def test_apply_split_expectation_mask_handles_read_only_masks(self):
+        """Zero-repair split handling should work even when pandas returns a read-only mask."""
+        frame = _pd.DataFrame(
+            {
+                "Stock Splits": [0.0, 2.0],
+            },
+            index=_pd.date_range("2024-01-01", periods=2, freq="D", tz="UTC"),
+        )
+        price_mask = _np.array([[False, False], [False, False]])
+        price_mask.setflags(write=False)
+        price_change_mask = _np.array([True, False])
+
+        adjusted_mask = _apply_split_expectation_mask(frame, price_mask, price_change_mask)
+
+        self.assertFalse(price_mask[1, 0])
+        self.assertTrue(adjusted_mask[1, 0])
+        self.assertTrue(adjusted_mask[1, 1])
 
     def _assert_random_mixup_case(
         self,
@@ -242,9 +298,9 @@ class TestPriceRepair(PriceRepairTestCase):
         ).sort_index()
         frame.index.name = "Date"
         broken = cast(_pd.DataFrame, frame.copy())
-        broken.loc["2022-10-24", "Close"] *= 100
-        broken.loc["2022-10-17", "Low"] *= 100
-        broken.loc["2022-10-03", "Open"] *= 100
+        _multiply_frame_value(broken, "2022-10-24", "Close", 100.0)
+        _multiply_frame_value(broken, "2022-10-17", "Low", 100.0)
+        _multiply_frame_value(broken, "2022-10-03", "Open", 100.0)
         frame.index = as_datetime_index(frame.index).tz_localize(timezone)
         broken.index = as_datetime_index(broken.index).tz_localize(timezone)
         self._assert_random_mixup_case(frame, broken, ("1wk", timezone, history))
@@ -281,9 +337,9 @@ class TestPriceRepair(PriceRepairTestCase):
         frame = frame_df
         frame.index.name = "Date"
         broken = cast(_pd.DataFrame, frame.copy())
-        broken.loc["2020-03-30", "Close"] *= 100
-        broken.loc["2020-03-23", "Low"] *= 100
-        broken.loc["2020-03-09", "Open"] *= 100
+        _multiply_frame_value(broken, "2020-03-30", "Close", 100.0)
+        _multiply_frame_value(broken, "2020-03-23", "Low", 100.0)
+        _multiply_frame_value(broken, "2020-03-09", "Open", 100.0)
         frame.index = as_datetime_index(frame.index).tz_localize(timezone)
         broken.index = as_datetime_index(broken.index).tz_localize(timezone)
         self._assert_random_mixup_case(frame, broken, ("1wk", timezone, history))
@@ -314,9 +370,9 @@ class TestPriceRepair(PriceRepairTestCase):
         frame = frame.sort_index()
         frame.index.name = "Date"
         broken = cast(_pd.DataFrame, frame.copy())
-        broken.loc["2022-11-01", "Close"] *= 100
-        broken.loc["2022-10-31", "Low"] *= 100
-        broken.loc["2022-10-27", "Open"] *= 100
+        _multiply_frame_value(broken, "2022-11-01", "Close", 100.0)
+        _multiply_frame_value(broken, "2022-10-31", "Low", 100.0)
+        _multiply_frame_value(broken, "2022-10-27", "Open", 100.0)
         frame.index = as_datetime_index(frame.index).tz_localize(timezone)
         broken.index = as_datetime_index(broken.index).tz_localize(timezone)
         self._assert_random_mixup_case(frame, broken, ("1d", timezone, history))

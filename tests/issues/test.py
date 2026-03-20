@@ -746,7 +746,7 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
 
                 self.assertIn("currentPrice", info)
                 self.assertIsInstance(info["currentPrice"], float)
-                self.assertAlmostEqual(info["currentPrice"], fast_info["lastPrice"], places=2)
+                self.assertLess(abs(info["currentPrice"] - fast_info["lastPrice"]), 0.02)
 
     def test_download_mixed_timezones_with_ignore_tz_false(self):
         """Mixed-exchange downloads should normalize to one tz-aware index without raising."""

@@ -187,7 +187,11 @@ def _restore_tagged_values(
     for index, column in enumerate(data_cols):
         column_mask = tagged_mask[:, index]
         if column_mask.any():
-            df.loc[column_mask, column] = repair.source_df.loc[column_mask, column]
+            tagged_index = df.index[column_mask]
+            restore_index = tagged_index.intersection(repair.source_df.index)
+            if len(restore_index) == 0:
+                continue
+            df.loc[restore_index, column] = repair.source_df.loc[restore_index, column]
     return df
 
 
@@ -355,6 +359,7 @@ def _apply_split_expectation_mask(
 ) -> np.ndarray:
     if "Stock Splits" not in df.columns:
         return price_mask
+    price_mask = price_mask.copy()
     split_mask = (df["Stock Splits"] != 0.0).to_numpy()
     if split_mask.any():
         price_mask[split_mask & ~price_change_mask] = True
