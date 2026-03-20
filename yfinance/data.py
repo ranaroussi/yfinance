@@ -132,8 +132,17 @@ class YfData(metaclass=SingletonMeta):
 
         with self._cookie_lock:
             self._session = session
-            if YfConfig.network.proxy is not None:
-                self._session.proxies = YfConfig.network.proxy
+            self._sync_session_proxy()
+
+    def _sync_session_proxy(self) -> None:
+        self._session.proxies = YfConfig.network.proxy
+
+    def _get_network_request_options(self) -> Dict[str, Any]:
+        self._sync_session_proxy()
+        request_options: Dict[str, Any] = {}
+        if YfConfig.network.verify is not None:
+            request_options["verify"] = YfConfig.network.verify
+        return request_options
 
     def _session_cookie_store(self) -> Dict[str, Any]:
         cookie_store = getattr(self._session.cookies.jar, "_cookies", None)
@@ -233,7 +242,10 @@ class YfData(metaclass=SingletonMeta):
         # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
         try:
             self._session.get(
-                url="https://fc.yahoo.com", timeout=timeout, allow_redirects=True
+                url="https://fc.yahoo.com",
+                timeout=timeout,
+                allow_redirects=True,
+                **self._get_network_request_options(),
             )
         except requests.exceptions.RequestException as e:
             # Possible because fc.yahoo.com is blocked, unreachable, or timing out.
@@ -261,6 +273,7 @@ class YfData(metaclass=SingletonMeta):
         }
         if self._session_is_caching and self._expire_after is not None:
             get_args["expire_after"] = self._expire_after
+        get_args.update(self._get_network_request_options())
         crumb_response = self._session.get(**get_args)
         self._crumb = crumb_response.text
         if crumb_response.status_code == 429 or "Too Many Requests" in self._crumb:
@@ -298,6 +311,7 @@ class YfData(metaclass=SingletonMeta):
         try:
             if self._session_is_caching and self._expire_after is not None:
                 request_args["expire_after"] = self._expire_after
+            request_args.update(self._get_network_request_options())
             return self._session.get(**request_args)
         except requests.exceptions.ChunkedEncodingError:
             # No idea why happens, but handle nicely so can switch to other cookie method.
@@ -354,7 +368,9 @@ class YfData(metaclass=SingletonMeta):
             if self._session_is_caching and self._expire_after is not None:
                 post_args["expire_after"] = self._expire_after
                 get_args["expire_after"] = self._expire_after
+            post_args.update(self._get_network_request_options())
             self._session.post(**post_args)
+            get_args.update(self._get_network_request_options())
             self._session.get(**get_args)
         except requests.exceptions.ChunkedEncodingError:
             # No idea why happens, but handle nicely so can switch to other cookie method.
@@ -383,6 +399,7 @@ class YfData(metaclass=SingletonMeta):
         }
         if self._session_is_caching and self._expire_after is not None:
             get_args["expire_after"] = self._expire_after
+        get_args.update(self._get_network_request_options())
         r = self._session.get(**get_args)
         self._crumb = r.text
 
@@ -545,8 +562,8 @@ class YfData(metaclass=SingletonMeta):
     def _make_request(self, request_method, request_config):
         """Execute a request and retry with fallback cookie strategy when needed."""
         self._log_request_details(request_config["url"], request_config.get("params"))
-        self._session.proxies = YfConfig.network.proxy
         request_args, strategy = self._build_request_args(request_config)
+        request_args.update(self._get_network_request_options())
         response = self._request_with_retry(request_method, request_args)
         utils.get_yf_logger().debug("response code=%s", response.status_code)
         if response.status_code >= 400:
@@ -642,5 +659,10 @@ class YfData(metaclass=SingletonMeta):
         # Some servers check referer as lightweight CSRF protection.
         headers = {"Referer": consent_resp.url}
         return self._session.post(
-            action, data=data, headers=headers, timeout=timeout, allow_redirects=True
+            action,
+            data=data,
+            headers=headers,
+            timeout=timeout,
+            allow_redirects=True,
+            **self._get_network_request_options(),
         )

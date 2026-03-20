@@ -78,7 +78,7 @@ __all__ += ["EquityQuery", "FundQuery", "screen", "PREDEFINED_SCREENER_QUERIES"]
 _NOTSET = object()
 
 
-def set_config(proxy=_NOTSET, retries=_NOTSET):
+def set_config(proxy=_NOTSET, retries=_NOTSET, verify=_NOTSET):
     """Set deprecated config values while mapping to the new config object."""
     if proxy is not _NOTSET:
         warnings.warn(
@@ -92,6 +92,12 @@ def set_config(proxy=_NOTSET, retries=_NOTSET):
             DeprecationWarning,
         )
         config.network.retries = retries
+    if verify is not _NOTSET:
+        warnings.warn(
+            "Set verify via new config control: yf.config.network.verify = verify",
+            DeprecationWarning,
+        )
+        config.network.verify = verify
 
 
 __all__ += ["config", "set_config"]

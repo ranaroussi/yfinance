@@ -3,12 +3,13 @@
 import datetime as dt
 import unittest
 import warnings
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 from curl_cffi import requests
 
 from tests.ticker_support import SessionTickerTestCase, call_private, yf
+from yfinance.config import YF_CONFIG
 from yfinance.data import YfData
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
 
@@ -162,6 +163,235 @@ class TestIssue1801(SessionTickerTestCase):
             if "utcfromtimestamp" in str(warning.message)
         ]
         self.assertEqual(matching, [])
+
+
+class ProxyNetworkIssueTestCase(unittest.TestCase):
+    """Shared setup for proxy-related regression tests."""
+
+    def setUp(self):
+        """Reset the shared singleton state before each test."""
+        self.data = YfData()
+        self.session = getattr(self.data, "_session")
+        self.original_proxy = YF_CONFIG.network.proxy
+        self.original_verify = YF_CONFIG.network.verify
+        self.original_session_proxies = getattr(self.session, "proxies", None)
+        setattr(self.data, "_cookie", None)
+        setattr(self.data, "_crumb", None)
+        setattr(self.data, "_cookie_strategy", "basic")
+
+    def tearDown(self):
+        """Restore global proxy and singleton session state."""
+        YF_CONFIG.network.proxy = self.original_proxy
+        YF_CONFIG.network.verify = self.original_verify
+        self.session.proxies = self.original_session_proxies
+        setattr(self.data, "_cookie", None)
+        setattr(self.data, "_crumb", None)
+        setattr(self.data, "_cookie_strategy", "basic")
+
+
+class TestIssue2146(ProxyNetworkIssueTestCase):
+    """Verify proxy settings propagate to direct cookie/bootstrap requests."""
+
+    def test_cookie_bootstrap_syncs_proxy_after_singleton_creation(self):
+        """Basic cookie bootstrap should pick up late proxy changes."""
+        proxy = {"https": "http://proxy.local:8080"}
+        YF_CONFIG.network.proxy = proxy
+        self.session.proxies = None
+
+        def fake_get(**kwargs):
+            self.assertEqual(self.session.proxies, proxy)
+            self.assertEqual(kwargs["url"], "https://fc.yahoo.com")
+            return Mock(status_code=200)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            self.assertTrue(call_private(self.data, "_get_cookie_basic", timeout=1))
+
+    def test_socks_proxy_bootstrap_uses_proxy_dict(self):
+        """SOCKS proxy dicts should flow through bootstrap and chart requests."""
+        proxy = {
+            "http": "socks5h://127.0.0.1:2080",
+            "https": "socks5h://127.0.0.1:2080",
+        }
+        YF_CONFIG.network.proxy = proxy
+        self.session.proxies = None
+
+        chart_response = Mock(status_code=200)
+        chart_response.json.return_value = {
+            "chart": {
+                "result": [{"meta": {"exchangeTimezoneName": "America/New_York"}}],
+                "error": None,
+            }
+        }
+
+        def fake_get(**kwargs):
+            self.assertEqual(self.session.proxies, proxy)
+            if kwargs["url"] == "https://fc.yahoo.com":
+                return Mock(status_code=200)
+            if kwargs["url"] == "https://query1.finance.yahoo.com/v1/test/getcrumb":
+                return Mock(status_code=200, text="crumb-1811")
+            self.assertEqual(
+                kwargs["url"],
+                "https://query2.finance.yahoo.com/v8/finance/chart/MSFT",
+            )
+            return chart_response
+
+        timezone_cache = yf.cache.get_tz_cache()
+        timezone_cache.store("MSFT", None)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            ticker = yf.Ticker("MSFT", session=self.session)
+            timezone = call_private(ticker, "_get_ticker_tz", timeout=1)
+
+        self.assertEqual(timezone, "America/New_York")
+
+    def test_csrf_cookie_flow_syncs_proxy_after_singleton_creation(self):
+        """CSRF consent flow should pick up late proxy changes for get/post calls."""
+        proxy = {"https": "http://proxy.local:8080"}
+        YF_CONFIG.network.proxy = proxy
+        self.session.proxies = None
+
+        consent_response = Mock()
+        consent_response.content = (
+            b'<form action="/submit">'
+            b'<input name="csrfToken" value="csrf-token" />'
+            b'<input name="sessionId" value="session-id" />'
+            b'<input type="checkbox" name="agree" value="agree" checked />'
+            b"</form>"
+        )
+        consent_response.url = "https://guce.yahoo.com/consent"
+
+        def fake_get(**kwargs):
+            self.assertEqual(self.session.proxies, proxy)
+            if kwargs["url"] == "https://guce.yahoo.com/consent":
+                return consent_response
+            self.assertEqual(
+                kwargs["url"],
+                "https://guce.yahoo.com/copyConsent?sessionId=session-id",
+            )
+            return Mock(status_code=200)
+
+        def fake_post(**kwargs):
+            self.assertEqual(self.session.proxies, proxy)
+            self.assertEqual(
+                kwargs["url"],
+                "https://consent.yahoo.com/v2/collectConsent?sessionId=session-id",
+            )
+            return Mock(status_code=200)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.session, "post", side_effect=fake_post),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            self.assertTrue(call_private(self.data, "_get_cookie_csrf", timeout=1))
+
+    def test_gspc_timezone_bootstrap_uses_proxy_after_singleton_creation(self):
+        """Index timezone bootstrap should survive late proxy configuration."""
+        proxy = {"https": "http://proxy.local:8080"}
+        YF_CONFIG.network.proxy = proxy
+        self.session.proxies = None
+
+        chart_response = Mock(status_code=200)
+        chart_response.json.return_value = {
+            "chart": {
+                "result": [{"meta": {"exchangeTimezoneName": "America/New_York"}}],
+                "error": None,
+            }
+        }
+
+        def fake_get(**kwargs):
+            self.assertEqual(self.session.proxies, proxy)
+            if kwargs["url"] == "https://fc.yahoo.com":
+                return Mock(status_code=200)
+            if kwargs["url"] == "https://query1.finance.yahoo.com/v1/test/getcrumb":
+                return Mock(status_code=200, text="crumb-2146")
+            self.assertEqual(
+                kwargs["url"],
+                "https://query2.finance.yahoo.com/v8/finance/chart/^GSPC",
+            )
+            return chart_response
+
+        timezone_cache = yf.cache.get_tz_cache()
+        timezone_cache.store("^GSPC", None)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            ticker = yf.Ticker("^GSPC", session=self.session)
+            timezone = call_private(ticker, "_get_ticker_tz", timeout=1)
+
+        self.assertEqual(timezone, "America/New_York")
+
+
+class TestIssue1852(ProxyNetworkIssueTestCase):
+    """Verify TLS verification settings propagate alongside proxy config."""
+
+    def test_cookie_bootstrap_uses_verify_setting(self):
+        """Basic cookie bootstrap should forward verify settings."""
+        YF_CONFIG.network.verify = False
+
+        def fake_get(**kwargs):
+            self.assertFalse(kwargs["verify"])
+            self.assertEqual(kwargs["url"], "https://fc.yahoo.com")
+            return Mock(status_code=200)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            self.assertTrue(call_private(self.data, "_get_cookie_basic", timeout=1))
+
+    def test_csrf_cookie_flow_uses_verify_setting(self):
+        """CSRF consent requests should forward verify settings."""
+        YF_CONFIG.network.verify = False
+
+        consent_response = Mock()
+        consent_response.content = (
+            b'<form action="/submit">'
+            b'<input name="csrfToken" value="csrf-token" />'
+            b'<input name="sessionId" value="session-id" />'
+            b'<input type="checkbox" name="agree" value="agree" checked />'
+            b"</form>"
+        )
+        consent_response.url = "https://guce.yahoo.com/consent"
+
+        def fake_get(**kwargs):
+            self.assertFalse(kwargs["verify"])
+            if kwargs["url"] == "https://guce.yahoo.com/consent":
+                return consent_response
+            self.assertEqual(
+                kwargs["url"],
+                "https://guce.yahoo.com/copyConsent?sessionId=session-id",
+            )
+            return Mock(status_code=200)
+
+        def fake_post(**kwargs):
+            self.assertFalse(kwargs["verify"])
+            self.assertEqual(
+                kwargs["url"],
+                "https://consent.yahoo.com/v2/collectConsent?sessionId=session-id",
+            )
+            return Mock(status_code=200)
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.session, "post", side_effect=fake_post),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            self.assertTrue(call_private(self.data, "_get_cookie_csrf", timeout=1))
 
 
 class TestIssue1951(SessionTickerTestCase):

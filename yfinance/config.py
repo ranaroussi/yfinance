@@ -34,7 +34,7 @@ class ConfigMgr:
     def _load_options(self):
         self._initialised = True
         self.options = {
-            "network": {"proxy": None, "retries": 0},
+            "network": {"proxy": None, "retries": 0, "verify": None},
             "debug": {"raise_on_error": False, "logging": False},
         }
 
