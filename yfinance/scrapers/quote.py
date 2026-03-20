@@ -805,8 +805,11 @@ class Quote:
                 else:
                     self._info[k] = None
 
-        if not self._info.get("pegRatio"):
-            self._info["pegRatio"] = self._scrape_peg_ratio()
+        peg_ratio = self._scrape_peg_ratio()
+        if peg_ratio is not None:
+            self._info["pegRatio"] = peg_ratio
+        elif self._info.get("pegRatio") is None:
+            self._info.pop("pegRatio", None)
 
     def _scrape_peg_ratio(self) -> Optional[float]:
         """Scrape pegRatio from the key-statistics HTML page.

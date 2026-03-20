@@ -668,3 +668,128 @@ class TestIssue2570(unittest.TestCase):
         self.assertIn("trailingPegRatio", info)
         self.assertEqual(info["pegRatio"], 2.21)
         self.assertEqual(info["trailingPegRatio"], 2.2115)
+
+    def test_info_prefers_key_statistics_page_for_peg_ratio(self):
+        """Ticker.info should treat key-statistics as the primary pegRatio source."""
+        quote_summary_payload = {
+            "quoteSummary": {
+                "result": [
+                    {
+                        "symbol": "AAPL",
+                        "financialData": {},
+                        "quoteType": {},
+                        "defaultKeyStatistics": {
+                            "pegRatio": {"raw": 9.99, "fmt": "9.99"},
+                        },
+                        "assetProfile": {},
+                        "summaryDetail": {},
+                    }
+                ],
+                "error": None,
+            }
+        }
+        trailing_peg_payload = {
+            "timeseries": {
+                "result": [
+                    {
+                        "trailingPegRatio": [
+                            {"reportedValue": {"raw": 2.2115}}
+                        ]
+                    }
+                ],
+                "error": None,
+            }
+        }
+        key_statistics_html = """
+        <html><body>
+          <section data-testid=\"qsp-statistics\">
+            <table>
+              <tr><td>PEG Ratio (5 yr expected)</td><td>2.21</td></tr>
+            </table>
+          </section>
+        </body></html>
+        """
+
+        def fake_cache_get(_data, url):
+            if "fundamentals-timeseries" in url:
+                return _make_response(trailing_peg_payload)
+            if "/key-statistics/" in url:
+                response = Mock(status_code=200)
+                response.text = key_statistics_html
+                return response
+            raise AssertionError(f"Unexpected cache_get url: {url}")
+
+        with (
+            patch.object(Quote, "_fetch", return_value=quote_summary_payload),
+            patch.object(Quote, "_fetch_additional_info", return_value={}),
+            patch.object(YfData, "cache_get", autospec=True, side_effect=fake_cache_get),
+        ):
+            info = yf.Ticker("AAPL").info
+
+        self.assertEqual(info["pegRatio"], 2.21)
+
+    def test_info_does_not_add_empty_peg_ratio_key(self):
+        """Ticker.info should omit pegRatio when key-statistics has no value."""
+        quote_summary_payload = {
+            "quoteSummary": {
+                "result": [
+                    {
+                        "symbol": "EXTO",
+                        "quoteType": {"quoteType": "NONE"},
+                        "underlyingSymbol": "EXTO",
+                        "uuid": "8a4226cf-a1a9-3f83-9bea-d6984f3a3c4d",
+                        "maxAge": 1,
+                    }
+                ],
+                "error": None,
+            },
+            "quoteResponse": {
+                "result": [
+                    {
+                        "symbol": "EXTO",
+                        "underlyingSymbol": "EXTO",
+                        "uuid": "8a4226cf-a1a9-3f83-9bea-d6984f3a3c4d",
+                        "quoteType": "NONE",
+                        "maxAge": 1,
+                    }
+                ],
+                "error": None,
+            },
+        }
+        trailing_peg_payload = {
+            "timeseries": {
+                "result": [{}],
+                "error": None,
+            }
+        }
+        key_statistics_html = """
+        <html><body>
+          <section data-testid=\"qsp-statistics\">
+            <table>
+              <tr><td>PEG Ratio (5 yr expected)</td><td>N/A</td></tr>
+            </table>
+          </section>
+        </body></html>
+        """
+
+        def fake_cache_get(_data, url):
+            if "fundamentals-timeseries" in url:
+                return _make_response(trailing_peg_payload)
+            if "/key-statistics/" in url:
+                response = Mock(status_code=200)
+                response.text = key_statistics_html
+                return response
+            raise AssertionError(f"Unexpected cache_get url: {url}")
+
+        with (
+            patch.object(Quote, "_fetch", return_value=quote_summary_payload),
+            patch.object(Quote, "_fetch_additional_info", return_value={}),
+            patch.object(YfData, "cache_get", autospec=True, side_effect=fake_cache_get),
+        ):
+            info = yf.Ticker("EXTO").info
+
+        self.assertNotIn("pegRatio", info)
+        self.assertCountEqual(
+            ["quoteType", "symbol", "underlyingSymbol", "uuid", "maxAge", "trailingPegRatio"],
+            info.keys(),
+        )
