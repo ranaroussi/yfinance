@@ -211,6 +211,62 @@ class TestIssue2333(unittest.TestCase):
         lock.release()
 
 
+class TestIssue2350(unittest.TestCase):
+    """Verify ``history(auto_adjust=True)`` succeeds on a normal chart payload."""
+
+    def test_ticker_history_auto_adjust_returns_frame(self):
+        """The simplified GOOGL repro should not raise ``TypeError``."""
+        chart_response = Mock(status_code=200)
+        chart_response.text = "{}"
+        chart_response.json.return_value = {
+            "chart": {
+                "result": [
+                    {
+                        "meta": {
+                            "currency": "USD",
+                            "instrumentType": "EQUITY",
+                            "exchangeTimezoneName": "America/New_York",
+                            "validRanges": ["1d", "5d", "1mo"],
+                        },
+                        "timestamp": [1739217000, 1739303400, 1739389800],
+                        "indicators": {
+                            "quote": [
+                                {
+                                    "open": [184.0, 186.0, 187.5],
+                                    "high": [185.0, 187.0, 188.0],
+                                    "low": [183.5, 185.5, 186.5],
+                                    "close": [184.5, 186.5, 187.0],
+                                    "volume": [1000, 1200, 1100],
+                                }
+                            ],
+                            "adjclose": [{"adjclose": [184.5, 186.5, 187.0]}],
+                        },
+                    }
+                ],
+                "error": None,
+            }
+        }
+
+        ticker = yf.Ticker("GOOGL")
+        with patch.object(ticker, "_get_ticker_tz", return_value="America/New_York"):
+            history = call_private(ticker, "_lazy_load_price_history")
+        client = history.get_data_client()
+
+        with (
+            patch.object(client, "get", return_value=chart_response),
+            patch.object(client, "cache_get", return_value=chart_response),
+        ):
+            data = ticker.history(auto_adjust=True).astype(float).round(3)
+
+        self.assertIsInstance(data, pd.DataFrame)
+        self.assertFalse(data.empty)
+        self.assertListEqual(
+            list(data.columns),
+            ["Open", "High", "Low", "Close", "Volume", "Dividends", "Stock Splits"],
+        )
+        self.assertAlmostEqual(float(data.iloc[0]["Close"]), 184.5)
+
+
 class TestSessionTickerIssues(SessionTickerTestCase):
     """Session-backed regression tests collected from reported issues."""
 
