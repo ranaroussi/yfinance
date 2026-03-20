@@ -11,6 +11,7 @@ import yfinance as yfinance_pkg
 import yfinance.client as yf
 from yfinance.base import TickerBase
 from yfinance.data import YfData
+from yfinance.scrapers.quote import Quote
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
 
 from ..close_candidates_support import call_private, require_dataframe
@@ -603,3 +604,67 @@ class TestIssue2601(unittest.TestCase):
         self.assertEqual(requests_seen[0][1]["region"], "GB")
         self.assertEqual(requests_seen[0][1]["lang"], "en-US")
         self.assertIn("VOD.L", top_companies.index)
+
+
+class TestIssue2570(unittest.TestCase):
+    """Verify pegRatio is restored on the public info surface."""
+
+    def test_info_restores_peg_ratio_from_key_statistics_page(self):
+        """Ticker.info should expose pegRatio even when quote-summary omits it."""
+        quote_summary_payload = {
+            "quoteSummary": {
+                "result": [
+                    {
+                        "symbol": "AAPL",
+                        "financialData": {},
+                        "quoteType": {},
+                        "defaultKeyStatistics": {},
+                        "assetProfile": {},
+                        "summaryDetail": {},
+                    }
+                ],
+                "error": None,
+            }
+        }
+        trailing_peg_payload = {
+            "timeseries": {
+                "result": [
+                    {
+                        "trailingPegRatio": [
+                            {"reportedValue": {"raw": 2.2115}}
+                        ]
+                    }
+                ],
+                "error": None,
+            }
+        }
+        key_statistics_html = """
+        <html><body>
+          <section data-testid=\"qsp-statistics\">
+            <table>
+              <tr><td>PEG Ratio (5 yr expected)</td><td>2.21</td></tr>
+            </table>
+          </section>
+        </body></html>
+        """
+
+        def fake_cache_get(_data, url):
+            if "fundamentals-timeseries" in url:
+                return _make_response(trailing_peg_payload)
+            if "/key-statistics/" in url:
+                response = Mock(status_code=200)
+                response.text = key_statistics_html
+                return response
+            raise AssertionError(f"Unexpected cache_get url: {url}")
+
+        with (
+            patch.object(Quote, "_fetch", return_value=quote_summary_payload),
+            patch.object(Quote, "_fetch_additional_info", return_value={}),
+            patch.object(YfData, "cache_get", autospec=True, side_effect=fake_cache_get),
+        ):
+            info = yf.Ticker("AAPL").info
+
+        self.assertIn("pegRatio", info)
+        self.assertIn("trailingPegRatio", info)
+        self.assertEqual(info["pegRatio"], 2.21)
+        self.assertEqual(info["trailingPegRatio"], 2.2115)
