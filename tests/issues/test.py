@@ -12,7 +12,7 @@ import yfinance.client as yf
 from yfinance.config import YF_CONFIG
 from yfinance.data import YfData
 
-from tests.close_candidates_support import (
+from ..close_candidates_support import (
     SessionTickerTestCase,
     call_private,
     make_mm_suggest_payload,

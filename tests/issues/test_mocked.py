@@ -13,7 +13,7 @@ from yfinance.base import TickerBase
 from yfinance.data import YfData
 from yfinance.scrapers.history.price_repair import _prepare_adjusted_price_data
 
-from tests.close_candidates_support import call_private, require_dataframe
+from ..close_candidates_support import call_private, require_dataframe
 
 
 def _make_response(payload):

@@ -82,7 +82,7 @@ The root cause: pytest scanned the module's namespace, found TestSuite (imported
 ### python -m pytest tests/ -v 
 * 116 passed, 71 subtests passed in 132.79s (0:02:12)
 
-### python -m pytest ryroeu/issues/test.py ryroeu/issues/test_history.py ryroeu/issues/test_fast_info.py ryroeu/issues/test_mocked.py -q
+### python -m pytest tests/issues/test.py tests/issues/test_history.py tests/issues/test_fast_info.py tests/issues/test_mocked.py -q
 * 44 passed, 90 subtests passed in 17.09s
 
 ### pylint and pyright

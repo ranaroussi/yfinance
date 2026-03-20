@@ -8,7 +8,7 @@
 
 ## Purpose
 
-This file tracks whether the large refactor in this fork appears to resolve any currently open upstream issues. These statuses started as an audit snapshot and are now being upgraded with issue-specific verification tests under `ryroeu/issues`. A status of `resolved in fork` means the current code now has either direct regression coverage or a targeted verification test that reproduces the reported failure mode and passes on this fork.
+This file tracks whether the large refactor in this fork appears to resolve any currently open upstream issues. These statuses started as an audit snapshot and are now being upgraded with issue-specific verification tests under `tests/issues`. A status of `resolved in fork` means the current code now has either direct regression coverage or a targeted verification test that reproduces the reported failure mode and passes on this fork.
 
 ## Status Legend
 
@@ -40,7 +40,7 @@ These counts apply to the full tracker across all sections, not just the working
 
 ## Verification Tests
 
-- issue-specific verification modules: `ryroeu/issues/test.py`, `ryroeu/issues/test_history.py`, `ryroeu/issues/test_fast_info.py`, `ryroeu/issues/test_mocked.py`
+- issue-specific verification modules: `tests/issues/test.py`, `tests/issues/test_history.py`, `tests/issues/test_fast_info.py`, `tests/issues/test_mocked.py`
 - current result: `44 passed, 90 subtests passed in 17.09s`
 - confirmed by tests so far: `#2688`, `#2500`, `#2670`, `#2605`, `#2601`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`
 
@@ -87,7 +87,7 @@ These counts apply to the full tracker across all sections, not just the working
 
 ## Confirmed but untested
 
-These issues look resolved in the fork based on direct code review, targeted live verification, or prior changelog confirmation, but they do not yet have dedicated issue-specific regression coverage under `ryroeu/issues`.
+These issues look resolved in the fork based on direct code review, targeted live verification, or prior changelog confirmation, but they do not yet have dedicated issue-specific regression coverage under `tests/issues`.
 
 None currently.
 
