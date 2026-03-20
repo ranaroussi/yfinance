@@ -620,6 +620,41 @@ class TestIssue1852(ProxyNetworkIssueTestCase):
             self.assertTrue(call_private(self.data, "_get_cookie_csrf", timeout=1))
 
 
+class TestIssue2463(ProxyNetworkIssueTestCase):
+    """Verify certificate verification overrides reach the public history path."""
+
+    def test_chart_request_uses_verify_override(self):
+        """The active Yahoo chart request path should forward ``network.verify``."""
+        YF_CONFIG.network.verify = False
+
+        chart_response = Mock(status_code=200, text="{}")
+
+        def fake_get(**kwargs):
+            self.assertFalse(kwargs["verify"])
+            if kwargs["url"] == "https://fc.yahoo.com":
+                return Mock(status_code=200)
+            if kwargs["url"] == "https://query1.finance.yahoo.com/v1/test/getcrumb":
+                return Mock(status_code=200, text="crumb-2463")
+            self.assertEqual(
+                kwargs["url"],
+                "https://query2.finance.yahoo.com/v8/finance/chart/AAPL",
+            )
+            return chart_response
+
+        with (
+            patch.object(self.data, "_load_cookie_curl_cffi", return_value=False),
+            patch.object(self.session, "get", side_effect=fake_get),
+            patch.object(self.data, "_save_cookie_curl_cffi", return_value=None),
+        ):
+            response = self.data.get(
+                url="https://query2.finance.yahoo.com/v8/finance/chart/AAPL",
+                params={"range": "1d", "interval": "1d"},
+                timeout=1,
+            )
+
+        self.assertIs(response, chart_response)
+
+
 class TestIssue2500(ProxyNetworkIssueTestCase):
     """Verify callable proxy configuration works with shared network config."""
 
