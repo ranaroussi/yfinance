@@ -40,7 +40,7 @@ These counts apply to the full tracker across all sections, not just the working
 
 ## Verification Tests
 
-- issue-specific verification modules: `tests/issues/test.py`, `tests/issues/test_history.py`, `tests/issues/test_fast_info.py`, `tests/issues/test_mocked.py`
+- issue-specific verification modules: `tests/issues/test.py`, `tests/issues/test_history.py`, `tests/issues/test_fast_info.py`, `tests/issues/test_mocked.py`, `tests/issues/test_mocked_download.py`
 - current result: `57 passed, 93 subtests passed in 28.31s`
 - confirmed by tests so far: `#2699`, `#2688`, `#2526`, `#2500`, `#2495`, `#2463`, `#2426`, `#2670`, `#2605`, `#2601`, `#2593`, `#2570`, `#2557`, `#2360`, `#2350`, `#2333`, `#2146`, `#2044`, `#1957`, `#1924`, `#1951`, `#1855`, `#1852`, `#1820`, `#1813`, `#1811`, `#1804`, `#1801`, `#1765`, `#1718`, `#1518`, `#1382`, `#1272`, `#1115`, `#930`, `#860`, `#610`, `#521`, `#515`, `#469`, `#445`, `#1895`, `#2348`, `#2353`
 
@@ -114,7 +114,7 @@ None currently.
 
 | Issue | Title | Updated | Area | Status | Confidence | Notes | Next step |
 |---|---|---|---|---|---|---|---|
-| [#2327](https://github.com/ranaroussi/yfinance/issues/2327) | Yahoo data changed from EST to UTC? | 2025-03-17 | history/timezone | not resolved | high | The exact reported `yf.download('SPY', '2025-02-08', '2025-02-22', interval='1h')` pattern still returns a UTC-indexed `DatetimeIndex`, so the prior EST/EDT-style local timestamps are not restored in this fork. | Leave open unless `download()` is intentionally changed back to exchange-local timestamps for this path. |
+| [#2327](https://github.com/ranaroussi/yfinance/issues/2327) | Yahoo data changed from EST to UTC? | 2026-03-20 | history/timezone | not resolved | high | Reproduced directly on the current fork with the issue's `yf.download('SPY', start='2025-02-08', end='2025-02-22', interval='1h', progress=False)` pattern. `download()` still returns a UTC-indexed `DatetimeIndex` with `2025-02-14 14:30:00+00:00` as the first regular-session bar, while `yf.Ticker('SPY').history(...)` still returns exchange-local `America/New_York` timestamps starting at `2025-02-14 09:30:00-05:00`. The current multi-download path explicitly coerces concatenated intraday indices with `pd.to_datetime(..., utc=True)`, so the prior EST/EDT-style local timestamps are not restored in this fork. | Leave open unless `download()` is intentionally changed back to exchange-local timestamps for this path. |
 | [#2261](https://github.com/ranaroussi/yfinance/issues/2261) | Unit test action can fail to fetch | 2025-02-17 | network/proxy | needs reproduction | low | Network/proxy stack changed, but environment-dependent issues need targeted reproduction. | Reproduce in the original failing environment. |
 | [#2156](https://github.com/ranaroussi/yfinance/issues/2156) | session cache not working with start param | 2024-11-27 | cache/session | not resolved | high | Same underlying limitation as request_cache support; custom cached sessions are not supported. | Leave open; would require supported caching design. |
 | [#2155](https://github.com/ranaroussi/yfinance/issues/2155) | Wrong time stamp for 1h time frame for versions after 0.2.44 | 2025-02-16 | history/timezone | not resolved | high | The exact reported `yf.download('AAPL', period='1mo', interval='1h')` path still returns a UTC-indexed `DatetimeIndex` rather than exchange-local timestamps, matching the user's complaint. | Leave open unless single-ticker 1h downloads are intentionally re-localized. |
