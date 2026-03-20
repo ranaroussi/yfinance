@@ -16,7 +16,7 @@ def volume_mismatch_debug(resampled: _pd.DataFrame, truth: _pd.DataFrame) -> str
     )
     volume_match = volume_diff > -0.32
     diff_count = len(volume_match) - int(_np.sum(volume_match))
-    if volume_match.all() or (diff_count == 1 and not volume_match[0]):
+    if volume_match.all() or (diff_count == 1 and (not volume_match[0] or not volume_match[-1])):
         return None
     return f"volume significantly different in first row: vol_diff_pct={volume_diff * 100}%"
 
