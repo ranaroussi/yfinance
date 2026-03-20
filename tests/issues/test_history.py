@@ -24,7 +24,8 @@ class TestSessionTickerHistoryIssueScenarios(SessionTickerTestCase):
         self.assertIsInstance(frame, pd.DataFrame)
         self.assertFalse(frame.empty)
         self.assertEqual(len(frame), 1)
-        self.assertEqual(str(frame.index[0].date()), "2022-05-04")
+        frame_index = require_datetime_index(frame.index)
+        self.assertEqual(frame_index[0].strftime("%Y-%m-%d"), "2022-05-04")
 
     def test_history_period_with_end_date_returns_data_for_reported_symbols(self):
         """Period-plus-end requests should return non-empty data on the reported symbols."""
@@ -37,7 +38,8 @@ class TestSessionTickerHistoryIssueScenarios(SessionTickerTestCase):
 
                 self.assertIsInstance(frame, pd.DataFrame)
                 self.assertFalse(frame.empty)
-                self.assertLessEqual(frame.index[-1].date().isoformat(), "2022-11-10")
+                frame_index = require_datetime_index(frame.index)
+                self.assertLessEqual(frame_index[-1].strftime("%Y-%m-%d"), "2022-11-10")
 
     def test_weekly_histories_align_for_reported_symbol_pair(self):
         """GDX and QQQ should now return the same weekly index for the reported window."""
@@ -99,7 +101,7 @@ class TestSessionTickerHistoryIssueScenarios(SessionTickerTestCase):
                 self.assertTrue({"Open", "High", "Low", "Close"}.issubset(frame.columns))
                 self.assertFalse(frame["Open"].tail(5).isna().any())
                 self.assertFalse(frame["Close"].tail(5).isna().any())
-                self.assertGreaterEqual(frame_index[-1].date().isoformat(), "2025-12-01")
+                self.assertGreaterEqual(frame_index[-1].strftime("%Y-%m-%d"), "2025-12-01")
 
     def test_history_and_download_match_for_default_and_unadjusted_paths(self):
         """The reported AAPL history/download mismatch should no longer reproduce."""

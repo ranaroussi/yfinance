@@ -753,5 +753,5 @@ class TestSessionTickerIssueScenarios(SessionTickerTestCase):
         if isinstance(frame.columns, pd.MultiIndex):
             frame = frame.xs("CL=F", axis=1, level=1)
         self.assertTrue({"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns))
-        self.assertEqual(str(frame_index[0].date()), "2023-12-01")
-        self.assertEqual(str(frame_index[-1].date()), "2023-12-29")
+        self.assertEqual(frame_index[0].strftime("%Y-%m-%d"), "2023-12-01")
+        self.assertEqual(frame_index[-1].strftime("%Y-%m-%d"), "2023-12-29")
