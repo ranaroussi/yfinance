@@ -146,6 +146,71 @@ class TestIssue1924(unittest.TestCase):
         self.assertEqual(strategy, "csrf")
 
 
+class TestIssue2670(unittest.TestCase):
+    """Verify history parsing handles ``{'chart': None}`` payloads safely."""
+
+    def test_history_chart_none_returns_empty_dataframe(self):
+        """A ``chart=None`` response should degrade to the normal empty frame path."""
+        response = Mock()
+        response.text = "{}"
+        response.json.return_value = {"chart": None}
+
+        ticker = yf.Ticker("AAPL")
+        history = call_private(ticker, "_lazy_load_price_history")
+        client = history.get_data_client()
+
+        with (
+            patch.object(client, "get", return_value=response),
+            patch.object(client, "cache_get", return_value=response),
+        ):
+            data = history.history(period="5d", interval="1d")
+
+        self.assertIsInstance(data, pd.DataFrame)
+        self.assertTrue(data.empty)
+        self.assertListEqual(
+            list(data.columns),
+            ["Open", "High", "Low", "Close", "Adj Close", "Volume"],
+        )
+
+
+class TestIssue2333(unittest.TestCase):
+    """Verify cookie-strategy fallback does not poison the shared cookie lock."""
+
+    def setUp(self):
+        """Reset cookie state before each test."""
+        self.data = YfData()
+        setattr(self.data, "_cookie", None)
+        setattr(self.data, "_crumb", None)
+        setattr(self.data, "_cookie_strategy", "csrf")
+
+    def test_cookie_strategy_fallback_leaves_lock_usable(self):
+        """A failed csrf crumb fetch should not break subsequent valid requests."""
+        basic_crumbs = iter(["basic-crumb-1", "basic-crumb-2"])
+        lock = call_private(self.data, "_cookie_lock")
+
+        with (
+            patch.object(self.data, "_get_crumb_csrf", return_value=None),
+            patch.object(
+                self.data,
+                "_get_cookie_and_crumb_basic",
+                side_effect=lambda timeout=30: next(basic_crumbs),
+            ),
+        ):
+            crumb_1, strategy_1 = call_private(self.data, "_get_cookie_and_crumb", timeout=1)
+
+            self.assertEqual(crumb_1, "basic-crumb-1")
+            self.assertEqual(strategy_1, "basic")
+            self.assertTrue(lock.acquire(blocking=False))
+            lock.release()
+
+            crumb_2, strategy_2 = call_private(self.data, "_get_cookie_and_crumb", timeout=1)
+
+        self.assertEqual(crumb_2, "basic-crumb-2")
+        self.assertEqual(strategy_2, "basic")
+        self.assertTrue(lock.acquire(blocking=False))
+        lock.release()
+
+
 class TestSessionTickerIssues(SessionTickerTestCase):
     """Session-backed regression tests collected from reported issues."""
 
