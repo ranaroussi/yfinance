@@ -358,26 +358,26 @@ class PriceHistory:
 
         if splits is not None:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
-            self._splits = splits
+        self._splits = splits
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
-            self._dividends = dividends
-            if 'currency' in dividends.columns:
-                # Rare, only seen with Vietnam market
-                #   or companies that distribute dividends in a different currency
-                price_currency = self._history_metadata['currency']
-                if price_currency is None:
-                    price_currency = ''
-                f_currency_mismatch = dividends['currency'] != price_currency
-                if f_currency_mismatch.any():
-                    if repair and price_currency != '':
-                        # Attempt repair = currency conversion
-                        dividends = self._dividends_convert_fx(dividends, price_currency, repair)
-                dividends = dividends.drop('currency', axis=1)
+        self._dividends = dividends
+        if dividends is not None and 'currency' in dividends.columns:
+            # Rare, only seen with Vietnam market
+            #   or companies that distribute dividends in a different currency
+            price_currency = self._history_metadata['currency']
+            if price_currency is None:
+                price_currency = ''
+            f_currency_mismatch = dividends['currency'] != price_currency
+            if f_currency_mismatch.any():
+                if repair and price_currency != '':
+                    # Attempt repair = currency conversion
+                    dividends = self._dividends_convert_fx(dividends, price_currency, repair)
+            dividends = dividends.drop('currency', axis=1)
 
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
-            self._capital_gains = capital_gains
+        self._capital_gains = capital_gains
         if start is not None:
             if not quotes.empty:
                 start_d = quotes.index[0].floor('D')
