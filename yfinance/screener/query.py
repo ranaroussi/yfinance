@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numbers
-from typing import List, Union, Dict, TypeVar, Tuple
+from typing import List, Union, Dict, TypeVar, Literal
 
 from yfinance.const import EQUITY_SCREENER_EQ_MAP, EQUITY_SCREENER_FIELDS
 from yfinance.const import FUND_SCREENER_EQ_MAP, FUND_SCREENER_FIELDS
@@ -9,8 +9,10 @@ from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
 T = TypeVar('T', bound=Union[str, numbers.Real])
 
+Operator = Literal['eq', 'is-in', 'btwn', 'gt', 'lt', 'gte', 'lte', 'and', 'or']
+
 class QueryBase(ABC):
-    def __init__(self, operator: str, operand: Union[ List['QueryBase'], Tuple[str, Tuple[Union[str, numbers.Real],  ...]] ]):
+    def __init__(self, operator: Operator, operand: Union[ List['QueryBase'], List[str], List[numbers.Real] ]):
         operator = operator.upper()
 
         if not isinstance(operand, list):
@@ -36,7 +38,7 @@ class QueryBase(ABC):
 
     @property
     @abstractmethod
-    def valid_fields(self) -> List:
+    def valid_fields(self) -> Dict:
         raise YFNotImplementedError('valid_fields() needs to be implemented by child')
 
     @property
