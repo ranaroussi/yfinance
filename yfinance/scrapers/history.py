@@ -554,8 +554,9 @@ class PriceHistory:
             msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
-        # Don't care that Pandas hid this. If they do it to improve performance, we do it.
-        df = df._consolidate()
+        # Consolidate internal block structure to reduce memory fragmentation.
+        # Use copy() as a safe public alternative to the private _consolidate().
+        df = df.copy()
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
@@ -1576,12 +1577,14 @@ class PriceHistory:
                     print(f"- diff_total = {diff_total:.4f}")
                     print(f"- cg_is_double_counted = {cg_is_double_counted}")
 
+        if not dcs:
+            return df
         pct_double_counted = sum(dcs.values()) / len(dcs)
         if debug:
             print(f"- pct_double_counted = {pct_double_counted*100:.1f}%")
 
         if pct_double_counted >= 0.666:
-            for idx in dcs.keys():
+            for idx in [k for k, v in dcs.items() if v]:
                 dt = df.index[idx]
 
                 dividend = df['Dividends'].iloc[idx]
@@ -2779,7 +2782,7 @@ class PriceHistory:
             df_workings['VolStr'] = ''
             df_workings.loc[fna, 'VolStr'] = 'NaN'
             df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).astype('int').astype('str') + 'm'
-            df_workings['Vol'] = df_workings['VolStr'] ; df_workings.drop('VolStr', axis=1)
+            df_workings['Vol'] = df_workings['VolStr'] ; df_workings.drop('VolStr', axis=1, inplace=True)
         else:
             df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
         debug_cols = ['Close']
@@ -2975,21 +2978,6 @@ class PriceHistory:
                     block_after = block.loc[dt+_datetime.timedelta(1):]
                 if block_after is not None and block_after.empty:
                     block_after = None
-
-                def _calc_volume_zscore_weighted(volume, dt, block):
-                    distances = np.abs((block.index - dt).total_seconds())
-                    distances /= distances.max()
-                    weights = np.exp(-distances)
-                    weights = np.array(weights) / np.sum(weights)
-                    values = block['Volume'].to_numpy()
-                    weighted_mean = np.sum(values * weights)
-                    weighted_variance = np.sum(weights * (values - weighted_mean) ** 2)
-                    weighted_std = np.sqrt(weighted_variance)
-                    # print(f"# weighted_variance = {weighted_variance:.4f}")
-                    # print(f"# weighted_std = {weighted_std:.4f}")
-                    z_score = (volume - weighted_mean) / weighted_std
-                    # print(f"z_score = {z_score:.4f}")
-                    return z_score
 
                 def _calc_volume_zscore(volume, block):
                     # print(f"_calc_volume_zscore(volume={volume})")
