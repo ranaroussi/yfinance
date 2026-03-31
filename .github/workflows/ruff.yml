@@ -8,8 +8,14 @@ on:
 jobs:
   ruff:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/ruff-action@v3
+      # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      # Verify: curl -s "https://api.github.com/repos/astral-sh/ruff-action/commits?sha=v3&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      - uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6 # v3
         with:
           args: check --ignore E702 . --exclude yfinance/pricing_pb2.py

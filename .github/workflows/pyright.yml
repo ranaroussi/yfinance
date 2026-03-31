@@ -10,13 +10,19 @@ on:
 jobs:
   pyright:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        persist-credentials: false
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      # Verify: curl -s "https://api.github.com/repos/actions/setup-python/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
 
     - name: Install dependencies
       run: |
