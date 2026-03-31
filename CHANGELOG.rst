@@ -1,6 +1,26 @@
 Change Log
 ===========
 
+1.2.0
+-----
+Features:
+- update exchange maps for equities and mutual funds. #2685
+Fixes:
+- handle Pandas to_numpy() returning read-only #2697
+
+1.1.0
+-----
+Features:
+- New price repair: capital gains double-counting #2667
+Fixes:
+- Fix Saudi Arabia MIC Code #2665 @salsugair
+- Add config to __all__ #2673 @kbluck
+- Fix Python 3.9 compatibility regression in calendars.py #2674 @orionnelson
+- Improve stock-split repair false-positives #2668
+- Docs for capital-gains repair; Fix warnings in price-repair 27cb8aa
+Already in main:
+- Upgrade to Pandas 3.0 (Fixes #2679) #2683
+
 1.0
 ---
 yfinance been stable a long time now, time to grow up
