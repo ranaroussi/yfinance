@@ -1527,6 +1527,8 @@ class PriceHistory:
         df['Price_Change%'] = df['Close'].pct_change(fill_method=None).abs()
         no_distributions = (df['Dividends'] == 0) & (df['Capital Gains'] == 0)
         price_drop_pct_mean = df.loc[no_distributions, 'Price_Change%'].mean()
+        if np.isnan(price_drop_pct_mean):
+            price_drop_pct_mean = 0.0
         df = df.drop('Price_Change%', axis=1)
 
         # Add columns if not present
@@ -2732,7 +2734,7 @@ class PriceHistory:
         OHLC = ['Open', 'High', 'Low', 'Close']
 
         if interday and interval != '1d':
-            # Yahoo creates multi-day intervals using potentiall corrupt data, e.g.
+            # Yahoo creates multi-day intervals using potentially corrupt data, e.g.
             # the Close could be 100x Open. This means have to correct each OHLC column
             # individually
             correct_columns_individually = True
@@ -3059,14 +3061,14 @@ class PriceHistory:
                     big_change = df_workings[c+' 1D %'].iloc[idx]
                 else:
                     big_change = df_workings['1D %'].iloc[idx]
-                    if big_change < threshold and big_change > 1.0/threshold:
-                        # This price change is actually similar to local price volatily. False positive
-                        if correct_columns_individually:
-                            logger.debug(f"Unusual '{c}' price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct*100:.1f}%)")
-                            df_workings.loc[dt, c+'_f'] = False
-                        else:
-                            logger.debug(f"Unusual price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct*100:.1f}%)")
-                            df_workings.loc[dt, 'f'] = False
+                if big_change < threshold and big_change > 1.0/threshold:
+                    # This price change is actually similar to local price volatility. False positive
+                    if correct_columns_individually:
+                        logger.debug(f"Unusual '{c}' price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct*100:.1f}%)")
+                        df_workings.loc[dt, c+'_f'] = False
+                    else:
+                        logger.debug(f"Unusual price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct*100:.1f}%)")
+                        df_workings.loc[dt, 'f'] = False
         if not correct_columns_individually:
             f_down = f_down & df_workings['f'].to_numpy()
             f_up = f_up & df_workings['f'].to_numpy()
