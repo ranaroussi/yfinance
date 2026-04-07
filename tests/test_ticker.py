@@ -19,6 +19,7 @@ from yfinance.config import YfConfig
 
 import unittest
 # import requests_cache
+from unittest.mock import patch, MagicMock
 from typing import Union, Any, get_args, _GenericAlias
 # from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
@@ -1235,6 +1236,54 @@ class TestTickerFundsData(unittest.TestCase):
             sector_weightings = ticker.funds_data.sector_weightings
             self.assertIsInstance(sector_weightings, dict)
 
+class TestTickerValuationMeasures(unittest.TestCase):
+
+    _MOCK_HTML = """<html><body>
+    <table>
+        <tr><td></td><td>Current</td><td>12/31/2025</td><td>9/30/2025</td></tr>
+        <tr><td>Market Cap</td><td>3.76T</td><td>4.00T</td><td>3.76T</td></tr>
+        <tr><td>Enterprise Value</td><td>3.78T</td><td>4.04T</td><td>3.81T</td></tr>
+        <tr><td>Trailing P/E</td><td>32.39</td><td>36.44</td><td>38.64</td></tr>
+        <tr><td>Forward P/E</td><td>29.76</td><td>32.79</td><td>31.65</td></tr>
+        <tr><td>PEG Ratio (5yr expected)</td><td>2.27</td><td>2.75</td><td>2.44</td></tr>
+        <tr><td>Price/Sales</td><td>8.77</td><td>9.80</td><td>9.41</td></tr>
+        <tr><td>Price/Book</td><td>42.60</td><td>54.21</td><td>57.14</td></tr>
+        <tr><td>Enterprise Value/Revenue</td><td>8.68</td><td>9.71</td><td>9.32</td></tr>
+        <tr><td>Enterprise Value/EBITDA</td><td>24.73</td><td>27.92</td><td>26.87</td></tr>
+    </table>
+    </body></html>"""
+
+    def _make_ticker_with_mock(self, html):
+        mock_response = MagicMock()
+        mock_response.text = html
+        with patch("yfinance.data.YfData.cache_get", return_value=mock_response):
+            dat = yf.Ticker("AAPL")
+            data = dat.valuation_measures
+        return data
+
+    def test_valuation_measures(self):
+        data = self._make_ticker_with_mock(self._MOCK_HTML)
+        self.assertEqual(data.shape, (9, 3), "unexpected shape")
+        self.assertListEqual(list(data.columns), ["Current", "12/31/2025", "9/30/2025"])
+        self.assertIn("Market Cap", data.index)
+        self.assertIn("Trailing P/E", data.index)
+        self.assertIn("Enterprise Value/EBITDA", data.index)
+        self.assertIsNone(data.index.name)
+        self.assertEqual(data.loc["Market Cap", "Current"], "3.76T")
+        self.assertEqual(data.loc["Forward P/E", "12/31/2025"], "32.79")
+
+    def test_valuation_measures_no_table(self):
+        data = self._make_ticker_with_mock("<html><body><p>No tables here</p></body></html>")
+        self.assertIsInstance(data, pd.DataFrame)
+        self.assertTrue(data.empty)
+
+    def test_valuation_measures_fetch_error(self):
+        with patch("yfinance.data.YfData.cache_get", side_effect=Exception("network error")):
+            dat = yf.Ticker("AAPL")
+            data = dat.valuation_measures
+        self.assertIsInstance(data, pd.DataFrame)
+        self.assertTrue(data.empty)
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestTicker('Test ticker'))
@@ -1244,6 +1293,7 @@ def suite():
     suite.addTest(TestTickerMiscFinancials('Test misc financials'))
     suite.addTest(TestTickerInfo('Test info & fast_info'))
     suite.addTest(TestTickerFundsData('Test Funds Data'))
+    suite.addTest(TestTickerValuationMeasures('Test valuation measures'))
     return suite
 
 
