@@ -6,9 +6,12 @@ on:
 jobs:
   check-template:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - name: Check if issue uses custom template
-        uses: actions/github-script@v8
+        # Verify: curl -s "https://api.github.com/repos/actions/github-script/commits?sha=v8&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const issue = context.payload.issue;
