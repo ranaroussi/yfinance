@@ -1,6 +1,12 @@
 Change Log
 ===========
 
+1.2.1
+-----
+Force curl_cffi>=0.15, because CVE #2743
+Preserve currency in dividends #2695
+Improve download() thread-safety #2718
+
 1.2.0
 -----
 Features:
