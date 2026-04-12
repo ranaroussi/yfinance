@@ -27,11 +27,12 @@ class Analysis:
         self._eps_revisions = None
         self._growth_estimates = None
 
-    def _get_periodic_df(self, key) -> pd.DataFrame:
+    def _get_periodic_df(self, key, currency_key=None) -> pd.DataFrame:
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
 
         data = []
+        currency = None
         for item in self._earnings_trend[:4]:
             row = {'period': item['period']}
             for k, v in item[key].items():
@@ -39,36 +40,41 @@ class Analysis:
                     continue
                 row[k] = v['raw']
             data.append(row)
+            if currency is None and currency_key is not None:
+                currency = item[key].get(currency_key)
         if len(data) == 0:
             return pd.DataFrame()
-        return pd.DataFrame(data).set_index('period')
+        df = pd.DataFrame(data).set_index('period')
+        if currency is not None:
+            df['currency'] = currency
+        return df
 
     @property
     def earnings_estimate(self) -> pd.DataFrame:
         if self._earnings_estimate is not None:
             return self._earnings_estimate
-        self._earnings_estimate = self._get_periodic_df('earningsEstimate')
+        self._earnings_estimate = self._get_periodic_df('earningsEstimate', currency_key='earningsCurrency')
         return self._earnings_estimate
 
     @property
     def revenue_estimate(self) -> pd.DataFrame:
         if self._revenue_estimate is not None:
             return self._revenue_estimate
-        self._revenue_estimate = self._get_periodic_df('revenueEstimate')
+        self._revenue_estimate = self._get_periodic_df('revenueEstimate', currency_key='revenueCurrency')
         return self._revenue_estimate
 
     @property
     def eps_trend(self) -> pd.DataFrame:
         if self._eps_trend is not None:
             return self._eps_trend
-        self._eps_trend = self._get_periodic_df('epsTrend')
+        self._eps_trend = self._get_periodic_df('epsTrend', currency_key='epsTrendCurrency')
         return self._eps_trend
 
     @property
     def eps_revisions(self) -> pd.DataFrame:
         if self._eps_revisions is not None:
             return self._eps_revisions
-        self._eps_revisions = self._get_periodic_df('epsRevisions')
+        self._eps_revisions = self._get_periodic_df('epsRevisions', currency_key='epsRevisionsCurrency')
         return self._eps_revisions
 
     @property
