@@ -11,7 +11,7 @@ import warnings
 
 from yfinance import shared, utils
 from yfinance.config import YfConfig
-from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_
+from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
 
 class PriceHistory:
@@ -29,7 +29,7 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
-    def history(self, period=None, interval="1d",
+    def history(self, period=period_default, interval="1d",
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 rounding=False, timeout=10,
@@ -38,7 +38,7 @@ class PriceHistory:
         :Parameters:
             period : str
               | Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-              | Default: 1mo
+              | Default: '1mo' if start & end None
               | Can combine with start/end e.g. end = start + period
             interval : str
               | Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
@@ -81,13 +81,21 @@ class PriceHistory:
             warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
 
         interval_user = interval
-        period_user = period
+        if period == period_default:
+            period_user = None
+            if start or end:
+                period = None
+            else:
+                period = '1mo'
+        else:
+            period_user = period
         if repair and interval in ["5d", "1wk", "1mo", "3mo"]:
             # Yahoo's way of adjusting mutiday intervals is fundamentally broken.
             # Have to fetch 1d, adjust, then resample.
             if interval == '5d':
                 raise ValueError("Yahoo's interval '5d' is nonsense, not supported with repair")
             if start is None and end is None and period is not None:
+                # Convert period to start -> end
                 tz = self.tz
                 if tz is None:
                     # Every valid ticker has a timezone. A missing timezone is a problem.
@@ -221,10 +229,15 @@ class PriceHistory:
                 raise
 
         # Store the meta data that gets retrieved simultaneously
-        if data['chart']['result'] is None:
-            self._history_metadata = {}
+        safe_chart  = (data or {}).get('chart') or {}
+        result_list = safe_chart.get('result')
+        if isinstance(result_list, list) and len(result_list) > 0:
+            first_item = result_list[0] or {}
+            meta = first_item.get('meta') or {}
         else:
-            self._history_metadata = data["chart"]["result"][0]["meta"]
+            meta = {}
+
+        self._history_metadata = meta
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
@@ -345,28 +358,26 @@ class PriceHistory:
 
         if splits is not None:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
+        self._splits = splits
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
-            if 'currency' in dividends.columns:
-                # Rare, only seen with Vietnam market
-                price_currency = self._history_metadata['currency']
-                if price_currency is None:
-                    price_currency = ''
-                f_currency_mismatch = dividends['currency'] != price_currency
-                if f_currency_mismatch.any():
-                    if not repair or price_currency == '':
-                        # Append currencies to values, let user decide action.
-                        dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
-                    else:
-                        # Attempt repair = currency conversion
-                        dividends = self._dividends_convert_fx(dividends, price_currency, repair)
-                        if (dividends['currency'] != price_currency).any():
-                            # FX conversion failed
-                            dividends['Dividends'] = dividends['Dividends'].astype(str) + ' ' + dividends['currency']
-                dividends = dividends.drop('currency', axis=1)
+        self._dividends = dividends
+        if dividends is not None and 'currency' in dividends.columns:
+            # Rare, only seen with Vietnam market
+            #   or companies that distribute dividends in a different currency
+            price_currency = self._history_metadata['currency']
+            if price_currency is None:
+                price_currency = ''
+            f_currency_mismatch = dividends['currency'] != price_currency
+            if f_currency_mismatch.any():
+                if repair and price_currency != '':
+                    # Attempt repair = currency conversion
+                    dividends = self._dividends_convert_fx(dividends, price_currency, repair)
+            dividends = dividends.drop('currency', axis=1)
 
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
+        self._capital_gains = capital_gains
         if start is not None:
             if not quotes.empty:
                 start_d = quotes.index[0].floor('D')
@@ -516,19 +527,19 @@ class PriceHistory:
             self._reconstruct_start_interval = None
         return df
 
-    def _get_history_cache(self, period="max", interval="1d") -> pd.DataFrame:
-        cache_key = (interval, period)
-        if cache_key in self._history_cache:
-            return self._history_cache[cache_key]
-
-        df = self.history(period=period, interval=interval, prepost=True)
-        self._history_cache[cache_key] = df
-        return df
+    def _get_history_cache(self, period="max", interval="1d", repair=False) -> pd.DataFrame:
+        cache_key = (interval, period, repair)
+        if cache_key not in self._history_cache.keys():
+            df = self.history(period=period, interval=interval, repair=repair, prepost=True)
+            self._history_cache[cache_key] = {'prices': df, 'dividends': self._dividends, 
+                                                'splits': self._splits, 
+                                                'capital gains': self._capital_gains}
+        return self._history_cache[cache_key]
 
     def get_history_metadata(self) -> dict:
         if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
             # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            self._get_history_cache(period="5d", interval="1h")
+            self._get_history_cache(period="5d", interval="1h")['prices']
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
@@ -536,42 +547,37 @@ class PriceHistory:
 
         return self._history_metadata
 
-    def get_dividends(self, period="max") -> pd.Series:
-        df = self._get_history_cache(period=period)
-        if "Dividends" in df.columns:
-            dividends = df["Dividends"]
-            return dividends[dividends != 0]
-        return pd.Series()
+    def get_dividends(self, period="max", repair=False) -> pd.Series:
+        return self._get_history_cache(interval='1d', period=period, repair=repair)['dividends']
 
-    def get_capital_gains(self, period="max") -> pd.Series:
-        df = self._get_history_cache(period=period)
-        if "Capital Gains" in df.columns:
-            capital_gains = df["Capital Gains"]
-            return capital_gains[capital_gains != 0]
-        return pd.Series()
+    def get_capital_gains(self, period="max", repair=False) -> pd.Series:
+        return self._get_history_cache(interval='1d', period=period, repair=repair)['capital gains']
 
-    def get_splits(self, period="max") -> pd.Series:
-        df = self._get_history_cache(period=period)
-        if "Stock Splits" in df.columns:
-            splits = df["Stock Splits"]
-            return splits[splits != 0]
-        return pd.Series()
+    def get_splits(self, period="max", repair=False) -> pd.Series:
+        return self._get_history_cache(interval='1d', period=period, repair=repair)['splits']
 
     def get_actions(self, period="max") -> pd.Series:
-        df = self._get_history_cache(period=period)
+        data = self._get_history_cache(period=period)
 
-        action_columns = []
-        if "Dividends" in df.columns:
-            action_columns.append("Dividends")
-        if "Stock Splits" in df.columns:
-            action_columns.append("Stock Splits")
-        if "Capital Gains" in df.columns:
-            action_columns.append("Capital Gains")
+        df = data['prices']
+        divs = data['dividends']
 
-        if action_columns:
-            actions = df[action_columns]
-            return actions[actions != 0].dropna(how='all').fillna(0)
-        return pd.Series()
+        if divs is not None and 'currency' in divs.columns:
+            # Add dividends currency column
+            df = utils.safe_merge_dfs(df.drop('Dividends', axis=1), divs, '1d')
+            df['currency'] = df['currency'].fillna('')
+            df['Dividends'] = df['Dividends'].fillna(0.0)
+            df = df.rename(columns={'currency': 'Dividends FX'})
+
+        cols = ['Dividends', 'Dividends FX', 'Stock Splits', 'Capital Gains']
+        actions = df[[c for c in cols if c in df.columns]]
+
+        cols_numeric = ['Dividends', 'Stock Splits', 'Capital Gains']
+        actions = actions[(actions[cols_numeric]!=0).any(axis=1)]
+        for c in cols_numeric:
+            if (actions[c] == 0.0).all():
+                actions = actions.drop(c, axis=1)
+        return actions
 
     def _resample(self, df, df_interval, target_interval, period=None) -> pd.DataFrame:
         # resample

@@ -8,13 +8,13 @@ This is a quick short guide, full guide at https://ranaroussi.github.io/yfinance
 
 YFinance uses a two-layer branch model:
 
-* **dev**: new features & most bug-fixes merged here, tested together, conflicts fixed, etc.
-* **main**: stable branch where PIP releases are created.
+- **dev**: new features & most bug-fixes merged here, tested together, conflicts fixed, etc.
+- **main**: stable branch where PIP releases are created.
 
 ## Running a branch
 
 ```bash
-pip install git+ranaroussi/yfinance.git@dev  # <- dev branch
+pip install "git+https://github.com/ranaroussi/yfinance.git@dev"  # <- dev branch
 ```
 
 https://ranaroussi.github.io/yfinance/development/running.html
@@ -41,11 +41,11 @@ https://ranaroussi.github.io/yfinance/development/documentation.html
 
 Help keep the Git commit history and [network graph](https://github.com/ranaroussi/yfinance/network) compact:
 
-* got a long descriptive commit message? `git commit -m "short sentence summary" -m "full commit message"`
+- got a long descriptive commit message? `git commit -m "short sentence summary" -m "full commit message"`
 
-* combine multiple commits into 1 with `git squash`
+- combine multiple commits into 1 with `git squash`
 
-* `git rebase` is your friend: change base branch, or "merge in" updates
+- `git rebase` is your friend: change base branch, or "merge in" updates
 
 https://ranaroussi.github.io/yfinance/development/code.html#git-stuff
 
@@ -53,7 +53,7 @@ https://ranaroussi.github.io/yfinance/development/code.html#git-stuff
 
 Tests have been written using the built-in Python module `unittest`. Examples:
 
-* Run all tests: `python -m unittest discover -s tests`
+- Run all tests: `python -m unittest discover -s tests`
 
 https://ranaroussi.github.io/yfinance/development/testing.html
 
