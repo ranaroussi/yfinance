@@ -287,6 +287,10 @@ class TickerBase:
             self._fast_info = FastInfo(self)
         return self._fast_info
 
+    def get_valuation_measures(self):
+        data = self._quote.valuation_measures
+        return data
+
     def get_sustainability(self, as_dict=False):
         data = self._quote.sustainability
         if as_dict:
