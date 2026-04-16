@@ -358,10 +358,10 @@ class PriceHistory:
 
         if splits is not None:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
-        self._splits = splits
+        self._splits = splits['Stock Splits']
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
-        self._dividends = dividends
+        self._dividends = dividends['Dividends']
         if dividends is not None and 'currency' in dividends.columns:
             # Rare, only seen with Vietnam market
             #   or companies that distribute dividends in a different currency
@@ -377,7 +377,9 @@ class PriceHistory:
 
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
-        self._capital_gains = capital_gains
+            self._capital_gains = capital_gains['Capital Gains']
+        else:
+            self._capital_gains = None
         if start is not None:
             if not quotes.empty:
                 start_d = quotes.index[0].floor('D')
