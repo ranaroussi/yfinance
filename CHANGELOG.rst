@@ -1,6 +1,13 @@
 Change Log
 ===========
 
+1.3.0
+-----
+Features:
+- Add Valuations Measures Table from Statistics Page #2742
+- Add ETFQuery #2749
+Fix type regresssion in Ticker.dividends
+
 1.2.2
 -----
 Forgot to merge in #2695 and #2718 for release 1.2.1
