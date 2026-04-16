@@ -1,6 +1,36 @@
 Change Log
 ===========
 
+1.2.2
+-----
+Forgot to merge in #2695 and #2718 for release 1.2.1
+
+Features:
+- Add Currency to Analysis Data #2739
+Fixes:
+- Fix TypeError in history() when API returns None/malformed #2703
+- Fix thread-safety in download() with mutex lock #2718
+- Fix/fill devidends #2695
+Maintenance:
+- Refactor QueryBase to use typed Operator #2731
+Docs:
+- Fix/history period docstring #2709
+- chore: minor doc fixes #2716
+- docs: fix dev branch install command #2733
+
+1.2.1
+-----
+Force curl_cffi>=0.15, because CVE #2743
+Preserve currency in dividends #2695
+Improve download() thread-safety #2718
+
+1.2.0
+-----
+Features:
+- update exchange maps for equities and mutual funds. #2685
+Fixes:
+- handle Pandas to_numpy() returning read-only #2697
+
 1.1.0
 -----
 Features:
