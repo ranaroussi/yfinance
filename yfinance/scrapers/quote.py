@@ -3,6 +3,7 @@ import datetime
 import json
 import numpy as _np
 import pandas as pd
+from bs4 import BeautifulSoup
 
 from yfinance import utils
 from yfinance.config import YfConfig
@@ -492,6 +493,7 @@ class Quote:
         self._upgrades_downgrades = None
         self._calendar = None
         self._sec_filings = None
+        self._valuation_measures = None
 
         self._already_scraped = False
         self._already_fetched = False
@@ -571,6 +573,12 @@ class Quote:
             f = self._fetch_sec_filings()
             self._sec_filings = {} if f is None else f
         return self._sec_filings
+
+    @property
+    def valuation_measures(self) -> pd.DataFrame:
+        if self._valuation_measures is None:
+            self._fetch_valuation_measures()
+        return self._valuation_measures
 
     @staticmethod
     def valid_modules():
@@ -660,6 +668,40 @@ class Quote:
             return v2
 
         self._info = {k: _format(k, v) for k, v in query1_info.items()}
+
+    def _fetch_valuation_measures(self):
+        url = f"https://finance.yahoo.com/quote/{self._symbol}/key-statistics"
+        try:
+            response = self._data.cache_get(url=url)
+        except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            utils.get_yf_logger().error(f"Failed to fetch key-statistics page: {e}")
+            self._valuation_measures = pd.DataFrame()
+            return
+
+        try:
+            soup = BeautifulSoup(response.text, "html.parser")
+            table = soup.find("table")
+            if table is None:
+                self._valuation_measures = pd.DataFrame()
+                return
+
+            headers = [th.get_text(strip=True) for th in table.find("tr").find_all(["th", "td"])]
+            rows = []
+            for tr in table.find_all("tr")[1:]:
+                cells = [td.get_text(strip=True) for td in tr.find_all(["th", "td"])]
+                rows.append(cells)
+
+            df = pd.DataFrame(rows, columns=headers)
+            df = df.set_index(df.columns[0])
+            df.index.name = None
+            self._valuation_measures = df
+        except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            utils.get_yf_logger().error(f"Failed to parse key-statistics page: {e}")
+            self._valuation_measures = pd.DataFrame()
 
     def _fetch_complementary(self):
         if self._already_fetched_complementary:

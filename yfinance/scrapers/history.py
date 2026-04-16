@@ -358,26 +358,35 @@ class PriceHistory:
 
         if splits is not None:
             splits = utils.set_df_tz(splits, interval, tz_exchange)
-        self._splits = splits
+            self._splits = splits['Stock Splits'].rename_axis('Date')
+        else:
+            self._splits = pd.Series()
         if dividends is not None:
             dividends = utils.set_df_tz(dividends, interval, tz_exchange)
-        self._dividends = dividends
-        if dividends is not None and 'currency' in dividends.columns:
-            # Rare, only seen with Vietnam market
-            #   or companies that distribute dividends in a different currency
-            price_currency = self._history_metadata['currency']
-            if price_currency is None:
-                price_currency = ''
-            f_currency_mismatch = dividends['currency'] != price_currency
-            if f_currency_mismatch.any():
-                if repair and price_currency != '':
-                    # Attempt repair = currency conversion
-                    dividends = self._dividends_convert_fx(dividends, price_currency, repair)
-            dividends = dividends.drop('currency', axis=1)
+            if 'currency' in dividends.columns:
+                # Rare, only seen with Vietnam market, or 
+                # companies that distribute dividends in a different currency
+                self._dividends = dividends.rename_axis('Date')
+
+                price_currency = self._history_metadata['currency']
+                if price_currency is None:
+                    price_currency = ''
+                f_currency_mismatch = dividends['currency'] != price_currency
+                if f_currency_mismatch.any():
+                    if repair and price_currency != '':
+                        # Attempt repair = currency conversion
+                        dividends = self._dividends_convert_fx(dividends, price_currency, repair)
+                dividends = dividends.drop('currency', axis=1)
+            else:
+                self._dividends = dividends['Dividends'].rename_axis('Date')
+        else:
+            self._dividends = pd.Series()
 
         if capital_gains is not None:
             capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
-        self._capital_gains = capital_gains
+            self._capital_gains = capital_gains['Capital Gains'].rename_axis('Date')
+        else:
+            self._capital_gains = pd.Series()
         if start is not None:
             if not quotes.empty:
                 start_d = quotes.index[0].floor('D')
@@ -562,7 +571,7 @@ class PriceHistory:
         df = data['prices']
         divs = data['dividends']
 
-        if divs is not None and 'currency' in divs.columns:
+        if divs is not None and isinstance(divs, pd.DataFrame) and 'currency' in divs.columns:
             # Add dividends currency column
             df = utils.safe_merge_dfs(df.drop('Dividends', axis=1), divs, '1d')
             df['currency'] = df['currency'].fillna('')
@@ -573,6 +582,7 @@ class PriceHistory:
         actions = df[[c for c in cols if c in df.columns]]
 
         cols_numeric = ['Dividends', 'Stock Splits', 'Capital Gains']
+        cols_numeric = [c for c in cols_numeric if c in actions.columns]
         actions = actions[(actions[cols_numeric]!=0).any(axis=1)]
         for c in cols_numeric:
             if (actions[c] == 0.0).all():
