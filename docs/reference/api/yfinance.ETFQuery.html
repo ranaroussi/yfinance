@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>yfinance.Ticker.info &#8212; yfinance</title>
+    <title>ETFQuery &#8212; yfinance</title>
   
   
   
@@ -42,11 +42,11 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.Ticker.info';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/api/yfinance.ETFQuery';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="yfinance.Ticker.get_fast_info" href="yfinance.Ticker.get_fast_info.html" />
-    <link rel="prev" title="yfinance.Ticker.get_info" href="yfinance.Ticker.get_info.html" />
+    <link rel="next" title="yfinance.screen" href="yfinance.screen.html" />
+    <link rel="prev" title="FundQuery" href="yfinance.FundQuery.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -335,7 +335,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Tickers.html">Tickers</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.stock.html">Stock</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.stock.html">Stock</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_isin.html">yfinance.Ticker.get_isin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.isin.html">yfinance.Ticker.isin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.history.html">yfinance.Ticker.history</a></li>
@@ -350,7 +350,7 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.capital_gains.html">yfinance.Ticker.capital_gains</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_shares_full.html">yfinance.Ticker.get_shares_full</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_info.html">yfinance.Ticker.get_info</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">yfinance.Ticker.info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.info.html">yfinance.Ticker.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_fast_info.html">yfinance.Ticker.get_fast_info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.fast_info.html">yfinance.Ticker.fast_info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Ticker.get_news.html">yfinance.Ticker.get_news</a></li>
@@ -439,10 +439,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.Industry.html">Industry</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.screener.html">Screener &amp; Query</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.screener.html">Screener &amp; Query</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="yfinance.EquityQuery.html">EquityQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.FundQuery.html">FundQuery</a></li>
-<li class="toctree-l2"><a class="reference internal" href="yfinance.ETFQuery.html">ETFQuery</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">ETFQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.screen.html">yfinance.screen</a></li>
 </ul>
 </details></li>
@@ -498,9 +498,9 @@ document.write(`
     <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
     
     
-    <li class="breadcrumb-item"><a href="../yfinance.stock.html" class="nav-link">Stock</a></li>
+    <li class="breadcrumb-item"><a href="../yfinance.screener.html" class="nav-link">Screener &amp; Query</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">yfinance.Ticker.info</li>
+    <li class="breadcrumb-item active" aria-current="page">ETFQuery</li>
   </ul>
 </nav>
 </div>
@@ -517,12 +517,522 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="yfinance-ticker-info">
-<h1>yfinance.Ticker.info<a class="headerlink" href="#yfinance-ticker-info" title="Link to this heading">#</a></h1>
-<dl class="py property">
-<dt class="sig sig-object py" id="yfinance.Ticker.info">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Ticker.</span></span><span class="sig-name descname"><span class="pre">info</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></em><a class="headerlink" href="#yfinance.Ticker.info" title="Link to this definition">#</a></dt>
+  <section id="etfquery">
+<h1>ETFQuery<a class="headerlink" href="#etfquery" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="yfinance.ETFQuery">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">ETFQuery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'eq'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'is-in'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'btwn'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'gt'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lt'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'gte'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lte'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'and'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'or'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operand</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">QueryBase</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Real</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.ETFQuery" title="Link to this definition">#</a></dt>
+<dd><p>The <cite>ETFQuery</cite> class constructs filters for ETFs based on specific criteria such as category, fund family, exchange, and performance ratings.</p>
+<p>Start with value operations: <cite>EQ</cite> (equals), <cite>IS-IN</cite> (is in), <cite>BTWN</cite> (between), <cite>GT</cite> (greater than), <cite>LT</cite> (less than), <cite>GTE</cite> (greater or equal), <cite>LTE</cite> (less or equal).</p>
+<p>Combine them with logical operations: <cite>AND</cite>, <cite>OR</cite>.</p>
+<p class="rubric">Example</p>
+<p>Predefined Yahoo query <cite>top_etfs_us</cite>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">ETFQuery</span>
+
+<span class="n">ETFQuery</span><span class="p">(</span><span class="s1">&#39;and&#39;</span><span class="p">,</span> <span class="p">[</span>
+    <span class="n">ETFQuery</span><span class="p">(</span><span class="s1">&#39;gt&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;intradayprice&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">]),</span>
+    <span class="n">ETFQuery</span><span class="p">(</span><span class="s1">&#39;is-in&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;performanceratingoverall&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span>
+    <span class="n">ETFQuery</span><span class="p">(</span><span class="s1">&#39;eq&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;region&#39;</span><span class="p">,</span> <span class="s1">&#39;us&#39;</span><span class="p">])</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p class="rubric">Attributes</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">valid_fields</span></span></dt>
+<dd><p>Valid operands, grouped by category.</p>
+<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<caption><span class="caption-text">Permitted Keys/Values</span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Values</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>eq_fields</p></td>
+<td><ul class="simple">
+<li><p>categoryname</p></li>
+<li><p>exchange</p></li>
+<li><p>fundfamilyname</p></li>
+<li><p>morningstar_economic_moat</p></li>
+<li><p>morningstar_moat_trend</p></li>
+<li><p>morningstar_rating_change</p></li>
+<li><p>morningstar_stewardship</p></li>
+<li><p>morningstar_uncertainty</p></li>
+<li><p>primary_sector</p></li>
+<li><p>region</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>fundamentals</p></td>
+<td><ul class="simple">
+<li><p>fundnetassets</p></li>
+<li><p>ticker</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p>feesandexpenses</p></td>
+<td><ul class="simple">
+<li><p>annualreportgrossexpenseratio</p></li>
+<li><p>annualreportnetexpenseratio</p></li>
+<li><p>turnoverratio</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>historicalperformance</p></td>
+<td><ul class="simple">
+<li><p>annualreturnnavy1</p></li>
+<li><p>annualreturnnavy1categoryrank</p></li>
+<li><p>annualreturnnavy3</p></li>
+<li><p>annualreturnnavy5</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p>keystats</p></td>
+<td><ul class="simple">
+<li><p>avgdailyvol3m</p></li>
+<li><p>dayvolume</p></li>
+<li><p>eodvolume</p></li>
+<li><p>fiftytwowkpercentchange</p></li>
+<li><p>percentchange</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>morningstar_rating</p></td>
+<td><ul class="simple">
+<li><p>morningstar_last_close_price_to_fair_value</p></li>
+<li><p>morningstar_rating</p></li>
+<li><p>morningstar_rating_updated_time</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p>portfoliostatistics</p></td>
+<td><ul class="simple">
+<li><p>marketcapitalvaluelong</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>purchasedetails</p></td>
+<td><ul class="simple">
+<li><p>initialinvestment</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p>trailingperformance</p></td>
+<td><ul class="simple">
+<li><p>performanceratingoverall</p></li>
+<li><p>quarterendtrailingreturnytd</p></li>
+<li><p>riskratingoverall</p></li>
+<li><p>trailing_3m_return</p></li>
+<li><p>trailing_ytd_return</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>price</p></td>
+<td><ul class="simple">
+<li><p>eodprice</p></li>
+<li><p>intradayprice</p></li>
+<li><p>intradaypricechange</p></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">valid_values</span></span></dt>
+<dd><p>Most operands take number values, but some have a restricted set of valid values.</p>
+<div class="pst-scrollable-table-container"><table class="table" id="id2">
+<caption><span class="caption-text">Permitted Keys/Values</span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Values</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>exchange</p></td>
+<td><ul class="simple">
+<li><p>ae: DFM</p></li>
+<li><p>ar: BUE</p></li>
+<li><p>at: VIE</p></li>
+<li><p>au: ASX, CXA</p></li>
+<li><p>be: BRU</p></li>
+<li><p>br: SAO</p></li>
+<li><p>ca: CNQ, NEO, TOR, VAN</p></li>
+<li><p>ch: EBS</p></li>
+<li><p>cl: SGO</p></li>
+<li><p>cn: SHH, SHZ</p></li>
+<li><p>co: BVC</p></li>
+<li><p>cz: PRA</p></li>
+<li><p>de: BER, DUS, EUX, FRA, GER, HAM, HAN, MUN, STU</p></li>
+<li><p>dk: CPH</p></li>
+<li><p>ee: TAL</p></li>
+<li><p>eg: CAI</p></li>
+<li><p>es: MAD, MCE</p></li>
+<li><p>fi: HEL</p></li>
+<li><p>fr: ENX, PAR</p></li>
+<li><p>gb: AQS, CXE, IOB, LSE</p></li>
+<li><p>gr: ATH</p></li>
+<li><p>hk: HKG</p></li>
+<li><p>hu: BUD</p></li>
+<li><p>id: JKT</p></li>
+<li><p>ie: ISE</p></li>
+<li><p>il: TLV</p></li>
+<li><p>in: BSE, NSI</p></li>
+<li><p>is: ICE</p></li>
+<li><p>it: MDD, MIL, TLO</p></li>
+<li><p>jp: FKA, JPX, OSA, SAP</p></li>
+<li><p>kr: KOE, KSC</p></li>
+<li><p>kw: KUW</p></li>
+<li><p>lk: CSE</p></li>
+<li><p>lt: LIT</p></li>
+<li><p>lv: RIS</p></li>
+<li><p>mx: MEX</p></li>
+<li><p>my: KLS</p></li>
+<li><p>nl: AMS, DXE</p></li>
+<li><p>no: OSL</p></li>
+<li><p>nz: NZE</p></li>
+<li><p>pe:</p></li>
+<li><p>ph: PHP, PHS</p></li>
+<li><p>pk: KAR</p></li>
+<li><p>pl: WSE</p></li>
+<li><p>pt: LIS</p></li>
+<li><p>qa: DOH</p></li>
+<li><p>ro: BVB</p></li>
+<li><p>ru: MCX</p></li>
+<li><p>sa: SAU</p></li>
+<li><p>se: STO</p></li>
+<li><p>sg: SES</p></li>
+<li><p>sr:</p></li>
+<li><p>th: SET</p></li>
+<li><p>tr: IST</p></li>
+<li><p>tw: TAI, TWO</p></li>
+<li><p>us: ASE, BTS, CXI, NAE, NCM, NGM, NMS, NYQ, OEM, OQB, OQX, PCX, PNK, YHD</p></li>
+<li><p>ve: CCS</p></li>
+<li><p>vn: VSE</p></li>
+<li><p>za: JNB</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>categoryname</p></td>
+<td><ul class="simple">
+<li><p>Allocation–15% to 30% Equity</p></li>
+<li><p>Allocation–30% to 50% Equity</p></li>
+<li><p>Allocation–50% to 70% Equity</p></li>
+<li><p>Allocation–70% to 85% Equity</p></li>
+<li><p>Allocation–85%+ Equity</p></li>
+<li><p>Bank Loan</p></li>
+<li><p>Bear Market</p></li>
+<li><p>China Region</p></li>
+<li><p>Commodities Agriculture</p></li>
+<li><p>Commodities Broad Basket</p></li>
+<li><p>Convertibles</p></li>
+<li><p>Corporate Bond</p></li>
+<li><p>Diversified Emerging Mkts</p></li>
+<li><p>Diversified Pacific/Asia</p></li>
+<li><p>Emerging Markets Bond</p></li>
+<li><p>Emerging-Markets Local-Currency Bond</p></li>
+<li><p>Energy Limited Partnership</p></li>
+<li><p>Equity Energy</p></li>
+<li><p>Equity Precious Metals</p></li>
+<li><p>Europe Stock</p></li>
+<li><p>Financial</p></li>
+<li><p>Foreign Large Blend</p></li>
+<li><p>Foreign Large Growth</p></li>
+<li><p>Foreign Large Value</p></li>
+<li><p>Foreign Small/Mid Blend</p></li>
+<li><p>Foreign Small/Mid Growth</p></li>
+<li><p>Foreign Small/Mid Value</p></li>
+<li><p>Global Real Estate</p></li>
+<li><p>Health</p></li>
+<li><p>High Yield Bond</p></li>
+<li><p>High Yield Muni</p></li>
+<li><p>Inflation-Protected Bond</p></li>
+<li><p>Infrastructure</p></li>
+<li><p>Intermediate Government</p></li>
+<li><p>Intermediate-Term Bond</p></li>
+<li><p>Japan Stock</p></li>
+<li><p>Large Blend</p></li>
+<li><p>Large Growth</p></li>
+<li><p>Large Value</p></li>
+<li><p>Long Government</p></li>
+<li><p>Long-Short Credit</p></li>
+<li><p>Long-Short Equity</p></li>
+<li><p>Long-Term Bond</p></li>
+<li><p>Managed Futures</p></li>
+<li><p>Market Neutral</p></li>
+<li><p>Mid-Cap Blend</p></li>
+<li><p>Mid-Cap Growth</p></li>
+<li><p>Mid-Cap Value</p></li>
+<li><p>Miscellaneous Region</p></li>
+<li><p>Multialternative</p></li>
+<li><p>Multicurrency</p></li>
+<li><p>Multisector Bond</p></li>
+<li><p>Muni California Intermediate</p></li>
+<li><p>Muni California Long</p></li>
+<li><p>Muni Massachusetts</p></li>
+<li><p>Muni Minnesota</p></li>
+<li><p>Muni National Interm</p></li>
+<li><p>Muni National Long</p></li>
+<li><p>Muni National Short</p></li>
+<li><p>Muni New Jersey</p></li>
+<li><p>Muni New York Intermediate</p></li>
+<li><p>Muni New York Long</p></li>
+<li><p>Muni Ohio</p></li>
+<li><p>Muni Pennsylvania</p></li>
+<li><p>Muni Single State Interm</p></li>
+<li><p>Muni Single State Long</p></li>
+<li><p>Muni Single State Short</p></li>
+<li><p>Natural Resources</p></li>
+<li><p>Nontraditional Bond</p></li>
+<li><p>Option Writing</p></li>
+<li><p>Other</p></li>
+<li><p>Other Allocation</p></li>
+<li><p>Pacific/Asia ex-Japan Stk</p></li>
+<li><p>Preferred Stock</p></li>
+<li><p>Real Estate</p></li>
+<li><p>Short Government</p></li>
+<li><p>Short-Term Bond</p></li>
+<li><p>Small Blend</p></li>
+<li><p>Small Growth</p></li>
+<li><p>Small Value</p></li>
+<li><p>Tactical Allocation</p></li>
+<li><p>Target-Date 2000-2010</p></li>
+<li><p>Target-Date 2015</p></li>
+<li><p>Target-Date 2020</p></li>
+<li><p>Target-Date 2025</p></li>
+<li><p>Target-Date 2030</p></li>
+<li><p>Target-Date 2035</p></li>
+<li><p>Target-Date 2040</p></li>
+<li><p>Target-Date 2045</p></li>
+<li><p>Target-Date 2050</p></li>
+<li><p>Target-Date 2055</p></li>
+<li><p>Target-Date 2060+</p></li>
+<li><p>Target-Date Retirement</p></li>
+<li><p>Technology</p></li>
+<li><p>Trading - Leveraged/Inverse Commodities</p></li>
+<li><p>Trading - Leveraged/Inverse Equity</p></li>
+<li><p>Trading–Inverse Equity</p></li>
+<li><p>Trading–Leveraged Equity</p></li>
+<li><p>Ultrashort Bond</p></li>
+<li><p>Utilities</p></li>
+<li><p>World Allocation</p></li>
+<li><p>World Bond</p></li>
+<li><p>World Stock</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p>fundfamilyname</p></td>
+<td><ul class="simple">
+<li><p>ALPS</p></li>
+<li><p>AMG Funds</p></li>
+<li><p>AQR Funds</p></li>
+<li><p>Aberdeen</p></li>
+<li><p>Alger</p></li>
+<li><p>AllianceBernstein</p></li>
+<li><p>Allianz Funds</p></li>
+<li><p>American Beacon</p></li>
+<li><p>American Century Investments</p></li>
+<li><p>American Funds</p></li>
+<li><p>Aquila</p></li>
+<li><p>Artisan</p></li>
+<li><p>BMO Funds</p></li>
+<li><p>BNY Mellon Funds</p></li>
+<li><p>Baird</p></li>
+<li><p>Barclays Funds</p></li>
+<li><p>Barings Funds</p></li>
+<li><p>Baron Capital Group</p></li>
+<li><p>BlackRock</p></li>
+<li><p>Brown Advisory Funds</p></li>
+<li><p>Calamos</p></li>
+<li><p>Calvert Investments</p></li>
+<li><p>Catalyst Mutual Funds</p></li>
+<li><p>Cohen &amp; Steers</p></li>
+<li><p>Columbia</p></li>
+<li><p>Commerz Funds Solutions SA</p></li>
+<li><p>Commerzbank AG, Frankfurt am Main</p></li>
+<li><p>Davis Funds</p></li>
+<li><p>Delaware Investments</p></li>
+<li><p>Deutsche Asset Management</p></li>
+<li><p>Deutsche Bank AG</p></li>
+<li><p>Diamond Hill Funds</p></li>
+<li><p>Dimensional Fund Advisors</p></li>
+<li><p>Direxion Funds</p></li>
+<li><p>DoubleLine</p></li>
+<li><p>Dreyfus</p></li>
+<li><p>Dunham Funds</p></li>
+<li><p>Eagle Funds</p></li>
+<li><p>Eaton Vance</p></li>
+<li><p>Federated</p></li>
+<li><p>Fidelity Investments</p></li>
+<li><p>First Investors</p></li>
+<li><p>First Trust</p></li>
+<li><p>Flexshares Trust</p></li>
+<li><p>Franklin Templeton Investments</p></li>
+<li><p>GMO</p></li>
+<li><p>Gabelli</p></li>
+<li><p>Global X Funds</p></li>
+<li><p>Goldman Sachs</p></li>
+<li><p>Great-West Funds</p></li>
+<li><p>Guggenheim Investments</p></li>
+<li><p>GuideStone Funds</p></li>
+<li><p>HSBC</p></li>
+<li><p>Hancock Horizon</p></li>
+<li><p>Harbor</p></li>
+<li><p>Hartford Mutual Funds</p></li>
+<li><p>Henderson Global</p></li>
+<li><p>Hennessy</p></li>
+<li><p>Highland Funds</p></li>
+<li><p>ICON Funds</p></li>
+<li><p>Invesco</p></li>
+<li><p>Ivy Funds</p></li>
+<li><p>JPMorgan</p></li>
+<li><p>Janus</p></li>
+<li><p>John Hancock</p></li>
+<li><p>Lazard</p></li>
+<li><p>Legg Mason</p></li>
+<li><p>Lord Abbett</p></li>
+<li><p>MFS</p></li>
+<li><p>Madison Funds</p></li>
+<li><p>MainStay</p></li>
+<li><p>Manning &amp; Napier</p></li>
+<li><p>Market Vectors</p></li>
+<li><p>MassMutual</p></li>
+<li><p>Matthews Asia Funds</p></li>
+<li><p>Morgan Stanley</p></li>
+<li><p>Nationwide</p></li>
+<li><p>Natixis Funds</p></li>
+<li><p>Neuberger Berman</p></li>
+<li><p>Northern Funds</p></li>
+<li><p>Nuveen</p></li>
+<li><p>OppenheimerFunds</p></li>
+<li><p>PNC Funds</p></li>
+<li><p>Pacific funds series trust</p></li>
+<li><p>Pax World</p></li>
+<li><p>Paydenfunds</p></li>
+<li><p>Pimco</p></li>
+<li><p>Pioneer Investments</p></li>
+<li><p>PowerShares</p></li>
+<li><p>Principal Funds</p></li>
+<li><p>ProFunds</p></li>
+<li><p>ProShares</p></li>
+<li><p>Prudential Investments</p></li>
+<li><p>Putnam</p></li>
+<li><p>RBC Global Asset Management.</p></li>
+<li><p>RidgeWorth</p></li>
+<li><p>Royce</p></li>
+<li><p>Russell</p></li>
+<li><p>Rydex Funds</p></li>
+<li><p>SEI</p></li>
+<li><p>SPDR State Street Global Advisors</p></li>
+<li><p>Salient Funds</p></li>
+<li><p>Saratoga</p></li>
+<li><p>Schwab Funds</p></li>
+<li><p>Sentinel</p></li>
+<li><p>Shelton Capital Management</p></li>
+<li><p>State Farm</p></li>
+<li><p>State Street Global Advisors (Chicago)</p></li>
+<li><p>Sterling Capital Funds</p></li>
+<li><p>SunAmerica</p></li>
+<li><ol class="upperalpha simple" start="20">
+<li><p>Rowe Price</p></li>
+</ol>
+</li>
+<li><p>TCW</p></li>
+<li><p>TIAA-CREF Asset Management</p></li>
+<li><p>Teton Westwood Funds</p></li>
+<li><p>Thornburg</p></li>
+<li><p>Thrivent</p></li>
+<li><p>Timothy Plan</p></li>
+<li><p>Touchstone</p></li>
+<li><p>Transamerica</p></li>
+<li><p>UBS</p></li>
+<li><p>UBS Group AG</p></li>
+<li><p>USAA</p></li>
+<li><p>VALIC</p></li>
+<li><p>Vanguard</p></li>
+<li><p>Vantagepoint Funds</p></li>
+<li><p>Victory</p></li>
+<li><p>Virtus</p></li>
+<li><p>Voya</p></li>
+<li><p>Waddell &amp; Reed</p></li>
+<li><p>Wasatch</p></li>
+<li><p>Wells Fargo Funds</p></li>
+<li><p>William Blair</p></li>
+<li><p>WisdomTree</p></li>
+<li><p>iShares</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>morningstar_economic_moat</p></td>
+<td><ul class="simple">
+<li><p>Narrow</p></li>
+<li><p>None</p></li>
+<li><p>Wide</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p>morningstar_stewardship</p></td>
+<td><ul class="simple">
+<li><p>Exemplary</p></li>
+<li><p>Poor</p></li>
+<li><p>Standard</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>morningstar_uncertainty</p></td>
+<td><ul class="simple">
+<li><p>Extreme</p></li>
+<li><p>High</p></li>
+<li><p>Low</p></li>
+<li><p>Medium</p></li>
+<li><p>Very High</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p>morningstar_moat_trend</p></td>
+<td><ul class="simple">
+<li><p>Negative</p></li>
+<li><p>Positive</p></li>
+<li><p>Stable</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-odd"><td><p>morningstar_rating_change</p></td>
+<td><ul class="simple">
+<li><p>Downgrade</p></li>
+<li><p>Upgrade</p></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'eq'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'is-in'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'btwn'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'gt'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lt'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'gte'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lte'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'and'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'or'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operand</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">QueryBase</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Real</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span></dt>
+<dd></dd></dl>
+
+</dd></dl>
 
 </section>
 
@@ -537,20 +1047,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="yfinance.Ticker.get_info.html"
+       href="yfinance.FundQuery.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">yfinance.Ticker.get_info</p>
+        <p class="prev-next-title">FundQuery</p>
       </div>
     </a>
     <a class="right-next"
-       href="yfinance.Ticker.get_fast_info.html"
+       href="yfinance.screen.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">yfinance.Ticker.get_fast_info</p>
+        <p class="prev-next-title">yfinance.screen</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -572,14 +1082,14 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Ticker.info"><code class="docutils literal notranslate"><span class="pre">Ticker.info</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.ETFQuery"><code class="docutils literal notranslate"><span class="pre">ETFQuery</span></code></a></li>
 </ul>
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../../_sources/reference/api/yfinance.Ticker.info.rst.txt">
+    <a href="../../_sources/reference/api/yfinance.ETFQuery.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

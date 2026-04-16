@@ -442,6 +442,7 @@ document.write(`
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.screener.html">Screener &amp; Query</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.EquityQuery.html">EquityQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.FundQuery.html">FundQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.ETFQuery.html">ETFQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.screen.html">yfinance.screen</a></li>
 </ul>
 </details></li>
@@ -799,6 +800,11 @@ or a tuple of (symbol, MIC) e.g. (‘OR’,’XPAR’)
 <span class="sig-name descname"><span class="pre">upgrades_downgrades</span></span></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">valuation</span></span></dt>
+<dd></dd></dl>
+
 <p class="rubric">Methods</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -1091,6 +1097,11 @@ Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth</p>
 Index: date of grade
 Columns: firm toGrade fromGrade action</p>
 </dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_valuation_measures</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">

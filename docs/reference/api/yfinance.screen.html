@@ -46,7 +46,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Functions and Utilities" href="../yfinance.functions.html" />
-    <link rel="prev" title="FundQuery" href="yfinance.FundQuery.html" />
+    <link rel="prev" title="ETFQuery" href="yfinance.ETFQuery.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -442,6 +442,7 @@ document.write(`
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../yfinance.screener.html">Screener &amp; Query</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="yfinance.EquityQuery.html">EquityQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.FundQuery.html">FundQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.ETFQuery.html">ETFQuery</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">yfinance.screen</a></li>
 </ul>
 </details></li>
@@ -520,12 +521,12 @@ document.write(`
 <h1>yfinance.screen<a class="headerlink" href="#yfinance-screen" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="yfinance.screen">
-<span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">screen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="yfinance.EquityQuery.html#yfinance.EquityQuery" title="yfinance.screener.query.EquityQuery"><span class="pre">EquityQuery</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="yfinance.FundQuery.html#yfinance.FundQuery" title="yfinance.screener.query.FundQuery"><span class="pre">FundQuery</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortField</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortAsc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userId</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userIdType</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.screen" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">yfinance.</span></span><span class="sig-name descname"><span class="pre">screen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="yfinance.EquityQuery.html#yfinance.EquityQuery" title="yfinance.screener.query.EquityQuery"><span class="pre">EquityQuery</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="yfinance.FundQuery.html#yfinance.FundQuery" title="yfinance.screener.query.FundQuery"><span class="pre">FundQuery</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="yfinance.ETFQuery.html#yfinance.ETFQuery" title="yfinance.screener.query.ETFQuery"><span class="pre">ETFQuery</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortField</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortAsc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userId</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userIdType</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.screen" title="Link to this definition">#</a></dt>
 <dd><p>Run a screen: predefined query, or custom query.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p>Defaults only apply if query = EquityQuery or FundQuery</p></li>
+<li><p>Defaults only apply if query = EquityQuery, FundQuery, or ETFQuery</p></li>
 </ul>
 <dl class="simple">
 <dt>query<span class="classifier">str | Query:</span></dt><dd><p>The query to execute, either name of predefined or custom query.
@@ -859,6 +860,72 @@ Use size instead for custom queries.</p>
 </div>
 </td>
 </tr>
+<tr class="row-odd"><td><p>top_etfs_us</p></td>
+<td><div class="line-block">
+<div class="line">query:</div>
+<div class="line-block">
+<div class="line">ETFQuery(AND, [</div>
+<div class="line-block">
+<div class="line">ETFQuery(GT, [‘intradayprice’, 10]),</div>
+<div class="line">ETFQuery(IS-IN, [‘performanceratingoverall’, 4, 5]),</div>
+<div class="line">ETFQuery(EQ, [‘region’, ‘us’])</div>
+</div>
+<div class="line">])</div>
+</div>
+<div class="line">sortField: percentchange</div>
+<div class="line">sortType: DESC</div>
+</div>
+</td>
+</tr>
+<tr class="row-even"><td><p>top_performing_etfs</p></td>
+<td><div class="line-block">
+<div class="line">query:</div>
+<div class="line-block">
+<div class="line">ETFQuery(AND, [</div>
+<div class="line-block">
+<div class="line">ETFQuery(EQ, [‘region’, ‘us’]),</div>
+<div class="line">ETFQuery(IS-IN, [‘performanceratingoverall’, 4, 5]),</div>
+<div class="line">ETFQuery(GT, [‘intradayprice’, 10])</div>
+</div>
+<div class="line">])</div>
+</div>
+<div class="line">sortField: annualreportnetexpenseratio</div>
+<div class="line">sortType: ASC</div>
+</div>
+</td>
+</tr>
+<tr class="row-odd"><td><p>technology_etfs</p></td>
+<td><div class="line-block">
+<div class="line">query:</div>
+<div class="line-block">
+<div class="line">ETFQuery(AND, [</div>
+<div class="line-block">
+<div class="line">ETFQuery(EQ, [‘region’, ‘us’]),</div>
+<div class="line">ETFQuery(EQ, [‘categoryname’, ‘Technology’])</div>
+</div>
+<div class="line">])</div>
+</div>
+<div class="line">sortField: annualreportnetexpenseratio</div>
+<div class="line">sortType: ASC</div>
+</div>
+</td>
+</tr>
+<tr class="row-even"><td><p>bond_etfs</p></td>
+<td><div class="line-block">
+<div class="line">query:</div>
+<div class="line-block">
+<div class="line">ETFQuery(AND, [</div>
+<div class="line-block">
+<div class="line">ETFQuery(EQ, [‘region’, ‘us’]),</div>
+<div class="line">ETFQuery(IS-IN, [‘categoryname’, ‘Corporate Bond’, ‘Emerging Markets Bond’, ‘Emerging-Markets Local-Currency Bond’, ‘High Yield Bond’, ‘Intermediate-Term Bond’, ‘Long-Term Bond’, ‘Inflation-Protected Bond’, ‘Multisector Bond’, ‘Nontraditional Bond’, ‘Short-Term Bond’, ‘Ultrashort Bond’, ‘World Bond’])</div>
+</div>
+<div class="line">])</div>
+</div>
+<div class="line">sortField: annualreportnetexpenseratio</div>
+<div class="line">sortType: ASC</div>
+</div>
+</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -877,12 +944,12 @@ Use size instead for custom queries.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="yfinance.FundQuery.html"
+       href="yfinance.ETFQuery.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">FundQuery</p>
+        <p class="prev-next-title">ETFQuery</p>
       </div>
     </a>
     <a class="right-next"

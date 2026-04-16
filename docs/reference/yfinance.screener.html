@@ -442,6 +442,7 @@ document.write(`
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Screener &amp; Query</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.EquityQuery.html">EquityQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.FundQuery.html">FundQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.ETFQuery.html">ETFQuery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.screen.html">yfinance.screen</a></li>
 </ul>
 </details></li>
@@ -526,7 +527,10 @@ document.write(`
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.FundQuery.html#yfinance.FundQuery" title="yfinance.FundQuery"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FundQuery</span></code></a>(operator, operand)</p></td>
 <td><p>The <cite>FundQuery</cite> class constructs filters for mutual funds based on specific criteria such as region, sector, exchange, and peer group.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.screen.html#yfinance.screen" title="yfinance.screen"><code class="xref py py-obj docutils literal notranslate"><span class="pre">screen</span></code></a>(query[, offset, size, count, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.ETFQuery.html#yfinance.ETFQuery" title="yfinance.ETFQuery"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ETFQuery</span></code></a>(operator, operand)</p></td>
+<td><p>The <cite>ETFQuery</cite> class constructs filters for ETFs based on specific criteria such as category, fund family, exchange, and performance ratings.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.screen.html#yfinance.screen" title="yfinance.screen"><code class="xref py py-obj docutils literal notranslate"><span class="pre">screen</span></code></a>(query[, offset, size, count, ...])</p></td>
 <td><p>Run a screen: predefined query, or custom query.</p></td>
 </tr>
 </tbody>
@@ -542,6 +546,10 @@ document.write(`
 <dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">FundQuery.valid_fields</span></code></dt><dd><p>supported operand values for query</p>
 </dd>
 <dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">FundQuery.valid_values</span></code></dt><dd><p>supported <cite>EQ query operand parameters</cite></p>
+</dd>
+<dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">ETFQuery.valid_fields</span></code></dt><dd><p>supported operand values for query</p>
+</dd>
+<dt><code class="xref py py-attr docutils literal notranslate"><span class="pre">ETFQuery.valid_values</span></code></dt><dd><p>supported <cite>EQ query operand parameters</cite></p>
 </dd>
 </dl>
 </div>
