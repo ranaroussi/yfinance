@@ -553,13 +553,13 @@ class PriceHistory:
             except Exception:
                 pass  # tradingPeriods is optional enrichment; don't fail if intraday unavailable
 
+
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
             self._history_metadata_formatted = True
 
         return self._history_metadata
 
-        return self._history_metadata
     def get_dividends(self, period="max", repair=False) -> pd.Series:
         return self._get_history_cache(interval='1d', period=period, repair=repair)['dividends']
 
