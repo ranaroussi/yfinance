@@ -2746,6 +2746,7 @@ class PriceHistory:
         df_dtype = price_data.dtype
         if df_dtype == np.int64:
             price_data = price_data.astype('float')
+        price_data = price_data.copy()
         for j in range(price_data.shape[1]):
             price_data[:,j] *= adj
             if OHLC[j] in df_workings.columns:
