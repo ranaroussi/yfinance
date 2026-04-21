@@ -114,7 +114,9 @@ class TickerBase:
         # self._price_history = PriceHistory(self._data, self.ticker)
         self._price_history = None  # lazy-load
         self._analysis = Analysis(self._data, self.ticker)
-        self._holders = Holders(self._data, self.ticker)
+        self._quote = Quote(self._data, self.ticker)
+        financial_currency = (self._quote.info or {}).get('financialCurrency')
+        self._analysis = Analysis(self._data, self.ticker, financial_currency=financial_currency)
         self._quote = Quote(self._data, self.ticker)
         self._fundamentals = Fundamentals(self._data, self.ticker)
         self._funds_data = None

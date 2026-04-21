@@ -10,10 +10,10 @@ from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
 
 class Analysis:
 
-    def __init__(self, data: YfData, symbol: str):
+    def __init__(self, data: YfData, symbol: str, financial_currency: str = None):
         self._data = data
         self._symbol = symbol
-
+        self._financial_currency = financial_currency
         # In quoteSummary the 'earningsTrend' module contains most of the data below.
         # The format of data is not optimal so each function will process it's part of the data.
         # This variable works as a cache.
@@ -45,7 +45,10 @@ class Analysis:
         if len(data) == 0:
             return pd.DataFrame()
         df = pd.DataFrame(data).set_index('period')
-        if currency is not None:
+        if self._financial_currency is not None and currency != self._financial_currency:
+            df['currency'] = currency
+            df['financial_currency'] = self._financial_currency
+        elif currency is not None:
             df['currency'] = currency
         return df
 
