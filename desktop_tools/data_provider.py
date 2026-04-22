@@ -123,20 +123,62 @@ class DataProvider:
                     content = item
 
                 title = content.get('title', '') or content.get('headline', '')
-                link = content.get('link', '') or content.get('url', '')
-                publisher = content.get('publisher', '') or content.get('source', '')
+                
+                link = (content.get('link', '') or 
+                        content.get('url', '') or 
+                        content.get('canonicalUrl', '') or 
+                        content.get('clickThroughUrl', '') or
+                        content.get('previewUrl', ''))
+                
+                publisher = ''
+                provider_data = content.get('provider')
+                print(f"[调试] provider 字段类型: {type(provider_data)}")
+                print(f"[调试] provider 字段值: {provider_data}")
+                
+                if isinstance(provider_data, dict):
+                    publisher = provider_data.get('displayName', '') or provider_data.get('name', '') or provider_data.get('publisher', '')
+                elif isinstance(provider_data, str):
+                    publisher = provider_data
+                
+                if not publisher:
+                    publisher = content.get('publisher', '') or content.get('source', '')
+
+                print(f"[调试] 最终 publisher 值: '{publisher}'")
 
                 published_at = 0
                 if 'providerPublishTime' in content:
                     published_at = content.get('providerPublishTime', 0)
                 elif 'publishTime' in content:
                     published_at = content.get('publishTime', 0)
+                elif 'pubDate' in content:
+                    pub_date = content.get('pubDate', '')
+                    if pub_date:
+                        try:
+                            from datetime import datetime as dt
+                            if isinstance(pub_date, str):
+                                if pub_date.isdigit():
+                                    published_at = int(pub_date)
+                                else:
+                                    pass
+                            elif isinstance(pub_date, (int, float)):
+                                published_at = pub_date
+                        except:
+                            pass
+                elif 'displayTime' in content:
+                    display_time = content.get('displayTime', 0)
+                    if isinstance(display_time, (int, float)):
+                        published_at = display_time
                 elif 'datetime' in content:
                     published_at = content.get('datetime', 0)
 
-                news_type = content.get('type', '') or content.get('newsType', '')
+                news_type = content.get('type', '') or content.get('contentType', '') or content.get('newsType', '')
 
                 related_tickers = content.get('relatedTickers', []) or content.get('related', [])
+                if content.get('finance'):
+                    finance = content.get('finance', {})
+                    if isinstance(finance, dict):
+                        related_tickers = finance.get('relatedTickers', related_tickers)
+                
                 if isinstance(related_tickers, str):
                     related_tickers = [related_tickers]
 

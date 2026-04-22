@@ -63,15 +63,36 @@ class NewsManager:
 
         formatted_news = []
         for item in news_list:
+            print(f"[调试 news_manager] 新闻项: {item.get('title', '')[:30]}...")
+            print(f"[调试 news_manager]  publisher 值: '{item.get('publisher', '空')}'")
+            print(f"[调试 news_manager]  published_at 值: {item.get('published_at', 0)}")
+            
             published_at = item.get('published_at', 0)
+            formatted_date = ''
+            
             if published_at:
                 try:
-                    published_dt = datetime.fromtimestamp(published_at)
-                    formatted_date = published_dt.strftime('%Y-%m-%d %H:%M')
-                except (ValueError, OSError):
+                    if isinstance(published_at, (int, float)):
+                        published_dt = datetime.fromtimestamp(published_at)
+                        formatted_date = published_dt.strftime('%Y-%m-%d %H:%M')
+                    elif isinstance(published_at, str):
+                        if published_at.isdigit():
+                            published_dt = datetime.fromtimestamp(int(published_at))
+                            formatted_date = published_dt.strftime('%Y-%m-%d %H:%M')
+                        else:
+                            try:
+                                from dateutil import parser
+                                published_dt = parser.parse(published_at)
+                                formatted_date = published_dt.strftime('%Y-%m-%d %H:%M')
+                            except:
+                                formatted_date = published_at
+                except (ValueError, OSError) as e:
+                    print(f"[调试 news_manager] 时间戳解析失败: {e}")
                     formatted_date = ''
             else:
                 formatted_date = ''
+
+            print(f"[调试 news_manager] 格式化日期: '{formatted_date}'")
 
             formatted_news.append({
                 'symbol': symbol,
