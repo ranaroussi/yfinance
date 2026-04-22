@@ -13,4 +13,4 @@ scipy>=1.6.3
 # curl_cffi < 0.15 has a CVE
 curl_cffi>=0.15
 protobuf>=3.19.0
-websockets>=13.0
+websockets>=16.0
