@@ -361,12 +361,12 @@ class StockScreener:
             else:
                 scores['details']['cfo_positive'] = 0
 
-            if (current['operating_cashflow'] is not None and current_roa is not None and
-                    current['operating_cashflow'] > current_roa):
+            if (current['operating_cashflow'] is not None and current['net_income'] is not None and
+                    current['operating_cashflow'] > current['net_income']):
                 scores['profitability'] += 1
-                scores['details']['cfo_gt_roa'] = 1
+                scores['details']['cfo_gt_net_income'] = 1
             else:
-                scores['details']['cfo_gt_roa'] = 0
+                scores['details']['cfo_gt_net_income'] = 0
 
             if (current_roa is not None and previous_roa is not None and
                     current_roa > previous_roa):
