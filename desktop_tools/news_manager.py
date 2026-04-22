@@ -63,10 +63,6 @@ class NewsManager:
 
         formatted_news = []
         for item in news_list:
-            print(f"[调试 news_manager] 新闻项: {item.get('title', '')[:30]}...")
-            print(f"[调试 news_manager]  publisher 值: '{item.get('publisher', '空')}'")
-            print(f"[调试 news_manager]  published_at 值: {item.get('published_at', 0)}")
-            
             published_at = item.get('published_at', 0)
             formatted_date = ''
             
@@ -86,13 +82,10 @@ class NewsManager:
                                 formatted_date = published_dt.strftime('%Y-%m-%d %H:%M')
                             except:
                                 formatted_date = published_at
-                except (ValueError, OSError) as e:
-                    print(f"[调试 news_manager] 时间戳解析失败: {e}")
+                except (ValueError, OSError):
                     formatted_date = ''
             else:
                 formatted_date = ''
-
-            print(f"[调试 news_manager] 格式化日期: '{formatted_date}'")
 
             formatted_news.append({
                 'symbol': symbol,

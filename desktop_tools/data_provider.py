@@ -102,38 +102,34 @@ class DataProvider:
             news_list = ticker.news
 
             if not news_list:
-                print(f"[调试] 股票 {symbol} 没有获取到新闻数据")
                 return []
 
-            print(f"[调试] 股票 {symbol} 获取到 {len(news_list)} 条新闻")
-
             formatted_news = []
-            for idx, item in enumerate(news_list[:count]):
+            for item in news_list[:count]:
                 if not isinstance(item, dict):
-                    print(f"[调试] 新闻项 {idx} 不是字典类型: {type(item)}")
                     continue
-
-                print(f"[调试] 新闻项 {idx} 键名: {list(item.keys())}")
 
                 if 'content' in item:
                     content = item.get('content', {})
-                    if isinstance(content, dict):
-                        print(f"[调试] 新闻项 {idx} content 键名: {list(content.keys())}")
+                    if not isinstance(content, dict):
+                        content = item
                 else:
                     content = item
 
                 title = content.get('title', '') or content.get('headline', '')
                 
-                link = (content.get('link', '') or 
-                        content.get('url', '') or 
-                        content.get('canonicalUrl', '') or 
-                        content.get('clickThroughUrl', '') or
-                        content.get('previewUrl', ''))
+                link = ''
+                click_through = content.get('clickThroughUrl')
+                if isinstance(click_through, dict):
+                    link = click_through.get('url', '')
+                if not link:
+                    link = (content.get('link', '') or 
+                            content.get('url', '') or 
+                            content.get('canonicalUrl', '') or
+                            content.get('previewUrl', ''))
                 
                 publisher = ''
                 provider_data = content.get('provider')
-                print(f"[调试] provider 字段类型: {type(provider_data)}")
-                print(f"[调试] provider 字段值: {provider_data}")
                 
                 if isinstance(provider_data, dict):
                     publisher = provider_data.get('displayName', '') or provider_data.get('name', '') or provider_data.get('publisher', '')
@@ -143,27 +139,27 @@ class DataProvider:
                 if not publisher:
                     publisher = content.get('publisher', '') or content.get('source', '')
 
-                print(f"[调试] 最终 publisher 值: '{publisher}'")
-
                 published_at = 0
                 if 'providerPublishTime' in content:
                     published_at = content.get('providerPublishTime', 0)
                 elif 'publishTime' in content:
                     published_at = content.get('publishTime', 0)
                 elif 'pubDate' in content:
-                    pub_date = content.get('pubDate', '')
+                    pub_date = content.get('pubDate')
+                    
                     if pub_date:
-                        try:
-                            from datetime import datetime as dt
-                            if isinstance(pub_date, str):
-                                if pub_date.isdigit():
-                                    published_at = int(pub_date)
-                                else:
+                        if isinstance(pub_date, (int, float)):
+                            published_at = pub_date
+                        elif isinstance(pub_date, str):
+                            if pub_date.isdigit():
+                                published_at = int(pub_date)
+                            else:
+                                try:
+                                    import dateutil.parser
+                                    parsed = dateutil.parser.parse(pub_date)
+                                    published_at = parsed.timestamp()
+                                except:
                                     pass
-                            elif isinstance(pub_date, (int, float)):
-                                published_at = pub_date
-                        except:
-                            pass
                 elif 'displayTime' in content:
                     display_time = content.get('displayTime', 0)
                     if isinstance(display_time, (int, float)):
@@ -192,8 +188,6 @@ class DataProvider:
                     elif isinstance(thumb, str):
                         thumbnail = thumb
 
-                print(f"[调试] 新闻 {idx}: title='{title[:50] if title else '空'}...', publisher='{publisher}'")
-
                 formatted_news.append({
                     'title': title,
                     'link': link,
@@ -204,13 +198,10 @@ class DataProvider:
                     'thumbnail': thumbnail
                 })
 
-            print(f"[调试] 格式化完成，共 {len(formatted_news)} 条新闻")
             return formatted_news
 
         except Exception as e:
             print(f"获取股票 {symbol} 新闻失败: {e}")
-            import traceback
-            traceback.print_exc()
             return []
 
     def get_recommendations(self, symbol: str) -> Optional[pd.DataFrame]:

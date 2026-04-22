@@ -303,15 +303,14 @@ class NewsTab(QWidget):
         layout.addWidget(self._progress_bar)
 
         self._news_table = QTableWidget()
-        self._news_table.setColumnCount(5)
+        self._news_table.setColumnCount(4)
         self._news_table.setHorizontalHeaderLabels([
-            "股票代码", "标题", "发布时间", "来源", "相关股票"
+            "股票代码", "标题", "发布时间", "来源"
         ])
         self._news_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         self._news_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self._news_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
         self._news_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
-        self._news_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
         self._news_table.setColumnWidth(0, 80)
         self._news_table.setColumnWidth(2, 150)
         self._news_table.setColumnWidth(3, 100)
@@ -409,9 +408,6 @@ class NewsTab(QWidget):
 
             self._news_table.setItem(row, 2, QTableWidgetItem(news.get('formatted_date', '')))
             self._news_table.setItem(row, 3, QTableWidgetItem(news.get('publisher', '')))
-
-            related = news.get('related_tickers', [])
-            self._news_table.setItem(row, 4, QTableWidgetItem(', '.join(related) if related else ''))
 
         self._current_news = None
         self._open_link_btn.setEnabled(False)
