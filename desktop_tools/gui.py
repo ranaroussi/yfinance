@@ -489,6 +489,14 @@ class ScreenerThread(QThread):
                     progress_callback=progress_callback,
                     limit=limit
                 )
+            elif self._screener_type == 'piotroski':
+                min_fscore = self._params.get('min_fscore', 7)
+                limit = self._params.get('limit', 50)
+                results = self._screener.screen_by_piotroski_fscore(
+                    min_fscore=min_fscore,
+                    progress_callback=progress_callback,
+                    limit=limit
+                )
         except Exception as e:
             print(f"选股出错: {e}")
 
@@ -519,7 +527,8 @@ class ScreenerTab(QWidget):
         self._screener_combo.addItems([
             "推荐评级选股",
             "目标价选股",
-            "内部人买卖选股"
+            "内部人买卖选股",
+            "皮奥特罗斯基选股"
         ])
         self._screener_combo.setMaximumWidth(200)
         type_layout.addWidget(self._screener_combo)
@@ -534,10 +543,12 @@ class ScreenerTab(QWidget):
         self._rec_widget = self._create_rec_params()
         self._target_widget = self._create_target_params()
         self._insider_widget = self._create_insider_params()
+        self._piotroski_widget = self._create_piotroski_params()
 
         param_layout.addWidget(self._rec_widget)
         param_layout.addWidget(self._target_widget)
         param_layout.addWidget(self._insider_widget)
+        param_layout.addWidget(self._piotroski_widget)
 
         screener_layout.addWidget(self._param_widgets)
 
@@ -633,11 +644,32 @@ class ScreenerTab(QWidget):
         layout.addStretch()
         return widget
 
+    def _create_piotroski_params(self) -> QWidget:
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+
+        layout.addWidget(QLabel("最低F-Score:"))
+        self._min_fscore_spin = QSpinBox()
+        self._min_fscore_spin.setRange(1, 9)
+        self._min_fscore_spin.setValue(7)
+        layout.addWidget(self._min_fscore_spin)
+
+        layout.addSpacing(20)
+        layout.addWidget(QLabel("返回数量:"))
+        self._piotroski_limit_spin = QSpinBox()
+        self._piotroski_limit_spin.setRange(1, 250)
+        self._piotroski_limit_spin.setValue(50)
+        layout.addWidget(self._piotroski_limit_spin)
+
+        layout.addStretch()
+        return widget
+
     def _update_param_widgets(self):
         index = self._screener_combo.currentIndex()
         self._rec_widget.setVisible(index == 0)
         self._target_widget.setVisible(index == 1)
         self._insider_widget.setVisible(index == 2)
+        self._piotroski_widget.setVisible(index == 3)
 
     def _init_connections(self):
         self._screener_combo.currentIndexChanged.connect(self._update_param_widgets)
@@ -671,6 +703,12 @@ class ScreenerTab(QWidget):
                 'days': self._insider_days_spin.value(),
                 'limit': self._insider_limit_spin.value()
             }
+        elif index == 3:
+            screener_type = 'piotroski'
+            params = {
+                'min_fscore': self._min_fscore_spin.value(),
+                'limit': self._piotroski_limit_spin.value()
+            }
 
         self._run_btn.setEnabled(False)
         self._progress_bar.setRange(0, 0)
@@ -699,6 +737,8 @@ class ScreenerTab(QWidget):
             self._display_target_results(results)
         elif index == 2:
             self._display_insider_results(results)
+        elif index == 3:
+            self._display_piotroski_results(results)
 
         self._add_to_watchlist_btn.setEnabled(len(results) > 0)
 
@@ -839,6 +879,105 @@ class ScreenerTab(QWidget):
             if in_watchlist:
                 watchlist_item.setForeground(QColor(0, 150, 0))
             self._result_table.setItem(row, 9, watchlist_item)
+
+    def _display_piotroski_results(self, results: List[Dict[str, Any]]):
+        self._result_table.clear()
+        self._result_table.setColumnCount(12)
+        self._result_table.setHorizontalHeaderLabels([
+            "股票代码", "名称", "F-Score总分", "ROA", "经营现金流",
+            "杠杆变化", "流动比率变化", "毛利率变化", "资产周转率变化",
+            "当前价格", "涨跌幅", "在自选股"
+        ])
+        self._result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        self._result_table.setRowCount(len(results))
+        for row, item in enumerate(results):
+            self._result_table.setItem(row, 0, QTableWidgetItem(item.get('symbol', '')))
+            self._result_table.setItem(row, 1, QTableWidgetItem(item.get('name', '')))
+
+            fscore_total = item.get('fscore_total', 0)
+            fscore_item = QTableWidgetItem(str(fscore_total))
+            if fscore_total >= 8:
+                fscore_item.setForeground(QColor(0, 150, 0))
+            elif fscore_total >= 6:
+                fscore_item.setForeground(QColor(0, 100, 200))
+            else:
+                fscore_item.setForeground(QColor(200, 0, 0))
+            self._result_table.setItem(row, 2, fscore_item)
+
+            current_roa = item.get('current_roa', None)
+            if current_roa is not None:
+                roa_item = QTableWidgetItem(f"{current_roa*100:.2f}%")
+                if current_roa > 0:
+                    roa_item.setForeground(QColor(0, 150, 0))
+                else:
+                    roa_item.setForeground(QColor(200, 0, 0))
+                self._result_table.setItem(row, 3, roa_item)
+            else:
+                self._result_table.setItem(row, 3, QTableWidgetItem("--"))
+
+            current_cfo = item.get('current_cfo', None)
+            if current_cfo is not None:
+                self._result_table.setItem(row, 4, QTableWidgetItem(self._format_market_cap(current_cfo)))
+            else:
+                self._result_table.setItem(row, 4, QTableWidgetItem("--"))
+
+            leverage_change = item.get('leverage_change', '未知')
+            leverage_item = QTableWidgetItem(leverage_change)
+            if leverage_change == '下降':
+                leverage_item.setForeground(QColor(0, 150, 0))
+            elif leverage_change == '上升':
+                leverage_item.setForeground(QColor(200, 0, 0))
+            self._result_table.setItem(row, 5, leverage_item)
+
+            current_ratio_change = item.get('current_ratio_change', '未知')
+            cr_item = QTableWidgetItem(current_ratio_change)
+            if current_ratio_change == '上升':
+                cr_item.setForeground(QColor(0, 150, 0))
+            elif current_ratio_change == '下降':
+                cr_item.setForeground(QColor(200, 0, 0))
+            self._result_table.setItem(row, 6, cr_item)
+
+            gross_margin_change = item.get('gross_margin_change', '未知')
+            gm_item = QTableWidgetItem(gross_margin_change)
+            if gross_margin_change == '上升':
+                gm_item.setForeground(QColor(0, 150, 0))
+            elif gross_margin_change == '下降':
+                gm_item.setForeground(QColor(200, 0, 0))
+            self._result_table.setItem(row, 7, gm_item)
+
+            asset_turnover_change = item.get('asset_turnover_change', '未知')
+            at_item = QTableWidgetItem(asset_turnover_change)
+            if asset_turnover_change == '上升':
+                at_item.setForeground(QColor(0, 150, 0))
+            elif asset_turnover_change == '下降':
+                at_item.setForeground(QColor(200, 0, 0))
+            self._result_table.setItem(row, 8, at_item)
+
+            current_price = item.get('current_price', 0)
+            change_pct = item.get('change_percent', 0)
+
+            price_item = QTableWidgetItem(f"{current_price:.2f}" if current_price else "--")
+            change_item = QTableWidgetItem(f"{change_pct:+.2f}%" if change_pct else "--")
+
+            if change_pct > 0:
+                color = QColor(0, 150, 0)
+            elif change_pct < 0:
+                color = QColor(200, 0, 0)
+            else:
+                color = QColor(0, 0, 0)
+
+            price_item.setForeground(color)
+            change_item.setForeground(color)
+
+            self._result_table.setItem(row, 9, price_item)
+            self._result_table.setItem(row, 10, change_item)
+
+            in_watchlist = self._watchlist_manager.is_in_watchlist(item.get('symbol', ''))
+            watchlist_item = QTableWidgetItem("是" if in_watchlist else "否")
+            if in_watchlist:
+                watchlist_item.setForeground(QColor(0, 150, 0))
+            self._result_table.setItem(row, 11, watchlist_item)
 
     def _format_number(self, num: float) -> str:
         if num >= 1_000_000:

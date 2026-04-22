@@ -366,3 +366,100 @@ class DataProvider:
         except Exception as e:
             print(f"获取股票 {symbol} 详细信息失败: {e}")
             return None
+
+    def get_financial_statements(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        获取股票财务报表数据，用于计算 F-Score
+        返回: 包含利润表、资产负债表、现金流量表的字典
+        """
+        try:
+            ticker = self._get_ticker(symbol)
+            
+            income_stmt = ticker.financials
+            balance_sheet = ticker.balance_sheet
+            cashflow = ticker.cashflow
+            
+            if income_stmt is None or balance_sheet is None or cashflow is None:
+                return None
+            
+            if income_stmt.empty or balance_sheet.empty or cashflow.empty:
+                return None
+            
+            return {
+                'income_stmt': income_stmt,
+                'balance_sheet': balance_sheet,
+                'cashflow': cashflow
+            }
+
+        except Exception as e:
+            print(f"获取股票 {symbol} 财务报表失败: {e}")
+            return None
+
+    def get_latest_two_years_financials(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        获取最近两年的财务数据，用于同比比较
+        返回: {
+            'current': {...},  # 最近一年
+            'previous': {...}  # 前一年
+        }
+        """
+        try:
+            financials = self.get_financial_statements(symbol)
+            if not financials:
+                return None
+            
+            income_stmt = financials['income_stmt']
+            balance_sheet = financials['balance_sheet']
+            cashflow = financials['cashflow']
+            
+            if len(income_stmt.columns) < 2 or len(balance_sheet.columns) < 2 or len(cashflow.columns) < 2:
+                return None
+            
+            current_year = income_stmt.columns[0]
+            previous_year = income_stmt.columns[1]
+            
+            def get_value(df, key, year):
+                try:
+                    if key in df.index:
+                        val = df.loc[key, year]
+                        if pd.isna(val):
+                            return None
+                        return float(val)
+                    return None
+                except Exception:
+                    return None
+            
+            current = {
+                'net_income': get_value(income_stmt, 'Net Income', current_year),
+                'total_assets': get_value(balance_sheet, 'Total Assets', current_year),
+                'operating_cashflow': get_value(cashflow, 'Operating Cash Flow', current_year),
+                'long_term_debt': get_value(balance_sheet, 'Long Term Debt', current_year),
+                'current_assets': get_value(balance_sheet, 'Current Assets', current_year),
+                'current_liabilities': get_value(balance_sheet, 'Current Liabilities', current_year),
+                'total_revenue': get_value(income_stmt, 'Total Revenue', current_year),
+                'cost_of_revenue': get_value(income_stmt, 'Cost Of Revenue', current_year),
+                'shares_outstanding': get_value(balance_sheet, 'Ordinary Shares Number', current_year),
+            }
+            
+            previous = {
+                'net_income': get_value(income_stmt, 'Net Income', previous_year),
+                'total_assets': get_value(balance_sheet, 'Total Assets', previous_year),
+                'operating_cashflow': get_value(cashflow, 'Operating Cash Flow', previous_year),
+                'long_term_debt': get_value(balance_sheet, 'Long Term Debt', previous_year),
+                'current_assets': get_value(balance_sheet, 'Current Assets', previous_year),
+                'current_liabilities': get_value(balance_sheet, 'Current Liabilities', previous_year),
+                'total_revenue': get_value(income_stmt, 'Total Revenue', previous_year),
+                'cost_of_revenue': get_value(income_stmt, 'Cost Of Revenue', previous_year),
+                'shares_outstanding': get_value(balance_sheet, 'Ordinary Shares Number', previous_year),
+            }
+            
+            return {
+                'current': current,
+                'previous': previous,
+                'current_year': current_year.strftime('%Y-%m-%d') if hasattr(current_year, 'strftime') else str(current_year),
+                'previous_year': previous_year.strftime('%Y-%m-%d') if hasattr(previous_year, 'strftime') else str(previous_year)
+            }
+
+        except Exception as e:
+            print(f"获取股票 {symbol} 两年财务数据失败: {e}")
+            return None
