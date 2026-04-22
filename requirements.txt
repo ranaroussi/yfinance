@@ -9,7 +9,7 @@ beautifulsoup4>=4.11.1
 peewee>=3.16.2
 requests_cache>=1.0
 requests_ratelimiter>=0.3.1
-scipy>=1.6.3
+scipy>=1.17.1
 # curl_cffi < 0.15 has a CVE
 curl_cffi>=0.15
 protobuf>=3.19.0
