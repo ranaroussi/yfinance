@@ -115,27 +115,34 @@ class DataProvider:
 
                 print(f"[调试] 新闻项 {idx} 键名: {list(item.keys())}")
 
-                title = item.get('title', '') or item.get('headline', '')
-                link = item.get('link', '') or item.get('url', '')
-                publisher = item.get('publisher', '') or item.get('source', '')
+                if 'content' in item:
+                    content = item.get('content', {})
+                    if isinstance(content, dict):
+                        print(f"[调试] 新闻项 {idx} content 键名: {list(content.keys())}")
+                else:
+                    content = item
+
+                title = content.get('title', '') or content.get('headline', '')
+                link = content.get('link', '') or content.get('url', '')
+                publisher = content.get('publisher', '') or content.get('source', '')
 
                 published_at = 0
-                if 'providerPublishTime' in item:
-                    published_at = item.get('providerPublishTime', 0)
-                elif 'publishTime' in item:
-                    published_at = item.get('publishTime', 0)
-                elif 'datetime' in item:
-                    published_at = item.get('datetime', 0)
+                if 'providerPublishTime' in content:
+                    published_at = content.get('providerPublishTime', 0)
+                elif 'publishTime' in content:
+                    published_at = content.get('publishTime', 0)
+                elif 'datetime' in content:
+                    published_at = content.get('datetime', 0)
 
-                news_type = item.get('type', '') or item.get('newsType', '')
+                news_type = content.get('type', '') or content.get('newsType', '')
 
-                related_tickers = item.get('relatedTickers', []) or item.get('related', [])
+                related_tickers = content.get('relatedTickers', []) or content.get('related', [])
                 if isinstance(related_tickers, str):
                     related_tickers = [related_tickers]
 
                 thumbnail = ''
-                if item.get('thumbnail'):
-                    thumb = item.get('thumbnail', {})
+                if content.get('thumbnail'):
+                    thumb = content.get('thumbnail', {})
                     if isinstance(thumb, dict):
                         resolutions = thumb.get('resolutions', [])
                         if resolutions and len(resolutions) > 0:

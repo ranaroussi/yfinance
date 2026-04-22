@@ -69,14 +69,14 @@ def main():
     from desktop_tools.config import ConfigManager
     from desktop_tools.watchlist import WatchlistManager
 
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+
     app = QApplication(sys.argv)
 
     app.setStyle('Fusion')
     font = QFont("Microsoft YaHei", 9)
     app.setFont(font)
-
-    app.setAttribute(Qt.AA_EnableHighDpiScaling)
-    app.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
     config = ConfigManager()
     watchlist = WatchlistManager()
