@@ -102,24 +102,66 @@ class DataProvider:
             news_list = ticker.news
 
             if not news_list:
+                print(f"[调试] 股票 {symbol} 没有获取到新闻数据")
                 return []
 
+            print(f"[调试] 股票 {symbol} 获取到 {len(news_list)} 条新闻")
+
             formatted_news = []
-            for item in news_list[:count]:
+            for idx, item in enumerate(news_list[:count]):
+                if not isinstance(item, dict):
+                    print(f"[调试] 新闻项 {idx} 不是字典类型: {type(item)}")
+                    continue
+
+                print(f"[调试] 新闻项 {idx} 键名: {list(item.keys())}")
+
+                title = item.get('title', '') or item.get('headline', '')
+                link = item.get('link', '') or item.get('url', '')
+                publisher = item.get('publisher', '') or item.get('source', '')
+
+                published_at = 0
+                if 'providerPublishTime' in item:
+                    published_at = item.get('providerPublishTime', 0)
+                elif 'publishTime' in item:
+                    published_at = item.get('publishTime', 0)
+                elif 'datetime' in item:
+                    published_at = item.get('datetime', 0)
+
+                news_type = item.get('type', '') or item.get('newsType', '')
+
+                related_tickers = item.get('relatedTickers', []) or item.get('related', [])
+                if isinstance(related_tickers, str):
+                    related_tickers = [related_tickers]
+
+                thumbnail = ''
+                if item.get('thumbnail'):
+                    thumb = item.get('thumbnail', {})
+                    if isinstance(thumb, dict):
+                        resolutions = thumb.get('resolutions', [])
+                        if resolutions and len(resolutions) > 0:
+                            thumbnail = resolutions[0].get('url', '')
+                    elif isinstance(thumb, str):
+                        thumbnail = thumb
+
+                print(f"[调试] 新闻 {idx}: title='{title[:50] if title else '空'}...', publisher='{publisher}'")
+
                 formatted_news.append({
-                    'title': item.get('title', ''),
-                    'link': item.get('link', ''),
-                    'publisher': item.get('publisher', ''),
-                    'published_at': item.get('providerPublishTime', 0),
-                    'type': item.get('type', ''),
-                    'related_tickers': item.get('relatedTickers', []),
-                    'thumbnail': item.get('thumbnail', {}).get('resolutions', [{}])[0].get('url', '') if item.get('thumbnail') else ''
+                    'title': title,
+                    'link': link,
+                    'publisher': publisher,
+                    'published_at': published_at,
+                    'type': news_type,
+                    'related_tickers': related_tickers,
+                    'thumbnail': thumbnail
                 })
 
+            print(f"[调试] 格式化完成，共 {len(formatted_news)} 条新闻")
             return formatted_news
 
         except Exception as e:
             print(f"获取股票 {symbol} 新闻失败: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def get_recommendations(self, symbol: str) -> Optional[pd.DataFrame]:
