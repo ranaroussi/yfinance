@@ -289,6 +289,14 @@ class TestTickerHistory(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
+    def test_history_metadata(self):
+        # Mainly testing that if user requested price repair, 
+        # that any metadata refetch also uses repaired data.
+        self.ticker.history("1mo", repair=True)
+        # - metadata will be fetched because prefers intraday fetch
+        md = self.ticker.history_metadata
+        self.assertTrue(md['YF repair?'])
+
     def test_download(self):
         tomorrow = pd.Timestamp.now().date() + pd.Timedelta(days=1)  # helps with caching
         for t in [False, True]:

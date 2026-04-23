@@ -11,7 +11,7 @@ import warnings
 
 from yfinance import shared, utils
 from yfinance.config import YfConfig
-from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default
+from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default, _SENTINEL_
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
 
 class PriceHistory:
@@ -238,6 +238,7 @@ class PriceHistory:
             meta = {}
 
         self._history_metadata = meta
+        self._history_metadata['YF repair?'] = repair
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
@@ -545,10 +546,23 @@ class PriceHistory:
                                                 'capital gains': self._capital_gains}
         return self._history_cache[cache_key]
 
-    def get_history_metadata(self) -> dict:
+    def get_history_metadata(self, repair=_SENTINEL_) -> dict:
+        """
+        repair default value depends on whether user requested price repair
+        with previous history() call. If user did not set repair here, then
+        it is set to match previous history() call.
+        """
+        
+        # - repair affects currency, particularly GBp -> GBP
         if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
             # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            self._get_history_cache(period="5d", interval="1h")['prices']
+            if repair == _SENTINEL_:
+                if self._history_metadata is not None:
+                    repair = self._history_metadata['YF repair?']
+                else:
+                    # default
+                    repair = False
+            self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
