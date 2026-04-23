@@ -548,7 +548,11 @@ class PriceHistory:
     def get_history_metadata(self) -> dict:
         if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
             # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            self._get_history_cache(period="5d", interval="1h")['prices']
+            try:
+                self._get_history_cache(period="5d", interval="1h")['prices']
+            except Exception:
+                pass  # tradingPeriods is optional enrichment; don't fail if intraday unavailable
+
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
