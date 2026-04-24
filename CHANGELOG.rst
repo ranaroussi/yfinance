@@ -1,6 +1,28 @@
 Change Log
 ===========
 
+Version 2.0.0 (2025-xx-xx)
+---------------------------
+
+**Breaking changes:**
+
+- All public methods now return ``polars.DataFrame`` instead of ``pandas.DataFrame``
+- The ``download()`` function now returns a long-form ``polars.DataFrame`` with a ``"Ticker"`` column instead of a MultiIndex-column pandas DataFrame
+- ``dividends``, ``splits``, ``capital_gains``, and ``actions`` return ``polars.DataFrame`` with a ``"Date"`` column instead of ``pandas.Series`` with ``DatetimeIndex``
+- The ``set_index()`` pattern is replaced by explicit ``"Date"`` / ``"Datetime"`` columns
+
+**New features:**
+
+- ``yf.download_to_dict(df)`` — splits a long-form download result into a ``dict[str, polars.DataFrame]`` keyed by ticker
+- ``history(as_pandas=True)`` — soft compatibility bridge that returns a pandas DataFrame with DatetimeIndex (requires ``pip install 'yfinance[pandas]'``)
+- Full ``uv`` support: ``uv add yfinance``, ``uv run pytest``, ``uv build``
+
+**Migration:**
+
+- Migrated from ``setup.py`` + ``requirements.txt`` to ``pyproject.toml`` with ``hatchling``
+- Migrated test suite to polars assertions
+- Removed ``pandas`` from required dependencies (now optional via ``[pandas]`` extra)
+
 1.3.0
 -----
 Features:
@@ -312,11 +334,11 @@ Small fixes:
 0.2.36
 ------
 Small fixes:
-- Update README.md for better copy-ability  #1823 
-- Name download() column levels  #1795 
-- Fix history(keepna=False) when repair=True  #1824 
-- Replace empty list with empty pd.Series  #1724 
-- Handle peewee with old sqlite  #1827 
+- Update README.md for better copy-ability  #1823
+- Name download() column levels  #1795
+- Fix history(keepna=False) when repair=True  #1824
+- Replace empty list with empty pd.Series  #1724
+- Handle peewee with old sqlite  #1827
 - Fix JSON error handling  #1830 #1833
 
 0.2.35
