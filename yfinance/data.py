@@ -492,7 +492,7 @@ class YfData(metaclass=SingletonMeta):
             timeout (int) : Raise TimeoutError if post doesn't respond
     
         Returns:
-            response (requests.Response) : Reponse instance received from the server after accepting cookie-consent post.
+            response (requests.Response) : Response instance received from the server after accepting cookie-consent post.
         """
         soup = BeautifulSoup(consent_resp.text, "html.parser")
     
