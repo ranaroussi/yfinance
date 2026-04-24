@@ -22,34 +22,32 @@
 from __future__ import print_function
 
 import json as _json
+from datetime import datetime, timezone
+from io import StringIO
 from typing import Optional, Union
 from urllib.parse import quote as urlencode
+from zoneinfo import ZoneInfo
 
 import numpy as np
-import pandas as pd
+import polars as pl
+from bs4 import BeautifulSoup
 from curl_cffi import requests
 
-
-from . import utils, cache
-from .const import _MIC_TO_YAHOO_SUFFIX
-from .data import YfData
+from . import cache, utils
 from .config import YfConfig
+from .const import _BASE_URL_, _MIC_TO_YAHOO_SUFFIX, _QUERY1_URL_, _ROOT_URL_
+from .data import YfData
 from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
-from .scrapers.holders import Holders
-from .scrapers.quote import Quote, FastInfo
-from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
-
-from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
-
-from io import StringIO
-from bs4 import BeautifulSoup
-
+from .scrapers.history import PriceHistory
+from .scrapers.holders import Holders
+from .scrapers.quote import FastInfo, Quote
 
 _tz_info_fetch_ctr = 0
+
 
 class TickerBase:
     def __init__(self, ticker, session=None):
@@ -64,19 +62,19 @@ class TickerBase:
 
             session (requests.Session, optional):
                 Custom requests session.
-        """        
+        """
         if isinstance(ticker, tuple):
             if len(ticker) != 2:
                 raise ValueError("Ticker tuple must be (symbol, mic_code)")
             base_symbol, mic_code = ticker
             # ticker = yahoo_ticker(base_symbol, mic_code)
-            if mic_code.startswith('.'):
+            if mic_code.startswith("."):
                 mic_code = mic_code[1:]
             if mic_code.upper() not in _MIC_TO_YAHOO_SUFFIX:
                 raise ValueError(f"Unknown MIC code: '{mic_code}'")
             sfx = _MIC_TO_YAHOO_SUFFIX[mic_code.upper()]
-            if sfx != '':
-                ticker = f'{base_symbol}.{sfx}'
+            if sfx != "":
+                ticker = f"{base_symbol}.{sfx}"
             else:
                 ticker = base_symbol
 
@@ -125,14 +123,16 @@ class TickerBase:
         self.ws = None
 
     @utils.log_indent_decorator
-    def history(self, *args, **kwargs) -> pd.DataFrame:
+    def history(self, *args, **kwargs) -> pl.DataFrame:
         return self._lazy_load_price_history().history(*args, **kwargs)
 
     # ------------------------
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+            self._price_history = PriceHistory(
+                self._data, self.ticker, self._get_ticker_tz(timeout=10)
+            )
         return self._price_history
 
     def _get_ticker_tz(self, timeout):
@@ -156,7 +156,7 @@ class TickerBase:
                     # ... but limit. If _fetch_ticker_tz() always
                     # failing then bigger problem.
                     _tz_info_fetch_ctr += 1
-                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
+                    for k in ["exchangeTimezoneName", "timeZoneFullName"]:
                         if k in self.info:
                             tz = self.info[k]
                             break
@@ -190,17 +190,21 @@ class TickerBase:
             logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
             return None
         else:
-            error = data.get('chart', {}).get('error', None)
+            error = data.get("chart", {}).get("error", None)
             if error:
                 # explicit error from yahoo API
-                logger.debug(f"Got error from yahoo api for ticker {self.ticker}, Error: {error}")
+                logger.debug(
+                    f"Got error from yahoo api for ticker {self.ticker}, Error: {error}"
+                )
             else:
                 try:
                     return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
                 except Exception as err:
                     if not YfConfig.debug.hide_exceptions:
                         raise
-                    logger.error(f"Could not get exchangeTimezoneName for ticker '{self.ticker}' reason: {err}")
+                    logger.error(
+                        f"Could not get exchangeTimezoneName for ticker '{self.ticker}' reason: {err}"
+                    )
                     logger.debug("Got response: ")
                     logger.debug("-------------")
                     logger.debug(f" {data}")
@@ -371,8 +375,11 @@ class TickerBase:
         data = self._fundamentals.earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
-                'financialCurrency']
+            dict_data["financialCurrency"] = (
+                "USD"
+                if "financialCurrency" not in self._earnings
+                else self._earnings["financialCurrency"]
+            )
             return dict_data
         return data
 
@@ -393,10 +400,23 @@ class TickerBase:
         data = self._fundamentals.financials.get_income_time_series(freq=freq)
 
         if pretty:
-            data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
+            data = data.clone()
+            if "metric" in data.columns:
+                data = data.with_columns(
+                    pl.col("metric").map_elements(
+                        lambda x: utils.camel2title(
+                            [x], sep=" ", acronyms=["EBIT", "EBITDA", "EPS", "NI"]
+                        )[0],
+                        return_dtype=pl.Utf8,
+                    )
+                )
         if as_dict:
-            return data.to_dict()
+            if "metric" in data.columns:
+                return {
+                    row["metric"]: {k: v for k, v in row.items() if k != "metric"}
+                    for row in data.to_dicts()
+                }
+            return data.to_dicts()
         return data
 
     def get_incomestmt(self, as_dict=False, pretty=False, freq="yearly"):
@@ -419,20 +439,32 @@ class TickerBase:
                 Default is "yearly"
         """
 
-
         data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq)
 
         if pretty:
-            data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
+            data = data.clone()
+            if "metric" in data.columns:
+                data = data.with_columns(
+                    pl.col("metric").map_elements(
+                        lambda x: utils.camel2title([x], sep=" ", acronyms=["PPE"])[0],
+                        return_dtype=pl.Utf8,
+                    )
+                )
         if as_dict:
-            return data.to_dict()
+            if "metric" in data.columns:
+                return {
+                    row["metric"]: {k: v for k, v in row.items() if k != "metric"}
+                    for row in data.to_dicts()
+                }
+            return data.to_dicts()
         return data
 
     def get_balancesheet(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(as_dict, pretty, freq)
 
-    def get_cash_flow(self, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
+    def get_cash_flow(
+        self, as_dict=False, pretty=False, freq="yearly"
+    ) -> Union[pl.DataFrame, dict]:
         """
         :Parameters:
             as_dict: bool
@@ -446,45 +478,54 @@ class TickerBase:
                 Default is "yearly"
         """
 
-
         data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq)
 
         if pretty:
-            data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
+            data = data.clone()
+            if "metric" in data.columns:
+                data = data.with_columns(
+                    pl.col("metric").map_elements(
+                        lambda x: utils.camel2title([x], sep=" ", acronyms=["PPE"])[0],
+                        return_dtype=pl.Utf8,
+                    )
+                )
         if as_dict:
-            return data.to_dict()
+            if "metric" in data.columns:
+                return {
+                    row["metric"]: {k: v for k, v in row.items() if k != "metric"}
+                    for row in data.to_dicts()
+                }
+            return data.to_dicts()
         return data
 
     def get_cashflow(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(as_dict, pretty, freq)
 
-    def get_dividends(self, period="max") -> pd.Series:
+    def get_dividends(self, period="max") -> pl.DataFrame:
         return self._lazy_load_price_history().get_dividends(period=period)
 
-    def get_capital_gains(self, period="max") -> pd.Series:
+    def get_capital_gains(self, period="max") -> pl.DataFrame:
         return self._lazy_load_price_history().get_capital_gains(period=period)
 
-    def get_splits(self, period="max") -> pd.Series:
+    def get_splits(self, period="max") -> pl.DataFrame:
         return self._lazy_load_price_history().get_splits(period=period)
 
-    def get_actions(self, period="max") -> pd.Series:
+    def get_actions(self, period="max") -> pl.DataFrame:
         return self._lazy_load_price_history().get_actions(period=period)
 
-    def get_shares(self, as_dict=False) -> Union[pd.DataFrame, dict]:
+    def get_shares(self, as_dict=False) -> Union[pl.DataFrame, dict]:
         data = self._fundamentals.shares
         if as_dict:
-            return data.to_dict()
+            return data.to_dicts()
         return data
 
     @utils.log_indent_decorator
     def get_shares_full(self, start=None, end=None):
         logger = utils.get_yf_logger()
 
-
         # Process dates
         tz = self._get_ticker_tz(timeout=10)
-        dt_now = pd.Timestamp.now('UTC').tz_convert(tz)
+        dt_now = datetime.now(timezone.utc).astimezone(ZoneInfo(tz))
         if start is not None:
             start = utils._parse_user_dt(start, tz)
         if end is not None:
@@ -492,12 +533,24 @@ class TickerBase:
         if end is None:
             end = dt_now
         if start is None:
-            start = end - pd.Timedelta(days=548)  # 18 months
+            from datetime import timedelta
+
+            start = end - timedelta(days=548)  # 18 months
         if start >= end:
             logger.error("Start date must be before end")
             return None
-        start = start.floor("D")
-        end = end.ceil("D")
+        # floor/ceil to day boundary
+        import math
+
+        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        import math as _math
+        from datetime import timedelta as _td
+
+        end_floored = end.replace(hour=0, minute=0, second=0, microsecond=0)
+        if end != end_floored:
+            end = end_floored + _td(days=1)
+        else:
+            end = end_floored
 
         # Fetch
         ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self.ticker}?symbol={self.ticker}"
@@ -516,7 +569,9 @@ class TickerBase:
             fail = False
         if fail:
             if not YfConfig.debug.hide_exceptions:
-                raise requests.exceptions.HTTPError("Yahoo web request for share count returned 'Bad Request'")
+                raise requests.exceptions.HTTPError(
+                    "Yahoo web request for share count returned 'Bad Request'"
+                )
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
 
@@ -524,15 +579,21 @@ class TickerBase:
         if "shares_out" not in shares_data[0]:
             return None
         try:
-            df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
+            df = pl.DataFrame(
+                {
+                    "Date": pl.Series(shares_data[0]["timestamp"], dtype=pl.Int64)
+                    .cast(pl.Datetime("us", "UTC"))
+                    .dt.convert_time_zone(tz),
+                    "shares_outstanding": shares_data[0]["shares_out"],
+                }
+            )
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             logger.error(f"{self.ticker}: Failed to parse shares count data: {e}")
             return None
 
-        df.index = df.index.tz_localize(tz)
-        df = df.sort_index()
+        df = df.sort("Date")
         return df
 
     def get_isin(self) -> Optional[str]:
@@ -543,7 +604,7 @@ class TickerBase:
         ticker = self.ticker.upper()
 
         if "-" in ticker or "^" in ticker:
-            self._isin = '-'
+            self._isin = "-"
             return self._isin
 
         q = ticker
@@ -552,9 +613,9 @@ class TickerBase:
             # Don't print error message cause self._quote.info will print one
             return None
         if "shortName" in self._quote.info:
-            q = self._quote.info['shortName']
+            q = self._quote.info["shortName"]
 
-        url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
+        url = f"https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}"
         data = self._data.cache_get(url=url).text
 
         search_str = f'"{ticker}|'
@@ -562,13 +623,13 @@ class TickerBase:
             if q.lower() in data.lower():
                 search_str = '"|'
                 if search_str not in data:
-                    self._isin = '-'
+                    self._isin = "-"
                     return self._isin
             else:
-                self._isin = '-'
+                self._isin = "-"
                 return self._isin
 
-        self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
+        self._isin = data.split(search_str)[1].split('"')[0].split("|")[0]
         return self._isin
 
     def get_news(self, count=10, tab="news") -> list:
@@ -578,7 +639,6 @@ class TickerBase:
 
         logger = utils.get_yf_logger()
 
-
         tab_queryrefs = {
             "all": "newsAll",
             "news": "latestNews",
@@ -587,15 +647,12 @@ class TickerBase:
 
         query_ref = tab_queryrefs.get(tab.lower())
         if not query_ref:
-            raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
+            raise ValueError(
+                f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}"
+            )
 
         url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
-        payload = {
-            "serviceConfig": {
-                "snippetCount": count,
-                "s": [self.ticker]
-            }
-        }
+        payload = {"serviceConfig": {"snippetCount": count, "s": [self.ticker]}}
 
         data = self._data.post(url, body=payload)
         if data is None or "Will be right back" in data.text:
@@ -605,15 +662,17 @@ class TickerBase:
         except _json.JSONDecodeError:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+            logger.error(
+                f"{self.ticker}: Failed to retrieve the news and received faulty response instead."
+            )
             data = {}
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
 
-        self._news = [article for article in news if not article.get('ad', [])]
+        self._news = [article for article in news if not article.get("ad", [])]
         return self._news
 
-    def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+    def get_earnings_dates(self, limit=12, offset=0) -> Optional[pd.DataFrame]:
         if limit > 100:
             raise ValueError("Yahoo caps limit at 100")
 
@@ -625,20 +684,22 @@ class TickerBase:
         return df
 
     @utils.log_indent_decorator
-    def _get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+    def _get_earnings_dates_using_scrape(
+        self, limit=12, offset=0
+    ) -> Optional[pd.DataFrame]:
         """
         Uses YfData.cache_get() to scrape earnings data from YahooFinance.
         (https://finance.yahoo.com/calendar/earnings?symbol=INTC)
-    
+
         Args:
             limit (int): Number of rows to extract (max=100)
-            offset (int): if 0, search from future EPS estimates. 
-                          if 1, search from the most recent EPS. 
-                          if x, search from x'th recent EPS. 
-    
+            offset (int): if 0, search from future EPS estimates.
+                          if 1, search from the most recent EPS.
+                          if x, search from x'th recent EPS.
+
         Returns:
             pd.DataFrame in the following format.
-    
+
                        EPS Estimate Reported EPS Surprise(%)
             Date
             2025-10-30         2.97            -           -
@@ -664,7 +725,7 @@ class TickerBase:
             size = 100
         else:
             raise ValueError("Please use limit <= 100")
-    
+
         # Define the URL
         url = "https://finance.yahoo.com/calendar/earnings?symbol={}&offset={}&size={}".format(
             self.ticker, offset, size
@@ -673,7 +734,7 @@ class TickerBase:
         # Get data
         #####################################################
         response = self._data.cache_get(url)
-    
+
         #####################################################
         # Response -> pd.DataFrame
         #####################################################
@@ -685,37 +746,95 @@ class TickerBase:
         if table:
             # Get the HTML string of the table
             table_html = str(table)
-    
+
             # Wrap the HTML string in a StringIO object
             html_stringio = StringIO(table_html)
-    
-            # Pass the StringIO object to pd.read_html()
-            df = pd.read_html(html_stringio, na_values=['-'])[0]
-    
+
+            # Parse HTML table using BeautifulSoup
+            table_soup = BeautifulSoup(table_html, "lxml")
+            headers = [th.get_text(strip=True) for th in table_soup.find_all("th")]
+            rows = []
+            tbody = table_soup.find("tbody")
+            if tbody:
+                for tr in tbody.find_all("tr"):
+                    cells = [
+                        td.get_text(strip=True) or None for td in tr.find_all("td")
+                    ]
+                    if cells:
+                        rows.append(cells)
+            if not rows:
+                return None
+            df = pl.DataFrame(rows, schema=headers, orient="row")
+
             # Drop redundant columns
-            df = df.drop(["Symbol", "Company"], axis=1)
+            drop_cols = [c for c in ["Symbol", "Company"] if c in df.columns]
+            if drop_cols:
+                df = df.drop(drop_cols)
 
             # Backwards compatibility
-            df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)
+            if "Surprise (%)" in df.columns:
+                df = df.rename({"Surprise (%)": "Surprise(%)"})
 
-            df = df.dropna(subset="Earnings Date")
+            # Drop rows where Earnings Date is null
+            df = df.filter(pl.col("Earnings Date").is_not_null())
 
             # Parse earnings date
-            # - Pandas doesn't like EDT, EST
-            df['Earnings Date'] = df['Earnings Date'].str.replace('EDT', 'America/New_York')
-            df['Earnings Date'] = df['Earnings Date'].str.replace('EST', 'America/New_York')
-            # - separate timezone string (last word)
-            dt_parts = df['Earnings Date'].str.rsplit(' ', n=1, expand=True)
-            dts = dt_parts[0]
-            tzs = dt_parts[1]
-            df['Earnings Date'] = pd.to_datetime(dts, format='%B %d, %Y at %I %p')
-            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)])
-            df = df.set_index("Earnings Date")
+            # Replace timezone abbreviations
+            df = df.with_columns(
+                pl.col("Earnings Date")
+                .str.replace("EDT", "America/New_York")
+                .str.replace("EST", "America/New_York")
+            )
+            # Split into datetime string and tz string (last word)
+            df = df.with_columns(
+                pl.col("Earnings Date")
+                .str.splitn(" ", 7)
+                .struct.rename_fields(["p0", "p1", "p2", "p3", "p4", "p5", "tz_str"])
+                .alias("parts")
+            ).unnest("parts")
+            # Reconstruct datetime string without tz
+            df = df.with_columns(
+                (
+                    pl.col("p0")
+                    + " "
+                    + pl.col("p1")
+                    + " "
+                    + pl.col("p2")
+                    + " "
+                    + pl.col("p3")
+                    + " "
+                    + pl.col("p4")
+                    + " "
+                    + pl.col("p5")
+                ).alias("dt_str")
+            ).drop(["p0", "p1", "p2", "p3", "p4", "p5"])
+
+            # Parse datetime and localize per-row timezone
+            df = df.with_columns(
+                pl.col("dt_str")
+                .str.to_datetime(format="%B %d, %Y at %I %p", strict=False)
+                .alias("Earnings Date")
+            )
+            # Apply per-row timezone using ZoneInfo
+            tz_list = df["tz_str"].to_list()
+            dt_list = df["Earnings Date"].to_list()
+            tz_aware = []
+            for dt_val, tz_val in zip(dt_list, tz_list):
+                if dt_val is not None and tz_val is not None:
+                    try:
+                        tz_aware.append(dt_val.replace(tzinfo=ZoneInfo(tz_val)))
+                    except Exception:
+                        tz_aware.append(None)
+                else:
+                    tz_aware.append(None)
+            df = df.with_columns(
+                pl.Series("Earnings Date", tz_aware, dtype=pl.Datetime("us", "UTC"))
+            ).drop(["dt_str", "tz_str"])
 
         else:
             err_msg = "No earnings dates found, symbol may be delisted"
             logger = utils.get_yf_logger()
-            logger.error(f'{self.ticker}: {err_msg}')
+            logger.error(f"{self.ticker}: {err_msg}")
             return None
         return df
 
@@ -726,7 +845,7 @@ class TickerBase:
 
         In Summer 2025, Yahoo stopped updating the data at this endpoint.
         So reverting to scraping HTML.
-        
+
         Args:
             limit (int): max amount of upcoming and recent earnings dates to return.
                 Default value 12 should return next 4 quarters and last 8 quarters.
@@ -741,50 +860,80 @@ class TickerBase:
         params = {"lang": "en-US", "region": "US"}
         body = {
             "size": limit,
-            "query": { "operator": "eq", "operands": ["ticker", self.ticker] },
+            "query": {"operator": "eq", "operands": ["ticker", self.ticker]},
             "sortField": "startdatetime",
             "sortType": "DESC",
             "entityIdType": "earnings",
-            "includeFields": ["startdatetime", "timeZoneShortName", "epsestimate", "epsactual", "epssurprisepct", "eventtype"]
+            "includeFields": [
+                "startdatetime",
+                "timeZoneShortName",
+                "epsestimate",
+                "epsactual",
+                "epssurprisepct",
+                "eventtype",
+            ],
         }
         response = self._data.post(url, params=params, body=body)
         json_data = response.json()
 
         # Extract data
-        columns = [row['label'] for row in json_data['finance']['result'][0]['documents'][0]['columns']]
-        rows = json_data['finance']['result'][0]['documents'][0]['rows']
-        df = pd.DataFrame(rows, columns=columns)
+        columns = [
+            row["label"]
+            for row in json_data["finance"]["result"][0]["documents"][0]["columns"]
+        ]
+        rows = json_data["finance"]["result"][0]["documents"][0]["rows"]
+        df = pl.DataFrame(rows, schema=columns, orient="row")
 
-        if df.empty:
+        if df.is_empty():
             _exception = YFEarningsDateMissing(self.ticker)
             err_msg = str(_exception)
-            logger.error(f'{self.ticker}: {err_msg}')
+            logger.error(f"{self.ticker}: {err_msg}")
             return None
 
         # Convert eventtype
         # - 1 = earnings call (manually confirmed)
         # - 2 = earnings report
         # - 11 = stockholders meeting (manually confirmed)
-        df['Event Type'] = df['Event Type'].replace('^1$', 'Call', regex=True)
-        df['Event Type'] = df['Event Type'].replace('^2$', 'Earnings', regex=True)
-        df['Event Type'] = df['Event Type'].replace('^11$', 'Meeting', regex=True)
+        if "Event Type" in df.columns:
+            df = df.with_columns(
+                pl.col("Event Type")
+                .str.replace(r"^1$", "Call")
+                .str.replace(r"^2$", "Earnings")
+                .str.replace(r"^11$", "Meeting")
+            )
 
         # Calculate earnings date
-        df['Earnings Date'] = pd.to_datetime(df['Event Start Date'])
         tz = self._get_ticker_tz(timeout=30)
-        if df['Earnings Date'].dt.tz is None:
-            df['Earnings Date'] = df['Earnings Date'].dt.tz_localize(tz)
-        else:
-            df['Earnings Date'] = df['Earnings Date'].dt.tz_convert(tz)
+        if "Event Start Date" in df.columns:
+            df = df.with_columns(
+                pl.col("Event Start Date")
+                .str.to_datetime(strict=False)
+                .alias("Earnings Date")
+            )
+            # Determine if timezone info is present
+            ed_dtype = df["Earnings Date"].dtype
+            if hasattr(ed_dtype, "time_zone") and ed_dtype.time_zone:
+                df = df.with_columns(pl.col("Earnings Date").dt.convert_time_zone(tz))
+            else:
+                df = df.with_columns(pl.col("Earnings Date").dt.replace_time_zone(tz))
+            drop_cols = [
+                c
+                for c in ["Event Start Date", "Timezone short name"]
+                if c in df.columns
+            ]
+            if drop_cols:
+                df = df.drop(drop_cols)
 
-        # Convert types
-        columns_to_update = ['Surprise (%)', 'EPS Estimate', 'Reported EPS']
-        df[columns_to_update] = df[columns_to_update].astype('float64').replace(0.0, np.nan)
+        # Convert numeric types
+        for col in ["Surprise (%)", "EPS Estimate", "Reported EPS"]:
+            if col in df.columns:
+                df = df.with_columns(
+                    pl.col(col).cast(pl.Float64, strict=False).alias(col)
+                )
 
-        # Format the dataframe
-        df.drop(['Event Start Date', 'Timezone short name'], axis=1, inplace=True)
-        df.set_index('Earnings Date', inplace=True)
-        df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)  # Compatibility
+        # Backwards compatibility rename
+        if "Surprise (%)" in df.columns:
+            df = df.rename({"Surprise (%)": "Surprise(%)"})
 
         self._earnings_dates[limit] = df
         return df
@@ -795,7 +944,7 @@ class TickerBase:
     def get_funds_data(self) -> Optional[FundsData]:
         if not self._funds_data:
             self._funds_data = FundsData(self._data, self.ticker)
-        
+
         return self._funds_data
 
     def live(self, message_handler=None, verbose=True):
