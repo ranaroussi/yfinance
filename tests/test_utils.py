@@ -104,6 +104,17 @@ class TestDateIntervalCheck(unittest.TestCase):
         dt2 = pd.Timestamp("2025-01-15")
         self.assertFalse(_dts_in_same_interval(dt1, dt2, "1mo"))
 
+    def test_same_month_different_year(self):
+        # Same calendar month but different years must not be treated
+        # as the same monthly interval.
+        dt1 = pd.Timestamp("2024-12-15")
+        dt2 = pd.Timestamp("2025-12-15")
+        self.assertFalse(_dts_in_same_interval(dt1, dt2, "1mo"))
+
+        dt3 = pd.Timestamp("2020-06-01")
+        dt4 = pd.Timestamp("2025-06-01")
+        self.assertFalse(_dts_in_same_interval(dt3, dt4, "1mo"))
+
     def test_standard_quarters(self):
         q1_start = datetime(2023, 1, 1)
         self.assertTrue(_dts_in_same_interval(q1_start, datetime(2023, 1, 15), '3mo'))
