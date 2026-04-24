@@ -24,3 +24,9 @@ ENV/
 /doc/source/reference/api
 !yfinance.css
 !/doc/source/development/assets/branches.png
+
+# uv
+.uv/
+uv.lock
+*.egg-info/
+dist/
