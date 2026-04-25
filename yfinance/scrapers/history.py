@@ -229,12 +229,15 @@ class PriceHistory:
                 raise
 
         # Store the meta data that gets retrieved simultaneously
-        safe_chart  = (data or {}).get('chart') or {}
-        result_list = safe_chart.get('result')
-        if isinstance(result_list, list) and len(result_list) > 0:
-            first_item = result_list[0] or {}
-            meta = first_item.get('meta') or {}
-        else:
+        try:
+            safe_chart  = (data or {}).get('chart') or {}
+            result_list = safe_chart.get('result')
+            if isinstance(result_list, list) and len(result_list) > 0:
+                first_item = result_list[0] or {}
+                meta = first_item.get('meta') or {}
+            else:
+                meta = {}
+        except Exception:
             meta = {}
 
         self._history_metadata = meta
