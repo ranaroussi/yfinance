@@ -340,7 +340,7 @@ class Calendars:
         _end = self._parse_date_param(end)
         if (start and not end) or (end and not start):
             warnings.warn(
-                "When prividing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
+                "When providing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -385,7 +385,7 @@ class Calendars:
         _end = self._parse_date_param(end)
         if (start and not end) or (end and not start):
             warnings.warn(
-                "When prividing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
+                "When providing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -446,7 +446,7 @@ class Calendars:
         _end = self._parse_date_param(end)
         if (start and not end) or (end and not start):
             warnings.warn(
-                "When prividing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
+                "When providing custom `start` and `end` parameters, you may want to specify both, to avoid unexpected behaviour.",
                 UserWarning,
                 stacklevel=2,
             )
