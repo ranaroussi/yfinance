@@ -624,7 +624,7 @@ def _dts_in_same_interval(dt1, dt2, interval):
     elif interval == "1wk":
         last_rows_same_interval = (dt2 - dt1).days < 7
     elif interval == "1mo":
-        last_rows_same_interval = dt1.month == dt2.month
+        last_rows_same_interval = dt1.month == dt2.month and dt1.year == dt2.year
     elif interval == "3mo":
         shift = (dt1.month % 3) - 1
         q1 = (dt1.month - shift - 1) // 3 + 1
