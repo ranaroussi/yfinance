@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout
 from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush, QPolygonF, QLinearGradient
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush, QPolygonF, QLinearGradient, QPointF
 from typing import List, Dict, Any, Optional
 import math
 
@@ -108,7 +108,7 @@ class RadarChartWidget(QWidget):
         if any(self._scores):
             polygon = QPolygonF()
             for x, y in points:
-                polygon.append((x, y))
+                polygon.append(QPointF(x, y))
 
             fill_color = QColor(self._status_color.red(), self._status_color.green(), 
                                self._status_color.blue(), 80)
