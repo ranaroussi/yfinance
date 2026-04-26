@@ -296,7 +296,7 @@ class ValuationTab(QWidget):
 
         sorted_results = sorted(
             results,
-            key=lambda x: x.get('metrics', {}).get('total_score', 0) if x.get('metrics') else 0,
+            key=lambda x: x.get('metrics').total_score if x.get('metrics') and hasattr(x.get('metrics'), 'total_score') else 0,
             reverse=True
         )
 

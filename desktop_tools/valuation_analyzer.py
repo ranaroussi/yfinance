@@ -653,7 +653,7 @@ class ValuationAnalyzer:
         
         return scores
 
-    def analyze_stock(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def analyze_stock(self, symbol: str) -> Optional[ValuationMetrics]:
         metrics = self.get_valuation_metrics(symbol)
         if metrics is None:
             return None
@@ -673,62 +673,7 @@ class ValuationAnalyzer:
         metrics.reasonable_price_low = scores['reasonable_price_range']['low']
         metrics.reasonable_price_high = scores['reasonable_price_range']['high']
         
-        radar_data = self._prepare_radar_data(metrics, scores)
-        
-        return {
-            'symbol': metrics.symbol,
-            'name': metrics.name,
-            'current_price': metrics.current_price,
-            'market_cap': metrics.market_cap,
-            'sector': metrics.sector,
-            'industry': metrics.industry,
-            
-            'valuation_metrics': {
-                'pe_trailing': metrics.pe_trailing,
-                'pe_forward': metrics.pe_forward,
-                'pb_ratio': metrics.pb_ratio,
-                'peg_ratio': metrics.peg_ratio,
-                'price_to_sales': metrics.price_to_sales,
-                'ev_to_ebitda': metrics.ev_to_ebitda,
-                'dividend_yield': metrics.dividend_yield,
-                'free_cash_flow': metrics.free_cash_flow,
-                'fcf_per_share': metrics.fcf_per_share,
-            },
-            
-            'financial_health': {
-                'debt_to_equity': metrics.debt_to_equity,
-                'current_ratio': metrics.current_ratio,
-                'roe': metrics.roe,
-                'roa': metrics.roa,
-                'growth_rate_5y': metrics.growth_rate_5y,
-                'cash_and_equivalents': metrics.cash_and_equivalents,
-                'total_debt': metrics.total_debt,
-                'operating_cash_flow': metrics.operating_cash_flow,
-                'capital_expenditures': metrics.capital_expenditures,
-            },
-            
-            'dcf_analysis': {
-                'intrinsic_value': metrics.dcf_intrinsic_value,
-                'safe_price': metrics.safe_price,
-                'margin_of_safety': metrics.margin_of_safety,
-                'assumptions': dcf_result['assumptions'],
-            },
-            
-            'scores': {
-                'price_reasonableness': scores['price_reasonableness'],
-                'growth': scores['growth'],
-                'safety': scores['safety'],
-                'total': scores['total'],
-            },
-            
-            'valuation_summary': {
-                'status': scores['valuation_status'],
-                'reasonable_price_low': scores['reasonable_price_range']['low'],
-                'reasonable_price_high': scores['reasonable_price_range']['high'],
-            },
-            
-            'radar_data': radar_data,
-        }
+        return metrics
 
     def _prepare_radar_data(self, metrics: ValuationMetrics, scores: Dict) -> Dict[str, Any]:
         labels = [
@@ -901,7 +846,7 @@ class ValuationAnalyzer:
                 if progress_callback:
                     progress_callback(idx + 1, total, symbol)
         
-        results.sort(key=lambda x: x['scores']['total'], reverse=True)
+        results.sort(key=lambda x: x.total_score if x and x.total_score else 0, reverse=True)
         return results
 
 
