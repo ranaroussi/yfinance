@@ -497,6 +497,14 @@ class ScreenerThread(QThread):
                     progress_callback=progress_callback,
                     limit=limit
                 )
+            elif self._screener_type == 'altman_zscore':
+                min_zscore = self._params.get('min_zscore', 2.99)
+                limit = self._params.get('limit', 50)
+                results = self._screener.screen_by_altman_zscore(
+                    min_zscore=min_zscore,
+                    progress_callback=progress_callback,
+                    limit=limit
+                )
         except Exception as e:
             print(f"选股出错: {e}")
 
@@ -528,7 +536,8 @@ class ScreenerTab(QWidget):
             "推荐评级选股",
             "目标价选股",
             "内部人买卖选股",
-            "皮奥特罗斯基选股"
+            "皮奥特罗斯基选股",
+            "Altman Z-Score财务预警选股"
         ])
         self._screener_combo.setMaximumWidth(200)
         type_layout.addWidget(self._screener_combo)
@@ -544,11 +553,13 @@ class ScreenerTab(QWidget):
         self._target_widget = self._create_target_params()
         self._insider_widget = self._create_insider_params()
         self._piotroski_widget = self._create_piotroski_params()
+        self._altman_zscore_widget = self._create_altman_zscore_params()
 
         param_layout.addWidget(self._rec_widget)
         param_layout.addWidget(self._target_widget)
         param_layout.addWidget(self._insider_widget)
         param_layout.addWidget(self._piotroski_widget)
+        param_layout.addWidget(self._altman_zscore_widget)
 
         screener_layout.addWidget(self._param_widgets)
 
@@ -664,12 +675,36 @@ class ScreenerTab(QWidget):
         layout.addStretch()
         return widget
 
+    def _create_altman_zscore_params(self) -> QWidget:
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+
+        layout.addWidget(QLabel("最低Z-Score:"))
+        from PyQt5.QtWidgets import QDoubleSpinBox
+        self._min_zscore_spin = QDoubleSpinBox()
+        self._min_zscore_spin.setRange(-10.0, 10.0)
+        self._min_zscore_spin.setSingleStep(0.01)
+        self._min_zscore_spin.setValue(2.99)
+        self._min_zscore_spin.setDecimals(2)
+        layout.addWidget(self._min_zscore_spin)
+
+        layout.addSpacing(20)
+        layout.addWidget(QLabel("返回数量:"))
+        self._altman_zscore_limit_spin = QSpinBox()
+        self._altman_zscore_limit_spin.setRange(1, 250)
+        self._altman_zscore_limit_spin.setValue(50)
+        layout.addWidget(self._altman_zscore_limit_spin)
+
+        layout.addStretch()
+        return widget
+
     def _update_param_widgets(self):
         index = self._screener_combo.currentIndex()
         self._rec_widget.setVisible(index == 0)
         self._target_widget.setVisible(index == 1)
         self._insider_widget.setVisible(index == 2)
         self._piotroski_widget.setVisible(index == 3)
+        self._altman_zscore_widget.setVisible(index == 4)
 
     def _init_connections(self):
         self._screener_combo.currentIndexChanged.connect(self._update_param_widgets)
@@ -709,6 +744,12 @@ class ScreenerTab(QWidget):
                 'min_fscore': self._min_fscore_spin.value(),
                 'limit': self._piotroski_limit_spin.value()
             }
+        elif index == 4:
+            screener_type = 'altman_zscore'
+            params = {
+                'min_zscore': self._min_zscore_spin.value(),
+                'limit': self._altman_zscore_limit_spin.value()
+            }
 
         self._run_btn.setEnabled(False)
         self._progress_bar.setRange(0, 0)
@@ -739,6 +780,8 @@ class ScreenerTab(QWidget):
             self._display_insider_results(results)
         elif index == 3:
             self._display_piotroski_results(results)
+        elif index == 4:
+            self._display_altman_zscore_results(results)
 
         self._add_to_watchlist_btn.setEnabled(len(results) > 0)
 
@@ -953,6 +996,88 @@ class ScreenerTab(QWidget):
             elif asset_turnover_change == '下降':
                 at_item.setForeground(QColor(200, 0, 0))
             self._result_table.setItem(row, 8, at_item)
+
+            current_price = item.get('current_price', 0)
+            change_pct = item.get('change_percent', 0)
+
+            price_item = QTableWidgetItem(f"{current_price:.2f}" if current_price else "--")
+            change_item = QTableWidgetItem(f"{change_pct:+.2f}%" if change_pct else "--")
+
+            if change_pct > 0:
+                color = QColor(0, 150, 0)
+            elif change_pct < 0:
+                color = QColor(200, 0, 0)
+            else:
+                color = QColor(0, 0, 0)
+
+            price_item.setForeground(color)
+            change_item.setForeground(color)
+
+            self._result_table.setItem(row, 9, price_item)
+            self._result_table.setItem(row, 10, change_item)
+
+            in_watchlist = self._watchlist_manager.is_in_watchlist(item.get('symbol', ''))
+            watchlist_item = QTableWidgetItem("是" if in_watchlist else "否")
+            if in_watchlist:
+                watchlist_item.setForeground(QColor(0, 150, 0))
+            self._result_table.setItem(row, 11, watchlist_item)
+
+    def _display_altman_zscore_results(self, results: List[Dict[str, Any]]):
+        self._result_table.clear()
+        self._result_table.setColumnCount(12)
+        self._result_table.setHorizontalHeaderLabels([
+            "股票代码", "名称", "Z值", "X1营运资金比", "X2留存收益比",
+            "X3EBIT比", "X4市值负债比", "X5资产周转率", "财务区域",
+            "当前价格", "涨跌幅", "在自选股"
+        ])
+        self._result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        self._result_table.setRowCount(len(results))
+        for row, item in enumerate(results):
+            self._result_table.setItem(row, 0, QTableWidgetItem(item.get('symbol', '')))
+            self._result_table.setItem(row, 1, QTableWidgetItem(item.get('name', '')))
+
+            zscore = item.get('zscore', 0)
+            zscore_item = QTableWidgetItem(f"{zscore:.4f}")
+            
+            zone_code = item.get('zone_code', '')
+            if zone_code == 'safe':
+                zscore_item.setForeground(QColor(0, 150, 0))
+            elif zone_code == 'grey':
+                zscore_item.setForeground(QColor(0, 100, 200))
+            else:
+                zscore_item.setForeground(QColor(200, 0, 0))
+            self._result_table.setItem(row, 2, zscore_item)
+
+            x1 = item.get('x1', 0)
+            x1_item = QTableWidgetItem(f"{x1:.4f}")
+            self._result_table.setItem(row, 3, x1_item)
+
+            x2 = item.get('x2', 0)
+            x2_item = QTableWidgetItem(f"{x2:.4f}")
+            self._result_table.setItem(row, 4, x2_item)
+
+            x3 = item.get('x3', 0)
+            x3_item = QTableWidgetItem(f"{x3:.4f}")
+            self._result_table.setItem(row, 5, x3_item)
+
+            x4 = item.get('x4', 0)
+            x4_item = QTableWidgetItem(f"{x4:.4f}")
+            self._result_table.setItem(row, 6, x4_item)
+
+            x5 = item.get('x5', 0)
+            x5_item = QTableWidgetItem(f"{x5:.4f}")
+            self._result_table.setItem(row, 7, x5_item)
+
+            zone = item.get('zone', '未知')
+            zone_item = QTableWidgetItem(zone)
+            if zone_code == 'safe':
+                zone_item.setForeground(QColor(0, 150, 0))
+            elif zone_code == 'grey':
+                zone_item.setForeground(QColor(0, 100, 200))
+            else:
+                zone_item.setForeground(QColor(200, 0, 0))
+            self._result_table.setItem(row, 8, zone_item)
 
             current_price = item.get('current_price', 0)
             change_pct = item.get('change_percent', 0)

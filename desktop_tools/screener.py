@@ -500,6 +500,172 @@ class StockScreener:
         results.sort(key=lambda x: x['fscore_total'], reverse=True)
         return results[:limit]
 
+    def screen_by_altman_zscore(
+        self,
+        stock_pool: Optional[List[str]] = None,
+        min_zscore: float = 2.99,
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Altman Z-Score 财务预警选股策略
+        
+        核心算法:
+        Z = 1.2×X1 + 1.4×X2 + 3.3×X3 + 0.6×X4 + 1.0×X5
+        
+        其中:
+        - X1 = 营运资金/总资产（营运资金=流动资产-流动负债）
+        - X2 = 留存收益/总资产
+        - X3 = 息税前利润(EBIT)/总资产
+        - X4 = 股东权益市值/总负债（市值=当前股价×总股本）
+        - X5 = 营业收入/总资产
+        
+        区域判定:
+        - Z>2.99 为安全区（绿色）
+        - 1.81≤Z≤2.99 为灰色区（蓝色）
+        - Z<1.81 为危险区（红色）
+        
+        参数:
+            stock_pool: 股票池，默认为默认股票池
+            min_zscore: 最低 Z-Score 值，默认为 2.99
+            progress_callback: 进度回调函数 (current, total, symbol)
+            limit: 最大返回数量
+        
+        返回:
+            符合条件的股票列表，按 Z-Score 降序排列
+        """
+        if stock_pool is None:
+            stock_pool = self._default_stock_pool.copy()
+
+        results = []
+        total = len(stock_pool)
+
+        def calculate_zscore(financials: Dict[str, Any], current_price: float) -> Optional[Dict[str, Any]]:
+            """计算 Z-Score 并返回详细结果"""
+            current = financials['current']
+
+            def safe_divide(a, b):
+                if b is None or b == 0:
+                    return None
+                if a is None:
+                    return None
+                return a / b
+
+            total_assets = current.get('total_assets')
+            current_assets = current.get('current_assets')
+            current_liabilities = current.get('current_liabilities')
+            retained_earnings = current.get('retained_earnings')
+            ebit = current.get('ebit')
+            total_liabilities = current.get('total_liabilities')
+            total_revenue = current.get('total_revenue')
+            shares_outstanding = current.get('shares_outstanding')
+
+            working_capital = None
+            if current_assets is not None and current_liabilities is not None:
+                working_capital = current_assets - current_liabilities
+
+            x1 = safe_divide(working_capital, total_assets)
+            x2 = safe_divide(retained_earnings, total_assets)
+            x3 = safe_divide(ebit, total_assets)
+
+            market_value = None
+            if current_price and current_price > 0 and shares_outstanding and shares_outstanding > 0:
+                market_value = current_price * shares_outstanding
+            x4 = safe_divide(market_value, total_liabilities)
+
+            x5 = safe_divide(total_revenue, total_assets)
+
+            if x1 is None or x2 is None or x3 is None or x4 is None or x5 is None:
+                return None
+
+            zscore = 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 1.0 * x5
+
+            if zscore > 2.99:
+                zone = '安全区'
+                zone_code = 'safe'
+            elif 1.81 <= zscore <= 2.99:
+                zone = '灰色区'
+                zone_code = 'grey'
+            else:
+                zone = '危险区'
+                zone_code = 'danger'
+
+            return {
+                'zscore': zscore,
+                'x1': x1,
+                'x2': x2,
+                'x3': x3,
+                'x4': x4,
+                'x5': x5,
+                'zone': zone,
+                'zone_code': zone_code,
+                'working_capital': working_capital,
+                'total_assets': total_assets,
+                'retained_earnings': retained_earnings,
+                'ebit': ebit,
+                'market_value': market_value,
+                'total_liabilities': total_liabilities,
+                'total_revenue': total_revenue,
+            }
+
+        def check_stock(symbol: str) -> Optional[Dict[str, Any]]:
+            try:
+                financials = self._data_provider.get_latest_two_years_financials(symbol)
+                if financials is None:
+                    return None
+
+                quote = self._data_provider.get_stock_quote(symbol)
+                if quote is None:
+                    return None
+
+                current_price = quote.get('current_price', 0)
+                name = quote.get('name', symbol)
+                change_percent = quote.get('change_percent', 0)
+
+                zscore_result = calculate_zscore(financials, current_price)
+                if zscore_result is None:
+                    return None
+
+                if zscore_result['zscore'] < min_zscore:
+                    return None
+
+                return {
+                    'symbol': symbol,
+                    'name': name,
+                    'zscore': round(zscore_result['zscore'], 4),
+                    'x1': round(zscore_result['x1'], 4),
+                    'x2': round(zscore_result['x2'], 4),
+                    'x3': round(zscore_result['x3'], 4),
+                    'x4': round(zscore_result['x4'], 4),
+                    'x5': round(zscore_result['x5'], 4),
+                    'zone': zscore_result['zone'],
+                    'zone_code': zscore_result['zone_code'],
+                    'current_price': round(current_price, 2) if current_price else 0,
+                    'change_percent': round(change_percent, 2) if change_percent else 0,
+                    'current_year': financials.get('current_year', ''),
+                }
+            except Exception as e:
+                print(f"检查股票 {symbol} Z-Score 失败: {e}")
+                return None
+
+        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+            future_to_symbol = {executor.submit(check_stock, symbol): symbol for symbol in stock_pool}
+
+            for idx, future in enumerate(as_completed(future_to_symbol)):
+                symbol = future_to_symbol[future]
+                try:
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                except Exception as e:
+                    print(f"处理股票 {symbol} 时出错: {e}")
+
+                if progress_callback:
+                    progress_callback(idx + 1, total, symbol)
+
+        results.sort(key=lambda x: x['zscore'], reverse=True)
+        return results[:limit]
+
     @property
     def default_stock_pool(self) -> List[str]:
         """获取默认股票池"""

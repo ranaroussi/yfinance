@@ -439,6 +439,9 @@ class DataProvider:
                 'total_revenue': get_value(income_stmt, 'Total Revenue', current_year),
                 'cost_of_revenue': get_value(income_stmt, 'Cost Of Revenue', current_year),
                 'shares_outstanding': get_value(balance_sheet, 'Ordinary Shares Number', current_year),
+                'retained_earnings': get_value(balance_sheet, 'Retained Earnings', current_year),
+                'ebit': get_value(income_stmt, 'EBIT', current_year),
+                'total_liabilities': get_value(balance_sheet, 'Total Liabilities Net Minority Interest', current_year),
             }
             
             previous = {
@@ -451,6 +454,9 @@ class DataProvider:
                 'total_revenue': get_value(income_stmt, 'Total Revenue', previous_year),
                 'cost_of_revenue': get_value(income_stmt, 'Cost Of Revenue', previous_year),
                 'shares_outstanding': get_value(balance_sheet, 'Ordinary Shares Number', previous_year),
+                'retained_earnings': get_value(balance_sheet, 'Retained Earnings', previous_year),
+                'ebit': get_value(income_stmt, 'EBIT', previous_year),
+                'total_liabilities': get_value(balance_sheet, 'Total Liabilities Net Minority Interest', previous_year),
             }
             
             return {
