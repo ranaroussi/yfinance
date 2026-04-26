@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout
-from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush, QPolygonF, QLinearGradient, QPointF
+from PyQt5.QtCore import Qt, QRectF, QPointF
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush, QPolygonF, QLinearGradient
 from typing import List, Dict, Any, Optional
 import math
 
