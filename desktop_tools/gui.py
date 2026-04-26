@@ -177,17 +177,28 @@ class ValuationTab(QWidget):
 
     def _load_watchlist(self):
         self._stock_combo.clear()
-        stocks = self._watchlist_manager.get_all_stocks()
-        for stock in stocks:
-            symbol = stock.get('symbol', '')
-            name = stock.get('name', '')
+        symbols = self._watchlist_manager.watchlist
+        quotes = self._watchlist_manager.get_sorted_quotes()
+        
+        for quote in quotes:
+            symbol = quote.get('symbol', '')
+            name = quote.get('name', '')
             if symbol:
                 display_text = f"{symbol}"
                 if name:
                     display_text += f" - {name}"
                 self._stock_combo.addItem(display_text, symbol)
         
-        self._status_label.setText(f"已加载 {len(stocks)} 只自选股")
+        for symbol in symbols:
+            exists = False
+            for i in range(self._stock_combo.count()):
+                if self._stock_combo.itemData(i) == symbol:
+                    exists = True
+                    break
+            if not exists:
+                self._stock_combo.addItem(symbol, symbol)
+        
+        self._status_label.setText(f"已加载 {len(symbols)} 只自选股")
 
     def _get_selected_symbol(self) -> str:
         index = self._stock_combo.currentIndex()
@@ -212,14 +223,9 @@ class ValuationTab(QWidget):
         self._analyze_stocks([symbol])
 
     def _analyze_all_watchlist(self):
-        stocks = self._watchlist_manager.get_all_stocks()
-        if not stocks:
-            QMessageBox.warning(self, "提示", "自选股列表为空")
-            return
-        
-        symbols = [s.get('symbol', '') for s in stocks if s.get('symbol')]
+        symbols = self._watchlist_manager.watchlist
         if not symbols:
-            QMessageBox.warning(self, "提示", "没有有效的股票代码")
+            QMessageBox.warning(self, "提示", "自选股列表为空")
             return
         
         self._analyze_stocks(symbols)
