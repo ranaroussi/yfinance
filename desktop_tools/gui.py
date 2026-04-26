@@ -17,6 +17,626 @@ from .watchlist import WatchlistManager
 from .data_provider import DataProvider
 from .news_manager import NewsManager
 from .screener import StockScreener
+from .valuation_analyzer import ValuationAnalyzer
+from .radar_chart import RadarChartWidget, DimensionScoreBar, TotalScoreDisplay
+
+
+class ValuationTab(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._watchlist_manager = WatchlistManager()
+        self._data_provider = DataProvider()
+        self._valuation_analyzer = ValuationAnalyzer()
+        self._analysis_thread = None
+        self._current_metrics = None
+        self._init_ui()
+        self._load_watchlist()
+
+    def _init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+
+        control_group = QGroupBox("分析控制")
+        control_layout = QHBoxLayout(control_group)
+
+        control_layout.addWidget(QLabel("选择股票:"))
+        
+        self._stock_combo = QComboBox()
+        self._stock_combo.setEditable(True)
+        self._stock_combo.setMinimumWidth(200)
+        control_layout.addWidget(self._stock_combo)
+
+        self._analyze_btn = QPushButton("开始分析")
+        self._analyze_btn.setMinimumHeight(35)
+        self._analyze_btn.clicked.connect(self._analyze_current_stock)
+        control_layout.addWidget(self._analyze_btn)
+
+        self._analyze_all_btn = QPushButton("分析所有自选股")
+        self._analyze_all_btn.setMinimumHeight(35)
+        self._analyze_all_btn.clicked.connect(self._analyze_all_watchlist)
+        control_layout.addWidget(self._analyze_all_btn)
+
+        self._refresh_btn = QPushButton("刷新自选股列表")
+        self._refresh_btn.setMinimumHeight(35)
+        self._refresh_btn.clicked.connect(self._load_watchlist)
+        control_layout.addWidget(self._refresh_btn)
+
+        control_layout.addStretch()
+
+        layout.addWidget(control_group)
+
+        self._progress_bar = QProgressBar()
+        self._progress_bar.setVisible(False)
+        layout.addWidget(self._progress_bar)
+
+        self._status_label = QLabel("请选择股票并开始分析")
+        self._status_label.setStyleSheet("color: #666; font-size: 14px;")
+        layout.addWidget(self._status_label)
+
+        main_splitter = QSplitter(Qt.Horizontal)
+
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(10)
+
+        info_group = QGroupBox("股票基本信息")
+        info_layout = QVBoxLayout(info_group)
+        
+        self._info_table = QTableWidget()
+        self._info_table.setColumnCount(2)
+        self._info_table.setHorizontalHeaderLabels(["项目", "数值"])
+        self._info_table.horizontalHeader().setStretchLastSection(True)
+        self._info_table.setMinimumHeight(150)
+        self._info_table.setMaximumHeight(200)
+        info_layout.addWidget(self._info_table)
+
+        left_layout.addWidget(info_group)
+
+        metrics_group = QGroupBox("估值指标")
+        metrics_layout = QVBoxLayout(metrics_group)
+        
+        self._metrics_table = QTableWidget()
+        self._metrics_table.setColumnCount(3)
+        self._metrics_table.setHorizontalHeaderLabels(["指标", "当前值", "行业平均"])
+        self._metrics_table.horizontalHeader().setStretchLastSection(True)
+        self._metrics_table.setMinimumHeight(200)
+        metrics_layout.addWidget(self._metrics_table)
+
+        left_layout.addWidget(metrics_group)
+
+        dcf_group = QGroupBox("DCF估值分析")
+        dcf_layout = QVBoxLayout(dcf_group)
+        
+        self._dcf_table = QTableWidget()
+        self._dcf_table.setColumnCount(2)
+        self._dcf_table.setHorizontalHeaderLabels(["项目", "数值"])
+        self._dcf_table.horizontalHeader().setStretchLastSection(True)
+        self._dcf_table.setMinimumHeight(150)
+        self._dcf_table.setMaximumHeight(200)
+        dcf_layout.addWidget(self._dcf_table)
+
+        left_layout.addWidget(dcf_group)
+        left_layout.addStretch()
+
+        main_splitter.addWidget(left_widget)
+
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(10)
+
+        radar_group = QGroupBox("综合评分雷达图")
+        radar_layout = QVBoxLayout(radar_group)
+        
+        self._radar_chart = RadarChartWidget()
+        self._radar_chart.setMinimumHeight(350)
+        radar_layout.addWidget(self._radar_chart)
+
+        right_layout.addWidget(radar_group)
+
+        score_group = QGroupBox("综合评分")
+        score_layout = QHBoxLayout(score_group)
+
+        self._total_score_display = TotalScoreDisplay()
+        self._total_score_display.setMinimumWidth(180)
+        score_layout.addWidget(self._total_score_display)
+
+        dimensions_layout = QVBoxLayout()
+        self._dimensions = {
+            '价格合理性': DimensionScoreBar('价格合理性', 0.40),
+            '成长性': DimensionScoreBar('成长性', 0.35),
+            '安全性': DimensionScoreBar('安全性', 0.25),
+        }
+        for name, bar in self._dimensions.items():
+            dimensions_layout.addWidget(bar)
+        dimensions_layout.addStretch()
+        
+        score_layout.addLayout(dimensions_layout, 1)
+
+        right_layout.addWidget(score_group)
+
+        summary_group = QGroupBox("估值总结")
+        summary_layout = QVBoxLayout(summary_group)
+        
+        self._summary_text = QTextEdit()
+        self._summary_text.setReadOnly(True)
+        self._summary_text.setMinimumHeight(100)
+        self._summary_text.setMaximumHeight(150)
+        summary_layout.addWidget(self._summary_text)
+
+        right_layout.addWidget(summary_group)
+        right_layout.addStretch()
+
+        main_splitter.addWidget(right_widget)
+
+        main_splitter.setSizes([500, 500])
+
+        layout.addWidget(main_splitter, 1)
+
+    def _load_watchlist(self):
+        self._stock_combo.clear()
+        stocks = self._watchlist_manager.get_all_stocks()
+        for stock in stocks:
+            symbol = stock.get('symbol', '')
+            name = stock.get('name', '')
+            if symbol:
+                display_text = f"{symbol}"
+                if name:
+                    display_text += f" - {name}"
+                self._stock_combo.addItem(display_text, symbol)
+        
+        self._status_label.setText(f"已加载 {len(stocks)} 只自选股")
+
+    def _get_selected_symbol(self) -> str:
+        index = self._stock_combo.currentIndex()
+        if index >= 0:
+            symbol = self._stock_combo.itemData(index)
+            if symbol:
+                return symbol
+        
+        text = self._stock_combo.currentText().strip()
+        if text:
+            if ' - ' in text:
+                return text.split(' - ')[0].strip()
+            return text
+        return ''
+
+    def _analyze_current_stock(self):
+        symbol = self._get_selected_symbol()
+        if not symbol:
+            QMessageBox.warning(self, "提示", "请选择或输入股票代码")
+            return
+        
+        self._analyze_stocks([symbol])
+
+    def _analyze_all_watchlist(self):
+        stocks = self._watchlist_manager.get_all_stocks()
+        if not stocks:
+            QMessageBox.warning(self, "提示", "自选股列表为空")
+            return
+        
+        symbols = [s.get('symbol', '') for s in stocks if s.get('symbol')]
+        if not symbols:
+            QMessageBox.warning(self, "提示", "没有有效的股票代码")
+            return
+        
+        self._analyze_stocks(symbols)
+
+    def _analyze_stocks(self, symbols: List[str]):
+        if self._analysis_thread and self._analysis_thread.isRunning():
+            QMessageBox.information(self, "提示", "分析正在进行中，请稍候...")
+            return
+
+        self._analyze_btn.setEnabled(False)
+        self._analyze_all_btn.setEnabled(False)
+        self._progress_bar.setVisible(True)
+        self._progress_bar.setMaximum(len(symbols))
+        self._progress_bar.setValue(0)
+        self._status_label.setText(f"开始分析 {len(symbols)} 只股票...")
+
+        self._analysis_thread = ValuationAnalysisThread(
+            self._valuation_analyzer, symbols
+        )
+        self._analysis_thread.progress_signal.connect(self._on_analysis_progress)
+        self._analysis_thread.finished_signal.connect(self._on_analysis_finished)
+        self._analysis_thread.error_signal.connect(self._on_analysis_error)
+        self._analysis_thread.start()
+
+    def _on_analysis_progress(self, index: int, total: int, symbol: str):
+        self._progress_bar.setValue(index + 1)
+        self._status_label.setText(f"正在分析: {symbol} ({index + 1}/{total})")
+
+    def _on_analysis_finished(self, results: List[Dict[str, Any]]):
+        self._analyze_btn.setEnabled(True)
+        self._analyze_all_btn.setEnabled(True)
+        self._progress_bar.setVisible(False)
+
+        if not results:
+            self._status_label.setText("分析完成，但没有有效结果")
+            return
+
+        valid_results = [r for r in results if r.get('success')]
+        
+        if len(valid_results) == 1:
+            self._display_result(valid_results[0])
+            self._status_label.setText(f"分析完成: {valid_results[0]['symbol']}")
+        else:
+            self._display_batch_results(valid_results)
+            self._status_label.setText(f"分析完成: 共 {len(valid_results)} 只股票")
+
+    def _on_analysis_error(self, error_msg: str):
+        self._analyze_btn.setEnabled(True)
+        self._analyze_all_btn.setEnabled(True)
+        self._progress_bar.setVisible(False)
+        self._status_label.setText(f"分析出错: {error_msg}")
+        QMessageBox.critical(self, "错误", f"分析过程中出错:\n{error_msg}")
+
+    def _display_result(self, result: Dict[str, Any]):
+        self._current_metrics = result.get('metrics')
+        if not self._current_metrics:
+            return
+
+        self._display_info_table(result)
+        self._display_metrics_table(result)
+        self._display_dcf_table(result)
+        self._display_scores(result)
+        self._display_summary(result)
+
+    def _display_batch_results(self, results: List[Dict[str, Any]]):
+        if not results:
+            return
+
+        sorted_results = sorted(
+            results,
+            key=lambda x: x.get('metrics', {}).get('total_score', 0) if x.get('metrics') else 0,
+            reverse=True
+        )
+
+        best_result = sorted_results[0]
+        self._display_result(best_result)
+
+        summary_text = "批量分析完成，按综合评分排序:\n\n"
+        for i, result in enumerate(sorted_results[:10]):
+            metrics = result.get('metrics')
+            if metrics:
+                symbol = result['symbol']
+                score = metrics.total_score if hasattr(metrics, 'total_score') else 0
+                status = metrics.valuation_status if hasattr(metrics, 'valuation_status') else '-'
+                summary_text += f"{i+1}. {symbol}: {int(score)}分 - {status}\n"
+
+        if len(sorted_results) > 10:
+            summary_text += f"\n... 还有 {len(sorted_results) - 10} 只股票"
+
+        self._summary_text.setText(summary_text)
+
+    def _display_info_table(self, result: Dict[str, Any]):
+        metrics = result.get('metrics')
+        if not metrics:
+            return
+
+        self._info_table.setRowCount(0)
+        
+        info_items = [
+            ("股票代码", result.get('symbol', '')),
+            ("公司名称", metrics.name if hasattr(metrics, 'name') else ''),
+            ("当前价格", f"${metrics.current_price:.2f}" if hasattr(metrics, 'current_price') and metrics.current_price else '-'),
+            ("所属行业", metrics.industry if hasattr(metrics, 'industry') else ''),
+            ("所属板块", metrics.sector if hasattr(metrics, 'sector') else ''),
+            ("市值", self._format_market_cap(metrics.market_cap) if hasattr(metrics, 'market_cap') and metrics.market_cap else '-'),
+        ]
+
+        self._info_table.setRowCount(len(info_items))
+        for i, (label, value) in enumerate(info_items):
+            self._info_table.setItem(i, 0, QTableWidgetItem(label))
+            self._info_table.setItem(i, 1, QTableWidgetItem(str(value)))
+
+    def _display_metrics_table(self, result: Dict[str, Any]):
+        metrics = result.get('metrics')
+        if not metrics:
+            return
+
+        self._metrics_table.setRowCount(0)
+        
+        metric_items = [
+            ("滚动市盈率 (PE TTM)", metrics.pe_trailing, metrics.industry_avg_pe),
+            ("预期市盈率 (PE Forward)", metrics.pe_forward, None),
+            ("市净率 (PB)", metrics.pb_ratio, metrics.industry_avg_pb),
+            ("市盈增长比 (PEG)", metrics.peg_ratio, None),
+            ("市销率 (PS)", metrics.price_to_sales, metrics.industry_avg_ps),
+            ("企业价值倍数 (EV/EBITDA)", metrics.ev_to_ebitda, None),
+            ("股息率", metrics.dividend_yield, None),
+            ("每股自由现金流", metrics.fcf_per_share, None),
+        ]
+
+        self._metrics_table.setRowCount(len(metric_items))
+        for i, (label, value, industry_avg) in enumerate(metric_items):
+            self._metrics_table.setItem(i, 0, QTableWidgetItem(label))
+            
+            value_str = f"{value:.2f}" if value is not None else '-'
+            value_item = QTableWidgetItem(value_str)
+            self._metrics_table.setItem(i, 1, value_item)
+            
+            avg_str = f"{industry_avg:.2f}" if industry_avg is not None else '-'
+            avg_item = QTableWidgetItem(avg_str)
+            self._metrics_table.setItem(i, 2, avg_item)
+
+            self._style_metric_cell(value_item, label, value, industry_avg)
+
+    def _style_metric_cell(self, item, label: str, value: Optional[float], industry_avg: Optional[float]):
+        if value is None:
+            return
+
+        green = QColor(34, 197, 94)
+        yellow = QColor(251, 191, 36)
+        red = QColor(239, 68, 68)
+        blue = QColor(59, 130, 246)
+
+        if 'PE' in label or 'PEG' in label:
+            if value < 10:
+                item.setForeground(green)
+            elif value < 20:
+                item.setForeground(blue)
+            elif value < 30:
+                item.setForeground(yellow)
+            else:
+                item.setForeground(red)
+        elif 'PB' in label:
+            if value < 1:
+                item.setForeground(green)
+            elif value < 2:
+                item.setForeground(blue)
+            elif value < 3:
+                item.setForeground(yellow)
+            else:
+                item.setForeground(red)
+        elif 'PS' in label:
+            if value < 1:
+                item.setForeground(green)
+            elif value < 3:
+                item.setForeground(blue)
+            elif value < 5:
+                item.setForeground(yellow)
+            else:
+                item.setForeground(red)
+        elif 'EV/EBITDA' in label:
+            if value < 8:
+                item.setForeground(green)
+            elif value < 12:
+                item.setForeground(blue)
+            elif value < 15:
+                item.setForeground(yellow)
+            else:
+                item.setForeground(red)
+        elif '股息率' in label:
+            if value > 0.05:
+                item.setForeground(green)
+            elif value > 0.03:
+                item.setForeground(blue)
+            elif value > 0.01:
+                item.setForeground(yellow)
+            else:
+                item.setForeground(red)
+
+    def _display_dcf_table(self, result: Dict[str, Any]):
+        metrics = result.get('metrics')
+        if not metrics:
+            return
+
+        self._dcf_table.setRowCount(0)
+        
+        dcf_items = []
+        
+        if hasattr(metrics, 'current_price') and metrics.current_price:
+            dcf_items.append(("当前价格", f"${metrics.current_price:.2f}"))
+        
+        if hasattr(metrics, 'dcf_intrinsic_value') and metrics.dcf_intrinsic_value:
+            dcf_items.append(("DCF内在价值", f"${metrics.dcf_intrinsic_value:.2f}"))
+        
+        if hasattr(metrics, 'safe_price') and metrics.safe_price:
+            dcf_items.append(("安全价格 (25%安全边际)", f"${metrics.safe_price:.2f}"))
+        
+        if hasattr(metrics, 'margin_of_safety') and metrics.margin_of_safety is not None:
+            dcf_items.append(("安全边际", f"{metrics.margin_of_safety:.1f}%"))
+        
+        if hasattr(metrics, 'reasonable_price_low') and metrics.reasonable_price_low:
+            if hasattr(metrics, 'reasonable_price_high') and metrics.reasonable_price_high:
+                dcf_items.append((
+                    "合理价格区间", 
+                    f"${metrics.reasonable_price_low:.2f} - ${metrics.reasonable_price_high:.2f}"
+                ))
+
+        if hasattr(metrics, 'growth_rate_5y') and metrics.growth_rate_5y:
+            dcf_items.append(("预期5年增长率", f"{metrics.growth_rate_5y:.1%}"))
+
+        self._dcf_table.setRowCount(len(dcf_items))
+        for i, (label, value) in enumerate(dcf_items):
+            self._dcf_table.setItem(i, 0, QTableWidgetItem(label))
+            value_item = QTableWidgetItem(str(value))
+            
+            if '安全边际' in label:
+                try:
+                    margin = float(value.strip('%'))
+                    if margin > 25:
+                        value_item.setForeground(QColor(34, 197, 94))
+                    elif margin > 0:
+                        value_item.setForeground(QColor(59, 130, 246))
+                    else:
+                        value_item.setForeground(QColor(239, 68, 68))
+                except:
+                    pass
+            
+            self._dcf_table.setItem(i, 1, value_item)
+
+    def _display_scores(self, result: Dict[str, Any]):
+        metrics = result.get('metrics')
+        scores = result.get('scores', {})
+        
+        if not metrics and not scores:
+            return
+
+        total_score = 0
+        status = ''
+        
+        if metrics:
+            if hasattr(metrics, 'total_score'):
+                total_score = metrics.total_score
+            if hasattr(metrics, 'valuation_status'):
+                status = metrics.valuation_status
+            
+            if hasattr(metrics, 'price_reasonableness_score'):
+                self._dimensions['价格合理性'].set_score(metrics.price_reasonableness_score)
+            if hasattr(metrics, 'growth_score'):
+                self._dimensions['成长性'].set_score(metrics.growth_score)
+            if hasattr(metrics, 'safety_score'):
+                self._dimensions['安全性'].set_score(metrics.safety_score)
+
+        if total_score > 0:
+            self._total_score_display.set_score(total_score, status)
+
+        if scores:
+            self._radar_chart.set_scores(scores, total_score, status)
+
+    def _display_summary(self, result: Dict[str, Any]):
+        metrics = result.get('metrics')
+        if not metrics:
+            return
+
+        summary = ""
+
+        if hasattr(metrics, 'valuation_status') and metrics.valuation_status:
+            summary += f"估值状态: {metrics.valuation_status}\n\n"
+
+        if hasattr(metrics, 'total_score'):
+            summary += f"综合评分: {int(metrics.total_score)}分\n"
+            
+            if hasattr(metrics, 'price_reasonableness_score'):
+                summary += f"  - 价格合理性: {int(metrics.price_reasonableness_score)}分 (40%)\n"
+            if hasattr(metrics, 'growth_score'):
+                summary += f"  - 成长性: {int(metrics.growth_score)}分 (35%)\n"
+            if hasattr(metrics, 'safety_score'):
+                summary += f"  - 安全性: {int(metrics.safety_score)}分 (25%)\n"
+
+        if hasattr(metrics, 'reasonable_price_low') and metrics.reasonable_price_low:
+            if hasattr(metrics, 'reasonable_price_high') and metrics.reasonable_price_high:
+                summary += f"\n合理价格区间: ${metrics.reasonable_price_low:.2f} - ${metrics.reasonable_price_high:.2f}\n"
+
+        if hasattr(metrics, 'margin_of_safety') and metrics.margin_of_safety is not None:
+            summary += f"安全边际: {metrics.margin_of_safety:.1f}%"
+            if metrics.margin_of_safety > 25:
+                summary += " (具有较高安全边际)"
+            elif metrics.margin_of_safety > 0:
+                summary += " (有一定安全边际)"
+            else:
+                summary += " (安全边际不足)"
+
+        self._summary_text.setText(summary)
+
+    def _format_market_cap(self, cap: float) -> str:
+        if cap is None:
+            return '-'
+        if cap >= 1e12:
+            return f"${cap/1e12:.2f}万亿"
+        elif cap >= 1e9:
+            return f"${cap/1e9:.2f}千亿"
+        elif cap >= 1e6:
+            return f"${cap/1e6:.2f}百万"
+        else:
+            return f"${cap:.0f}"
+
+    def refresh(self):
+        self._load_watchlist()
+
+
+class ValuationAnalysisThread(QThread):
+    progress_signal = pyqtSignal(int, int, str)
+    finished_signal = pyqtSignal(list)
+    error_signal = pyqtSignal(str)
+
+    def __init__(self, analyzer: ValuationAnalyzer, symbols: List[str]):
+        super().__init__()
+        self._analyzer = analyzer
+        self._symbols = symbols
+
+    def run(self):
+        results = []
+        total = len(self._symbols)
+        
+        try:
+            for i, symbol in enumerate(self._symbols):
+                try:
+                    self.progress_signal.emit(i, total, symbol)
+                    
+                    metrics = self._analyzer.analyze_stock(symbol)
+                    
+                    if metrics:
+                        scores = self._extract_scores(metrics)
+                        
+                        result = {
+                            'symbol': symbol,
+                            'success': True,
+                            'metrics': metrics,
+                            'scores': scores,
+                        }
+                        results.append(result)
+                    else:
+                        results.append({
+                            'symbol': symbol,
+                            'success': False,
+                            'error': '无法获取估值数据'
+                        })
+                        
+                except Exception as e:
+                    results.append({
+                        'symbol': symbol,
+                        'success': False,
+                        'error': str(e)
+                    })
+                    
+            self.finished_signal.emit(results)
+            
+        except Exception as e:
+            self.error_signal.emit(str(e))
+
+    def _extract_scores(self, metrics) -> Dict[str, float]:
+        scores = {}
+        
+        if hasattr(metrics, 'total_score'):
+            total = metrics.total_score
+            
+            if hasattr(metrics, 'price_reasonableness_score'):
+                scores['pe_score'] = metrics.price_reasonableness_score * 0.5
+                scores['pb_score'] = metrics.price_reasonableness_score * 0.3
+                scores['margin_score'] = metrics.price_reasonableness_score * 0.5
+            else:
+                scores['pe_score'] = total * 0.3
+                scores['pb_score'] = total * 0.3
+                scores['margin_score'] = total * 0.4
+            
+            if hasattr(metrics, 'growth_score'):
+                scores['growth_score'] = metrics.growth_score * 0.7
+                scores['profit_score'] = metrics.growth_score * 0.5
+                scores['fcf_score'] = metrics.growth_score * 0.4
+            else:
+                scores['growth_score'] = total * 0.6
+                scores['profit_score'] = total * 0.5
+                scores['fcf_score'] = total * 0.4
+            
+            if hasattr(metrics, 'safety_score'):
+                scores['dividend_score'] = metrics.safety_score * 0.5
+                scores['financial_health_score'] = metrics.safety_score * 0.6
+            else:
+                scores['dividend_score'] = total * 0.4
+                scores['financial_health_score'] = total * 0.5
+            
+            scores['peg_score'] = total * 0.5
+            scores['quality_score'] = total * 0.6
+            
+            for key in scores:
+                scores[key] = min(100.0, max(0.0, scores[key]))
+        
+        return scores
 
 
 class WatchlistTab(QWidget):
@@ -1290,11 +1910,13 @@ class MainWindow(QMainWindow):
         self._watchlist_tab = WatchlistTab()
         self._news_tab = NewsTab()
         self._screener_tab = ScreenerTab()
+        self._valuation_tab = ValuationTab()
         self._settings_tab = SettingsTab()
 
         self._tab_widget.addTab(self._watchlist_tab, "自选股")
         self._tab_widget.addTab(self._news_tab, "资讯")
         self._tab_widget.addTab(self._screener_tab, "选股工具")
+        self._tab_widget.addTab(self._valuation_tab, "估值分析")
         self._tab_widget.addTab(self._settings_tab, "设置")
 
         self._tab_widget.currentChanged.connect(self._on_tab_changed)
@@ -1346,8 +1968,12 @@ class MainWindow(QMainWindow):
         screener_action.triggered.connect(lambda: self._tab_widget.setCurrentIndex(2))
         view_menu.addAction(screener_action)
 
+        valuation_action = QAction("估值分析(&V)", self)
+        valuation_action.triggered.connect(lambda: self._tab_widget.setCurrentIndex(3))
+        view_menu.addAction(valuation_action)
+
         settings_action = QAction("设置(&T)", self)
-        settings_action.triggered.connect(lambda: self._tab_widget.setCurrentIndex(3))
+        settings_action.triggered.connect(lambda: self._tab_widget.setCurrentIndex(4))
         view_menu.addAction(settings_action)
 
         help_menu = menubar.addMenu("帮助(&H)")
@@ -1374,6 +2000,8 @@ class MainWindow(QMainWindow):
         elif index == 2:
             self._status_bar.showMessage("选股工具页面")
         elif index == 3:
+            self._status_bar.showMessage("估值分析页面")
+        elif index == 4:
             self._status_bar.showMessage("设置页面")
 
     def _refresh_current_tab(self):
@@ -1385,6 +2013,8 @@ class MainWindow(QMainWindow):
         elif current_index == 2:
             self._screener_tab.refresh()
         elif current_index == 3:
+            self._valuation_tab.refresh()
+        elif current_index == 4:
             self._settings_tab.refresh()
 
         self._status_bar.showMessage(f"手动刷新于 {datetime.now().strftime('%H:%M:%S')}")
@@ -1406,7 +2036,8 @@ class MainWindow(QMainWindow):
             "- 自选股管理\n"
             "- 实时行情监控\n"
             "- 新闻资讯获取\n"
-            "- 智能选股工具"
+            "- 智能选股工具\n"
+            "- 估值分析功能"
         )
 
     def closeEvent(self, event):
