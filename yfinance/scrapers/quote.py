@@ -1,24 +1,62 @@
-import curl_cffi
 import datetime
 import json
+from datetime import timezone
+from zoneinfo import ZoneInfo
+
+import curl_cffi
 import numpy as _np
-import pandas as pd
+import polars as pl
 from bs4 import BeautifulSoup
 
 from yfinance import utils
 from yfinance.config import YfConfig
-from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
+from yfinance.const import _BASE_URL_, _QUERY1_URL_, quote_summary_valid_modules
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
 
-info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
-info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
-info_retired_keys_price.update({"fiftyTwoWeekLow", "fiftyTwoWeekHigh", "fiftyTwoWeekChange", "52WeekChange", "fiftyDayAverage", "twoHundredDayAverage"})
-info_retired_keys_price.update({"averageDailyVolume10Day", "averageVolume10days", "averageVolume"})
-info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName", "quoteType"}
+info_retired_keys_price = {
+    "currentPrice",
+    "dayHigh",
+    "dayLow",
+    "open",
+    "previousClose",
+    "volume",
+    "volume24Hr",
+}
+info_retired_keys_price.update(
+    {
+        "regularMarket" + s
+        for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]
+    }
+)
+info_retired_keys_price.update(
+    {
+        "fiftyTwoWeekLow",
+        "fiftyTwoWeekHigh",
+        "fiftyTwoWeekChange",
+        "52WeekChange",
+        "fiftyDayAverage",
+        "twoHundredDayAverage",
+    }
+)
+info_retired_keys_price.update(
+    {"averageDailyVolume10Day", "averageVolume10days", "averageVolume"}
+)
+info_retired_keys_exchange = {
+    "currency",
+    "exchange",
+    "exchangeTimezoneName",
+    "exchangeTimezoneShortName",
+    "quoteType",
+}
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
-info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
+info_retired_keys = (
+    info_retired_keys_price
+    | info_retired_keys_exchange
+    | info_retired_keys_marketCap
+    | info_retired_keys_symbol
+)
 
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
@@ -70,14 +108,19 @@ class FastInfo:
         _properties += ["last_price", "previous_close", "open", "day_high", "day_low"]
         _properties += ["regular_market_previous_close"]
         _properties += ["last_volume"]
-        _properties += ["fifty_day_average", "two_hundred_day_average", "ten_day_average_volume", "three_month_average_volume"]
+        _properties += [
+            "fifty_day_average",
+            "two_hundred_day_average",
+            "ten_day_average_volume",
+            "three_month_average_volume",
+        ]
         _properties += ["year_high", "year_low", "year_change"]
 
         # Because released before fixing key case, need to officially support
         # camel-case but also secretly support snake-case
-        base_keys = [k for k in _properties if '_' not in k]
+        base_keys = [k for k in _properties if "_" not in k]
 
-        sc_keys = [k for k in _properties if '_' in k]
+        sc_keys = [k for k in _properties if "_" in k]
 
         self._sc_to_cc_key = {k: utils.snake_case_2_camelCase(k) for k in sc_keys}
         self._cc_to_sc_key = {v: k for k, v in self._sc_to_cc_key.items()}
@@ -128,38 +171,63 @@ class FastInfo:
 
     def _get_1y_prices(self, fullDaysOnly=False):
         if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="1y", auto_adjust=False, keepna=True)
+            self._prices_1y = self._tkr.history(
+                period="1y", auto_adjust=False, keepna=True
+            )
             self._md = self._tkr.get_history_metadata()
             try:
                 ctp = self._md["currentTradingPeriod"]
-                self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
-                self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
-                self._today_midnight = self._today_close.ceil("D")
+                tz_info = ZoneInfo(self.timezone)
+                self._today_open = datetime.datetime.fromtimestamp(
+                    ctp["regular"]["start"], tz=timezone.utc
+                ).astimezone(tz_info)
+                self._today_close = datetime.datetime.fromtimestamp(
+                    ctp["regular"]["end"], tz=timezone.utc
+                ).astimezone(tz_info)
+                # ceil to next midnight
+                _tc = self._today_close
+                self._today_midnight = _tc.replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) + datetime.timedelta(days=1)
             except Exception:
                 self._today_open = None
                 self._today_close = None
                 self._today_midnight = None
                 raise
 
-        if self._prices_1y.empty:
+        if self._prices_1y.is_empty():
             return self._prices_1y
 
-        dnow = pd.Timestamp.now('UTC').tz_convert(self.timezone).date()
+        dnow = (
+            datetime.datetime.now(timezone.utc)
+            .astimezone(ZoneInfo(self.timezone))
+            .date()
+        )
         d1 = dnow
         d0 = (d1 + datetime.timedelta(days=1)) - utils._interval_to_timedelta("1y")
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
             d1 -= utils._interval_to_timedelta("1d")
-        return self._prices_1y.loc[str(d0):str(d1)]
+        d0_dt = datetime.datetime(d0.year, d0.month, d0.day)
+        d1_dt = datetime.datetime(d1.year, d1.month, d1.day, 23, 59, 59)
+        date_col = self._prices_1y.columns[0]
+        return self._prices_1y.filter(
+            (pl.col(date_col) >= pl.lit(d0_dt).cast(pl.Datetime("us")))
+            & (pl.col(date_col) <= pl.lit(d1_dt).cast(pl.Datetime("us")))
+        )
 
     def _get_1wk_1h_prepost_prices(self):
         if self._prices_1wk_1h_prepost is None:
-            self._prices_1wk_1h_prepost = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=True)
+            self._prices_1wk_1h_prepost = self._tkr.history(
+                period="5d", interval="1h", auto_adjust=False, prepost=True
+            )
         return self._prices_1wk_1h_prepost
 
     def _get_1wk_1h_reg_prices(self):
         if self._prices_1wk_1h_reg is None:
-            self._prices_1wk_1h_reg = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=False)
+            self._prices_1wk_1h_reg = self._tkr.history(
+                period="5d", interval="1h", auto_adjust=False, prepost=False
+            )
         return self._prices_1wk_1h_reg
 
     def _get_exchange_metadata(self):
@@ -171,7 +239,7 @@ class FastInfo:
         return self._md
 
     def _exchange_open_now(self):
-        t = pd.Timestamp.now('UTC')
+        t = datetime.datetime.now(timezone.utc)
         self._get_exchange_metadata()
 
         # if self._today_open is None and self._today_close is None:
@@ -186,8 +254,26 @@ class FastInfo:
         # else:
         #     r = t < self._today_midnight
 
-        last_day_cutoff = self._get_1y_prices().index[-1] + datetime.timedelta(days=1)
-        last_day_cutoff += datetime.timedelta(minutes=20)
+        prices = self._get_1y_prices()
+        date_col = prices.columns[0]
+        last_ts = prices[date_col][-1]
+        # Convert to a tz-aware python datetime regardless of the incoming type.
+        # Polars returns a datetime.datetime; handle int (epoch ns) as fallback.
+        if isinstance(last_ts, datetime.datetime):
+            last_dt = last_ts
+        elif isinstance(last_ts, (int, float)):
+            # Assume epoch nanoseconds (polars internal representation)
+            last_dt = datetime.datetime.fromtimestamp(last_ts / 1e9, tz=timezone.utc)
+        else:
+            # Last resort: try converting via str/repr (e.g. numpy datetime64)
+            last_dt = datetime.datetime.fromtimestamp(
+                int(str(last_ts)[:10]), tz=timezone.utc
+            )
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        last_day_cutoff = (
+            last_dt + datetime.timedelta(days=1) + datetime.timedelta(minutes=20)
+        )
         r = t < last_day_cutoff
 
         # print("_exchange_open_now() returning", r)
@@ -232,14 +318,24 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date()-pd.Timedelta(days=548))
+        start_date = (
+            datetime.datetime.now(timezone.utc) - datetime.timedelta(days=548)
+        ).date()
+        shares = self._tkr.get_shares_full(start=start_date)
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
         if shares is not None:
-            if isinstance(shares, pd.DataFrame):
-                shares = shares[shares.columns[0]]
-            self._shares = int(shares.iloc[-1])
+            if isinstance(shares, pl.DataFrame):
+                col = shares.columns[0]
+                self._shares = int(shares[col][-1])
+            elif hasattr(shares, "iloc"):
+                # pandas fallback
+                if hasattr(shares, "columns"):
+                    shares = shares[shares.columns[0]]
+                self._shares = int(shares.iloc[-1])
+            else:
+                self._shares = int(shares[-1])
         return self._shares
 
     @property
@@ -247,12 +343,12 @@ class FastInfo:
         if self._last_price is not None:
             return self._last_price
         prices = self._get_1y_prices()
-        if prices.empty:
+        if prices.is_empty():
             md = self._get_exchange_metadata()
             if "regularMarketPrice" in md:
                 self._last_price = md["regularMarketPrice"]
         else:
-            self._last_price = float(prices["Close"].iloc[-1])
+            self._last_price = float(prices["Close"][-1])
             if _np.isnan(self._last_price):
                 md = self._get_exchange_metadata()
                 if "regularMarketPrice" in md:
@@ -265,21 +361,30 @@ class FastInfo:
             return self._prev_close
         prices = self._get_1wk_1h_prepost_prices()
         fail = False
-        if prices.empty:
+        if prices.is_empty():
             fail = True
         else:
-            prices = prices[["Close"]].groupby(prices.index.date).last()
-            if prices.shape[0] < 2:
+            date_col = prices.columns[0]
+            prices = (
+                prices.with_columns(pl.col(date_col).dt.date().alias("_date"))
+                .group_by("_date")
+                .agg(pl.col("Close").last())
+                .sort("_date")
+            )
+            if prices.height < 2:
                 # Very few symbols have previousClose despite no
                 # no trading data e.g. 'QCSTIX'.
                 fail = True
             else:
-                self._prev_close = float(prices["Close"].iloc[-2])
+                self._prev_close = float(prices["Close"][-2])
         if fail:
             # Fallback to original info[] if available.
             self._tkr.info  # trigger fetch
             k = "previousClose"
-            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
+            if (
+                self._tkr._quote._retired_info is not None
+                and k in self._tkr._quote._retired_info
+            ):
                 self._prev_close = self._tkr._quote._retired_info[k]
         return self._prev_close
 
@@ -288,21 +393,30 @@ class FastInfo:
         if self._reg_prev_close is not None:
             return self._reg_prev_close
         prices = self._get_1y_prices()
-        if prices.shape[0] == 1:
+        if prices.height == 1:
             # Tiny % of tickers don't return daily history before last trading day,
             # so backup option is hourly history:
             prices = self._get_1wk_1h_reg_prices()
-            prices = prices[["Close"]].groupby(prices.index.date).last()
-        if prices.shape[0] < 2:
+            date_col = prices.columns[0]
+            prices = (
+                prices.with_columns(pl.col(date_col).dt.date().alias("_date"))
+                .group_by("_date")
+                .agg(pl.col("Close").last())
+                .sort("_date")
+            )
+        if prices.height < 2:
             # Very few symbols have regularMarketPreviousClose despite no
             # no trading data. E.g. 'QCSTIX'.
             # So fallback to original info[] if available.
             self._tkr.info  # trigger fetch
             k = "regularMarketPreviousClose"
-            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
+            if (
+                self._tkr._quote._retired_info is not None
+                and k in self._tkr._quote._retired_info
+            ):
                 self._reg_prev_close = self._tkr._quote._retired_info[k]
         else:
-            self._reg_prev_close = float(prices["Close"].iloc[-2])
+            self._reg_prev_close = float(prices["Close"][-2])
         return self._reg_prev_close
 
     @property
@@ -310,10 +424,10 @@ class FastInfo:
         if self._open is not None:
             return self._open
         prices = self._get_1y_prices()
-        if prices.empty:
+        if prices.is_empty():
             self._open = None
         else:
-            self._open = float(prices["Open"].iloc[-1])
+            self._open = float(prices["Open"][-1])
             if _np.isnan(self._open):
                 self._open = None
         return self._open
@@ -323,10 +437,10 @@ class FastInfo:
         if self._day_high is not None:
             return self._day_high
         prices = self._get_1y_prices()
-        if prices.empty:
+        if prices.is_empty():
             self._day_high = None
         else:
-            self._day_high = float(prices["High"].iloc[-1])
+            self._day_high = float(prices["High"][-1])
             if _np.isnan(self._day_high):
                 self._day_high = None
         return self._day_high
@@ -336,10 +450,10 @@ class FastInfo:
         if self._day_low is not None:
             return self._day_low
         prices = self._get_1y_prices()
-        if prices.empty:
+        if prices.is_empty():
             self._day_low = None
         else:
-            self._day_low = float(prices["Low"].iloc[-1])
+            self._day_low = float(prices["Low"][-1])
             if _np.isnan(self._day_low):
                 self._day_low = None
         return self._day_low
@@ -349,7 +463,7 @@ class FastInfo:
         if self._last_volume is not None:
             return self._last_volume
         prices = self._get_1y_prices()
-        self._last_volume = None if prices.empty else int(prices["Volume"].iloc[-1])
+        self._last_volume = None if prices.is_empty() else int(prices["Volume"][-1])
         return self._last_volume
 
     @property
@@ -358,15 +472,12 @@ class FastInfo:
             return self._50d_day_average
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        if prices.empty:
+        if prices.is_empty():
             self._50d_day_average = None
         else:
-            n = prices.shape[0]
-            a = n-50
-            b = n
-            if a < 0:
-                a = 0
-            self._50d_day_average = float(prices["Close"].iloc[a:b].mean())
+            n = prices.height
+            a = max(n - 50, 0)
+            self._50d_day_average = float(prices["Close"][a:n].mean())
 
         return self._50d_day_average
 
@@ -376,16 +487,12 @@ class FastInfo:
             return self._200d_day_average
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        if prices.empty:
+        if prices.is_empty():
             self._200d_day_average = None
         else:
-            n = prices.shape[0]
-            a = n-200
-            b = n
-            if a < 0:
-                a = 0
-
-            self._200d_day_average = float(prices["Close"].iloc[a:b].mean())
+            n = prices.height
+            a = max(n - 200, 0)
+            self._200d_day_average = float(prices["Close"][a:n].mean())
 
         return self._200d_day_average
 
@@ -395,15 +502,12 @@ class FastInfo:
             return self._10d_avg_vol
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        if prices.empty:
+        if prices.is_empty():
             self._10d_avg_vol = None
         else:
-            n = prices.shape[0]
-            a = n-10
-            b = n
-            if a < 0:
-                a = 0
-            self._10d_avg_vol = int(prices["Volume"].iloc[a:b].mean())
+            n = prices.height
+            a = max(n - 10, 0)
+            self._10d_avg_vol = int(prices["Volume"][a:n].mean())
 
         return self._10d_avg_vol
 
@@ -413,12 +517,40 @@ class FastInfo:
             return self._3mo_avg_vol
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        if prices.empty:
+        if prices.is_empty():
             self._3mo_avg_vol = None
         else:
-            dt1 = prices.index[-1]
-            dt0 = dt1 - utils._interval_to_timedelta("3mo") + utils._interval_to_timedelta("1d")
-            self._3mo_avg_vol = int(prices.loc[dt0:dt1, "Volume"].mean())
+            date_col = prices.columns[0]
+            dt1_raw = prices[date_col][-1]
+            # Convert to python datetime if needed
+            if hasattr(dt1_raw, "to_pydatetime"):
+                dt1 = dt1_raw.to_pydatetime()
+            elif isinstance(dt1_raw, datetime.datetime):
+                dt1 = dt1_raw
+            else:
+                dt1 = datetime.datetime.fromtimestamp(dt1_raw / 1e9, tz=timezone.utc)
+            dt0 = (
+                dt1
+                - utils._interval_to_timedelta("3mo")
+                + utils._interval_to_timedelta("1d")
+            )
+            # Make both tz-naive for comparison if needed
+            if dt0.tzinfo is not None:
+                dt0 = dt0.replace(tzinfo=None)
+            if dt1.tzinfo is not None:
+                dt1 = dt1.replace(tzinfo=None)
+            self._3mo_avg_vol = int(
+                prices.filter(
+                    (
+                        pl.col(date_col).cast(pl.Datetime("us"))
+                        >= pl.lit(dt0).cast(pl.Datetime("us"))
+                    )
+                    & (
+                        pl.col(date_col).cast(pl.Datetime("us"))
+                        <= pl.lit(dt1).cast(pl.Datetime("us"))
+                    )
+                )["Volume"].mean()
+            )
 
         return self._3mo_avg_vol
 
@@ -428,7 +560,7 @@ class FastInfo:
             return self._year_high
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        if prices.empty:
+        if prices.is_empty():
             prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_high = float(prices["High"].max())
         return self._year_high
@@ -439,7 +571,7 @@ class FastInfo:
             return self._year_low
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        if prices.empty:
+        if prices.is_empty():
             prices = self._get_1y_prices(fullDaysOnly=False)
         self._year_low = float(prices["Low"].min())
         return self._year_low
@@ -450,8 +582,10 @@ class FastInfo:
             return self._year_change
 
         prices = self._get_1y_prices(fullDaysOnly=True)
-        if prices.shape[0] >= 2:
-            self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+        if prices.height >= 2:
+            self._year_change = (prices["Close"][-1] - prices["Close"][0]) / prices[
+                "Close"
+            ][0]
             self._year_change = float(self._year_change)
         return self._year_change
 
@@ -474,7 +608,10 @@ class FastInfo:
             # So fallback to original info[] if available.
             self._tkr.info
             k = "marketCap"
-            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
+            if (
+                self._tkr._quote._retired_info is not None
+                and k in self._tkr._quote._retired_info
+            ):
                 self._mcap = self._tkr._quote._retired_info[k]
         else:
             self._mcap = float(shares * self.last_price)
@@ -508,57 +645,82 @@ class Quote:
         return self._info
 
     @property
-    def sustainability(self) -> pd.DataFrame:
+    def sustainability(self) -> pl.DataFrame:
         if self._sustainability is None:
-            result = self._fetch(modules=['esgScores'])
+            result = self._fetch(modules=["esgScores"])
             if result is None:
-                self._sustainability = pd.DataFrame()
+                self._sustainability = pl.DataFrame()
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]
                 except (KeyError, IndexError):
                     if not YfConfig.debug.hide_exceptions:
                         raise
-                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-                self._sustainability = pd.DataFrame(data)
+                    raise YFDataException(
+                        f"Failed to parse json response from Yahoo Finance: {result}"
+                    )
+                self._sustainability = pl.DataFrame(data)
         return self._sustainability
 
     @property
-    def recommendations(self) -> pd.DataFrame:
+    def recommendations(self) -> pl.DataFrame:
         if self._recommendations is None:
-            result = self._fetch(modules=['recommendationTrend'])
+            result = self._fetch(modules=["recommendationTrend"])
             if result is None:
-                self._recommendations = pd.DataFrame()
+                self._recommendations = pl.DataFrame()
             else:
                 try:
-                    data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
+                    data = result["quoteSummary"]["result"][0]["recommendationTrend"][
+                        "trend"
+                    ]
                 except (KeyError, IndexError):
                     if not YfConfig.debug.hide_exceptions:
                         raise
-                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-                self._recommendations = pd.DataFrame(data)
+                    raise YFDataException(
+                        f"Failed to parse json response from Yahoo Finance: {result}"
+                    )
+                self._recommendations = pl.DataFrame(data)
         return self._recommendations
 
     @property
-    def upgrades_downgrades(self) -> pd.DataFrame:
+    def upgrades_downgrades(self) -> pl.DataFrame:
         if self._upgrades_downgrades is None:
-            result = self._fetch(modules=['upgradeDowngradeHistory'])
+            result = self._fetch(modules=["upgradeDowngradeHistory"])
             if result is None:
-                self._upgrades_downgrades = pd.DataFrame()
+                self._upgrades_downgrades = pl.DataFrame()
             else:
                 try:
-                    data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
+                    data = result["quoteSummary"]["result"][0][
+                        "upgradeDowngradeHistory"
+                    ]["history"]
                     if len(data) == 0:
-                        raise YFDataException(f"No upgrade/downgrade history found for {self._symbol}")
-                    df = pd.DataFrame(data)
-                    df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
-                    df.set_index('GradeDate', inplace=True)
-                    df.index = pd.to_datetime(df.index, unit='s')
+                        raise YFDataException(
+                            f"No upgrade/downgrade history found for {self._symbol}"
+                        )
+                    df = pl.DataFrame(data)
+                    df = df.rename(
+                        {
+                            "epochGradeDate": "GradeDate",
+                            "firm": "Firm",
+                            "toGrade": "ToGrade",
+                            "fromGrade": "FromGrade",
+                            "action": "Action",
+                        }
+                    )
+                    df = df.with_columns(
+                        pl.col("GradeDate")
+                        .cast(pl.Int64)
+                        .mul(1_000_000)
+                        .cast(pl.Datetime("us", "UTC"))
+                        .alias("GradeDate")
+                    )
                     self._upgrades_downgrades = df
                 except (KeyError, IndexError):
                     if not YfConfig.debug.hide_exceptions:
                         raise
-                    raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
+                    raise YFDataException(
+                        f"Failed to parse json response from Yahoo Finance: {result}"
+                    )
         return self._upgrades_downgrades
 
     @property
@@ -575,7 +737,7 @@ class Quote:
         return self._sec_filings
 
     @property
-    def valuation_measures(self) -> pd.DataFrame:
+    def valuation_measures(self) -> pl.DataFrame:
         if self._valuation_measures is None:
             self._fetch_valuation_measures()
         return self._valuation_measures
@@ -586,14 +748,25 @@ class Quote:
 
     def _fetch(self, modules: list):
         if not isinstance(modules, list):
-            raise YFException("Should provide a list of modules, see available modules using `valid_modules`")
+            raise YFException(
+                "Should provide a list of modules, see available modules using `valid_modules`"
+            )
 
-        modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
+        modules = ",".join([m for m in modules if m in quote_summary_valid_modules])
         if len(modules) == 0:
-            raise YFException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
+            raise YFException(
+                "No valid modules provided, see available modules using `valid_modules`"
+            )
+        params_dict = {
+            "modules": modules,
+            "corsDomain": "finance.yahoo.com",
+            "formatted": "false",
+            "symbol": self._symbol,
+        }
         try:
-            result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
+            result = self._data.get_raw_json(
+                _QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict
+            )
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
@@ -604,7 +777,9 @@ class Quote:
     def _fetch_additional_info(self):
         params_dict = {"symbols": self._symbol, "formatted": "false"}
         try:
-            result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict)
+            result = self._data.get_raw_json(
+                f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict
+            )
         except curl_cffi.requests.exceptions.HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
@@ -616,7 +791,13 @@ class Quote:
         if self._already_fetched:
             return
         self._already_fetched = True
-        modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
+        modules = [
+            "financialData",
+            "quoteType",
+            "defaultKeyStatistics",
+            "assetProfile",
+            "summaryDetail",
+        ]
         result = self._fetch(modules=modules)
         additional_info = self._fetch_additional_info()
         if additional_info is not None and result is not None:
@@ -629,8 +810,11 @@ class Quote:
             if quote in result and len(result[quote]["result"]) > 0:
                 result[quote]["result"][0]["symbol"] = self._symbol
                 query_info = next(
-                    (info for info in result.get(quote, {}).get("result", [])
-                    if info["symbol"] == self._symbol),
+                    (
+                        info
+                        for info in result.get(quote, {}).get("result", [])
+                        if info["symbol"] == self._symbol
+                    ),
                     None,
                 )
                 if query_info:
@@ -640,7 +824,6 @@ class Quote:
         # This handles Yahoo Finance API inconsistency where maxAge is sometimes expressed in days instead of seconds.
         processed_info = {}
         for k, v in query1_info.items():
-
             # Handle nested dictionary
             if isinstance(v, dict):
                 for k1, v1 in v.items():
@@ -656,7 +839,11 @@ class Quote:
 
         def _format(k, v):
             if isinstance(v, dict) and "raw" in v and "fmt" in v:
-                v2 = v["fmt"] if k in {"regularMarketTime", "postMarketTime"} else v["raw"]
+                v2 = (
+                    v["fmt"]
+                    if k in {"regularMarketTime", "postMarketTime"}
+                    else v["raw"]
+                )
             elif isinstance(v, list):
                 v2 = [_format(None, x) for x in v]
             elif isinstance(v, dict):
@@ -677,31 +864,33 @@ class Quote:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Failed to fetch key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
+            self._valuation_measures = pl.DataFrame()
             return
 
         try:
             soup = BeautifulSoup(response.text, "html.parser")
             table = soup.find("table")
             if table is None:
-                self._valuation_measures = pd.DataFrame()
+                self._valuation_measures = pl.DataFrame()
                 return
 
-            headers = [th.get_text(strip=True) for th in table.find("tr").find_all(["th", "td"])]
+            headers = [
+                th.get_text(strip=True)
+                for th in table.find("tr").find_all(["th", "td"])
+            ]
             rows = []
             for tr in table.find_all("tr")[1:]:
                 cells = [td.get_text(strip=True) for td in tr.find_all(["th", "td"])]
                 rows.append(cells)
 
-            df = pd.DataFrame(rows, columns=headers)
-            df = df.set_index(df.columns[0])
-            df.index.name = None
+            df = pl.DataFrame(rows, schema=headers, orient="row")
+            # Keep first column as a regular column (no set_index)
             self._valuation_measures = df
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Failed to parse key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
+            self._valuation_measures = pl.DataFrame()
 
     def _fetch_complementary(self):
         if self._already_fetched_complementary:
@@ -741,9 +930,14 @@ class Quote:
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data
-            start = pd.Timestamp.now('UTC').floor("D") - datetime.timedelta(days=365 // 2)
+            _now_utc = datetime.datetime.now(timezone.utc)
+            start = _now_utc.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) - datetime.timedelta(days=365 // 2)
             start = int(start.timestamp())
-            end = pd.Timestamp.now('UTC').ceil("D")
+            end = _now_utc.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + datetime.timedelta(days=1)
             end = int(end.timestamp())
             url += f"&period1={start}&period2={end}"
 
@@ -751,7 +945,10 @@ class Quote:
             json_data = json.loads(json_str)
             json_result = json_data.get("timeseries") or json_data.get("finance")
             if json_result["error"] is not None:
-                raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
+                raise YFException(
+                    "Failed to parse json response from Yahoo Finance: "
+                    + str(json_result["error"])
+                )
             for k in keys:
                 keydict = json_result["result"][0]
                 if k in keydict:
@@ -761,7 +958,7 @@ class Quote:
 
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
-        result = self._fetch(modules=['calendarEvents'])
+        result = self._fetch(modules=["calendarEvents"])
         if result is None:
             self._calendar = {}
             return
@@ -769,28 +966,38 @@ class Quote:
         try:
             self._calendar = dict()
             _events = result["quoteSummary"]["result"][0]["calendarEvents"]
-            if 'dividendDate' in _events:
-                self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
-            if 'exDividendDate' in _events:
-                self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
+            if "dividendDate" in _events:
+                self._calendar["Dividend Date"] = datetime.datetime.fromtimestamp(
+                    _events["dividendDate"]
+                ).date()
+            if "exDividendDate" in _events:
+                self._calendar["Ex-Dividend Date"] = datetime.datetime.fromtimestamp(
+                    _events["exDividendDate"]
+                ).date()
             # splits = _events.get('splitDate')  # need to check later, i will add code for this if found data
-            earnings = _events.get('earnings')
+            earnings = _events.get("earnings")
             if earnings is not None:
-                self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
-                self._calendar['Earnings High'] = earnings.get('earningsHigh', None)
-                self._calendar['Earnings Low'] = earnings.get('earningsLow', None)
-                self._calendar['Earnings Average'] = earnings.get('earningsAverage', None)
-                self._calendar['Revenue High'] = earnings.get('revenueHigh', None)
-                self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
-                self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
+                self._calendar["Earnings Date"] = [
+                    datetime.datetime.fromtimestamp(d).date()
+                    for d in earnings.get("earningsDate", [])
+                ]
+                self._calendar["Earnings High"] = earnings.get("earningsHigh", None)
+                self._calendar["Earnings Low"] = earnings.get("earningsLow", None)
+                self._calendar["Earnings Average"] = earnings.get(
+                    "earningsAverage", None
+                )
+                self._calendar["Revenue High"] = earnings.get("revenueHigh", None)
+                self._calendar["Revenue Low"] = earnings.get("revenueLow", None)
+                self._calendar["Revenue Average"] = earnings.get("revenueAverage", None)
         except (KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-
+            raise YFDataException(
+                f"Failed to parse json response from Yahoo Finance: {result}"
+            )
 
     def _fetch_sec_filings(self):
-        result = self._fetch(modules=['secFilings'])
+        result = self._fetch(modules=["secFilings"])
         if result is None:
             return None
 
@@ -798,9 +1005,9 @@ class Quote:
 
         # Improve structure
         for f in filings:
-            if 'exhibits' in f:
-                f['exhibits'] = {e['type']:e['url'] for e in f['exhibits']}
-            f['date'] = datetime.datetime.strptime(f['date'], '%Y-%m-%d').date()
+            if "exhibits" in f:
+                f["exhibits"] = {e["type"]: e["url"] for e in f["exhibits"]}
+            f["date"] = datetime.datetime.strptime(f["date"], "%Y-%m-%d").date()
 
         # Experimental: convert to pandas
         # for i in range(len(filings)):

@@ -20,7 +20,8 @@
 #
 
 import json as _json
-import pandas as pd
+
+import polars as pl
 
 from . import utils
 from .config import YfConfig
@@ -28,7 +29,16 @@ from .const import _QUERY1_URL_
 from .data import YfData
 from .exceptions import YFDataException
 
-LOOKUP_TYPES = ["all", "equity", "mutualfund", "etf", "index", "future", "currency", "cryptocurrency"]
+LOOKUP_TYPES = [
+    "all",
+    "equity",
+    "mutualfund",
+    "etf",
+    "index",
+    "future",
+    "currency",
+    "cryptocurrency",
+]
 
 
 class Lookup:
@@ -69,10 +79,12 @@ class Lookup:
             "formatted": False,
             "fetchPricingData": True,
             "lang": "en-US",
-            "region": "US"
+            "region": "US",
         }
 
-        self._logger.debug(f'GET Lookup for ticker ({self.query}) with parameters: {str(dict(params))}')
+        self._logger.debug(
+            f"GET Lookup for ticker ({self.query}) with parameters: {str(dict(params))}"
+        )
 
         data = self._data.get(url=url, params=params, timeout=self.timeout)
         if data is None or "Will be right back" in data.text:
@@ -88,26 +100,28 @@ class Lookup:
         # Error returned
         if data.get("finance", {}).get("error", {}):
             error = data.get("finance", {}).get("error", {})
-            raise YFDataException(f"{self.ticker}: 'lookup' fetch returned error: {error}")
+            raise YFDataException(
+                f"{self.ticker}: 'lookup' fetch returned error: {error}"
+            )
 
         self._cache[cache_key] = data
         return data
 
     @staticmethod
-    def _parse_response(response: dict) -> pd.DataFrame:
+    def _parse_response(response: dict) -> pl.DataFrame:
         finance = response.get("finance", {})
         result = finance.get("result", [])
         result = result[0] if len(result) > 0 else {}
         documents = result.get("documents", [])
-        df = pd.DataFrame(documents)
+        df = pl.DataFrame(documents)
         if "symbol" not in df.columns:
-            return pd.DataFrame()
-        return df.set_index("symbol")
+            return pl.DataFrame()
+        return df
 
-    def _get_data(self, lookup_type: str, count: int = 25) -> pd.DataFrame:
+    def _get_data(self, lookup_type: str, count: int = 25) -> pl.DataFrame:
         return self._parse_response(self._fetch_lookup(lookup_type, count))
 
-    def get_all(self, count=25) -> pd.DataFrame:
+    def get_all(self, count=25) -> pl.DataFrame:
         """
         Returns all available financial instruments.
 
@@ -116,7 +130,7 @@ class Lookup:
         """
         return self._get_data("all", count)
 
-    def get_stock(self, count=25) -> pd.DataFrame:
+    def get_stock(self, count=25) -> pl.DataFrame:
         """
         Returns stock related financial instruments.
 
@@ -125,7 +139,7 @@ class Lookup:
         """
         return self._get_data("equity", count)
 
-    def get_mutualfund(self, count=25) -> pd.DataFrame:
+    def get_mutualfund(self, count=25) -> pl.DataFrame:
         """
         Returns mutual funds related financial instruments.
 
@@ -134,7 +148,7 @@ class Lookup:
         """
         return self._get_data("mutualfund", count)
 
-    def get_etf(self, count=25) -> pd.DataFrame:
+    def get_etf(self, count=25) -> pl.DataFrame:
         """
         Returns ETFs related financial instruments.
 
@@ -143,7 +157,7 @@ class Lookup:
         """
         return self._get_data("etf", count)
 
-    def get_index(self, count=25) -> pd.DataFrame:
+    def get_index(self, count=25) -> pl.DataFrame:
         """
         Returns Indices related financial instruments.
 
@@ -152,7 +166,7 @@ class Lookup:
         """
         return self._get_data("index", count)
 
-    def get_future(self, count=25) -> pd.DataFrame:
+    def get_future(self, count=25) -> pl.DataFrame:
         """
         Returns Futures related financial instruments.
 
@@ -161,7 +175,7 @@ class Lookup:
         """
         return self._get_data("future", count)
 
-    def get_currency(self, count=25) -> pd.DataFrame:
+    def get_currency(self, count=25) -> pl.DataFrame:
         """
         Returns Currencies related financial instruments.
 
@@ -170,7 +184,7 @@ class Lookup:
         """
         return self._get_data("currency", count)
 
-    def get_cryptocurrency(self, count=25) -> pd.DataFrame:
+    def get_cryptocurrency(self, count=25) -> pl.DataFrame:
         """
         Returns Cryptocurrencies related financial instruments.
 
@@ -180,41 +194,41 @@ class Lookup:
         return self._get_data("cryptocurrency", count)
 
     @property
-    def all(self) -> pd.DataFrame:
+    def all(self) -> pl.DataFrame:
         """Returns all available financial instruments."""
         return self._get_data("all")
 
     @property
-    def stock(self) -> pd.DataFrame:
+    def stock(self) -> pl.DataFrame:
         """Returns stock related financial instruments."""
         return self._get_data("equity")
 
     @property
-    def mutualfund(self) -> pd.DataFrame:
+    def mutualfund(self) -> pl.DataFrame:
         """Returns mutual funds related financial instruments."""
         return self._get_data("mutualfund")
 
     @property
-    def etf(self) -> pd.DataFrame:
+    def etf(self) -> pl.DataFrame:
         """Returns ETFs related financial instruments."""
         return self._get_data("etf")
 
     @property
-    def index(self) -> pd.DataFrame:
+    def index(self) -> pl.DataFrame:
         """Returns Indices related financial instruments."""
         return self._get_data("index")
 
     @property
-    def future(self) -> pd.DataFrame:
+    def future(self) -> pl.DataFrame:
         """Returns Futures related financial instruments."""
         return self._get_data("future")
 
     @property
-    def currency(self) -> pd.DataFrame:
+    def currency(self) -> pl.DataFrame:
         """Returns Currencies related financial instruments."""
         return self._get_data("currency")
 
     @property
-    def cryptocurrency(self) -> pd.DataFrame:
+    def cryptocurrency(self) -> pl.DataFrame:
         """Returns Cryptocurrencies related financial instruments."""
         return self._get_data("cryptocurrency")

@@ -1,18 +1,126 @@
-from curl_cffi import requests
-from math import isclose
 import bisect
 import datetime as _datetime
-import dateutil as _dateutil
 import logging
+from datetime import datetime, timedelta, timezone
+from math import isclose
+from zoneinfo import ZoneInfo
+
+import dateutil as _dateutil
 import numpy as np
-import pandas as pd
+import polars as pl
+from curl_cffi import requests
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 import time as _time
 import warnings
 
 from yfinance import shared, utils
 from yfinance.config import YfConfig
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default
-from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
+from yfinance.exceptions import (
+    YFDataException,
+    YFInvalidPeriodError,
+    YFPricesMissingError,
+    YFRateLimitError,
+    YFTzMissingError,
+)
+
+
+def _pl_to_pd(df: pl.DataFrame) -> "pd.DataFrame":
+    """Convert a polars DataFrame (with Datetime or Date column) to a pandas DataFrame with DatetimeIndex.
+
+    Works without pyarrow by using Python-native row-by-row conversion.
+    Raises RuntimeError if pandas is not installed.
+    """
+    if df is None:
+        return None
+    if pd is None:
+        raise RuntimeError(
+            "pandas is required for price repair methods. Install it with: pip install pandas"
+        )
+    date_col = "Date" if "Date" in df.columns else "Datetime"
+
+    # Build a dict of lists from the polars DataFrame using native Python values
+    data = {}
+    for col in df.columns:
+        if col == date_col:
+            continue
+        series = df[col]
+        data[col] = series.to_list()
+
+    # Build the DatetimeIndex from the date column
+    dt_values = df[date_col].to_list()
+
+    # Convert to pandas Timestamps preserving timezone
+    dtype = df[date_col].dtype
+    tz = dtype.time_zone if isinstance(dtype, pl.Datetime) else None
+
+    if tz:
+        index = pd.DatetimeIndex(
+            [pd.Timestamp(v) if v is not None else pd.NaT for v in dt_values],
+            tz=tz,
+        )
+    else:
+        index = pd.DatetimeIndex(
+            [pd.Timestamp(v) if v is not None else pd.NaT for v in dt_values]
+        )
+
+    pdf = pd.DataFrame(data, index=index)
+    pdf.index.name = date_col
+    return pdf
+
+
+def _pd_to_pl(pdf: "pd.DataFrame", date_col: str = None) -> pl.DataFrame:
+    """Convert a pandas DataFrame with DatetimeIndex back to a polars DataFrame.
+
+    Works without pyarrow by using Python-native conversion.
+    """
+    if pdf is None:
+        return None
+    if pd is None or not isinstance(pdf, pd.DataFrame):
+        return pdf
+
+    idx_name = pdf.index.name or "Datetime"
+    if date_col is not None:
+        idx_name = date_col
+
+    # Build columns dict
+    cols = {}
+
+    # Convert index to polars-compatible values
+    index = pdf.index
+    if isinstance(index, pd.DatetimeIndex):
+        tz = str(index.tz) if index.tz is not None else None
+        dt_list = [t.to_pydatetime() if not pd.isnull(t) else None for t in index]
+
+        if tz:
+            series = pl.Series(idx_name, dt_list, dtype=pl.Datetime("us", tz))
+        else:
+            series = pl.Series(idx_name, dt_list, dtype=pl.Datetime("us", "UTC"))
+        cols[idx_name] = series
+    else:
+        cols[idx_name] = pl.Series(idx_name, index.tolist())
+
+    for col in pdf.columns:
+        vals = pdf[col].tolist()
+        try:
+            cols[col] = pl.Series(col, vals)
+        except Exception:
+            cols[col] = pl.Series(col, vals, dtype=pl.Object)
+
+    df = pl.DataFrame(cols)
+
+    # Ensure the date column has UTC timezone if it's a Datetime
+    if idx_name in df.columns:
+        dtype = df[idx_name].dtype
+        if isinstance(dtype, pl.Datetime) and dtype.time_zone is None:
+            df = df.with_columns(pl.col(idx_name).dt.replace_time_zone("UTC"))
+
+    return df
+
 
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None):
@@ -29,11 +137,22 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
     @utils.log_indent_decorator
-    def history(self, period=period_default, interval="1d",
-                start=None, end=None, prepost=False, actions=True,
-                auto_adjust=True, back_adjust=False, repair=False, keepna=False,
-                rounding=False, timeout=10,
-                raise_errors=False) -> pd.DataFrame:
+    def history(
+        self,
+        period=period_default,
+        interval="1d",
+        start=None,
+        end=None,
+        prepost=False,
+        actions=True,
+        auto_adjust=True,
+        back_adjust=False,
+        repair=False,
+        keepna=False,
+        rounding=False,
+        timeout=10,
+        raise_errors=False,
+    ) -> pl.DataFrame:
         """
         :Parameters:
             period : str
@@ -78,7 +197,11 @@ class PriceHistory:
         logger = utils.get_yf_logger()
 
         if raise_errors:
-            warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
+            warnings.warn(
+                "'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False",
+                DeprecationWarning,
+                stacklevel=5,
+            )
 
         interval_user = interval
         if period == period_default:
@@ -86,14 +209,16 @@ class PriceHistory:
             if start or end:
                 period = None
             else:
-                period = '1mo'
+                period = "1mo"
         else:
             period_user = period
         if repair and interval in ["5d", "1wk", "1mo", "3mo"]:
             # Yahoo's way of adjusting mutiday intervals is fundamentally broken.
             # Have to fetch 1d, adjust, then resample.
-            if interval == '5d':
-                raise ValueError("Yahoo's interval '5d' is nonsense, not supported with repair")
+            if interval == "5d":
+                raise ValueError(
+                    "Yahoo's interval '5d' is nonsense, not supported with repair"
+                )
             if start is None and end is None and period is not None:
                 # Convert period to start -> end
                 tz = self.tz
@@ -102,21 +227,23 @@ class PriceHistory:
                     _exception = YFTzMissingError(self.ticker)
                     err_msg = str(_exception)
                     shared._DFS[self.ticker] = utils.empty_df()
-                    shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                    shared._ERRORS[self.ticker] = err_msg.split(": ", 1)[1]
                     if raise_errors or (not YfConfig.debug.hide_exceptions):
                         raise _exception
                     else:
                         logger.error(err_msg)
                     return utils.empty_df()
-                if period == 'ytd':
-                    start = _datetime.date(pd.Timestamp.now('UTC').tz_convert(tz).year, 1, 1)
+                if period == "ytd":
+                    start = _datetime.date(
+                        datetime.now(timezone.utc).astimezone(ZoneInfo(tz)).year, 1, 1
+                    )
                 else:
-                    start = pd.Timestamp.now('UTC').tz_convert(tz).date()
+                    start = datetime.now(timezone.utc).astimezone(ZoneInfo(tz)).date()
                     start -= utils._interval_to_timedelta(period)
                     start -= _datetime.timedelta(days=4)
                 period_user = period
                 period = None
-            interval = '1d'
+            interval = "1d"
 
         start_user = start
         end_user = end
@@ -128,7 +255,7 @@ class PriceHistory:
                 _exception = YFTzMissingError(self.ticker)
                 err_msg = str(_exception)
                 shared._DFS[self.ticker] = utils.empty_df()
-                shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                shared._ERRORS[self.ticker] = err_msg.split(": ", 1)[1]
                 if raise_errors or (not YfConfig.debug.hide_exceptions):
                     raise _exception
                 else:
@@ -144,12 +271,12 @@ class PriceHistory:
 
         if period is None:
             if not (start or end):
-                period = '1mo'  # default
+                period = "1mo"  # default
             elif not start:
-                start_dt = end_dt - utils._interval_to_timedelta('1mo')
+                start_dt = end_dt - utils._interval_to_timedelta("1mo")
                 start = int(start_dt.timestamp())
             elif not end:
-                end_dt = pd.Timestamp.now('UTC').tz_convert(tz)
+                end_dt = datetime.now(timezone.utc).astimezone(ZoneInfo(tz))
                 end = int(end_dt.timestamp())
         else:
             if period.lower() == "max":
@@ -164,9 +291,11 @@ class PriceHistory:
                         start = end - 63072000  # 730 days
                     else:
                         start = end - 3122064000  # 99 years
-                    start += 5 # allow for processing time
+                    start += 5  # allow for processing time
             elif start and end:
-                raise ValueError("Setting period, start and end is nonsense. Set maximum 2 of them.")
+                raise ValueError(
+                    "Setting period, start and end is nonsense. Set maximum 2 of them."
+                )
             elif start or end:
                 period_td = utils._interval_to_timedelta(period)
                 if end is None:
@@ -197,26 +326,26 @@ class PriceHistory:
         tz = self.tz
         for k in ["period1", "period2"]:
             if k in params_pretty:
-                params_pretty[k] = str(pd.Timestamp(params[k], unit='s').tz_localize("UTC").tz_convert(tz))
-        logger.debug(f'{self.ticker}: Yahoo GET parameters: {str(params_pretty)}')
+                params_pretty[k] = str(
+                    datetime.fromtimestamp(params[k], tz=timezone.utc).astimezone(
+                        ZoneInfo(tz)
+                    )
+                )
+        logger.debug(f"{self.ticker}: Yahoo GET parameters: {str(params_pretty)}")
 
         # Getting data from json
         url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
         data = None
         get_fn = self._data.get
         if end is not None:
-            end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
-            dt_now = pd.Timestamp.now('UTC')
+            end_dt = datetime.fromtimestamp(end, tz=timezone.utc)
+            dt_now = datetime.now(timezone.utc)
             data_delay = _datetime.timedelta(minutes=30)
             if end_dt + data_delay <= dt_now:
                 # Date range in past so safe to fetch through cache:
                 get_fn = self._data.cache_get
         try:
-            data = get_fn(
-                url=url,
-                params=params,
-                timeout=timeout
-            )
+            data = get_fn(url=url, params=params, timeout=timeout)
             if "Will be right back" in data.text or data is None:
                 raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
 
@@ -229,78 +358,94 @@ class PriceHistory:
                 raise
 
         # Store the meta data that gets retrieved simultaneously
-        safe_chart  = (data or {}).get('chart') or {}
-        result_list = safe_chart.get('result')
+        safe_chart = (data or {}).get("chart") or {}
+        result_list = safe_chart.get("result")
         if isinstance(result_list, list) and len(result_list) > 0:
             first_item = result_list[0] or {}
-            meta = first_item.get('meta') or {}
+            meta = first_item.get("meta") or {}
         else:
             meta = {}
 
         self._history_metadata = meta
 
-        intraday = params["interval"][-1] in ("m", 'h')
-        _price_data_debug = ''
+        intraday = params["interval"][-1] in ("m", "h")
+        _price_data_debug = ""
         if start or period is None or period.lower() == "max":
-            _price_data_debug += f' ({params["interval"]} '
+            _price_data_debug += f" ({params['interval']} "
             if start_user is not None:
-                _price_data_debug += f'{start_user}'
+                _price_data_debug += f"{start_user}"
             elif not intraday:
-                _price_data_debug += f'{pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz).date()}'
+                _price_data_debug += f"{datetime.fromtimestamp(start, tz=timezone.utc).astimezone(ZoneInfo(tz)).date()}"
             else:
-                _price_data_debug += f'{pd.Timestamp(start, unit="s").tz_localize("UTC").tz_convert(tz)}'
-            _price_data_debug += ' -> '
+                _price_data_debug += f"{datetime.fromtimestamp(start, tz=timezone.utc).astimezone(ZoneInfo(tz))}"
+            _price_data_debug += " -> "
             if end_user is not None:
-                _price_data_debug += f'{end_user})'
+                _price_data_debug += f"{end_user})"
             elif not intraday:
-                _price_data_debug += f'{pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz).date()})'
+                _price_data_debug += f"{datetime.fromtimestamp(end, tz=timezone.utc).astimezone(ZoneInfo(tz)).date()})"
             else:
-                _price_data_debug += f'{pd.Timestamp(end, unit="s").tz_localize("UTC").tz_convert(tz)})'
+                _price_data_debug += f"{datetime.fromtimestamp(end, tz=timezone.utc).astimezone(ZoneInfo(tz))})"
         else:
-            _price_data_debug += f' (period={period})'
+            _price_data_debug += f" (period={period})"
 
         fail = False
         if data is None or not isinstance(data, dict):
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
-        elif isinstance(data, dict) and 'status_code' in data:
+        elif isinstance(data, dict) and "status_code" in data:
             _price_data_debug += f"(Yahoo status_code = {data['status_code']})"
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
         elif "chart" in data and data["chart"]["error"]:
-            _price_data_debug += ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
+            _price_data_debug += (
+                ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
+            )
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
-        elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:
+        elif (
+            "chart" not in data
+            or data["chart"]["result"] is None
+            or not data["chart"]["result"]
+            or not data["chart"]["result"][0]["indicators"]["quote"][0]
+        ):
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
-        elif period and period not in self._history_metadata['validRanges'] and not utils.is_valid_period_format(period):
+        elif (
+            period
+            and period not in self._history_metadata["validRanges"]
+            and not utils.is_valid_period_format(period)
+        ):
             # User provided a bad period
-            _exception = YFInvalidPeriodError(self.ticker, period, ", ".join(self._history_metadata['validRanges']))
+            _exception = YFInvalidPeriodError(
+                self.ticker, period, ", ".join(self._history_metadata["validRanges"])
+            )
             fail = True
 
         if fail:
             err_msg = str(_exception)
             shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+            shared._ERRORS[self.ticker] = err_msg.split(": ", 1)[1]
             if raise_errors or (not YfConfig.debug.hide_exceptions):
                 raise _exception
             else:
                 logger.error(err_msg)
-            if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
+            if (
+                self._reconstruct_start_interval is not None
+                and self._reconstruct_start_interval == interval
+            ):
                 self._reconstruct_start_interval = None
             return utils.empty_df()
 
         # Select useful info from metadata
         quote_type = self._history_metadata["instrumentType"]
-        expect_capital_gains = quote_type in ('MUTUALFUND', 'ETF')
+        expect_capital_gains = quote_type in ("MUTUALFUND", "ETF")
         tz_exchange = self._history_metadata["exchangeTimezoneName"]
         currency = self._history_metadata["currency"]
 
         # Process custom periods
         if period and period not in self._history_metadata.get("validRanges", []):
             end = int(_time.time())
-            end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
+            end_dt = datetime.fromtimestamp(end, tz=timezone.utc)
             start = _datetime.date.fromtimestamp(end)
             start -= utils._interval_to_timedelta(period)
             start -= _datetime.timedelta(days=4)
@@ -308,180 +453,278 @@ class PriceHistory:
         # parse quotes
         quotes = utils.parse_quotes(data["chart"]["result"][0])
         # Yahoo bug fix - it often appends latest price even if after end date
-        if end and not quotes.empty:
-            if quotes.index[-1] >= end_dt.tz_convert('UTC').tz_localize(None):
-                quotes = quotes.drop(quotes.index[-1])
-        if quotes.empty:
-            msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
-        elif len(quotes) == 1:
-            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} only'
+        if end and not quotes.is_empty():
+            last_dt = quotes["Datetime"][-1]
+            end_dt_utc = (
+                end_dt
+                if end_dt.tzinfo is not None
+                else end_dt.replace(tzinfo=timezone.utc)
+            )
+            # Compare as UTC-aware datetimes
+            if isinstance(last_dt, _datetime.datetime):
+                last_dt_cmp = last_dt
+            else:
+                last_dt_cmp = (
+                    last_dt.replace(tzinfo=timezone.utc)
+                    if hasattr(last_dt, "replace")
+                    else last_dt
+                )
+            if last_dt >= end_dt_utc:
+                quotes = quotes[:-1]
+        if quotes.is_empty():
+            msg = f"{self.ticker}: yfinance received OHLC data: EMPTY"
+        elif quotes.height == 1:
+            msg = f"{self.ticker}: yfinance received OHLC data: {quotes['Datetime'][0]} only"
         else:
-            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
+            msg = f"{self.ticker}: yfinance received OHLC data: {quotes['Datetime'][0]} -> {quotes['Datetime'][-1]}"
         logger.debug(msg)
 
         # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
-            logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
-            quotes2 = quotes.resample('30min')
-            quotes = pd.DataFrame(index=quotes2.last().index, data={
-                'Open': quotes2['Open'].first(),
-                'High': quotes2['High'].max(),
-                'Low': quotes2['Low'].min(),
-                'Close': quotes2['Close'].last(),
-                'Adj Close': quotes2['Adj Close'].last(),
-                'Volume': quotes2['Volume'].sum()
-            })
+            logger.debug(f"{self.ticker}: resampling 30m OHLC from 15m")
+            agg_exprs = [
+                pl.col("Open").first(),
+                pl.col("High").max(),
+                pl.col("Low").min(),
+                pl.col("Close").last(),
+                pl.col("Volume").sum(),
+            ]
+            if "Adj Close" in quotes.columns:
+                agg_exprs.append(pl.col("Adj Close").last())
+            quotes = (
+                quotes.sort("Datetime")
+                .group_by_dynamic("Datetime", every="30m", start_by="window")
+                .agg(agg_exprs)
+            )
 
         # Note: ordering is important. If you change order, run the tests!
         quotes = utils.set_df_tz(quotes, interval, tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, interval)
-        intraday = params["interval"][-1] in ("m", 'h')
+        intraday = params["interval"][-1] in ("m", "h")
         if not prepost and intraday and "tradingPeriods" in self._history_metadata:
             tps = self._history_metadata["tradingPeriods"]
-            if not isinstance(tps, pd.DataFrame):
-                self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
+            if not isinstance(tps, pl.DataFrame):
+                self._history_metadata = utils.format_history_metadata(
+                    self._history_metadata, tradingPeriodsOnly=True
+                )
                 self._history_metadata_formatted = True
                 tps = self._history_metadata["tradingPeriods"]
-            quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, interval, tps)
-        if quotes.empty:
-            msg = f'{self.ticker}: OHLC after cleaning: EMPTY'
-        elif len(quotes) == 1:
-            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} only'
+            quotes = utils.fix_Yahoo_returning_prepost_unrequested(
+                quotes, interval, tps
+            )
+        if quotes.is_empty():
+            msg = f"{self.ticker}: OHLC after cleaning: EMPTY"
+        elif quotes.height == 1:
+            msg = f"{self.ticker}: OHLC after cleaning: {quotes['Datetime'][0]} only"
         else:
-            msg = f'{self.ticker}: OHLC after cleaning: {quotes.index[0]} -> {quotes.index[-1]}'
+            msg = f"{self.ticker}: OHLC after cleaning: {quotes['Datetime'][0]} -> {quotes['Datetime'][-1]}"
         logger.debug(msg)
 
         # actions
-        dividends, splits, capital_gains = utils.parse_actions(data["chart"]["result"][0])
+        dividends, splits, capital_gains = utils.parse_actions(
+            data["chart"]["result"][0]
+        )
         if not expect_capital_gains:
             capital_gains = None
 
-        if splits is not None:
-            splits = utils.set_df_tz(splits, interval, tz_exchange)
-            self._splits = splits['Stock Splits'].rename_axis('Date')
+        if splits is not None and not splits.is_empty():
+            splits = utils.set_df_tz(splits, interval, tz_exchange, date_col="Date")
+            self._splits = splits.select(["Date", "Stock Splits"])
         else:
-            self._splits = pd.Series()
-        if dividends is not None:
-            dividends = utils.set_df_tz(dividends, interval, tz_exchange)
-            if 'currency' in dividends.columns:
-                # Rare, only seen with Vietnam market, or 
+            self._splits = pl.DataFrame()
+        if dividends is not None and not dividends.is_empty():
+            dividends = utils.set_df_tz(
+                dividends, interval, tz_exchange, date_col="Date"
+            )
+            if "currency" in dividends.columns:
+                # Rare, only seen with Vietnam market, or
                 # companies that distribute dividends in a different currency
-                self._dividends = dividends.rename_axis('Date')
+                self._dividends = dividends
 
-                price_currency = self._history_metadata['currency']
+                price_currency = self._history_metadata["currency"]
                 if price_currency is None:
-                    price_currency = ''
-                f_currency_mismatch = dividends['currency'] != price_currency
+                    price_currency = ""
+                f_currency_mismatch = dividends["currency"] != price_currency
                 if f_currency_mismatch.any():
-                    if repair and price_currency != '':
+                    if repair and price_currency != "":
                         # Attempt repair = currency conversion
-                        dividends = self._dividends_convert_fx(dividends, price_currency, repair)
-                dividends = dividends.drop('currency', axis=1)
+                        dividends = self._dividends_convert_fx(
+                            dividends, price_currency, repair
+                        )
+                dividends = dividends.drop(
+                    [c for c in ["currency"] if c in dividends.columns]
+                )
             else:
-                self._dividends = dividends['Dividends'].rename_axis('Date')
+                self._dividends = dividends.select(["Date", "Dividends"])
         else:
-            self._dividends = pd.Series()
+            self._dividends = pl.DataFrame()
 
-        if capital_gains is not None:
-            capital_gains = utils.set_df_tz(capital_gains, interval, tz_exchange)
-            self._capital_gains = capital_gains['Capital Gains'].rename_axis('Date')
+        if capital_gains is not None and not capital_gains.is_empty():
+            capital_gains = utils.set_df_tz(
+                capital_gains, interval, tz_exchange, date_col="Date"
+            )
+            self._capital_gains = capital_gains.select(["Date", "Capital Gains"])
         else:
-            self._capital_gains = pd.Series()
+            self._capital_gains = pl.DataFrame()
+
         if start is not None:
-            if not quotes.empty:
-                start_d = quotes.index[0].floor('D')
-                if dividends is not None:
-                    dividends = dividends.loc[start_d:]
-                if capital_gains is not None:
-                    capital_gains = capital_gains.loc[start_d:]
-                if splits is not None:
-                    splits = splits.loc[start_d:]
+            if not quotes.is_empty():
+                first_dt = quotes["Datetime"][0]
+                # floor to day
+                if hasattr(first_dt, "replace"):
+                    start_d = first_dt.replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+                else:
+                    start_d = first_dt
+                if dividends is not None and not dividends.is_empty():
+                    dividends = dividends.filter(
+                        pl.col("Date").dt.convert_time_zone("UTC") >= start_d
+                    )
+                if capital_gains is not None and not capital_gains.is_empty():
+                    capital_gains = capital_gains.filter(
+                        pl.col("Date").dt.convert_time_zone("UTC") >= start_d
+                    )
+                if splits is not None and not splits.is_empty():
+                    splits = splits.filter(
+                        pl.col("Date").dt.convert_time_zone("UTC") >= start_d
+                    )
         if end is not None:
             # -1 because date-slice end is inclusive
-            end_dt_sub1 = end_dt - pd.Timedelta(1)
-            if dividends is not None:
-                dividends = dividends[:end_dt_sub1]
-            if capital_gains is not None:
-                capital_gains = capital_gains[:end_dt_sub1]
-            if splits is not None:
-                splits = splits[:end_dt_sub1]
+            end_dt_sub1 = end_dt - timedelta(microseconds=1)
+            if dividends is not None and not dividends.is_empty():
+                dividends = dividends.filter(
+                    pl.col("Date").dt.convert_time_zone("UTC") <= end_dt_sub1
+                )
+            if capital_gains is not None and not capital_gains.is_empty():
+                capital_gains = capital_gains.filter(
+                    pl.col("Date").dt.convert_time_zone("UTC") <= end_dt_sub1
+                )
+            if splits is not None and not splits.is_empty():
+                splits = splits.filter(
+                    pl.col("Date").dt.convert_time_zone("UTC") <= end_dt_sub1
+                )
 
         # Prepare for combine
-        intraday = params["interval"][-1] in ("m", 'h')
+        intraday = params["interval"][-1] in ("m", "h")
         if not intraday:
-            # If localizing a midnight during DST transition hour when clocks roll back,
-            # meaning clock hits midnight twice, then use the 2nd (ambiguous=True)
-            quotes.index = pd.to_datetime(quotes.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
-            if dividends.shape[0] > 0:
-                dividends.index = pd.to_datetime(dividends.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
-            if splits.shape[0] > 0:
-                splits.index = pd.to_datetime(splits.index.date).tz_localize(tz_exchange, ambiguous=True, nonexistent='shift_forward')
+            # Truncate datetime to date (floor to day)
+            quotes = quotes.with_columns(
+                pl.col("Datetime").dt.truncate("1d").alias("Datetime")
+            )
+            if dividends is not None and not dividends.is_empty():
+                dividends = dividends.with_columns(
+                    pl.col("Date").dt.truncate("1d").alias("Date")
+                )
+            if splits is not None and not splits.is_empty():
+                splits = splits.with_columns(
+                    pl.col("Date").dt.truncate("1d").alias("Date")
+                )
 
         # Combine
-        df = quotes.sort_index()
-        if dividends.shape[0] > 0:
+        df = quotes.sort("Datetime")
+        if dividends is not None and not dividends.is_empty():
+            # safe_merge_dfs expects a "Date" key column in df_sub
             df = utils.safe_merge_dfs(df, dividends, interval)
         if "Dividends" in df.columns:
-            df.loc[df["Dividends"].isna(), "Dividends"] = 0
+            df = df.with_columns(pl.col("Dividends").fill_null(0))
         else:
-            df["Dividends"] = 0.0
-        if splits.shape[0] > 0:
+            df = df.with_columns(pl.lit(0.0).alias("Dividends"))
+        if splits is not None and not splits.is_empty():
             df = utils.safe_merge_dfs(df, splits, interval)
         if "Stock Splits" in df.columns:
-            df.loc[df["Stock Splits"].isna(), "Stock Splits"] = 0
+            df = df.with_columns(pl.col("Stock Splits").fill_null(0))
         else:
-            df["Stock Splits"] = 0.0
+            df = df.with_columns(pl.lit(0.0).alias("Stock Splits"))
         if expect_capital_gains:
-            if capital_gains.shape[0] > 0:
+            if capital_gains is not None and not capital_gains.is_empty():
                 df = utils.safe_merge_dfs(df, capital_gains, interval)
             if "Capital Gains" in df.columns:
-                df.loc[df["Capital Gains"].isna(), "Capital Gains"] = 0
+                df = df.with_columns(pl.col("Capital Gains").fill_null(0))
             else:
-                df["Capital Gains"] = 0.0
-        if df.empty:
-            msg = f'{self.ticker}: OHLC after combining events: EMPTY'
-        elif len(df) == 1:
-            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} only'
+                df = df.with_columns(pl.lit(0.0).alias("Capital Gains"))
+        if df.is_empty():
+            msg = f"{self.ticker}: OHLC after combining events: EMPTY"
+        elif df.height == 1:
+            msg = (
+                f"{self.ticker}: OHLC after combining events: {df['Datetime'][0]} only"
+            )
         else:
-            msg = f'{self.ticker}: OHLC after combining events: {df.index[0]} -> {df.index[-1]}'
+            msg = f"{self.ticker}: OHLC after combining events: {df['Datetime'][0]} -> {df['Datetime'][-1]}"
         logger.debug(msg)
 
-        df, last_trade = utils.fix_Yahoo_returning_live_separate(df, params["interval"], tz_exchange, prepost, repair=repair, currency=currency)
+        df, last_trade = utils.fix_Yahoo_returning_live_separate(
+            df,
+            params["interval"],
+            tz_exchange,
+            prepost,
+            repair=repair,
+            currency=currency,
+        )
         if last_trade is not None:
-            self._history_metadata['lastTrade'] = {'Price':last_trade['Close'], "Time":last_trade.name}
+            if isinstance(last_trade, pl.DataFrame):
+                last_trade_dt = (
+                    last_trade["Datetime"][0]
+                    if "Datetime" in last_trade.columns
+                    else last_trade["Date"][0]
+                )
+                last_trade_close = last_trade["Close"][0]
+            else:
+                last_trade_close = last_trade["Close"]
+                last_trade_dt = last_trade.name
+            self._history_metadata["lastTrade"] = {
+                "Price": last_trade_close,
+                "Time": last_trade_dt,
+            }
 
-        df = df[~df.index.duplicated(keep='first')]  # must do before repair
+        # Deduplicate - must do before repair
+        df = df.unique(subset=["Datetime"], keep="first")
 
         if repair:
             # Do this before auto/back adjust
-            logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
+            logger.debug(f"{self.ticker}: checking OHLC for repairs ...")
 
-            df = df.sort_index()
+            df = df.sort("Datetime")
 
-            # Must fix bad 'Adj Close' & dividends before 100x/split errors.
-            # First make currency consistent. On some exchanges, dividends often in different currency
-            # to prices, e.g. £ vs pence.
-            df, currency = self._standardise_currency(df, currency)
-            self._history_metadata['currency'] = currency
+            if pd is None:
+                logger.warning(
+                    f"{self.ticker}: pandas not installed — price repair skipped. "
+                    "Install pandas to enable repair: pip install pandas"
+                )
+            else:
+                # Convert to pandas for repair methods (they are deeply pandas-dependent)
+                df_pd = _pl_to_pd(df)
 
-            df = self._fix_bad_div_adjust(df, interval, currency)
+                # Must fix bad 'Adj Close' & dividends before 100x/split errors.
+                # First make currency consistent. On some exchanges, dividends often in different currency
+                # to prices, e.g. £ vs pence.
+                df_pd, currency = self._standardise_currency(df_pd, currency)
+                self._history_metadata["currency"] = currency
 
-            # Need the latest/last row to be repaired before 100x/split repair:
-            if not df.empty:
-                df_last = self._fix_zeroes(df.iloc[-1:], interval, tz_exchange, prepost)
-                if 'Repaired?' not in df.columns:
-                    df['Repaired?'] = False
-                df = pd.concat([df.drop(df.index[-1]), df_last])
+                df_pd = self._fix_bad_div_adjust(df_pd, interval, currency)
 
-            df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
-            df = self._fix_bad_stock_splits(df, interval, tz_exchange)
-            # Must repair 100x and split errors before price reconstruction
-            df = self._fix_zeroes(df, interval, tz_exchange, prepost)
+                # Need the latest/last row to be repaired before 100x/split repair:
+                if not df_pd.empty:
+                    df_last_pd = self._fix_zeroes(
+                        df_pd.iloc[-1:], interval, tz_exchange, prepost
+                    )
+                    if "Repaired?" not in df_pd.columns:
+                        df_pd["Repaired?"] = False
+                    df_pd = pd.concat([df_pd.drop(df_pd.index[-1]), df_last_pd])
 
-            # New:
-            df = self._repair_capital_gains(df)
+                df_pd = self._fix_unit_mixups(df_pd, interval, tz_exchange, prepost)
+                df_pd = self._fix_bad_stock_splits(df_pd, interval, tz_exchange)
+                # Must repair 100x and split errors before price reconstruction
+                df_pd = self._fix_zeroes(df_pd, interval, tz_exchange, prepost)
 
-            df = df.sort_index()
+                # New:
+                df_pd = self._repair_capital_gains(df_pd)
+
+                df_pd = df_pd.sort_index()
+
+                # Convert back to polars
+                df = _pd_to_pl(df_pd)
+                df = df.sort("Datetime")
 
         # Auto/back adjust
         try:
@@ -498,158 +741,284 @@ class PriceHistory:
                 err_msg = "back_adjust failed with %s" % e
             shared._DFS[self.ticker] = utils.empty_df()
             shared._ERRORS[self.ticker] = err_msg
-            logger.error('%s: %s' % (self.ticker, err_msg))
+            logger.error("%s: %s" % (self.ticker, err_msg))
 
         if rounding:
-            df = np.round(df, data["chart"]["result"][0]["meta"]["priceHint"])
-        df['Volume'] = df['Volume'].fillna(0).astype(np.int64)
-
-        if intraday:
-            df.index.name = "Datetime"
-        else:
-            df.index.name = "Date"
+            hint = data["chart"]["result"][0]["meta"]["priceHint"]
+            round_cols = [
+                c for c in df.columns if df[c].dtype in (pl.Float32, pl.Float64)
+            ]
+            df = df.with_columns([pl.col(c).round(hint) for c in round_cols])
+        df = df.with_columns(pl.col("Volume").fill_null(0).cast(pl.Int64))
 
         # missing rows cleanup
         if not actions:
-            df = df.drop(columns=["Dividends", "Stock Splits", "Capital Gains"], errors='ignore')
+            df = df.drop(
+                [
+                    c
+                    for c in ["Dividends", "Stock Splits", "Capital Gains"]
+                    if c in df.columns
+                ]
+            )
         if not keepna:
-            data_colnames = _PRICE_COLNAMES_ + ['Volume'] + ['Dividends', 'Stock Splits', 'Capital Gains']
+            data_colnames = (
+                _PRICE_COLNAMES_
+                + ["Volume"]
+                + ["Dividends", "Stock Splits", "Capital Gains"]
+            )
             data_colnames = [c for c in data_colnames if c in df.columns]
-            mask_nan_or_zero = (df[data_colnames].isna() | (df[data_colnames] == 0)).all(axis=1)
-            df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
+            mask_nan_or_zero = pl.all_horizontal(
+                [(pl.col(c).is_null() | (pl.col(c) == 0)) for c in data_colnames]
+            )
+            df = df.filter(~mask_nan_or_zero)
 
         if interval != interval_user:
-            df = self._resample(df, interval, interval_user, period_user)
+            df = self._resample_pl(df, interval, interval_user, period_user)
 
-        if df.empty:
-            msg = f'{self.ticker}: yfinance returning OHLC: EMPTY'
-        elif len(df) == 1:
-            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} only'
+        if df.is_empty():
+            msg = f"{self.ticker}: yfinance returning OHLC: EMPTY"
+        elif df.height == 1:
+            msg = f"{self.ticker}: yfinance returning OHLC: {df['Datetime'][0]} only"
         else:
-            msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
+            msg = f"{self.ticker}: yfinance returning OHLC: {df['Datetime'][0]} -> {df['Datetime'][-1]}"
         logger.debug(msg)
 
-        # Don't care that Pandas hid this. If they do it to improve performance, we do it.
-        df = df._consolidate()
-
-        if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
+        if (
+            self._reconstruct_start_interval is not None
+            and self._reconstruct_start_interval == interval
+        ):
             self._reconstruct_start_interval = None
         return df
 
-    def _get_history_cache(self, period="max", interval="1d", repair=False) -> pd.DataFrame:
+    def _get_history_cache(
+        self, period="max", interval="1d", repair=False
+    ) -> pl.DataFrame:
         cache_key = (interval, period, repair)
         if cache_key not in self._history_cache.keys():
-            df = self.history(period=period, interval=interval, repair=repair, prepost=True)
-            self._history_cache[cache_key] = {'prices': df, 'dividends': self._dividends, 
-                                                'splits': self._splits, 
-                                                'capital gains': self._capital_gains}
+            df = self.history(
+                period=period, interval=interval, repair=repair, prepost=True
+            )
+            self._history_cache[cache_key] = {
+                "prices": df,
+                "dividends": self._dividends,
+                "splits": self._splits,
+                "capital gains": self._capital_gains,
+            }
         return self._history_cache[cache_key]
 
     def get_history_metadata(self) -> dict:
-        if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
+        if (
+            self._history_metadata is None
+            or "tradingPeriods" not in self._history_metadata
+        ):
             # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            self._get_history_cache(period="5d", interval="1h")['prices']
+            self._get_history_cache(period="5d", interval="1h")["prices"]
 
         if self._history_metadata_formatted is False:
-            self._history_metadata = utils.format_history_metadata(self._history_metadata)
+            self._history_metadata = utils.format_history_metadata(
+                self._history_metadata
+            )
             self._history_metadata_formatted = True
 
         return self._history_metadata
 
-    def get_dividends(self, period="max", repair=False) -> pd.Series:
-        return self._get_history_cache(interval='1d', period=period, repair=repair)['dividends']
+    def get_dividends(self, period="max", repair=False) -> pl.DataFrame:
+        return self._get_history_cache(interval="1d", period=period, repair=repair)[
+            "dividends"
+        ]
 
-    def get_capital_gains(self, period="max", repair=False) -> pd.Series:
-        return self._get_history_cache(interval='1d', period=period, repair=repair)['capital gains']
+    def get_capital_gains(self, period="max", repair=False) -> pl.DataFrame:
+        return self._get_history_cache(interval="1d", period=period, repair=repair)[
+            "capital gains"
+        ]
 
-    def get_splits(self, period="max", repair=False) -> pd.Series:
-        return self._get_history_cache(interval='1d', period=period, repair=repair)['splits']
+    def get_splits(self, period="max", repair=False) -> pl.DataFrame:
+        return self._get_history_cache(interval="1d", period=period, repair=repair)[
+            "splits"
+        ]
 
-    def get_actions(self, period="max") -> pd.Series:
+    def get_actions(self, period="max") -> pl.DataFrame:
         data = self._get_history_cache(period=period)
 
-        df = data['prices']
-        divs = data['dividends']
+        df = data["prices"]
+        divs = data["dividends"]
 
-        if divs is not None and isinstance(divs, pd.DataFrame) and 'currency' in divs.columns:
+        if (
+            divs is not None
+            and isinstance(divs, pl.DataFrame)
+            and "currency" in divs.columns
+        ):
             # Add dividends currency column
-            df = utils.safe_merge_dfs(df.drop('Dividends', axis=1), divs, '1d')
-            df['currency'] = df['currency'].fillna('')
-            df['Dividends'] = df['Dividends'].fillna(0.0)
-            df = df.rename(columns={'currency': 'Dividends FX'})
+            df_no_divs = df.drop([c for c in ["Dividends"] if c in df.columns])
+            df = utils.safe_merge_dfs(df_no_divs, divs, "1d")
+            df = df.with_columns(pl.col("currency").fill_null(""))
+            df = df.with_columns(pl.col("Dividends").fill_null(0.0))
+            df = df.rename({"currency": "Dividends FX"})
 
-        cols = ['Dividends', 'Dividends FX', 'Stock Splits', 'Capital Gains']
-        actions = df[[c for c in cols if c in df.columns]]
+        cols = ["Dividends", "Dividends FX", "Stock Splits", "Capital Gains"]
+        actions = df.select([c for c in cols if c in df.columns])
 
-        cols_numeric = ['Dividends', 'Stock Splits', 'Capital Gains']
+        cols_numeric = ["Dividends", "Stock Splits", "Capital Gains"]
         cols_numeric = [c for c in cols_numeric if c in actions.columns]
-        actions = actions[(actions[cols_numeric]!=0).any(axis=1)]
+        mask = pl.any_horizontal([pl.col(c) != 0 for c in cols_numeric])
+        actions = actions.filter(mask)
         for c in cols_numeric:
-            if (actions[c] == 0.0).all():
-                actions = actions.drop(c, axis=1)
+            if c in actions.columns and (actions[c] == 0.0).all():
+                actions = actions.drop(c)
+
         return actions
 
-    def _resample(self, df, df_interval, target_interval, period=None) -> pd.DataFrame:
-        # resample
+    def _resample(self, df, df_interval, target_interval, period=None):
+        """Legacy pandas resample — kept for internal use by repair methods."""
         if df_interval == target_interval:
             return df
         offset = None
-        origin = 'epoch'  # default
-        
-        if target_interval == '1wk':
-            if period == 'ytd':
-                resample_period = '7D'  # was 'W'
+        origin = "epoch"  # default
+
+        if target_interval == "1wk":
+            if period == "ytd":
+                resample_period = "7D"  # was 'W'
                 year_start = pd.Timestamp(f"{_datetime.datetime.now().year}-01-01")
                 origin = year_start.tz_localize(df.index.tz)
             else:
-                resample_period = 'W-MON'
-        elif target_interval == '5d':
-            resample_period = '5D'
-            if period == 'ytd':
+                resample_period = "W-MON"
+        elif target_interval == "5d":
+            resample_period = "5D"
+            if period == "ytd":
                 year_start = pd.Timestamp(f"{_datetime.datetime.now().year}-01-01")
                 origin = year_start.tz_localize(df.index.tz)
-        elif target_interval == '1mo':
-            resample_period = 'MS'
-        elif target_interval == '3mo':
-            if period == 'ytd':
-                align_month = 'JAN'
+        elif target_interval == "1mo":
+            resample_period = "MS"
+        elif target_interval == "3mo":
+            if period == "ytd":
+                align_month = "JAN"
             else:
-                align_month = _datetime.datetime.now().strftime('%b').upper()
+                align_month = _datetime.datetime.now().strftime("%b").upper()
             resample_period = f"QS-{align_month}"
         else:
-            raise ValueError(f"Not implemented resampling to interval '{target_interval}'")
-        
+            raise ValueError(
+                f"Not implemented resampling to interval '{target_interval}'"
+            )
+
         resample_map = {
-            'Open': 'first', 'Low': 'min', 'High': 'max', 'Close': 'last',
-            'Volume': 'sum', 'Dividends': 'sum', 'Stock Splits': 'prod'
-            }
-        if 'Repaired?' in df.columns:
-            resample_map['Repaired?'] = 'any'
-        if 'Adj Close' in df.columns:
-            resample_map['Adj Close'] = resample_map['Close']
-        if 'Capital Gains' in df.columns:
-            resample_map['Capital Gains'] = 'sum'
-        df.loc[df['Stock Splits']==0.0, 'Stock Splits'] = 1.0
-        if origin != 'epoch':
-            df2 = df.resample(resample_period, label='left', closed='left', origin=origin).agg(resample_map)
+            "Open": "first",
+            "Low": "min",
+            "High": "max",
+            "Close": "last",
+            "Volume": "sum",
+            "Dividends": "sum",
+            "Stock Splits": "prod",
+        }
+        if "Repaired?" in df.columns:
+            resample_map["Repaired?"] = "any"
+        if "Adj Close" in df.columns:
+            resample_map["Adj Close"] = resample_map["Close"]
+        if "Capital Gains" in df.columns:
+            resample_map["Capital Gains"] = "sum"
+        df.loc[df["Stock Splits"] == 0.0, "Stock Splits"] = 1.0
+        if origin != "epoch":
+            df2 = df.resample(
+                resample_period, label="left", closed="left", origin=origin
+            ).agg(resample_map)
         else:
-            df2 = df.resample(resample_period, label='left', closed='left', offset=offset).agg(resample_map)
-        df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
+            df2 = df.resample(
+                resample_period, label="left", closed="left", offset=offset
+            ).agg(resample_map)
+        df2.loc[df2["Stock Splits"] == 1.0, "Stock Splits"] = 0.0
         return df2
+
+    def _resample_pl(
+        self, df: pl.DataFrame, df_interval: str, target_interval: str, period=None
+    ) -> pl.DataFrame:
+        """Polars-native resample for the history() return path."""
+        if df_interval == target_interval:
+            return df
+
+        date_col = "Date" if "Date" in df.columns else "Datetime"
+
+        if target_interval == "1wk":
+            every = "1w"
+            if period == "ytd":
+                tz = df[date_col].dtype.time_zone or "UTC"
+                start_by = "datapoint"
+            else:
+                start_by = "monday"
+        elif target_interval == "5d":
+            every = "5d"
+            start_by = "monday" if period == "ytd" else "window"
+        elif target_interval == "1mo":
+            every = "1mo"
+            start_by = "datapoint"
+        elif target_interval == "3mo":
+            every = "3mo"
+            start_by = "datapoint"
+        else:
+            raise ValueError(
+                f"Not implemented resampling to interval '{target_interval}'"
+            )
+
+        # Replace 0 splits with 1 (neutral for product)
+        if "Stock Splits" in df.columns:
+            df = df.with_columns(
+                pl.when(pl.col("Stock Splits") == 0.0)
+                .then(1.0)
+                .otherwise(pl.col("Stock Splits"))
+                .alias("Stock Splits")
+            )
+
+        agg_exprs = [
+            pl.col("Open").first(),
+            pl.col("High").max(),
+            pl.col("Low").min(),
+            pl.col("Close").last(),
+            pl.col("Volume").sum(),
+        ]
+        if "Dividends" in df.columns:
+            agg_exprs.append(pl.col("Dividends").sum())
+        if "Stock Splits" in df.columns:
+            agg_exprs.append(pl.col("Stock Splits").product())
+        if "Repaired?" in df.columns:
+            agg_exprs.append(pl.col("Repaired?").any())
+        if "Adj Close" in df.columns:
+            agg_exprs.append(pl.col("Adj Close").last())
+        if "Capital Gains" in df.columns:
+            agg_exprs.append(pl.col("Capital Gains").sum())
+
+        df2 = (
+            df.sort(date_col)
+            .group_by_dynamic(date_col, every=every, start_by=start_by)
+            .agg(agg_exprs)
+        )
+
+        # Replace 1 splits back to 0
+        if "Stock Splits" in df2.columns:
+            df2 = df2.with_columns(
+                pl.when(pl.col("Stock Splits") == 1.0)
+                .then(0.0)
+                .otherwise(pl.col("Stock Splits"))
+                .alias("Stock Splits")
+            )
+        return df2.sort(date_col)
 
     @utils.log_indent_decorator
     def _reconstruct_intervals_batch(self, df, interval, prepost, tag=-1):
         # Reconstruct values in df using finer-grained price data. Delimiter marks what to reconstruct
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-reconstruct', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {
+            "yf_cat": "price-reconstruct",
+            "yf_interval": interval,
+            "yf_symbol": self.ticker,
+        }
 
         if not isinstance(df, pd.DataFrame):
             raise ValueError("'df' must be a Pandas DataFrame not", type(df))
+        if pd is None:
+            raise RuntimeError("pandas is required for price repair methods")
         if interval == "1m":
             # Can't go smaller than 1m so can't reconstruct
             return df
 
-        if interval[1:] in ['d', 'wk', 'mo']:
+        if interval[1:] in ["d", "wk", "mo"]:
             # Interday data always includes pre & post
             prepost = True
             intraday = False
@@ -672,7 +1041,9 @@ class PriceHistory:
             sub_interval = nexts[interval]
             td_range = itds[interval]
         else:
-            logger.warning(f"Have not implemented price reconstruct for '{interval}' interval. Contact developers")
+            logger.warning(
+                f"Have not implemented price reconstruct for '{interval}' interval. Contact developers"
+            )
             if "Repaired?" not in df.columns:
                 df["Repaired?"] = False
             return df
@@ -680,8 +1051,15 @@ class PriceHistory:
         # Limit max reconstruction depth to 2:
         if self._reconstruct_start_interval is None:
             self._reconstruct_start_interval = interval
-        if interval != self._reconstruct_start_interval and interval != nexts[self._reconstruct_start_interval]:
-            msg = "Hit max depth of 2 ('{}'->'{}'->'{}')".format(self._reconstruct_start_interval, nexts[self._reconstruct_start_interval], interval)
+        if (
+            interval != self._reconstruct_start_interval
+            and interval != nexts[self._reconstruct_start_interval]
+        ):
+            msg = "Hit max depth of 2 ('{}'->'{}'->'{}')".format(
+                self._reconstruct_start_interval,
+                nexts[self._reconstruct_start_interval],
+                interval,
+            )
             logger.info(msg, extra=log_extras)
             return df
 
@@ -696,9 +1074,15 @@ class PriceHistory:
             min_dt = None
         else:
             m -= _datetime.timedelta(days=1)  # allow space for 1-day padding
-            min_dt = pd.Timestamp.now('UTC') - m
-            min_dt = min_dt.tz_convert(df.index.tz).ceil("D")
-        logger.debug(f"min_dt={min_dt} interval={interval} sub_interval={sub_interval}", extra=log_extras)
+            min_dt = pd.Timestamp.now("UTC") - m
+            if df.index.tz is not None:
+                min_dt = min_dt.tz_convert(df.index.tz).ceil("D")
+            else:
+                min_dt = min_dt.ceil("D")
+        logger.debug(
+            f"min_dt={min_dt} interval={interval} sub_interval={sub_interval}",
+            extra=log_extras,
+        )
         if min_dt is not None:
             f_recent = df.index >= min_dt
             f_repair_rows = f_repair_rows & f_recent
@@ -712,7 +1096,9 @@ class PriceHistory:
         dts_to_repair = df.index[f_repair_rows]
 
         if len(dts_to_repair) == 0:
-            logger.debug("Nothing needs repairing (dts_to_repair[] empty)", extra=log_extras)
+            logger.debug(
+                "Nothing needs repairing (dts_to_repair[] empty)", extra=log_extras
+            )
             if "Repaired?" not in df.columns:
                 df["Repaired?"] = False
             return df
@@ -757,15 +1143,16 @@ class PriceHistory:
             g0 = g[0]
             i0 = df_good.index.get_indexer([g0], method="nearest")[0]
             if i0 > 0:
-                if (min_dt is None or df_good.index[i0 - 1] >= min_dt) and \
-                        ((not intraday) or df_good.index[i0 - 1].date() == g0.date()):
+                if (min_dt is None or df_good.index[i0 - 1] >= min_dt) and (
+                    (not intraday) or df_good.index[i0 - 1].date() == g0.date()
+                ):
                     i0 -= 1
             gl = g[-1]
             il = df_good.index.get_indexer([gl], method="nearest")[0]
             if il < len(df_good) - 1:
                 if (not intraday) or df_good.index[il + 1].date() == gl.date():
                     il += 1
-            good_dts = df_good.index[i0:il + 1]
+            good_dts = df_good.index[i0 : il + 1]
             dts_groups[i] += good_dts.to_list()
             dts_groups[i].sort()
 
@@ -777,9 +1164,13 @@ class PriceHistory:
             start_dt = g[0]
             start_d = start_dt.date()
             reject = False
-            if sub_interval == "1h" and (_datetime.date.today() - start_d) > _datetime.timedelta(days=729):
+            if sub_interval == "1h" and (
+                _datetime.date.today() - start_d
+            ) > _datetime.timedelta(days=729):
                 reject = True
-            elif sub_interval in ["30m", "15m"] and (_datetime.date.today() - start_d) > _datetime.timedelta(days=59):
+            elif sub_interval in ["30m", "15m"] and (
+                _datetime.date.today() - start_d
+            ) > _datetime.timedelta(days=59):
                 reject = True
             if reject:
                 # Don't bother requesting more price data, Yahoo will reject
@@ -806,22 +1197,40 @@ class PriceHistory:
                 fetch_end = fetch_end.date() + td_1d
             if min_dt is not None:
                 fetch_start = max(min_dt.date(), fetch_start)
-            logger.debug(f"Fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}", extra=log_extras)
+            logger.debug(
+                f"Fetching {sub_interval} prepost={prepost} {fetch_start}->{fetch_end}",
+                extra=log_extras,
+            )
             # Temp disable errors printing
             logger = utils.get_yf_logger()
-            if hasattr(logger, 'level'):
+            if hasattr(logger, "level"):
                 # YF's custom indented logger doesn't expose level
                 log_level = logger.level
                 logger.setLevel(logging.CRITICAL)
-            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=True, prepost=prepost, repair=True, keepna=True)
-            if hasattr(logger, 'level'):
+            df_fine_pl = self.history(
+                start=fetch_start,
+                end=fetch_end,
+                interval=sub_interval,
+                auto_adjust=False,
+                actions=True,
+                prepost=prepost,
+                repair=True,
+                keepna=True,
+            )
+            if hasattr(logger, "level"):
                 logger.setLevel(log_level)
+            if df_fine_pl is None or df_fine_pl.is_empty():
+                df_fine = None
+            else:
+                df_fine = _pl_to_pd(df_fine_pl)
             if df_fine is None or df_fine.empty:
                 msg = f"Cannot reconstruct block starting {start_dt if intraday else start_d}, too old, Yahoo will reject request for finer-grain data"
                 logger.info(msg, extra=log_extras)
                 continue
             # Discard the buffer
-            df_fine = df_fine.loc[g[0]: g[-1] + itds[sub_interval] - _datetime.timedelta(milliseconds=1)].copy()
+            df_fine = df_fine.loc[
+                g[0] : g[-1] + itds[sub_interval] - _datetime.timedelta(milliseconds=1)
+            ].copy()
             if df_fine.empty:
                 msg = f"Cannot reconstruct {interval} block range {start_dt if intraday else start_d}, Yahoo not returning finer-grain data within range"
                 logger.info(msg, extra=log_extras)
@@ -831,7 +1240,11 @@ class PriceHistory:
             if interval == "1wk":
                 weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
                 week_end_day = weekdays[(df_block.index[0].weekday() + 7 - 1) % 7]
-                df_fine["Week Start"] = df_fine.index.tz_localize(None).to_period("W-" + week_end_day).start_time
+                df_fine["Week Start"] = (
+                    df_fine.index.tz_localize(None)
+                    .to_period("W-" + week_end_day)
+                    .start_time
+                )
                 grp_col = "Week Start"
             elif interval == "1d":
                 df_fine["Day Start"] = pd.to_datetime(df_fine.index.date)
@@ -841,7 +1254,7 @@ class PriceHistory:
                 df_fine["intervalID"] = df_fine["ctr"].cumsum()
                 df_fine = df_fine.drop("ctr", axis=1)
                 grp_col = "intervalID"
-            df_fine = df_fine[~df_fine[price_cols + ['Dividends']].isna().all(axis=1)]
+            df_fine = df_fine[~df_fine[price_cols + ["Dividends"]].isna().all(axis=1)]
 
             df_fine_grp = df_fine.groupby(grp_col)
             df_new = df_fine_grp.agg(
@@ -851,14 +1264,17 @@ class PriceHistory:
                 Low=("Low", "min"),
                 High=("High", "max"),
                 Dividends=("Dividends", "sum"),
-                Volume=("Volume", "sum")).rename(columns={"AdjClose": "Adj Close"})
+                Volume=("Volume", "sum"),
+            ).rename(columns={"AdjClose": "Adj Close"})
             if grp_col in ["Week Start", "Day Start"]:
                 df_new.index = df_new.index.tz_localize(df_fine.index.tz)
             else:
                 df_fine["diff"] = df_fine["intervalID"].diff()
-                new_index = np.append([df_fine.index[0]], df_fine.index[df_fine["intervalID"].diff() > 0])
+                new_index = np.append(
+                    [df_fine.index[0]], df_fine.index[df_fine["intervalID"].diff() > 0]
+                )
                 df_new.index = new_index
-            logger.debug('df_new:' + '\n' + str(df_new))
+            logger.debug("df_new:" + "\n" + str(df_new))
 
             # Calibrate!
             common_index = np.intersect1d(df_block.index, df_new.index)
@@ -869,12 +1285,12 @@ class PriceHistory:
                 continue
             # First, attempt to calibrate the 'Adj Close' column. OK if cannot.
             # Only necessary for 1d interval, because the 1h data is not div-adjusted.
-            if interval == '1d':
+            if interval == "1d":
                 df_new_calib = df_new[df_new.index.isin(common_index)]
                 df_block_calib = df_block[df_block.index.isin(common_index)]
-                f_tag = df_block_calib['Adj Close'] == tag
+                f_tag = df_block_calib["Adj Close"] == tag
                 if f_tag.any():
-                    div_adjusts = df_block_calib['Adj Close'] / df_block_calib['Close']
+                    div_adjusts = df_block_calib["Adj Close"] / df_block_calib["Close"]
                     # The loop below assumes each 1d repair is isolated, i.e. surrounded by
                     # good data. Which is case most of time.
                     # But in case are repairing a chunk of bad 1d data, back/forward-fill the
@@ -892,9 +1308,14 @@ class PriceHistory:
                                     div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
                                 else:
                                     # Take previous-day div-adjustment and reverse todays adjustment
-                                    div_adj = 1.0 - df_new_calib["Dividends"].iloc[idx] / df_new_calib['Close'].iloc[
-                                        idx - 1]
-                                    div_adjusts.iloc[idx] = div_adjusts.iloc[idx - 1] / div_adj
+                                    div_adj = (
+                                        1.0
+                                        - df_new_calib["Dividends"].iloc[idx]
+                                        / df_new_calib["Close"].iloc[idx - 1]
+                                    )
+                                    div_adjusts.iloc[idx] = (
+                                        div_adjusts.iloc[idx - 1] / div_adj
+                                    )
                             else:
                                 if idx > 0:
                                     # Easy, take div-adjustment from previous-day
@@ -903,27 +1324,50 @@ class PriceHistory:
                                     # Must take next-day div-adjustment
                                     div_adjusts.iloc[idx] = div_adjusts.iloc[idx + 1]
                                     if df_new_calib["Dividends"].iloc[idx + 1] != 0:
-                                        div_adjusts.iloc[idx] *= 1.0 - df_new_calib["Dividends"].iloc[idx + 1] / \
-                                                            df_new_calib['Close'].iloc[idx]
-                        f_close_bad = df_block_calib['Close'] == tag
-                        div_adjusts = div_adjusts.reindex(df_block.index, fill_value=np.nan).ffill().bfill()
-                        df_new['Adj Close'] = df_block['Close'] * div_adjusts
+                                        div_adjusts.iloc[idx] *= (
+                                            1.0
+                                            - df_new_calib["Dividends"].iloc[idx + 1]
+                                            / df_new_calib["Close"].iloc[idx]
+                                        )
+                        f_close_bad = df_block_calib["Close"] == tag
+                        div_adjusts = (
+                            div_adjusts.reindex(df_block.index, fill_value=np.nan)
+                            .ffill()
+                            .bfill()
+                        )
+                        df_new["Adj Close"] = df_block["Close"] * div_adjusts
                         if f_close_bad.any():
-                            f_close_bad_new = f_close_bad.reindex(df_new.index, fill_value=False)
-                            div_adjusts_new = div_adjusts.reindex(df_new.index, fill_value=np.nan).ffill().bfill()
+                            f_close_bad_new = f_close_bad.reindex(
+                                df_new.index, fill_value=False
+                            )
+                            div_adjusts_new = (
+                                div_adjusts.reindex(df_new.index, fill_value=np.nan)
+                                .ffill()
+                                .bfill()
+                            )
                             div_adjusts_new_np = f_close_bad_new.to_numpy()
-                            df_new.loc[div_adjusts_new_np, 'Adj Close'] = df_new['Close'][div_adjusts_new_np] * div_adjusts_new[div_adjusts_new_np]
+                            df_new.loc[div_adjusts_new_np, "Adj Close"] = (
+                                df_new["Close"][div_adjusts_new_np]
+                                * div_adjusts_new[div_adjusts_new_np]
+                            )
 
             # Check whether 'df_fine' has different split-adjustment.
             # If different, then adjust to match 'df'
-            calib_cols = ['Open', 'Close']
-            df_new_calib = df_new[df_new.index.isin(common_index)][calib_cols].to_numpy()
-            df_block_calib = df_block[df_block.index.isin(common_index)][calib_cols].to_numpy()
-            calib_filter = (df_block_calib != tag)
+            calib_cols = ["Open", "Close"]
+            df_new_calib = df_new[df_new.index.isin(common_index)][
+                calib_cols
+            ].to_numpy()
+            df_block_calib = df_block[df_block.index.isin(common_index)][
+                calib_cols
+            ].to_numpy()
+            calib_filter = df_block_calib != tag
             calib_filter = calib_filter & (~np.isnan(df_new_calib))
             if not calib_filter.any():
                 # Can't calibrate so don't attempt repair
-                logger.info(f"Can't calibrate block starting {start_d} so aborting repair", extra=log_extras)
+                logger.info(
+                    f"Can't calibrate block starting {start_d} so aborting repair",
+                    extra=log_extras,
+                )
                 continue
             # Avoid divide-by-zero warnings:
             for j in range(len(calib_cols)):
@@ -950,14 +1394,16 @@ class PriceHistory:
                 ratio = 1.0
             else:
                 ratio = np.average(ratios, weights=weights)
-            if abs(ratio/0.0001 -1) < 0.01:
+            if abs(ratio / 0.0001 - 1) < 0.01:
                 # ratio almost-equal 0.0001, so looks like Yahoo messed up currency unit.
                 # E.g. £ with pence. Can correct it.
                 df_block = df_block.copy()
                 for c in _PRICE_COLNAMES_:
-                    df_v2.loc[df_v2[c]!=tag, c] *= 100
+                    df_v2.loc[df_v2[c] != tag, c] *= 100
                 ratio *= 100
-            logger.debug(f"Price calibration ratio (raw) = {ratio:6f}", extra=log_extras)
+            logger.debug(
+                f"Price calibration ratio (raw) = {ratio:6f}", extra=log_extras
+            )
             ratio_rcp = round(1.0 / ratio, 1)
             ratio = round(ratio, 1)
             if ratio == 1 and ratio_rcp == 1:
@@ -976,7 +1422,9 @@ class PriceHistory:
                     df_new["Volume"] *= ratio_rcp
 
             # Repair!
-            bad_dts = df_block.index[(df_block[price_cols + ["Volume"]] == tag).to_numpy().any(axis=1)]
+            bad_dts = df_block.index[
+                (df_block[price_cols + ["Volume"]] == tag).to_numpy().any(axis=1)
+            ]
 
             no_fine_data_dts = []
             for idx in bad_dts:
@@ -985,7 +1433,11 @@ class PriceHistory:
                     # so probably no trading happened.
                     no_fine_data_dts.append(idx)
             if len(no_fine_data_dts) > 0:
-                logger.debug("Yahoo didn't return finer-grain data for these intervals: " + str(no_fine_data_dts), extra=log_extras)
+                logger.debug(
+                    "Yahoo didn't return finer-grain data for these intervals: "
+                    + str(no_fine_data_dts),
+                    extra=log_extras,
+                )
             for idx in bad_dts:
                 if idx not in df_new.index:
                     # Yahoo didn't return finer-grain data for this interval,
@@ -1007,7 +1459,9 @@ class PriceHistory:
                     if interval == "1wk" and idx != df_fine.index[0]:
                         # Exchange closed Monday. In this case, Yahoo sets Open to last week close
                         df_v2.loc[idx, "Open"] = df_last_week["Close"]
-                        df_v2.loc[idx, "Low"] = min(df_v2.loc[idx, "Open"], df_v2.loc[idx, "Low"])
+                        df_v2.loc[idx, "Low"] = min(
+                            df_v2.loc[idx, "Open"], df_v2.loc[idx, "Low"]
+                        )
                     else:
                         df_v2.loc[idx, "Open"] = df_new_row["Open"]
                 if "Close" in bad_fields:
@@ -1017,7 +1471,9 @@ class PriceHistory:
                 elif "Adj Close" in bad_fields:
                     df_v2.loc[idx, "Adj Close"] = df_new_row["Adj Close"]
                 if "Volume" in bad_fields:
-                    df_v2.loc[idx, "Volume"] = df_new_row["Volume"].round().astype('int')
+                    df_v2.loc[idx, "Volume"] = (
+                        df_new_row["Volume"].round().astype("int")
+                    )
                 df_v2.loc[idx, "Repaired?"] = True
                 n_fixed += 1
 
@@ -1026,33 +1482,37 @@ class PriceHistory:
         return df_v2
 
     def _standardise_currency(self, df, currency):
+        """Standardise currency. Accepts and returns pandas DataFrame."""
         if currency not in ["GBp", "ZAc", "ILA"]:
             return df, currency
         currency2 = currency
-        if currency == 'GBp':
+        if currency == "GBp":
             # UK £/pence
-            currency2 = 'GBP'
+            currency2 = "GBP"
             m = 0.01
-        elif currency == 'ZAc':
+        elif currency == "ZAc":
             # South Africa Rand/cents
-            currency2 = 'ZAR'
+            currency2 = "ZAR"
             m = 0.01
-        elif currency == 'ILA':
+        elif currency == "ILA":
             # Israel Shekels/Agora
-            currency2 = 'ILS'
+            currency2 = "ILS"
             m = 0.01
 
         # Use latest row with actual volume, because volume=0 rows can be 0.01x the other rows.
         # _fix_unit_switch() will ensure all rows are on same scale.
-        f_volume = df['Volume']>0
+        f_volume = df["Volume"] > 0
         if not f_volume.any():
             return df, currency
         last_row = df.iloc[np.where(f_volume)[0][-1]]
         prices_in_subunits = True  # usually is true
-        if last_row.name > (pd.Timestamp.now('UTC') - _datetime.timedelta(days=30)):
+        last_row_ts = last_row.name
+        if not hasattr(last_row_ts, "tzinfo"):
+            last_row_ts = pd.Timestamp(last_row_ts)
+        if last_row_ts > (pd.Timestamp.now("UTC") - _datetime.timedelta(days=30)):
             try:
-                ratio = self._history_metadata['regularMarketPrice'] / last_row['Close']
-                if abs((ratio*m)-1) < 0.1:
+                ratio = self._history_metadata["regularMarketPrice"] / last_row["Close"]
+                if abs((ratio * m) - 1) < 0.1:
                     # within 10% of 100x
                     prices_in_subunits = False
             except Exception:
@@ -1065,7 +1525,7 @@ class PriceHistory:
                 df[c] *= m
         self._history_metadata["currency"] = currency2
 
-        f_div = df['Dividends']!=0.0
+        f_div = df["Dividends"] != 0.0
         if f_div.any():
             # But sometimes the dividend was in pence.
             # Heuristic is: if dividend yield is ridiculous high vs converted prices, then
@@ -1073,56 +1533,79 @@ class PriceHistory:
             # Threshold for "ridiculous" based on largest yield I've seen anywhere - 63.4%
             # If this simple heuristic generates a false positive, then _fix_bad_div_adjust()
             # will detect and repair.
-            divs = df[['Close','Dividends']].copy()
-            divs['Close'] = divs['Close'].ffill().shift(1, fill_value=divs['Close'].iloc[0])
+            divs = df[["Close", "Dividends"]].copy()
+            divs["Close"] = (
+                divs["Close"].ffill().shift(1, fill_value=divs["Close"].iloc[0])
+            )
             divs = divs[f_div]
-            div_pcts = (divs['Dividends'] / divs['Close']).to_numpy()
+            div_pcts = (divs["Dividends"] / divs["Close"]).to_numpy()
             if len(div_pcts) > 0 and np.average(div_pcts) > 1:
-                df['Dividends'] *= m
+                df["Dividends"] *= m
 
         return df, currency2
 
     def _dividends_convert_fx(self, dividends, fx, repair=False):
-        bad_div_currencies = [c for c in dividends['currency'].unique() if c != fx]
-        major_currencies = ['USD', 'JPY', 'EUR', 'CNY', 'GBP', 'CAD']
+        """Convert dividend currencies. Accepts and returns polars DataFrame."""
+        # Convert to pandas for internal processing
+        if isinstance(dividends, pl.DataFrame):
+            date_col = "Datetime" if "Datetime" in dividends.columns else "Date"
+            dividends_pd = dividends.to_pandas()
+            was_polars = True
+        else:
+            dividends_pd = dividends
+            was_polars = False
+        bad_div_currencies = [c for c in dividends_pd["currency"].unique() if c != fx]
+        major_currencies = ["USD", "JPY", "EUR", "CNY", "GBP", "CAD"]
+        dividends = dividends_pd
         for c in bad_div_currencies:
             fx2_tkr = None
-            if c == 'USD':
+            if c == "USD":
                 # Simple convert from USD to target FX
-                fx_tkr = f'{fx}=X'
+                fx_tkr = f"{fx}=X"
                 reverse = False
-            elif fx == 'USD':
+            elif fx == "USD":
                 # Use same USD FX but reversed
-                fx_tkr = f'{fx}=X'
+                fx_tkr = f"{fx}=X"
                 reverse = True
             elif c in major_currencies and fx in major_currencies:
                 # Simple convert
-                fx_tkr = f'{c}{fx}=X'
+                fx_tkr = f"{c}{fx}=X"
                 reverse = False
             else:
                 # No guarantee that Yahoo has direct FX conversion, so
                 # convert via USD
                 # - step 1: -> USD
-                fx_tkr = f'{c}=X'
+                fx_tkr = f"{c}=X"
                 reverse = True
                 # - step 2: USD -> FX
-                fx2_tkr = f'{fx}=X'
+                fx2_tkr = f"{fx}=X"
 
             fx_dat = PriceHistory(self._data, fx_tkr, self.session)
-            fx_rate = fx_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
+            fx_hist_pl = fx_dat.history(period="1mo", repair=repair)
+            fx_hist_pd = _pl_to_pd(fx_hist_pl)
+            fx_rate = fx_hist_pd["Close"].iloc[-1]
             if reverse:
-                fx_rate = 1/fx_rate
-            dividends.loc[dividends['currency']==c, 'Dividends'] *= fx_rate
+                fx_rate = 1 / fx_rate
+            dividends.loc[dividends["currency"] == c, "Dividends"] *= fx_rate
             if fx2_tkr is not None:
                 fx2_dat = PriceHistory(self._data, fx2_tkr, self.session)
-                fx2_rate = fx2_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
-                dividends.loc[dividends['currency']==c, 'Dividends'] *= fx2_rate
+                fx2_hist_pl = fx2_dat.history(period="1mo", repair=repair)
+                fx2_hist_pd = _pl_to_pd(fx2_hist_pl)
+                fx2_rate = fx2_hist_pd["Close"].iloc[-1]
+                dividends.loc[dividends["currency"] == c, "Dividends"] *= fx2_rate
 
-        dividends['currency'] = fx
+        dividends["currency"] = fx
+        if was_polars:
+            return pl.from_pandas(
+                dividends.reset_index().rename(
+                    columns={dividends.index.name or "index": date_col}
+                )
+            )
         return dividends
 
     @utils.log_indent_decorator
     def _fix_unit_mixups(self, df, interval, tz_exchange, prepost):
+        """Fix unit mixups. Accepts and returns pandas DataFrame."""
         if df.empty:
             return df
         df2 = self._fix_unit_switch(df, interval, tz_exchange)
@@ -1131,6 +1614,7 @@ class PriceHistory:
 
     @utils.log_indent_decorator
     def _fix_unit_random_mixups(self, df, interval, tz_exchange, prepost):
+        """Fix random unit mixups. Accepts and returns pandas DataFrame."""
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
         # 2 ways this manifests:
@@ -1143,7 +1627,11 @@ class PriceHistory:
 
         # Easy to detect and fix, just look for outliers = ~100x local median
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-repair-100x', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {
+            "yf_cat": "price-repair-100x",
+            "yf_interval": interval,
+            "yf_symbol": self.ticker,
+        }
 
         if df.shape[0] == 0:
             if "Repaired?" not in df.columns:
@@ -1151,7 +1639,9 @@ class PriceHistory:
             return df
         if df.shape[0] == 1:
             # Need multiple rows to confidently identify outliers
-            logger.debug("Cannot check single-row table for 100x price errors", extra=log_extras)
+            logger.debug(
+                "Cannot check single-row table for 100x price errors", extra=log_extras
+            )
             if "Repaired?" not in df.columns:
                 df["Repaired?"] = False
             return df
@@ -1167,18 +1657,29 @@ class PriceHistory:
         # adding it to dependencies.
         from scipy import ndimage as _ndimage
 
-        data_cols = ["High", "Open", "Low", "Close", "Adj Close"]  # Order important, separate High from Low
+        data_cols = [
+            "High",
+            "Open",
+            "Low",
+            "Close",
+            "Adj Close",
+        ]  # Order important, separate High from Low
         data_cols = [c for c in data_cols if c in df2.columns]
         f_zeroes = (df2[data_cols] == 0).any(axis=1).to_numpy()
         if f_zeroes.any():
             df2_zeroes = df2[f_zeroes]
             df2 = df2[~f_zeroes]
-            df_orig = df[~f_zeroes]  # all row slicing must be applied to both df and df2
+            df_orig = df[
+                ~f_zeroes
+            ]  # all row slicing must be applied to both df and df2
         else:
             df2_zeroes = None
             df_orig = df
         if df2.shape[0] <= 1:
-            logger.info("Insufficient good data for detecting 100x price errors", extra=log_extras)
+            logger.info(
+                "Insufficient good data for detecting 100x price errors",
+                extra=log_extras,
+            )
             if "Repaired?" not in df.columns:
                 df["Repaired?"] = False
             return df
@@ -1187,7 +1688,7 @@ class PriceHistory:
         ratio = df2_data / median
         ratio_rounded = (ratio / 20).round() * 20  # round ratio to nearest 20
         f = ratio_rounded == 100
-        ratio_rcp = 1.0/ratio
+        ratio_rcp = 1.0 / ratio
         ratio_rcp_rounded = (ratio_rcp / 20).round() * 20  # round ratio to nearest 20
         f_rcp = (ratio_rounded == 100) | (ratio_rcp_rounded == 100)
         f_either = f | f_rcp
@@ -1219,7 +1720,7 @@ class PriceHistory:
                     continue
                 idx = df2.index[i]
 
-                for c in ['Open', 'Close']:
+                for c in ["Open", "Close"]:
                     j = data_cols.index(c)
                     if fi[j]:
                         df2.loc[idx, c] = df.loc[idx, c] * 0.01
@@ -1241,7 +1742,7 @@ class PriceHistory:
                     continue
                 idx = df2.index[i]
 
-                for c in ['Open', 'Close']:
+                for c in ["Open", "Close"]:
                     j = data_cols.index(c)
                     if fi[j]:
                         df2.loc[idx, c] = df.loc[idx, c] * 100.0
@@ -1280,12 +1781,14 @@ class PriceHistory:
             if "Repaired?" not in df2_zeroes.columns:
                 df2_zeroes["Repaired?"] = False
             df2 = pd.concat([df2, df2_zeroes]).sort_index()
-            df2.index = pd.to_datetime(df2.index)
+            if not isinstance(df2.index, pd.DatetimeIndex):
+                df2.index = pd.to_datetime(df2.index)
 
         return df2
 
     @utils.log_indent_decorator
     def _fix_unit_switch(self, df, interval, tz_exchange):
+        """Fix unit switch. Accepts and returns pandas DataFrame."""
         # Sometimes Yahoo returns few prices in cents/pence instead of $/£
         # I.e. 100x bigger
         # 2 ways this manifests:
@@ -1294,15 +1797,18 @@ class PriceHistory:
         # This function fixes the second.
         # Eventually Yahoo fixes but could take them 2 weeks.
 
-        if self._history_metadata['currency'] == 'KWF':
+        if self._history_metadata["currency"] == "KWF":
             # Kuwaiti Dinar divided into 1000 not 100
             n = 1000
         else:
             n = 100
-        return self._fix_prices_sudden_change(df, interval, tz_exchange, n, correct_dividend=True)
+        return self._fix_prices_sudden_change(
+            df, interval, tz_exchange, n, correct_dividend=True
+        )
 
     @utils.log_indent_decorator
     def _fix_zeroes(self, df, interval, tz_exchange, prepost):
+        """Fix zero/NaN prices. Accepts and returns pandas DataFrame."""
         # Sometimes Yahoo returns prices=0 or NaN when trades occurred.
         # But most times when prices=0 or NaN returned is because no trades.
         # Impossible to distinguish, so only attempt repair if few or rare.
@@ -1311,9 +1817,13 @@ class PriceHistory:
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-repair-zeroes', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {
+            "yf_cat": "price-repair-zeroes",
+            "yf_interval": interval,
+            "yf_symbol": self.ticker,
+        }
 
-        intraday = interval[-1] in ("m", 'h')
+        intraday = interval[-1] in ("m", "h")
 
         df = df.sort_index()  # important!
         df2 = df.copy()
@@ -1328,7 +1838,9 @@ class PriceHistory:
         df2_reserve = None
         if intraday:
             # Ignore days with >50% intervals containing NaNs
-            grp = pd.Series(f_prices_bad.any(axis=1), name="nan").groupby(f_prices_bad.index.date)
+            grp = pd.Series(f_prices_bad.any(axis=1), name="nan").groupby(
+                f_prices_bad.index.date
+            )
             nan_pct = grp.sum() / grp.count()
             dts = nan_pct.index[nan_pct > 0.5]
             f_zero_or_nan_ignore = np.isin(f_prices_bad.index.date, dts)
@@ -1336,8 +1848,8 @@ class PriceHistory:
             df2 = df2[~f_zero_or_nan_ignore]
             if df2.empty:
                 # No good data
-                if 'Repaired?' not in df.columns:
-                    df['Repaired?'] = False
+                if "Repaired?" not in df.columns:
+                    df["Repaired?"] = False
                 return df
             df2 = df2.copy()
             f_prices_bad = (df2[price_cols] == 0.0) | df2[price_cols].isna()
@@ -1347,7 +1859,9 @@ class PriceHistory:
             # FX, volume always 0
             f_vol_bad = None
         else:
-            f_high_low_good = (~df2["High"].isna().to_numpy()) & (~df2["Low"].isna().to_numpy())
+            f_high_low_good = (~df2["High"].isna().to_numpy()) & (
+                ~df2["Low"].isna().to_numpy()
+            )
             f_vol_zero = (df2["Volume"] == 0).to_numpy()
             f_vol_bad = f_vol_zero & f_high_low_good & f_change
             # ^ intra-interval price changed without volume, bad
@@ -1355,16 +1869,16 @@ class PriceHistory:
             if not intraday:
                 # Interday data: if close changes between intervals with volume=0 then volume is wrong.
                 # Possible can repair with intraday, but usually Yahoo does not have the volume.
-                close_diff = df2['Close'].diff()
+                close_diff = df2["Close"].diff()
                 close_diff.iloc[0] = 0
-                close_chg_pct_abs = np.abs(close_diff / df2['Close'])
+                close_chg_pct_abs = np.abs(close_diff / df2["Close"])
                 f_bad_price_chg = (close_chg_pct_abs > 0.05).to_numpy() & f_vol_zero
                 f_vol_bad = f_vol_bad | f_bad_price_chg
 
         # If stock split occurred, then trading must have happened.
         # I should probably rename the function, because prices aren't zero ...
-        if 'Stock Splits' in df2.columns:
-            f_split = (df2['Stock Splits'] != 0.0).to_numpy()
+        if "Stock Splits" in df2.columns:
+            f_split = (df2["Stock Splits"] != 0.0).to_numpy()
             if f_split.any():
                 f_change_expected_but_missing = f_split & ~f_change
                 if f_change_expected_but_missing.any():
@@ -1382,7 +1896,10 @@ class PriceHistory:
             return df
         if f_prices_bad.sum() == len(price_cols) * len(df2):
             # Need some good data to calibrate
-            logger.debug("No good data for calibration so cannot fix price=0 bad data", extra=log_extras)
+            logger.debug(
+                "No good data for calibration so cannot fix price=0 bad data",
+                extra=log_extras,
+            )
             if "Repaired?" not in df.columns:
                 df["Repaired?"] = False
             return df
@@ -1397,7 +1914,9 @@ class PriceHistory:
         if f_vol_bad is not None:
             df2.loc[f_vol_bad, "Volume"] = tag
         # If volume=0 or NaN for bad prices, then tag volume for repair
-        f_vol_zero_or_nan = (df2["Volume"].to_numpy() == 0) | (df2["Volume"].isna().to_numpy())
+        f_vol_zero_or_nan = (df2["Volume"].to_numpy() == 0) | (
+            df2["Volume"].isna().to_numpy()
+        )
         df2.loc[f_prices_bad.any(axis=1) & f_vol_zero_or_nan, "Volume"] = tag
         # If volume=0 or NaN but price moved in interval, then tag volume for repair
         df2.loc[f_change & f_vol_zero_or_nan, "Volume"] = tag
@@ -1413,7 +1932,9 @@ class PriceHistory:
         if n_fixed > 0:
             msg = f"{self.ticker}: fixed {n_fixed}/{n_before} value=0 errors in {interval} price data"
             if n_fixed < 4:
-                dts_repaired = sorted(list(set(dts_tagged).difference(dts_not_repaired)))
+                dts_repaired = sorted(
+                    list(set(dts_tagged).difference(dts_not_repaired))
+                )
                 msg += f": {dts_repaired}"
             logger.debug(msg, extra=log_extras)
 
@@ -1434,46 +1955,47 @@ class PriceHistory:
 
     @utils.log_indent_decorator
     def _repair_capital_gains(self, df):
+        """Repair capital gains double-counting. Accepts and returns pandas DataFrame."""
         # Yahoo has started double-counting capital gains in Adj Close,
         # by pre-adding it to dividends column.
 
-        if 'Capital Gains' not in df.columns:
+        if "Capital Gains" not in df.columns:
             return df
-        if (df['Capital Gains'] == 0).all():
+        if (df["Capital Gains"] == 0).all():
             return df
 
         debug = False
         # debug = True
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'repair-capital-gains', 'yf_symbol': self.ticker}
+        log_extras = {"yf_cat": "repair-capital-gains", "yf_symbol": self.ticker}
 
         df = df.copy()
         df = df.sort_index()
 
-        # Consider price drop to decide if Yahoo double-counted - 
+        # Consider price drop to decide if Yahoo double-counted -
         #   drop should = true dividend + capital gains
         # But need to account for normal price volatility:
-        df['Price_Change%'] = df['Close'].pct_change(fill_method=None).abs()
-        no_distributions = (df['Dividends'] == 0) & (df['Capital Gains'] == 0)
-        price_drop_pct_mean = df.loc[no_distributions, 'Price_Change%'].mean()
-        df = df.drop('Price_Change%', axis=1)
+        df["Price_Change%"] = df["Close"].pct_change(fill_method=None).abs()
+        no_distributions = (df["Dividends"] == 0) & (df["Capital Gains"] == 0)
+        price_drop_pct_mean = df.loc[no_distributions, "Price_Change%"].mean()
+        df = df.drop("Price_Change%", axis=1)
 
         # Add columns if not present
-        if 'Repaired?' not in df.columns:
-            df['Repaired?'] = False
-        df['Adj'] = df['Adj Close'] / df['Close']
+        if "Repaired?" not in df.columns:
+            df["Repaired?"] = False
+        df["Adj"] = df["Adj Close"] / df["Close"]
 
         if debug:
-            df['ScaleFactor'] = np.nan
-            df['correction'] = np.nan
-            df['AdjYahoo'] = (df['Adj Close']/df['Close']).round(4)
+            df["ScaleFactor"] = np.nan
+            df["correction"] = np.nan
+            df["AdjYahoo"] = (df["Adj Close"] / df["Close"]).round(4)
 
             print(f"# price_drop_pct_mean = {price_drop_pct_mean:.4f}")
 
-        dts = df[df['Capital Gains'] > 0].index
-        c = df['Close'].to_numpy()
-        ac = df['Adj Close'].to_numpy()
+        dts = df[df["Capital Gains"] > 0].index
+        c = df["Close"].to_numpy()
+        ac = df["Adj Close"].to_numpy()
         dcs = {}
         for dt in dts:
             idx = df.index.get_loc(dt)
@@ -1481,17 +2003,17 @@ class PriceHistory:
             if idx > 0:
                 # Need a row before for price drop
 
-                dividend = df['Dividends'].iloc[idx]
-                capital_gains = df['Capital Gains'].iloc[idx]
+                dividend = df["Dividends"].iloc[idx]
+                capital_gains = df["Capital Gains"].iloc[idx]
                 if dividend < capital_gains:
                     # Not possible for 'dividend' to be including capital gains
                     continue
 
-                div_pct = dividend / c[idx-1]
-                cg_pct = capital_gains / c[idx-1]
+                div_pct = dividend / c[idx - 1]
+                cg_pct = capital_gains / c[idx - 1]
 
                 # Check whether adjusted price drop is closer to dividend vs dividend+capital_gains
-                price_drop_pct = (c[idx-1] - c[idx]) / c[idx-1]
+                price_drop_pct = (c[idx - 1] - c[idx]) / c[idx - 1]
                 price_drop_pct_excl_vol = price_drop_pct - price_drop_pct_mean
                 diff_div = abs(price_drop_pct_excl_vol - div_pct)
                 diff_total = abs(price_drop_pct_excl_vol - (div_pct + cg_pct))
@@ -1500,54 +2022,59 @@ class PriceHistory:
                 dcs[idx] = cg_is_double_counted
 
                 if debug:
-                    print(f"# {dt.date()}: div = {div_pct*100:.1f}%, cg = {cg_pct*100:.1f}%")
-                    print(f"- price_drop_pct = {price_drop_pct*100:.1f}%")
-                    print(f"- price_drop_pct_excl_vol = {price_drop_pct_excl_vol*100:.1f}%")
+                    print(
+                        f"# {dt.date()}: div = {div_pct * 100:.1f}%, cg = {cg_pct * 100:.1f}%"
+                    )
+                    print(f"- price_drop_pct = {price_drop_pct * 100:.1f}%")
+                    print(
+                        f"- price_drop_pct_excl_vol = {price_drop_pct_excl_vol * 100:.1f}%"
+                    )
                     print(f"- diff_div = {diff_div:.4f}")
                     print(f"- diff_total = {diff_total:.4f}")
                     print(f"- cg_is_double_counted = {cg_is_double_counted}")
 
         pct_double_counted = sum(dcs.values()) / len(dcs)
         if debug:
-            print(f"- pct_double_counted = {pct_double_counted*100:.1f}%")
+            print(f"- pct_double_counted = {pct_double_counted * 100:.1f}%")
 
         if pct_double_counted >= 0.666:
             for idx in dcs.keys():
                 dt = df.index[idx]
 
-                dividend = df['Dividends'].iloc[idx]
-                capital_gains = df['Capital Gains'].iloc[idx]
+                dividend = df["Dividends"].iloc[idx]
+                capital_gains = df["Capital Gains"].iloc[idx]
 
-                # Instead of calculating new adjustment from scratch, 
+                # Instead of calculating new adjustment from scratch,
                 # reverse the double-count from existing adjustment.
                 # In case don't have all events after last date.
                 dividend_true = dividend - capital_gains
 
-                df.loc[dt, 'Dividends'] = dividend_true
+                df.loc[dt, "Dividends"] = dividend_true
 
                 # Correct adjustment for dates before and including this distribution date
-                adj_before = (ac[idx-1]/c[idx-1]) / (ac[idx]/c[idx])
-                adj_correct = 1.0 - (dividend_true + capital_gains) / c[idx-1]
+                adj_before = (ac[idx - 1] / c[idx - 1]) / (ac[idx] / c[idx])
+                adj_correct = 1.0 - (dividend_true + capital_gains) / c[idx - 1]
                 correction = adj_correct / adj_before
-                df.loc[:dt-_datetime.timedelta(1), 'Adj'] *= correction
-                df.loc[:dt, 'Repaired?'] = True
+                df.loc[: dt - _datetime.timedelta(1), "Adj"] *= correction
+                df.loc[:dt, "Repaired?"] = True
                 msg = f"Repaired capital-gains double-count at {dt.date()}. Adj correction = {correction:.4f}"
                 logger.info(msg, extra=log_extras)
 
                 if debug:
-                    df.loc[dt, 'correction'] = correction
+                    df.loc[dt, "correction"] = correction
 
-        df['Adj Close'] = df['Close'] * df['Adj']
+        df["Adj Close"] = df["Close"] * df["Adj"]
 
         if debug:
-            df['Adj'] = df['Adj'].round(4)
+            df["Adj"] = df["Adj"].round(4)
         else:
-            df = df.drop('Adj', axis=1)
+            df = df.drop("Adj", axis=1)
 
         return df
 
     @utils.log_indent_decorator
     def _fix_bad_div_adjust(self, df, interval, currency):
+        """Fix bad dividend adjustments. Accepts and returns pandas DataFrame."""
         # Look for dividend issues:
         # - dividend ~100x the Close change (a currency unit mixup)
         # - dividend missing from Adj Close
@@ -1558,24 +2085,28 @@ class PriceHistory:
 
         if df is None or df.empty:
             return df
-        if interval in ['1wk', '1mo', '3mo', '1y']:
+        if interval in ["1wk", "1mo", "3mo", "1y"]:
             return df
 
-        if 'Capital Gains' in df.columns and (df['Capital Gains']>0).any():
-            # So there are capital gains. This function only considers dividends. 
+        if "Capital Gains" in df.columns and (df["Capital Gains"] > 0).any():
+            # So there are capital gains. This function only considers dividends.
             # I don't want to deal with capital gains being wrong as well!
             # But if you find capital gains that need repair e.g. 100x error, then report to our Github.
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'div-adjust-repair-bad', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {
+            "yf_cat": "div-adjust-repair-bad",
+            "yf_interval": interval,
+            "yf_symbol": self.ticker,
+        }
 
         f_div = (df["Dividends"] != 0.0).to_numpy()
         if not f_div.any():
-            logger.debug('No dividends to check', extra=log_extras)
+            logger.debug("No dividends to check", extra=log_extras)
             return df
 
-        if self._history_metadata['currency'] == 'KWF':
+        if self._history_metadata["currency"] == "KWF":
             # Kuwaiti Dinar divided into 1000 not 100
             currency_divide = 1000
         else:
@@ -1585,45 +2116,52 @@ class PriceHistory:
 
         df = df.sort_index()
         df2 = df.copy()
-        if 'Repaired?' not in df2.columns:
-            df2['Repaired?'] = False
+        if "Repaired?" not in df2.columns:
+            df2["Repaired?"] = False
         df_modified = False
 
         # Split df2 into: nan data, and non-nan data
-        f_nan = df2['Close'].isna().to_numpy()
+        f_nan = df2["Close"].isna().to_numpy()
         df2_nan = df2[f_nan].copy()
         df2 = df2[~f_nan].copy()
 
         f_div = (df2["Dividends"] != 0.0).to_numpy()
         if not f_div.any():
-            logger.debug('No dividends to check', extra=log_extras)
+            logger.debug("No dividends to check", extra=log_extras)
             return df
         div_indices = np.where(f_div)[0]
 
         # Very rarely, the Close (not Adj Close) is already adjusted!
-        # Clue is it's often lower than Low. 
+        # Clue is it's often lower than Low.
         # E.g. ticker MPCC.OL - Oslo exchange data contradicts Yahoo.
         # But sometimes the original data is bad, e.g. LSE sometimes close < low
         # Can attempt to fix:
         fixed_dates = []
-        for i in range(len(div_indices)-1, -1, -1):
+        for i in range(len(div_indices) - 1, -1, -1):
             div_idx = div_indices[i]
             if div_idx == 0:
                 continue
-            prices_before = df2.iloc[div_idx-1]
-            diff = prices_before['Low'] - prices_before['Close']
-            div = df2['Dividends'].iloc[div_idx]
-            if diff > 0 and (diff/div-1)<0.01:
-                # Close<Low and the difference not bigger than the dividend, 
+            prices_before = df2.iloc[div_idx - 1]
+            diff = prices_before["Low"] - prices_before["Close"]
+            div = df2["Dividends"].iloc[div_idx]
+            if diff > 0 and (diff / div - 1) < 0.01:
+                # Close<Low and the difference not bigger than the dividend,
                 # because if diff > dividend then something else caused problem.
-                dt_before = df2.index[div_idx-1]
-                new_close = prices_before['Close'] + div
-                if new_close >= prices_before['Low'] and new_close <= prices_before['High']:
-                    df2.loc[dt_before, 'Close'] = new_close
-                    adj_after = df2['Adj Close'].iloc[div_idx] / df2['Close'].iloc[div_idx]
-                    adj = adj_after * (1.0 - div/df2['Close'].iloc[div_idx-1])
-                    df2.loc[dt_before, 'Adj Close'] = df2['Close'].iloc[div_idx-1] * adj
-                    df2.loc[dt_before, 'Repaired?'] = True
+                dt_before = df2.index[div_idx - 1]
+                new_close = prices_before["Close"] + div
+                if (
+                    new_close >= prices_before["Low"]
+                    and new_close <= prices_before["High"]
+                ):
+                    df2.loc[dt_before, "Close"] = new_close
+                    adj_after = (
+                        df2["Adj Close"].iloc[div_idx] / df2["Close"].iloc[div_idx]
+                    )
+                    adj = adj_after * (1.0 - div / df2["Close"].iloc[div_idx - 1])
+                    df2.loc[dt_before, "Adj Close"] = (
+                        df2["Close"].iloc[div_idx - 1] * adj
+                    )
+                    df2.loc[dt_before, "Repaired?"] = True
                     df_modified = True
                     fixed_dates.append(df2.index[div_idx].date())
         if len(fixed_dates) > 0:
@@ -1631,43 +2169,65 @@ class PriceHistory:
             logger.info(msg, extra=log_extras)
 
         # Check dividends if too big/small for the price action
-        for i in range(len(div_indices)-1, -1, -1):
+        for i in range(len(div_indices) - 1, -1, -1):
             div_idx = div_indices[i]
             dt = df2.index[div_idx]
-            div = df2['Dividends'].iloc[div_idx]
+            div = df2["Dividends"].iloc[div_idx]
 
             if div_idx == 0:
                 continue
 
-            div_pct = div / df2['Close'].iloc[div_idx-1]
+            div_pct = div / df2["Close"].iloc[div_idx - 1]
 
             # Check if dividend is 100x market movement.
             div_too_small_improvement_threshold = 1
             # div_too_big_improvement_threshold = 1
             div_too_big_improvement_threshold = 2
 
-            if isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*100, rel_tol = 0.025):
+            if isclose(
+                df2["Low"].iloc[div_idx],
+                df2["Close"].iloc[div_idx - 1] * 100,
+                rel_tol=0.025,
+            ):
                 # Price has jumped ~100x on ex-div day, need to fix immediately.
-                drop_c2l = df2['Close'].iloc[div_idx-1]*100 - df2['Low'].iloc[div_idx]
-                div_pct = div / (df2['Close'].iloc[div_idx-1]*100)
-                true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
-                present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
-                if not isclose(present_adj, true_adjust, rel_tol = 0.025):
-                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
-                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
-            elif isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*0.01, rel_tol = 0.025):
+                drop_c2l = (
+                    df2["Close"].iloc[div_idx - 1] * 100 - df2["Low"].iloc[div_idx]
+                )
+                div_pct = div / (df2["Close"].iloc[div_idx - 1] * 100)
+                true_adjust = 1.0 - div / (df2["Close"].iloc[div_idx - 1] * 100)
+                present_adj = (
+                    df2["Adj Close"].iloc[div_idx - 1] / df2["Close"].iloc[div_idx - 1]
+                )
+                if not isclose(present_adj, true_adjust, rel_tol=0.025):
+                    df2.loc[: dt - _datetime.timedelta(seconds=1), "Adj Close"] = (
+                        true_adjust
+                        * df2["Close"].loc[: dt - _datetime.timedelta(seconds=1)]
+                    )
+                    df2.loc[: dt - _datetime.timedelta(seconds=1), "Repaired?"] = True
+            elif isclose(
+                df2["Low"].iloc[div_idx],
+                df2["Close"].iloc[div_idx - 1] * 0.01,
+                rel_tol=0.025,
+            ):
                 # Price has dropped ~100x on ex-div day, need to fix immediately.
-                drop_c2l = df2['Close'].iloc[div_idx-1]*0.01 - df2['Low'].iloc[div_idx]
-                div_pct = div / (df2['Close'].iloc[div_idx-1]*0.01)
-                true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
-                present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
-                if not isclose(present_adj, true_adjust, rel_tol = 0.025):
-                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
-                    df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
+                drop_c2l = (
+                    df2["Close"].iloc[div_idx - 1] * 0.01 - df2["Low"].iloc[div_idx]
+                )
+                div_pct = div / (df2["Close"].iloc[div_idx - 1] * 0.01)
+                true_adjust = 1.0 - div / (df2["Close"].iloc[div_idx - 1] * 100)
+                present_adj = (
+                    df2["Adj Close"].iloc[div_idx - 1] / df2["Close"].iloc[div_idx - 1]
+                )
+                if not isclose(present_adj, true_adjust, rel_tol=0.025):
+                    df2.loc[: dt - _datetime.timedelta(seconds=1), "Adj Close"] = (
+                        true_adjust
+                        * df2["Close"].loc[: dt - _datetime.timedelta(seconds=1)]
+                    )
+                    df2.loc[: dt - _datetime.timedelta(seconds=1), "Repaired?"] = True
             else:
-                drop_c2l = df2['Close'].iloc[div_idx-1] - df2['Low'].iloc[div_idx]
+                drop_c2l = df2["Close"].iloc[div_idx - 1] - df2["Low"].iloc[div_idx]
             drop = drop_c2l
-            if div_idx < len(df2)-1:
+            if div_idx < len(df2) - 1:
                 # # In low-volume scenarios, the price drop is day after not today.
                 # if df2['Close'].iloc[div_idx-1] == df2['Close'].iloc[div_idx] or \
                 #    df2['Low'].iloc[div_idx] == df2['High'].iloc[div_idx]:
@@ -1678,39 +2238,44 @@ class PriceHistory:
                 #
                 # Hmm, can I always look ahead 1 day? Catch: increases FP rate of div-too-small for tiny divs.
                 # drops = df2['Close'].iloc[div_idx-1:div_idx+1].to_numpy() - df2['Low'].iloc[div_idx:div_idx+2].to_numpy()
-                drops = np.array([drop, df2['Close'].iloc[div_idx] - df2['Low'].iloc[div_idx+1]])
+                drops = np.array(
+                    [drop, df2["Close"].iloc[div_idx] - df2["Low"].iloc[div_idx + 1]]
+                )
                 drop_2Dmax = np.max(drops)
             else:
                 drops = np.array([drop])
                 drop_2Dmax = drop
 
-            if (len(df2)-div_idx) < 4:
-                end = min(len(df2), div_idx+4)
-                start = max(0, end-8)
+            if (len(df2) - div_idx) < 4:
+                end = min(len(df2), div_idx + 4)
+                start = max(0, end - 8)
             else:
-                start = max(0, div_idx-4)
-                end = min(len(df2), start+8)
-            if end-start < 4:
+                start = max(0, div_idx - 4)
+                end = min(len(df2), start + 8)
+            if end - start < 4:
                 # Not enough data to estimate volatility
                 typical_volatility = np.nan
             else:
-                diffs = df2['Close'].iloc[start:end-1].to_numpy() - df2['Low'].iloc[start+1:end].to_numpy()
+                diffs = (
+                    df2["Close"].iloc[start : end - 1].to_numpy()
+                    - df2["Low"].iloc[start + 1 : end].to_numpy()
+                )
                 typical_volatility = np.mean(np.abs(diffs))
 
             possibilities = []
-            if (drops==0.0).all() and df2['Volume'].iloc[div_idx]==0:
+            if (drops == 0.0).all() and df2["Volume"].iloc[div_idx] == 0:
                 # Can't analyse price action so use crude heuristics
-                pct_zero_vol = np.sum(df2['Volume']==0.0)/len(df2)
-                if div_pct*100 < 0.1:
+                pct_zero_vol = np.sum(df2["Volume"] == 0.0) / len(df2)
+                if div_pct * 100 < 0.1:
                     # Could be a 0.01x error
-                    possibilities.append({'state':'div-too-small', 'diff':0.0})
+                    possibilities.append({"state": "div-too-small", "diff": 0.0})
                 # elif div_pct > 1.0:
                 # Update: lower threshold for illiquid stocks, because why paying mega dividends?
                 elif (pct_zero_vol > 0.75 and div_pct > 0.25) or (div_pct > 1.0):
                     # Could be a 100x error
-                    possibilities.append({'state':'div-too-big', 'diff':0.0})
+                    possibilities.append({"state": "div-too-big", "diff": 0.0})
             else:
-                split = df2['Stock Splits'].loc[dt]
+                split = df2["Stock Splits"].loc[dt]
                 if split == 0.0:
                     div_postSplit = None
                 else:
@@ -1723,29 +2288,46 @@ class PriceHistory:
                     else:
                         _drop = drop_2Dmax
                     if _drop > 0:
-                        diff = abs(div-_drop)
-                        diff_postSplit = abs(div_postSplit-_drop)
+                        diff = abs(div - _drop)
+                        diff_postSplit = abs(div_postSplit - _drop)
                         if (diff_postSplit * div_too_big_improvement_threshold) <= diff:
-                            possibilities.append({'state':'div-pre-split', 'diff':diff_postSplit})
+                            possibilities.append(
+                                {"state": "div-pre-split", "diff": diff_postSplit}
+                            )
 
                 # Check for div-too-big
                 if div_pct > too_big_check_threshold:
                     if drop_2Dmax <= 0.0:
-                        possibilities.append({'state':'div-too-big', 'diff':0.0})
+                        possibilities.append({"state": "div-too-big", "diff": 0.0})
                     else:
-                        diff = abs(div-drop_2Dmax)
-                        diff_fx = abs((div/currency_divide)-drop_2Dmax)
+                        diff = abs(div - drop_2Dmax)
+                        diff_fx = abs((div / currency_divide) - drop_2Dmax)
                         if div_postSplit is None:
                             if (diff_fx * div_too_big_improvement_threshold) <= diff:
-                                possibilities.append({'state':'div-too-big', 'diff':diff_fx})
+                                possibilities.append(
+                                    {"state": "div-too-big", "diff": diff_fx}
+                                )
                         else:
-                            diff_fxPostSplit = abs((div_postSplit/currency_divide)-drop_2Dmax)
+                            diff_fxPostSplit = abs(
+                                (div_postSplit / currency_divide) - drop_2Dmax
+                            )
                             if diff_fx < diff_fxPostSplit:
-                                if (diff_fx * div_too_big_improvement_threshold) <= diff:
-                                    possibilities.append({'state':'div-too-big', 'diff':diff_fx})
+                                if (
+                                    diff_fx * div_too_big_improvement_threshold
+                                ) <= diff:
+                                    possibilities.append(
+                                        {"state": "div-too-big", "diff": diff_fx}
+                                    )
                             else:
-                                if (diff_fxPostSplit * div_too_big_improvement_threshold) <= diff:
-                                    possibilities.append({'state':'div-too-big-and-pre-split', 'diff':diff_fxPostSplit})
+                                if (
+                                    diff_fxPostSplit * div_too_big_improvement_threshold
+                                ) <= diff:
+                                    possibilities.append(
+                                        {
+                                            "state": "div-too-big-and-pre-split",
+                                            "diff": diff_fxPostSplit,
+                                        }
+                                    )
 
                 # Check for div-too-small - can be tricked by normal price volatility
                 if not np.isnan(typical_volatility):
@@ -1753,38 +2335,53 @@ class PriceHistory:
                     # Update: only use same-day change for too-small, to reduce false-positives
                     drop_wo_vol = drop - typical_volatility
                     if drop_wo_vol > 0:
-                        diff = abs(div-drop_wo_vol)
-                        diff_fx = abs((div*currency_divide)-drop_wo_vol)
+                        diff = abs(div - drop_wo_vol)
+                        diff_fx = abs((div * currency_divide) - drop_wo_vol)
                         if div_postSplit is None:
                             if (diff_fx * div_too_small_improvement_threshold) <= diff:
-                                possibilities.append({'state':'div-too-small', 'diff':diff_fx})
+                                possibilities.append(
+                                    {"state": "div-too-small", "diff": diff_fx}
+                                )
                         else:
-                            diff_fxPostSplit = abs((div_postSplit*currency_divide)-drop_wo_vol)
+                            diff_fxPostSplit = abs(
+                                (div_postSplit * currency_divide) - drop_wo_vol
+                            )
                             if diff_fx < diff_fxPostSplit:
-                                if (diff_fx * div_too_big_improvement_threshold) <= diff:
-                                    possibilities.append({'state':'div-too-small', 'diff':diff_fx})
+                                if (
+                                    diff_fx * div_too_big_improvement_threshold
+                                ) <= diff:
+                                    possibilities.append(
+                                        {"state": "div-too-small", "diff": diff_fx}
+                                    )
                             else:
-                                if (diff_fxPostSplit * div_too_big_improvement_threshold) <= diff:
-                                    possibilities.append({'state':'div-too-small-and-pre-split', 'diff':diff_fxPostSplit})
+                                if (
+                                    diff_fxPostSplit * div_too_big_improvement_threshold
+                                ) <= diff:
+                                    possibilities.append(
+                                        {
+                                            "state": "div-too-small-and-pre-split",
+                                            "diff": diff_fxPostSplit,
+                                        }
+                                    )
 
-            div_status = {'date': dt, 'idx':div_idx, 'div': div, '%': div_pct}
-            div_status['drop'] = drop
-            div_status['drop_2Dmax'] = drop_2Dmax
-            div_status['volume'] = df2['Volume'].iloc[div_idx]
-            div_status['vol'] = typical_volatility
+            div_status = {"date": dt, "idx": div_idx, "div": div, "%": div_pct}
+            div_status["drop"] = drop
+            div_status["drop_2Dmax"] = drop_2Dmax
+            div_status["volume"] = df2["Volume"].iloc[div_idx]
+            div_status["vol"] = typical_volatility
 
-            div_status['div_too_big'] = False
-            div_status['div_too_small'] = False
-            div_status['div_pre_split'] = False
-            div_status['div_too_big_and_pre_split'] = False
-            div_status['div_too_small_and_pre_split'] = False
+            div_status["div_too_big"] = False
+            div_status["div_too_small"] = False
+            div_status["div_pre_split"] = False
+            div_status["div_too_big_and_pre_split"] = False
+            div_status["div_too_small_and_pre_split"] = False
             if len(possibilities) > 0:
                 # Something is wrong with dividend - pick the best correction
-                possibilities = sorted(possibilities, key=lambda k: k['diff'])
+                possibilities = sorted(possibilities, key=lambda k: k["diff"])
                 p = possibilities[0]
-                div_status[p['state'].replace('-', '_')] = True
+                div_status[p["state"].replace("-", "_")] = True
 
-            row = pd.DataFrame([div_status]).set_index('date')
+            row = pd.DataFrame([div_status]).set_index("date")
             if div_status_df is None:
                 div_status_df = row
             else:
@@ -1792,10 +2389,10 @@ class PriceHistory:
 
         if div_status_df is None and not df_modified:
             return df
-        checks = [c for c in div_status_df.columns if c.startswith('div_')]
+        checks = [c for c in div_status_df.columns if c.startswith("div_")]
         div_status_df = div_status_df.sort_index()
 
-        def cluster_dividends(df, column='div', threshold=7):
+        def cluster_dividends(df, column="div", threshold=7):
             n = len(df)
             sorted_df = df.sort_values(column)
             clusters = []
@@ -1815,11 +2412,11 @@ class PriceHistory:
                     currents_vals = [div]
             clusters.append(current_dts)
 
-            cluster_labels = np.array([-1]*n)
+            cluster_labels = np.array([-1] * n)
             ctr = 0
             for i, cluster in enumerate(clusters):
                 nc = len(cluster)
-                cluster_labels[ctr:ctr+nc] = i
+                cluster_labels[ctr : ctr + nc] = i
                 ctr += nc
             return cluster_labels
 
@@ -1827,38 +2424,40 @@ class PriceHistory:
         # - too-big determined from Adj Close movement vs Close
         # - too-small compares Adj Close vs dividends
         for i in range(len(div_status_df)):
-            div_idx = div_status_df['idx'].iloc[i]
+            div_idx = div_status_df["idx"].iloc[i]
             dt = div_status_df.index[i]
-            div = div_status_df['div'].iloc[i]
+            div = div_status_df["div"].iloc[i]
 
             if div_idx == 0:
                 continue
 
-            div_pct = div / df2['Close'].iloc[div_idx-1]
+            div_pct = div / df2["Close"].iloc[div_idx - 1]
 
             # First, check if Yahoo failed to apply dividend to Adj Close
-            pre_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
-            post_adj = df2['Adj Close'].iloc[div_idx] / df2['Close'].iloc[div_idx]
+            pre_adj = (
+                df2["Adj Close"].iloc[div_idx - 1] / df2["Close"].iloc[div_idx - 1]
+            )
+            post_adj = df2["Adj Close"].iloc[div_idx] / df2["Close"].iloc[div_idx]
             div_missing_from_adjclose = post_adj == pre_adj
 
             # Check if adjustment too small
             present_adj = pre_adj / post_adj
             implied_div_yield = 1.0 - present_adj
-            div_adj_is_too_small = implied_div_yield < (0.1*div_pct)
+            div_adj_is_too_small = implied_div_yield < (0.1 * div_pct)
 
             # ... and use same method for adjustment too big:
-            div_adj_exceeds_div = implied_div_yield > (10*div_pct)
+            div_adj_exceeds_div = implied_div_yield > (10 * div_pct)
 
             # Can prune the space:
             if div_missing_from_adjclose:
                 div_adj_is_too_small = False  # redundant information
 
-            div_status = {'present adj': present_adj}
-            div_status['adj_missing'] = div_missing_from_adjclose
-            div_status['adj_exceeds_div'] = div_adj_exceeds_div
-            div_status['div_exceeds_adj'] = div_adj_is_too_small
+            div_status = {"present adj": present_adj}
+            div_status["adj_missing"] = div_missing_from_adjclose
+            div_status["adj_exceeds_div"] = div_adj_exceeds_div
+            div_status["div_exceeds_adj"] = div_adj_is_too_small
 
-            for k,v in div_status.items():
+            for k, v in div_status.items():
                 if k not in div_status_df:
                     if isinstance(v, (bool, np.bool_)):
                         div_status_df[k] = False
@@ -1869,13 +2468,13 @@ class PriceHistory:
                     # elif k == 'div_true_date':
                     #     div_status_df[k] = pd.Series(dtype='datetime64[ns, UTC]')
                     else:
-                        raise ValueError(k,v,type(v))
+                        raise ValueError(k, v, type(v))
                 div_status_df.loc[dt, k] = v
-        checks += ['adj_missing', 'adj_exceeds_div', 'div_exceeds_adj']
+        checks += ["adj_missing", "adj_exceeds_div", "div_exceeds_adj"]
 
-        div_status_df['phantom'] = False
+        div_status_df["phantom"] = False
         phantom_proximity_threshold = _datetime.timedelta(days=17)
-        f = div_status_df[['div_too_big', 'div_exceeds_adj']].any(axis=1)
+        f = div_status_df[["div_too_big", "div_exceeds_adj"]].any(axis=1)
         if f.any() and len(div_status_df) > 1:
             # One/some of these may be phantom dividends. Clue is if another correct dividend is very close
             indices = np.where(f)[0]
@@ -1885,18 +2484,22 @@ class PriceHistory:
                 div_dt = div.name
                 phantom_dt = None
                 if i > 0:
-                    other_div = div_status_df.iloc[i-1]
+                    other_div = div_status_df.iloc[i - 1]
                 else:
-                    other_div = div_status_df.iloc[i+1]
-                ratio1 = (div['div']/currency_divide) / other_div['div']
-                ratio2 = div['div'] / other_div['div']
-                divergence = min(abs(ratio1-1.0), abs(ratio2-1.0))
-                if abs(div_dt-other_div.name) <= phantom_proximity_threshold and not other_div['phantom'] and divergence < 0.01:
+                    other_div = div_status_df.iloc[i + 1]
+                ratio1 = (div["div"] / currency_divide) / other_div["div"]
+                ratio2 = div["div"] / other_div["div"]
+                divergence = min(abs(ratio1 - 1.0), abs(ratio2 - 1.0))
+                if (
+                    abs(div_dt - other_div.name) <= phantom_proximity_threshold
+                    and not other_div["phantom"]
+                    and divergence < 0.01
+                ):
                     if other_div.name in dts_to_check:
                         # Both this and previous are anomalous, so mark smallest drop as phantom
-                        drop = div['drop']
-                        drop_next = other_div['drop']
-                        if drop > 1.5*drop_next:
+                        drop = div["drop"]
+                        drop_next = other_div["drop"]
+                        if drop > 1.5 * drop_next:
                             phantom_dt = other_div.name
                         else:
                             phantom_dt = div_dt
@@ -1904,7 +2507,7 @@ class PriceHistory:
                         phantom_dt = div_dt
 
                 if phantom_dt:
-                    div_status_df.loc[phantom_dt, 'phantom'] = True
+                    div_status_df.loc[phantom_dt, "phantom"] = True
                     for c in checks:
                         if c in div_status_df.columns:
                             div_status_df.loc[phantom_dt, c] = False
@@ -1913,53 +2516,64 @@ class PriceHistory:
         # But harder to decide which is the phantom and which is real.
         # Assume phantom has much smaller price drop, otherwise assume is newer.
         # ratio_threshold = 0.01
-        ratio_threshold =  0.08  # increased for KAP.IL 2022-July
+        ratio_threshold = 0.08  # increased for KAP.IL 2022-July
         div_status_df = div_status_df.sort_index()
         for i in range(1, len(div_status_df)):
             div = div_status_df.iloc[i]
             div_dt = div.name
             this_is_phantom = False
             last_is_phantom = False
-            drop = div['drop']
-            last_div = div_status_df.iloc[i-1]
-            ratio = div['div'] / last_div['div']
-            if abs(div_dt-last_div.name) <= phantom_proximity_threshold and not last_div['phantom'] and not div['phantom'] and abs(ratio-1.0) < ratio_threshold:
-                last_drop = div_status_df['drop'].iloc[i-1]
-                if drop > 1.5*last_drop:
+            drop = div["drop"]
+            last_div = div_status_df.iloc[i - 1]
+            ratio = div["div"] / last_div["div"]
+            if (
+                abs(div_dt - last_div.name) <= phantom_proximity_threshold
+                and not last_div["phantom"]
+                and not div["phantom"]
+                and abs(ratio - 1.0) < ratio_threshold
+            ):
+                last_drop = div_status_df["drop"].iloc[i - 1]
+                if drop > 1.5 * last_drop:
                     last_is_phantom = True
                 else:
                     this_is_phantom = True
             if last_is_phantom or this_is_phantom:
-                phantom_div_dt = div_dt if this_is_phantom else div_status_df.index[i-1]
-                div_status_df.loc[phantom_div_dt, 'phantom'] = True
+                phantom_div_dt = (
+                    div_dt if this_is_phantom else div_status_df.index[i - 1]
+                )
+                div_status_df.loc[phantom_div_dt, "phantom"] = True
                 for c in checks:
                     if c in div_status_df.columns:
                         div_status_df.loc[phantom_div_dt, c] = False
-        checks.append('phantom')
+        checks.append("phantom")
 
         # Remove phantoms early
-        if 'phantom' in div_status_df.columns:
-            f_phantom = div_status_df['phantom']
+        if "phantom" in div_status_df.columns:
+            f_phantom = div_status_df["phantom"]
             # ... but only if no other problems
-            f_phantom = f_phantom & (~div_status_df[[c for c in checks if c != 'phantom']].any(axis=1))
+            f_phantom = f_phantom & (
+                ~div_status_df[[c for c in checks if c != "phantom"]].any(axis=1)
+            )
             if f_phantom.any():
                 div_dts = div_status_df.index[f_phantom]
-                msg = f'Removing phantom div(s): {[str(dt.date()) for dt in div_dts]}'
+                msg = f"Removing phantom div(s): {[str(dt.date()) for dt in div_dts]}"
                 logger.info(msg, extra=log_extras)
                 phantom_div_dts = div_status_df.index[f_phantom]
                 for dt in phantom_div_dts:
-                    enddt = dt-_datetime.timedelta(seconds=1)
-                    df2.loc[    :enddt, 'Adj Close'] /= div_status_df['present adj'].loc[dt]
-                    df2.loc[    :enddt, 'Repaired?'] = True
-                    df2_nan.loc[:enddt, 'Adj Close'] /= div_status_df['present adj'].loc[dt]
-                    df2_nan.loc[:enddt, 'Repaired?'] = True
-                    df2.loc[dt, 'Dividends'] = 0
+                    enddt = dt - _datetime.timedelta(seconds=1)
+                    df2.loc[:enddt, "Adj Close"] /= div_status_df["present adj"].loc[dt]
+                    df2.loc[:enddt, "Repaired?"] = True
+                    df2_nan.loc[:enddt, "Adj Close"] /= div_status_df[
+                        "present adj"
+                    ].loc[dt]
+                    df2_nan.loc[:enddt, "Repaired?"] = True
+                    df2.loc[dt, "Dividends"] = 0
                     df_modified = True
                     div_status_df = div_status_df.drop(dt)
-                div_status_df.loc[f_phantom, 'phantom'] = False
-            div_status_df = div_status_df.drop('phantom', axis=1)
-            if 'phantom' in checks:
-                checks.remove('phantom')
+                div_status_df.loc[f_phantom, "phantom"] = False
+            div_status_df = div_status_df.drop("phantom", axis=1)
+            if "phantom" in checks:
+                checks.remove("phantom")
 
         if not div_status_df[checks].any().any():
             # Maybe failed to detect a too-small div. If div is ~0.01x of previous and next, then
@@ -1968,14 +2582,21 @@ class PriceHistory:
                 for i in range(0, len(div_status_df)):
                     r_pre, r_post = None, None
                     if i > 0:
-                        r_pre = div_status_df['%'].iloc[i-1] / div_status_df['%'].iloc[i]
-                    if i < (len(div_status_df)-1):
-                        r_post = div_status_df['%'].iloc[i+1] / div_status_df['%'].iloc[i]
+                        r_pre = (
+                            div_status_df["%"].iloc[i - 1] / div_status_df["%"].iloc[i]
+                        )
+                    if i < (len(div_status_df) - 1):
+                        r_post = (
+                            div_status_df["%"].iloc[i + 1] / div_status_df["%"].iloc[i]
+                        )
                     r_pre = r_pre or r_post
                     r_post = r_post or r_pre
-                    if abs(r_pre-currency_divide)<20 and abs(r_post-currency_divide)<20:
+                    if (
+                        abs(r_pre - currency_divide) < 20
+                        and abs(r_post - currency_divide) < 20
+                    ):
                         div_dt = div_status_df.index[i]
-                        div_status_df.loc[div_dt, 'div_too_small'] = True
+                        div_status_df.loc[div_dt, "div_too_small"] = True
 
         if not div_status_df[checks].any().any():
             # Perfect
@@ -1988,62 +2609,69 @@ class PriceHistory:
 
         # Check if the present div-adjustment contradicts price action
         for i in range(len(div_status_df)):
-            div_idx = div_status_df['idx'].iloc[i]
+            div_idx = div_status_df["idx"].iloc[i]
             dt = div_status_df.index[i]
-            div = div_status_df['div'].iloc[i]
+            div = div_status_df["div"].iloc[i]
             if div_idx == 0:
                 continue
-            div_pct = div / df2['Close'].iloc[div_idx-1]
+            div_pct = div / df2["Close"].iloc[div_idx - 1]
 
             # Adj Close should drop by LESS than Close on ex-div, at least for big dividends.
             # Update: Yahoo might be reporting dividend slightly early, meaning
             # Mr Market's price drop happens tomorrow e.g. UNTC in december 2023.
             # Or worse, Yahoo is 1 month early e.g. GWI.L ex-div was mid-April not mid-March
-            lookahead_date = dt+_datetime.timedelta(days=35)
+            lookahead_date = dt + _datetime.timedelta(days=35)
             lookahead_idx = bisect.bisect_left(df2.index, lookahead_date)
-            lookahead_idx = min(lookahead_idx, len(df2)-1)
+            lookahead_idx = min(lookahead_idx, len(df2) - 1)
             # In rare cases, the price dropped 1 day before dividend (DVD.OL @ 2024-05-15)
-            lookback_idx = max(0, div_idx-14)
-            # Check for bad stock splits in the lookahead period - 
+            lookback_idx = max(0, div_idx - 14)
+            # Check for bad stock splits in the lookahead period -
             # if present, reduce lookahead to before.
-            future_changes = df2['Close'].iloc[div_idx:lookahead_idx+1].pct_change()
-            f_big_change = (future_changes > 2).to_numpy() | (future_changes < -0.9).to_numpy()
+            future_changes = df2["Close"].iloc[div_idx : lookahead_idx + 1].pct_change()
+            f_big_change = (future_changes > 2).to_numpy() | (
+                future_changes < -0.9
+            ).to_numpy()
             if f_big_change.any():
-                lookahead_idx = div_idx + np.where(f_big_change)[0][0]-1
+                lookahead_idx = div_idx + np.where(f_big_change)[0][0] - 1
                 lookahead_date = df2.index[lookahead_idx]
-            
+
             div_adj_exceeds_prices = False
             div_date_wrong = False
             div_true_date = pd.NaT
             if lookahead_idx > lookback_idx:
-                x = df2.iloc[lookback_idx:lookahead_idx+1].copy()
-                x['Adj'] = x['Adj Close'] / x['Close']
-                x['Adj Low'] = x['Adj'] * x['Low']
-                deltas = x['Low'].iloc[1:].to_numpy() - x['Close'].iloc[:-1].to_numpy()
+                x = df2.iloc[lookback_idx : lookahead_idx + 1].copy()
+                x["Adj"] = x["Adj Close"] / x["Close"]
+                x["Adj Low"] = x["Adj"] * x["Low"]
+                deltas = x["Low"].iloc[1:].to_numpy() - x["Close"].iloc[:-1].to_numpy()
                 deltas = np.append([0.0], deltas)
-                x['delta'] = deltas
-                adjDeltas = x['Adj Low'].iloc[1:].to_numpy() - x['Adj Close'].iloc[:-1].to_numpy()
+                x["delta"] = deltas
+                adjDeltas = (
+                    x["Adj Low"].iloc[1:].to_numpy()
+                    - x["Adj Close"].iloc[:-1].to_numpy()
+                )
                 adjDeltas = np.append([0.0], adjDeltas)
-                x['adjDelta'] = adjDeltas
-                deltas = x[['delta', 'adjDelta']]
+                x["adjDelta"] = adjDeltas
+                deltas = x[["delta", "adjDelta"]]
                 if div_pct > 0.05 and div_pct < 1.0:
-                    adjDiv = div * x['Adj'].iloc[0]
-                    f = deltas['adjDelta'] > (adjDiv*0.6)
+                    adjDiv = div * x["Adj"].iloc[0]
+                    f = deltas["adjDelta"] > (adjDiv * 0.6)
                     if f.any():
                         indices = np.where(f)[0]
                         for idx in indices:
-                            adjDelta_drop = deltas['adjDelta'].iloc[idx]
-                            if adjDelta_drop > 1.001*deltas['delta'].iloc[idx]:
+                            adjDelta_drop = deltas["adjDelta"].iloc[idx]
+                            if adjDelta_drop > 1.001 * deltas["delta"].iloc[idx]:
                                 # Adjusted price has risen by more than unadjusted, should not happen.
                                 # See if Adjusted price later falls by a similar amount. This would mean
                                 # dividend has been applied too early.
-                                ratios = (-1*deltas['adjDelta'])/adjDelta_drop
-                                f_near1_or_above = ratios>=0.8
+                                ratios = (-1 * deltas["adjDelta"]) / adjDelta_drop
+                                f_near1_or_above = ratios >= 0.8
                                 # Update: only check for wrong date if no coincident split.
                                 # Because if a split, more likely the div is missing split
-                                split = df2['Stock Splits'].loc[dt]
-                                pre_split = div_status_df['div_pre_split'].loc[dt]
-                                if (split==0.0 or (not pre_split)) and f_near1_or_above.any():
+                                split = df2["Stock Splits"].loc[dt]
+                                pre_split = div_status_df["div_pre_split"].loc[dt]
+                                if (
+                                    split == 0.0 or (not pre_split)
+                                ) and f_near1_or_above.any():
                                     near_indices = np.where(f_near1_or_above)[0]
                                     if len(near_indices) > 1:
                                         penalties = np.zeros(len(near_indices))
@@ -2051,9 +2679,9 @@ class PriceHistory:
                                             idx = near_indices[i]
                                             dti = ratios.index[idx]
                                             if dti < dt:
-                                                penalties[i] += (dt-dti).days
+                                                penalties[i] += (dt - dti).days
                                             else:
-                                                penalties[i] += 0.1*(dti-dt).days
+                                                penalties[i] += 0.1 * (dti - dt).days
                                         i = np.argmin(penalties)
                                         reversal_idx = near_indices[i]
                                     else:
@@ -2061,46 +2689,46 @@ class PriceHistory:
                                     div_date_wrong = True
                                     div_true_date = ratios.index[reversal_idx]
                                     break
-                                elif adjDelta_drop > 0.39*adjDiv:
-                                    # Still true that applied adjustment exceeds price action, 
+                                elif adjDelta_drop > 0.39 * adjDiv:
+                                    # Still true that applied adjustment exceeds price action,
                                     # just not clear what solution is (if any).
-                                    if (x['Adj']<1.0).any():
+                                    if (x["Adj"] < 1.0).any():
                                         div_adj_exceeds_prices = True
                                     break
 
             # Can prune the space:
-            div_adj_is_too_small = div_status_df.loc[dt, 'div_exceeds_adj']
+            div_adj_is_too_small = div_status_df.loc[dt, "div_exceeds_adj"]
             if div_adj_exceeds_prices and div_adj_is_too_small:
                 # Contradiction. Assume former tricked by low-liquidity price action
                 div_adj_exceeds_prices = False
 
             div_status = {}
-            div_status['adj_exceeds_prices'] = div_adj_exceeds_prices
-            div_status['div_date_wrong'] = div_date_wrong
-            div_status['div_true_date'] = div_true_date
+            div_status["adj_exceeds_prices"] = div_adj_exceeds_prices
+            div_status["div_date_wrong"] = div_date_wrong
+            div_status["div_true_date"] = div_true_date
 
             if div_adj_exceeds_prices:
-                split = df2['Stock Splits'].loc[dt]
+                split = df2["Stock Splits"].loc[dt]
                 if split != 0.0:
                     # Check again if div missing split. Use looser tolerance
                     # as we know the adjustment seems wrong.
                     div_postSplit = div / split
                     if div_postSplit > div:
                         # Use volatility-adjusted drop
-                        typical_volatility = div_status_df['vol'].loc[dt]
-                        drop = div_status_df['drop'].loc[dt]
+                        typical_volatility = div_status_df["vol"].loc[dt]
+                        drop = div_status_df["drop"].loc[dt]
                         _drop = drop - typical_volatility
                     else:
-                        drop_2Dmax = div_status_df['drop_2Dmax'].loc[dt]
+                        drop_2Dmax = div_status_df["drop_2Dmax"].loc[dt]
                         _drop = drop_2Dmax
                     if _drop > 0:
-                        diff = abs(div-_drop)
-                        diff_postSplit = abs(div_postSplit-_drop)
-                        if diff_postSplit <= (diff*1.1):
+                        diff = abs(div - _drop)
+                        diff_postSplit = abs(div_postSplit - _drop)
+                        if diff_postSplit <= (diff * 1.1):
                             # possibilities.append({'state':'div-pre-split', 'diff':diff_postSplit})
-                            div_status_df.loc[dt, 'div_pre_split'] = True
+                            div_status_df.loc[dt, "div_pre_split"] = True
 
-            for k,v in div_status.items():
+            for k, v in div_status.items():
                 if k not in div_status_df:
                     if isinstance(v, (bool, np.bool_)):
                         div_status_df[k] = False
@@ -2108,21 +2736,26 @@ class PriceHistory:
                         div_status_df[k] = 0
                     elif isinstance(v, float):
                         div_status_df[k] = 0.0
-                    elif k == 'div_true_date':
-                        div_status_df[k] = pd.Series(dtype='datetime64[ns, UTC]')
+                    elif k == "div_true_date":
+                        div_status_df[k] = pd.Series(dtype="datetime64[ns, UTC]")
                     else:
-                        raise ValueError(k,v,type(v))
+                        raise ValueError(k, v, type(v))
                 div_status_df.loc[dt, k] = v
-            if 'div_too_big' in div_status_df.columns and 'div_date_wrong' in div_status_df.columns:
+            if (
+                "div_too_big" in div_status_df.columns
+                and "div_date_wrong" in div_status_df.columns
+            ):
                 # Where div_date_wrong = True, discard div_too_big. Helps with false-positive handling later.
-                div_status_df.loc[div_status_df['div_date_wrong'].to_numpy(), 'div_too_big'] = False
+                div_status_df.loc[
+                    div_status_df["div_date_wrong"].to_numpy(), "div_too_big"
+                ] = False
 
-        checks += ['adj_exceeds_prices', 'div_date_wrong']
+        checks += ["adj_exceeds_prices", "div_date_wrong"]
 
         for c in checks:
             if not div_status_df[c].any():
                 div_status_df = div_status_df.drop(c, axis=1)
-        c = 'div_true_date'
+        c = "div_true_date"
         if c in div_status_df.columns and div_status_df[c].isna().all():
             div_status_df = div_status_df.drop(c, axis=1)
         checks = [c for c in checks if c in div_status_df.columns]
@@ -2130,21 +2763,23 @@ class PriceHistory:
         # With small dividends e.g. < 10%, my error detecting logic can be tricked by price volatility.
         # But by looking at all the dividends, can find errors that previous logic missed.
 
-        div_status_df = div_status_df.sort_values('%')
-        div_status_df['cluster'] = cluster_dividends(div_status_df, column='%')
+        div_status_df = div_status_df.sort_values("%")
+        div_status_df["cluster"] = cluster_dividends(div_status_df, column="%")
 
         # Check for inconsistencies
-        cluster_ids = div_status_df['cluster'].unique()
+        cluster_ids = div_status_df["cluster"].unique()
         for cid in cluster_ids:
-            fc = div_status_df['cluster'] == cid
+            fc = div_status_df["cluster"] == cid
             cluster = div_status_df[fc].sort_index()
             n = len(cluster)
-            div_pcts = cluster[['%']].copy()
+            div_pcts = cluster[["%"]].copy()
             if len(div_pcts) > 1:
-                time_diffs = div_pcts['%'].index.to_series().diff().dt.total_seconds() / (365.25 * 24 * 60 * 60)
+                time_diffs = div_pcts[
+                    "%"
+                ].index.to_series().diff().dt.total_seconds() / (365.25 * 24 * 60 * 60)
                 time_diffs.loc[time_diffs.index[0]] = time_diffs.iloc[1]
-                div_pcts['period'] = time_diffs
-                div_pcts['avg yr yield'] = div_pcts['%'] / div_pcts['period']
+                div_pcts["period"] = time_diffs
+                div_pcts["avg yr yield"] = div_pcts["%"] / div_pcts["period"]
 
             for c in checks:
                 if not cluster[c].to_numpy().any():
@@ -2157,63 +2792,77 @@ class PriceHistory:
                 if n_fail in [0, n]:
                     continue
                 pct_fail = n_fail / n
-                if c == 'div_too_big':
+                if c == "div_too_big":
                     true_threshold = 1.0
                     fals_threshold = 0.25
 
-                    if 'div_date_wrong' in cluster.columns and (cluster[c] == cluster['div_date_wrong']).all():
+                    if (
+                        "div_date_wrong" in cluster.columns
+                        and (cluster[c] == cluster["div_date_wrong"]).all()
+                    ):
                         continue
 
-                    if 'adj_exceeds_prices' in cluster.columns and (cluster[c] == (cluster[c] & cluster['adj_exceeds_prices'])).all():
-                        # Treat div_too_big=False as false positives IFF adj_exceeds_prices=true AND 
+                    if (
+                        "adj_exceeds_prices" in cluster.columns
+                        and (
+                            cluster[c] == (cluster[c] & cluster["adj_exceeds_prices"])
+                        ).all()
+                    ):
+                        # Treat div_too_big=False as false positives IFF adj_exceeds_prices=true AND
                         # true ratio above (lowered) threshold.
                         true_threshold = 0.5
-                        f_adj_exceeds_prices = cluster['adj_exceeds_prices'].to_numpy()
+                        f_adj_exceeds_prices = cluster["adj_exceeds_prices"].to_numpy()
                         n = np.sum(f_adj_exceeds_prices)
                         n_fail = np.sum(f_fail[f_adj_exceeds_prices])
                         pct_fail = n_fail / n
                         if pct_fail > true_threshold:
-                            f = fc & div_status_df['adj_exceeds_prices'].to_numpy()
+                            f = fc & div_status_df["adj_exceeds_prices"].to_numpy()
                             div_status_df.loc[f, c] = True
                         continue
 
-                    if 'div_exceeds_adj' in cluster.columns and cluster['div_exceeds_adj'].all():
+                    if (
+                        "div_exceeds_adj" in cluster.columns
+                        and cluster["div_exceeds_adj"].all()
+                    ):
                         # Dividend too big for prices AND the present adjustment,
                         # more likely the dividends are too big.
-                        if (cluster['vol'][fc][f_fail]==0).all():
+                        if (cluster["vol"][fc][f_fail] == 0).all():
                             # No trading volume to cross-check, so higher thresholds
-                            fals_threshold = 2/3
+                            fals_threshold = 2 / 3
                         else:
                             # Relax thresholds
                             true_threshold = 0.25
 
-                    elif 'adj_exceeds_prices' in cluster.columns and (cluster[c]==cluster['adj_exceeds_prices']).all():
+                    elif (
+                        "adj_exceeds_prices" in cluster.columns
+                        and (cluster[c] == cluster["adj_exceeds_prices"]).all()
+                    ):
                         # Both dividend and present adjust too big for prices,
                         # more likely the dividends are too big.
-                        true_threshold = 1/2
+                        true_threshold = 1 / 2
 
                     else:
-                        fals_threshold = 1/2
+                        fals_threshold = 1 / 2
 
                     if pct_fail >= true_threshold:
                         div_status_df.loc[fc, c] = True
-                        if 'div_date_wrong' in div_status_df.columns:
+                        if "div_date_wrong" in div_status_df.columns:
                             # reset this as well
-                            div_status_df.loc[fc, 'div_date_wrong'] = False
-                            div_status_df.loc[fc, 'div_true_date'] = pd.NaT
+                            div_status_df.loc[fc, "div_date_wrong"] = False
+                            div_status_df.loc[fc, "div_true_date"] = pd.NaT
                             cluster = div_status_df[fc].sort_index()
                         continue
                     elif pct_fail <= fals_threshold:
                         div_status_df.loc[fc, c] = False
                         continue
 
-                if c == 'div_too_small':
+                if c == "div_too_small":
                     true_threshold = 1.0
                     fals_threshold = 0.1
-                    if 'adj_exceeds_div' not in cluster.columns:
+                    if "adj_exceeds_div" not in cluster.columns:
                         # Adjustment confirms dividends => more likely that 'div_too_small' are false positives: NOT too small
-                        true_threshold = 6/11
-                        fals_threshold = 1/2
+                        true_threshold = 6 / 11
+                        fals_threshold = 1 / 2
                     if pct_fail >= true_threshold:
                         div_status_df.loc[fc, c] = True
                         continue
@@ -2221,42 +2870,45 @@ class PriceHistory:
                         div_status_df.loc[fc, c] = False
                         continue
 
-                if c == 'adj_missing':
+                if c == "adj_missing":
                     if cluster[c].iloc[-1] and n_fail == 1:
                         # Only the latest/last row is missing, genuine error
                         continue
-                if c == 'div_exceeds_adj':
+                if c == "div_exceeds_adj":
                     continue
 
-                if c == 'adj_exceeds_prices':
+                if c == "adj_exceeds_prices":
                     continue
 
-                if c == 'phantom' and self.ticker in ['KAP.IL', 'SAND']:
+                if c == "phantom" and self.ticker in ["KAP.IL", "SAND"]:
                     # Manually approve, but these are probably safe to assume ok
                     continue
 
-                if c == 'div_date_wrong':
+                if c == "div_date_wrong":
                     # Fine, these should be rare
                     continue
-                if c in ['div_pre_split', 'div_too_big_and_pre_split']:
+                if c in ["div_pre_split", "div_too_big_and_pre_split"]:
                     # Fine, these should be rare
                     continue
 
-        if 'div_too_big' in checks and 'div_exceeds_adj' in checks:
+        if "div_too_big" in checks and "div_exceeds_adj" in checks:
             c = "adj_too_small"
             div_status_df[c] = False
             for i in range(len(div_status_df)):
                 dt = div_status_df.index[i]
                 row = div_status_df.iloc[i]
-                if row['div_too_big'] and row['div_exceeds_adj']:
+                if row["div_too_big"] and row["div_exceeds_adj"]:
                     # Check if div_too_big AND adj-too-small-for-prices
-                    div_yield = row['div']
-                    pct = row['%']
-                    close = div_yield/pct
-                    adj_present = row['present adj']
-                    implied_div_yield = (1-adj_present)*close
-                    ratio = div_yield/implied_div_yield
-                    also_correct_adj = abs(ratio-(currency_divide*currency_divide)) < currency_divide
+                    div_yield = row["div"]
+                    pct = row["%"]
+                    close = div_yield / pct
+                    adj_present = row["present adj"]
+                    implied_div_yield = (1 - adj_present) * close
+                    ratio = div_yield / implied_div_yield
+                    also_correct_adj = (
+                        abs(ratio - (currency_divide * currency_divide))
+                        < currency_divide
+                    )
                     if also_correct_adj:
                         div_status_df.loc[dt, c] = True
             if not div_status_df[c].any():
@@ -2264,15 +2916,17 @@ class PriceHistory:
             else:
                 checks.append(c)
 
-        if 'div_too_big_and_pre_split' in div_status_df.columns:
-            for c in ['div_too_big', 'div_pre_split']:
+        if "div_too_big_and_pre_split" in div_status_df.columns:
+            for c in ["div_too_big", "div_pre_split"]:
                 if c in div_status_df:
-                    div_status_df[c] = div_status_df[c] | div_status_df['div_too_big_and_pre_split']
+                    div_status_df[c] = (
+                        div_status_df[c] | div_status_df["div_too_big_and_pre_split"]
+                    )
                 else:
-                    div_status_df[c] = div_status_df['div_too_big_and_pre_split']
+                    div_status_df[c] = div_status_df["div_too_big_and_pre_split"]
                     checks.append(c)
-            div_status_df = div_status_df.drop('div_too_big_and_pre_split', axis=1)
-            checks.remove('div_too_big_and_pre_split')
+            div_status_df = div_status_df.drop("div_too_big_and_pre_split", axis=1)
+            checks.remove("div_too_big_and_pre_split")
 
         div_status_df = div_status_df.sort_index()
 
@@ -2285,27 +2939,29 @@ class PriceHistory:
 
         # These arrays track changes for constructing compact log messages
         div_repairs = {}
-        for cid in list(div_status_df['cluster'].unique()):
-            cluster = div_status_df[div_status_df['cluster']==cid]
+        for cid in list(div_status_df["cluster"].unique()):
+            cluster = div_status_df[div_status_df["cluster"] == cid]
             cluster = cluster.sort_index(ascending=False)
-            cluster['Fixed?'] = False
+            cluster["Fixed?"] = False
             # Reverse order because may delete false-positives
-            for i in range(len(cluster)-1, -1, -1):
+            for i in range(len(cluster) - 1, -1, -1):
                 row = cluster.iloc[i]
                 dt = row.name
-                enddt = dt-_datetime.timedelta(seconds=1)
+                enddt = dt - _datetime.timedelta(seconds=1)
 
-                adj_missing = 'adj_missing' in row and row['adj_missing']
-                div_exceeds_adj = 'div_exceeds_adj' in row and row['div_exceeds_adj']
-                adj_exceeds_div = 'adj_exceeds_div' in row and row['adj_exceeds_div']
-                adj_exceeds_prices = 'adj_exceeds_prices' in row and row['adj_exceeds_prices']
-                div_too_small = 'div_too_small' in row and row['div_too_small']
-                div_too_big = 'div_too_big' in row and row['div_too_big']
-                div_pre_split = 'div_pre_split' in row and row['div_pre_split']
+                adj_missing = "adj_missing" in row and row["adj_missing"]
+                div_exceeds_adj = "div_exceeds_adj" in row and row["div_exceeds_adj"]
+                adj_exceeds_div = "adj_exceeds_div" in row and row["adj_exceeds_div"]
+                adj_exceeds_prices = (
+                    "adj_exceeds_prices" in row and row["adj_exceeds_prices"]
+                )
+                div_too_small = "div_too_small" in row and row["div_too_small"]
+                div_too_big = "div_too_big" in row and row["div_too_big"]
+                div_pre_split = "div_pre_split" in row and row["div_pre_split"]
                 # div_too_small_and_pre_split = 'div_too_small_and_pre_split' in row and row['div_too_small_and_pre_split']  # not happened yet
                 # div_too_big_and_pre_split = 'div_too_big_and_pre_split' in row and row['div_too_big_and_pre_split']  # not happened yet
-                div_date_wrong = 'div_date_wrong' in row and row['div_date_wrong']
-                adj_too_small = 'adj_too_small' in row and row['adj_too_small']
+                div_date_wrong = "div_date_wrong" in row and row["div_date_wrong"]
+                adj_too_small = "adj_too_small" in row and row["adj_too_small"]
                 n_failed_checks = np.sum([row[c] for c in checks if c in row])
 
                 if div_too_big and adj_exceeds_prices and n_failed_checks == 2:
@@ -2318,246 +2974,252 @@ class PriceHistory:
                     if div_too_big:
                         # redundant information
                         div_too_big = False
-                        cluster.loc[dt, 'div_too_big'] = False
+                        cluster.loc[dt, "div_too_big"] = False
                         n_failed_checks -= 1
                     if div_exceeds_adj:
                         # false-positive
                         div_exceeds_adj = False
-                        cluster.loc[dt, 'div_exceeds_adj'] = False
+                        cluster.loc[dt, "div_exceeds_adj"] = False
                         n_failed_checks -= 1
 
                 if div_pre_split:
                     if adj_exceeds_prices:
                         # redundant information
                         adj_exceeds_prices = False
-                        cluster.loc[dt, 'adj_exceeds_prices'] = False
+                        cluster.loc[dt, "adj_exceeds_prices"] = False
                         n_failed_checks -= 1
 
                 if n_failed_checks == 1:
                     if div_exceeds_adj or adj_exceeds_div:
                         # Simply recalculate Adj Close
-                        k = 'too-small div-adjust' if div_exceeds_adj else 'too-big div-adjust'
+                        k = (
+                            "too-small div-adjust"
+                            if div_exceeds_adj
+                            else "too-big div-adjust"
+                        )
                         div_repairs.setdefault(k, []).append(dt)
-                        adj_correction = (1.0 - row['%']) / row['present adj']
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        adj_correction = (1.0 - row["%"]) / row["present adj"]
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
                     elif div_too_small:
                         # Fix both dividend and adjustment
                         # - div_too_small looks fine, the adj also needs repair because compared against div
-                        k = 'too-small div'
+                        k = "too-small div"
                         correction = currency_divide
-                        correct_div = row['div'] * correction
-                        df2.loc[dt, 'Dividends'] = correct_div
+                        correct_div = row["div"] * correction
+                        df2.loc[dt, "Dividends"] = correct_div
                         # adj is correct *compared to the present div*, so needs rescaling
                         # to match corrected dividend
-                        k += ' & div-adjust'
-                        target_adj = 1.0 - ((1.0 - row['present adj']) * correction)
-                        adj_correction = target_adj / row['present adj']
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        k += " & div-adjust"
+                        target_adj = 1.0 - ((1.0 - row["present adj"]) * correction)
+                        adj_correction = target_adj / row["present adj"]
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
                         div_repairs.setdefault(k, []).append(dt)
 
                     elif div_too_big:
-                        k = 'too-big div'
-                        correction = 1.0/currency_divide
+                        k = "too-big div"
+                        correction = 1.0 / currency_divide
 
-                        correct_div = row['div'] * correction
-                        df2.loc[dt, 'Dividends'] = correct_div
+                        correct_div = row["div"] * correction
+                        df2.loc[dt, "Dividends"] = correct_div
 
-                        target_div_pct = row['%'] * correction
+                        target_div_pct = row["%"] * correction
                         target_adj = 1.0 - target_div_pct
-                        present_adj = row['present adj']
-                        k += ' & div-adjust'
+                        present_adj = row["present adj"]
+                        k += " & div-adjust"
                         adj_correction = target_adj / present_adj
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
 
-                        cluster.loc[dt, 'Fixed?'] = True
+                        cluster.loc[dt, "Fixed?"] = True
                         div_repairs.setdefault(k, []).append(dt)
 
                     elif adj_missing:
-                        k = 'missing div-adjust'
+                        k = "missing div-adjust"
                         div_repairs.setdefault(k, []).append(dt)
-                        adj_correction = 1.0-row['%']
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        adj_correction = 1.0 - row["%"]
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
                     elif div_date_wrong:
-                        k = 'wrong ex-div date'
+                        k = "wrong ex-div date"
                         div_repairs.setdefault(k, []).append(dt)
 
                         # First rollback the present adj
-                        adj_correction = 1.0/row['present adj']
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
+                        adj_correction = 1.0 / row["present adj"]
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
 
                         # Apply correct adj from correct date
-                        div_true_date = row['div_true_date']
-                        close_before = df2['Close'].iloc[row['idx']]
-                        div = row['div']
-                        true_adj = 1.0 - div/close_before
-                        enddt2 = div_true_date-_datetime.timedelta(seconds=1)
-                        df2.loc[    :enddt2, 'Adj Close'] *= true_adj
-                        df2_nan.loc[:enddt2, 'Adj Close'] *= true_adj
+                        div_true_date = row["div_true_date"]
+                        close_before = df2["Close"].iloc[row["idx"]]
+                        div = row["div"]
+                        true_adj = 1.0 - div / close_before
+                        enddt2 = div_true_date - _datetime.timedelta(seconds=1)
+                        df2.loc[:enddt2, "Adj Close"] *= true_adj
+                        df2_nan.loc[:enddt2, "Adj Close"] *= true_adj
 
                         # Move div to correct date
-                        df2.loc[div_true_date, 'Dividends'] += div
-                        df2.loc[dt, 'Dividends'] = 0
+                        df2.loc[div_true_date, "Dividends"] += div
+                        df2.loc[dt, "Dividends"] = 0
 
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
                     elif adj_exceeds_prices:
-                        # Nothing else wrong => probably false positive, 
+                        # Nothing else wrong => probably false positive,
                         # but no harm checking the adjustment
-                        target_adj = 1.0 - row['%']
-                        present_adj = row['present adj']
-                        if abs((target_adj/present_adj)-1) > 0.05:
+                        target_adj = 1.0 - row["%"]
+                        present_adj = row["present adj"]
+                        if abs((target_adj / present_adj) - 1) > 0.05:
                             # Also correct adjustment to match corrected dividend
-                            k += ' & div-adjust'
+                            k += " & div-adjust"
                             adj_correction = target_adj / present_adj
-                            df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                            df2.loc[    :enddt, 'Repaired?'] = True
-                            df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                            df2_nan.loc[:enddt, 'Repaired?'] = True
-                            cluster.loc[dt, 'Fixed?'] = True
+                            df2.loc[:enddt, "Adj Close"] *= adj_correction
+                            df2.loc[:enddt, "Repaired?"] = True
+                            df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                            df2_nan.loc[:enddt, "Repaired?"] = True
+                            cluster.loc[dt, "Fixed?"] = True
                         else:
                             div_status_df = div_status_df.drop(dt)
                             cluster = cluster.drop(dt)
 
                     elif div_pre_split:
-                        k = 'pre-split div'
-                        correction = 1.0/df2['Stock Splits'].loc[dt]
-                        correct_div = row['div'] * correction
-                        df2.loc[dt, 'Dividends'] = correct_div
+                        k = "pre-split div"
+                        correction = 1.0 / df2["Stock Splits"].loc[dt]
+                        correct_div = row["div"] * correction
+                        df2.loc[dt, "Dividends"] = correct_div
 
-                        target_div_pct = row['%'] * correction
+                        target_div_pct = row["%"] * correction
                         target_adj = 1.0 - target_div_pct
-                        present_adj = row['present adj']
+                        present_adj = row["present adj"]
                         # Also correct adjustment to match corrected dividend
-                        k += ' & div-adjust'
+                        k += " & div-adjust"
                         adj_correction = target_adj / present_adj
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
                         div_repairs.setdefault(k, []).append(dt)
 
                 elif n_failed_checks == 2:
                     if div_too_big and adj_missing:
                         # A currency unit mixup AND adjustment missing
-                        k = 'too-big div and missing div-adjust'
+                        k = "too-big div and missing div-adjust"
                         div_repairs.setdefault(k, []).append(dt)
-                        adj_correction = 1.0 - row['%']/currency_divide
-                        df2.loc[dt, 'Dividends'] /= currency_divide
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        adj_correction = 1.0 - row["%"] / currency_divide
+                        df2.loc[dt, "Dividends"] /= currency_divide
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
                     elif div_too_big and div_exceeds_adj:
-                        div = row['div']
-                        close = div/row['%']
-                        adj_present = row['present adj']
+                        div = row["div"]
+                        close = div / row["%"]
+                        adj_present = row["present adj"]
                         # Adj Close is correct, just need to fix Dividend.
                         # Probably just a currency unit mixup.
-                        df2.loc[dt, 'Dividends'] /= currency_divide
-                        k = 'div-too-big'
+                        df2.loc[dt, "Dividends"] /= currency_divide
+                        k = "div-too-big"
                         div_repairs.setdefault(k, []).append(dt)
-                        cluster.loc[dt, 'Fixed?'] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
                     elif div_too_big and adj_exceeds_prices:
                         # Assume div 100x error, and that Yahoo used this wrong dividend.
                         # 'adj_too_big=True' is probably redundant information, knowing div too big
                         # is enough to require also fixing adjustment
-                        k = 'too-big div & div-adjust'
+                        k = "too-big div & div-adjust"
                         div_repairs.setdefault(k, []).append(dt)
-                        target_div_pct = row['%']/currency_divide
+                        target_div_pct = row["%"] / currency_divide
                         target_adj = 1.0 - target_div_pct
-                        adj_correction = target_adj / row['present adj']
-                        df2.loc[dt, 'Dividends'] /= currency_divide
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        adj_correction = target_adj / row["present adj"]
+                        df2.loc[dt, "Dividends"] /= currency_divide
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
                     elif div_too_small and adj_exceeds_div:
                         # Adj Close is correct, just need to fix Dividend.
                         # Probably just a currency unit mixup.
-                        df2.loc[dt, 'Dividends'] *= currency_divide
-                        k = 'too-small div'
-                        if 'FX was repaired' in row and row['FX was repaired']:
+                        df2.loc[dt, "Dividends"] *= currency_divide
+                        k = "too-small div"
+                        if "FX was repaired" in row and row["FX was repaired"]:
                             # Complication: not just a currency unit mixup, but
-                            # mixed up the local currency with $. So need to 
+                            # mixed up the local currency with $. So need to
                             # recalculate adjustment.
                             msg = None
-                            div_adj = 1.0 - (row['%']*currency_divide)
-                            adj_correction = div_adj / row['present adj']
-                            df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                            df2.loc[    :enddt, 'Repaired?'] = True
-                            df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                            df2_nan.loc[:enddt, 'Repaired?'] = True
+                            div_adj = 1.0 - (row["%"] * currency_divide)
+                            adj_correction = div_adj / row["present adj"]
+                            df2.loc[:enddt, "Adj Close"] *= adj_correction
+                            df2.loc[:enddt, "Repaired?"] = True
+                            df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                            df2_nan.loc[:enddt, "Repaired?"] = True
                             # Currently not logging this FX-fix event, since I refactored fixing.
                             k += " and FX mixup"
                         div_repairs.setdefault(k, []).append(dt)
-                        cluster.loc[dt, 'Fixed?'] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
                 elif n_failed_checks == 3:
                     if div_too_big and div_exceeds_adj and div_pre_split:
-                        k = 'too-big div & pre-split'
-                        correction = (1.0/currency_divide) * (1.0/df2['Stock Splits'].loc[dt])
-                        correct_div = row['div'] * correction
-                        df2.loc[dt, 'Dividends'] = correct_div
+                        k = "too-big div & pre-split"
+                        correction = (1.0 / currency_divide) * (
+                            1.0 / df2["Stock Splits"].loc[dt]
+                        )
+                        correct_div = row["div"] * correction
+                        df2.loc[dt, "Dividends"] = correct_div
 
-                        target_div_pct = row['%'] * correction
+                        target_div_pct = row["%"] * correction
                         target_adj = 1.0 - target_div_pct
-                        present_adj = row['present adj']
+                        present_adj = row["present adj"]
                         # Also correct adjustment to match corrected dividend
-                        k += ' & div-adjust'
+                        k += " & div-adjust"
                         adj_correction = target_adj / present_adj
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
-                        cluster.loc[dt, 'Fixed?'] = True
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
+                        cluster.loc[dt, "Fixed?"] = True
                         div_repairs.setdefault(k, []).append(dt)
 
                     elif div_too_big and div_exceeds_adj and adj_too_small:
                         # Need to fix dividend AND adj close.
                         # Probably just a currency unit mixup.
-                        div = row['div']
-                        close = div/row['%']
-                        adj_present = row['present adj']
-                        k = 'div-too-big and adj-too-small'
+                        div = row["div"]
+                        close = div / row["%"]
+                        adj_present = row["present adj"]
+                        k = "div-too-big and adj-too-small"
                         #
-                        div_true = div/currency_divide
+                        div_true = div / currency_divide
                         pct_true = div_true / close
-                        df2.loc[dt, 'Dividends'] = div_true
+                        df2.loc[dt, "Dividends"] = div_true
                         #
                         adj_correct = 1.0 - pct_true
                         adj_correction = adj_correct / adj_present
-                        df2.loc[    :enddt, 'Adj Close'] *= adj_correction
-                        df2.loc[    :enddt, 'Repaired?'] = True
-                        df2_nan.loc[:enddt, 'Adj Close'] *= adj_correction
-                        df2_nan.loc[:enddt, 'Repaired?'] = True
+                        df2.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2.loc[:enddt, "Repaired?"] = True
+                        df2_nan.loc[:enddt, "Adj Close"] *= adj_correction
+                        df2_nan.loc[:enddt, "Repaired?"] = True
                         div_repairs.setdefault(k, []).append(dt)
-                        cluster.loc[dt, 'Fixed?'] = True
+                        cluster.loc[dt, "Fixed?"] = True
 
             if cluster.empty:
                 continue
@@ -2573,7 +3235,8 @@ class PriceHistory:
 
     @utils.log_indent_decorator
     def _fix_bad_stock_splits(self, df, interval, tz_exchange):
-        # Original logic only considered latest split adjustment could be missing, but 
+        """Fix bad stock splits. Accepts and returns pandas DataFrame."""
+        # Original logic only considered latest split adjustment could be missing, but
         # actually **any** split adjustment can be missing. So check all splits in df.
         #
         # Improved logic looks for BIG daily price changes that closely match the
@@ -2589,43 +3252,64 @@ class PriceHistory:
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'split-repair', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {
+            "yf_cat": "split-repair",
+            "yf_interval": interval,
+            "yf_symbol": self.ticker,
+        }
 
-        interday = interval in ['1d', '1wk', '1mo', '3mo']
+        interday = interval in ["1d", "1wk", "1mo", "3mo"]
         if not interday:
             return df
 
-        df = df.sort_index()   # scan splits oldest -> newest
-        split_f = df['Stock Splits'].to_numpy() != 0
+        df = df.sort_index()  # scan splits oldest -> newest
+        split_f = df["Stock Splits"].to_numpy() != 0
         if not split_f.any():
-            logger.debug('price-repair-split: No splits in data')
+            logger.debug("price-repair-split: No splits in data")
             return df
 
-        logger.debug(f'Splits: {str(df["Stock Splits"][split_f].to_dict())}', extra=log_extras)
+        logger.debug(
+            f"Splits: {str(df['Stock Splits'][split_f].to_dict())}", extra=log_extras
+        )
 
-        if 'Repaired?' not in df.columns:
-            df['Repaired?'] = False
+        if "Repaired?" not in df.columns:
+            df["Repaired?"] = False
         for split_idx in np.where(split_f)[0]:
             split_dt = df.index[split_idx]
-            split = df.loc[split_dt, 'Stock Splits']
+            split = df.loc[split_dt, "Stock Splits"]
             if split_dt == df.index[0]:
                 continue
 
             # Add on a week:
-            if interval in ['1wk', '1mo', '3mo']:
+            if interval in ["1wk", "1mo", "3mo"]:
                 split_idx += 1
             else:
                 split_idx += 5
-            cutoff_idx = min(df.shape[0], split_idx)  # add one row after to detect big change
-            df_pre_split = df.iloc[0:cutoff_idx+1]
-            logger.debug(f'split_idx={split_idx} split_dt={split_dt.date()} split={split:.4f}', extra=log_extras)
-            logger.debug(f'df dt range: {df_pre_split.index[0].date()} -> {df_pre_split.index[-1].date()}', extra=log_extras)
-            df_pre_split_repaired = self._fix_prices_sudden_change(df_pre_split, interval, tz_exchange, split, correct_volume=True, correct_dividend=True)
+            cutoff_idx = min(
+                df.shape[0], split_idx
+            )  # add one row after to detect big change
+            df_pre_split = df.iloc[0 : cutoff_idx + 1]
+            logger.debug(
+                f"split_idx={split_idx} split_dt={split_dt.date()} split={split:.4f}",
+                extra=log_extras,
+            )
+            logger.debug(
+                f"df dt range: {df_pre_split.index[0].date()} -> {df_pre_split.index[-1].date()}",
+                extra=log_extras,
+            )
+            df_pre_split_repaired = self._fix_prices_sudden_change(
+                df_pre_split,
+                interval,
+                tz_exchange,
+                split,
+                correct_volume=True,
+                correct_dividend=True,
+            )
             # Merge back in:
-            if cutoff_idx == df.shape[0]-1:
+            if cutoff_idx == df.shape[0] - 1:
                 df = df_pre_split_repaired
             else:
-                df_post_cutoff = df.iloc[cutoff_idx+1:]
+                df_post_cutoff = df.iloc[cutoff_idx + 1 :]
                 if df_post_cutoff.empty:
                     df = df_pre_split_repaired.sort_index()
                 else:
@@ -2633,33 +3317,51 @@ class PriceHistory:
         return df
 
     @utils.log_indent_decorator
-    def _fix_prices_sudden_change(self, df, interval, tz_exchange, change, correct_volume=False, correct_dividend=False):
+    def _fix_prices_sudden_change(
+        self,
+        df,
+        interval,
+        tz_exchange,
+        change,
+        correct_volume=False,
+        correct_dividend=False,
+    ):
+        """Fix sudden price changes (100x errors, bad splits). Accepts and returns pandas DataFrame."""
         if df.empty:
             return df
 
         logger = utils.get_yf_logger()
-        log_extras = {'yf_cat': 'price-change-repair', 'yf_interval': interval, 'yf_symbol': self.ticker}
+        log_extras = {
+            "yf_cat": "price-change-repair",
+            "yf_interval": interval,
+            "yf_symbol": self.ticker,
+        }
 
         split = change
         split_rcp = 1.0 / split
-        interday = interval in ['1d', '1wk', '1mo', '3mo']
-        multiday = interval in ['1wk', '1mo', '3mo']
+        interday = interval in ["1d", "1wk", "1mo", "3mo"]
+        multiday = interval in ["1wk", "1mo", "3mo"]
 
         if change in [100.0, 0.01]:
-            fix_type = '100x error'
-            log_extras['yf_cat'] = 'price-repair-100x'
+            fix_type = "100x error"
+            log_extras["yf_cat"] = "price-repair-100x"
             start_min = None
         else:
-            fix_type = 'bad split'
-            log_extras['yf_cat'] = 'price-repair-split'
+            fix_type = "bad split"
+            log_extras["yf_cat"] = "price-repair-split"
             # start_min = 1 year before oldest split
-            f = df['Stock Splits'].to_numpy() != 0.0
-            start_min = (df.index[f].min() - _dateutil.relativedelta.relativedelta(years=1)).date()
-        logger.debug(f'start_min={start_min} change={change:.4f} (rcp={1.0/change:.4f})', extra=log_extras)
+            f = df["Stock Splits"].to_numpy() != 0.0
+            start_min = (
+                df.index[f].min() - _dateutil.relativedelta.relativedelta(years=1)
+            ).date()
+        logger.debug(
+            f"start_min={start_min} change={change:.4f} (rcp={1.0 / change:.4f})",
+            extra=log_extras,
+        )
 
-        OHLC = ['Open', 'High', 'Low', 'Close']
+        OHLC = ["Open", "High", "Low", "Close"]
 
-        if interday and interval != '1d':
+        if interday and interval != "1d":
             # Yahoo creates multi-day intervals using potentiall corrupt data, e.g.
             # the Close could be 100x Open. This means have to correct each OHLC column
             # individually
@@ -2685,9 +3387,9 @@ class PriceHistory:
         # Better to use last active trading interval as baseline.
         # f_no_activity = (df2['Low'] == df2['High']) & (df2['Volume']==0)
         # Update: intra-interval 100x/0.01x errors can trick Low==High
-        f_no_activity = df2['Volume']==0
+        f_no_activity = df2["Volume"] == 0
         f_no_activity = f_no_activity | df2[OHLC].isna().all(axis=1)
-        appears_suspended = f_no_activity.any() and np.where(f_no_activity)[0][0]==0
+        appears_suspended = f_no_activity.any() and np.where(f_no_activity)[0][0] == 0
         f_active = ~f_no_activity
         idx_latest_active = np.where(f_active & np.roll(f_active, 1))[0]
         if len(idx_latest_active) == 0:
@@ -2697,32 +3399,43 @@ class PriceHistory:
             idx_latest_active = None
         else:
             idx_latest_active = int(idx_latest_active[0])
-        log_msg = f'appears_suspended={appears_suspended}, idx_latest_active={idx_latest_active}'
+        log_msg = f"appears_suspended={appears_suspended}, idx_latest_active={idx_latest_active}"
         if idx_latest_active is not None:
-            log_msg += f' ({df2.index[idx_latest_active].date()})'
+            log_msg += f" ({df2.index[idx_latest_active].date()})"
         logger.debug(log_msg, extra=log_extras)
 
         df_workings = df2.copy()
-        df_workings = df_workings.drop(['Adj Close', 'Dividends', 'Stock Splits', 'Repaired?'], axis=1, errors='ignore')
-        df_workings = df_workings.rename(columns={'Volume': 'Vol'})
-        fna = df_workings['Vol'].isna()
+        df_workings = df_workings.drop(
+            ["Adj Close", "Dividends", "Stock Splits", "Repaired?"],
+            axis=1,
+            errors="ignore",
+        )
+        df_workings = df_workings.rename(columns={"Volume": "Vol"})
+        fna = df_workings["Vol"].isna()
         if fna.any():
-            df_workings['VolStr'] = ''
-            df_workings.loc[fna, 'VolStr'] = 'NaN'
-            df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).astype('int').astype('str') + 'm'
-            df_workings['Vol'] = df_workings['VolStr'] ; df_workings.drop('VolStr', axis=1)
+            df_workings["VolStr"] = ""
+            df_workings.loc[fna, "VolStr"] = "NaN"
+            df_workings.loc[~fna, "VolStr"] = (df_workings["Vol"][~fna] / 1e6).astype(
+                "int"
+            ).astype("str") + "m"
+            df_workings["Vol"] = df_workings["VolStr"]
+            df_workings.drop("VolStr", axis=1)
         else:
-            df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
-        debug_cols = ['Close']
-        df_workings = df_workings.drop([c for c in OHLC if c not in debug_cols], axis=1, errors='ignore')
+            df_workings["Vol"] = (df_workings["Vol"] / 1e6).astype("int").astype(
+                "str"
+            ) + "m"
+        debug_cols = ["Close"]
+        df_workings = df_workings.drop(
+            [c for c in OHLC if c not in debug_cols], axis=1, errors="ignore"
+        )
 
         # Calculate daily price % change. To reduce effect of price volatility,
         # calculate change for each OHLC column.
-        if interday and interval != '1d' and split not in [100.0, 100, 0.001]:
+        if interday and interval != "1d" and split not in [100.0, 100, 0.001]:
             # Avoid using 'Low' and 'High'. For multiday intervals, these can be
             # very volatile which reduces ability to detect genuine stock split errors
             _1d_change_x = np.full((n, 2), 1.0)
-            price_data_cols = ['Open','Close']
+            price_data_cols = ["Open", "Close"]
             price_data = df2[price_data_cols].to_numpy()
             f_zero = price_data == 0.0
         else:
@@ -2737,27 +3450,29 @@ class PriceHistory:
 
         # Update: if a VERY large dividend is paid out, then can be mistaken for a 1:2 stock split.
         # Fix = use adjusted prices
-        f_zero = df2['Close'] == 0
+        f_zero = df2["Close"] == 0
         if f_zero.any():
             adj = np.ones(len(df2))
-            adj[~f_zero] = df2['Adj Close'].to_numpy()[~f_zero] / df2['Close'].to_numpy()[~f_zero]
+            adj[~f_zero] = (
+                df2["Adj Close"].to_numpy()[~f_zero] / df2["Close"].to_numpy()[~f_zero]
+            )
         else:
-            adj = df2['Adj Close'].to_numpy() / df2['Close'].to_numpy()
+            adj = df2["Adj Close"].to_numpy() / df2["Close"].to_numpy()
         df_dtype = price_data.dtype
         if df_dtype == np.int64:
-            price_data = price_data.astype('float')
+            price_data = price_data.astype("float")
         for j in range(price_data.shape[1]):
-            price_data[:,j] *= adj
+            price_data[:, j] *= adj
             if OHLC[j] in df_workings.columns:
                 df_workings[price_data_cols[j]] *= adj
         if df_dtype == np.int64:
-            price_data = price_data.astype('int')
+            price_data = price_data.astype("int")
 
-        _1d_change_x[1:] = price_data[1:, ] / price_data[:-1, ]
+        _1d_change_x[1:] = price_data[1:,] / price_data[:-1,]
         f_zero_num_denom = f_zero | np.roll(f_zero, 1, axis=0)
         if f_zero_num_denom.any():
             _1d_change_x[f_zero_num_denom] = 1.0
-        if interday and interval != '1d':
+        if interday and interval != "1d":
             # average change
             _1d_change_denoised = np.average(_1d_change_x, axis=1)
         else:
@@ -2774,8 +3489,10 @@ class PriceHistory:
 
         # If all 1D changes are closer to 1.0 than split, exit
         split_max = max(split, split_rcp)
-        if np.max(_1d_change_denoised) < (split_max - 1) * 0.5 + 1 and np.min(_1d_change_denoised) > 1.0 / ((split_max - 1) * 0.5 + 1):
-            logger.debug(f'No {fix_type}s detected', extra=log_extras)
+        if np.max(_1d_change_denoised) < (split_max - 1) * 0.5 + 1 and np.min(
+            _1d_change_denoised
+        ) > 1.0 / ((split_max - 1) * 0.5 + 1):
+            logger.debug(f"No {fix_type}s detected", extra=log_extras)
             return df
 
         # Calculate the true price variance, i.e. remove effect of bad split-adjustments.
@@ -2789,29 +3506,44 @@ class PriceHistory:
         sd = np.std(_1d_change_denoised[f])
         # Now can calculate SD as % of mean
         sd_pct = sd / avg
-        logger.debug(f"Estimation of true 1D change stats: mean = {avg:.2f}, StdDev = {sd:.4f} ({sd_pct*100.0:.1f}% of mean)", extra=log_extras)
+        logger.debug(
+            f"Estimation of true 1D change stats: mean = {avg:.2f}, StdDev = {sd:.4f} ({sd_pct * 100.0:.1f}% of mean)",
+            extra=log_extras,
+        )
 
         # Only proceed if split adjustment far exceeds normal 1D changes
         largest_change_pct = 5 * sd_pct
-        if interday and interval != '1d':
+        if interday and interval != "1d":
             largest_change_pct *= 3
-            if interval in ['1mo', '3mo']:
+            if interval in ["1mo", "3mo"]:
                 largest_change_pct *= 2
         if max(split, split_rcp) < 1.0 + largest_change_pct:
-            logger.debug("Split ratio too close to normal price volatility. Won't repair", extra=log_extras)
-            logger.debug(f"sd_pct = {sd_pct:.4f}  largest_change_pct = {largest_change_pct:.4f}", extra=log_extras)
+            logger.debug(
+                "Split ratio too close to normal price volatility. Won't repair",
+                extra=log_extras,
+            )
+            logger.debug(
+                f"sd_pct = {sd_pct:.4f}  largest_change_pct = {largest_change_pct:.4f}",
+                extra=log_extras,
+            )
             return df
 
         # Now can detect bad split adjustments
         # Set threshold to halfway between split ratio and largest expected normal price change
         r = _1d_change_denoised / split_rcp
         split_max = max(split, split_rcp)
-        logger.debug(f"split_max={split_max:.3f} largest_change_pct={largest_change_pct:.4f}", extra=log_extras)
+        logger.debug(
+            f"split_max={split_max:.3f} largest_change_pct={largest_change_pct:.4f}",
+            extra=log_extras,
+        )
         threshold = (split_max + 1.0 + largest_change_pct) * 0.5
-        logger.debug(f"threshold={threshold:.3f}, threshold_rcp={1.0/threshold:.3f}", extra=log_extras)
+        logger.debug(
+            f"threshold={threshold:.3f}, threshold_rcp={1.0 / threshold:.3f}",
+            extra=log_extras,
+        )
 
-        if 'Repaired?' not in df2.columns:
-            df2['Repaired?'] = False
+        if "Repaired?" not in df2.columns:
+            df2["Repaired?"] = False
 
         if correct_columns_individually:
             _1d_change_x = np.full((n, 4), 1.0)
@@ -2819,19 +3551,19 @@ class PriceHistory:
             price_data_cols = OHLC
             # _1d_change_x = np.full((n, len(price_data_cols)), 1.0)
             # price_data = df2[price_data_cols].replace(0.0, 1.0).to_numpy()
-            _1d_change_x[1:] = price_data[1:, ] / price_data[:-1, ]
+            _1d_change_x[1:] = price_data[1:,] / price_data[:-1,]
         else:
             _1d_change_x = _1d_change_denoised
 
         if correct_columns_individually:
             for j in range(len(price_data_cols)):
                 c = price_data_cols[j]
-                df_workings[c+' 1D %'] = _1d_change_x[:, j]
-                df_workings[c+' 1D %'] = df_workings[c+' 1D %'].round(3)
+                df_workings[c + " 1D %"] = _1d_change_x[:, j]
+                df_workings[c + " 1D %"] = df_workings[c + " 1D %"].round(3)
         else:
-            df_workings['1D %'] = _1d_change_denoised
+            df_workings["1D %"] = _1d_change_denoised
             # df_workings['1D %'] = df_workings['1D %'].round(2).astype('str')
-            df_workings['1D %'] = df_workings['1D %'].round(3)
+            df_workings["1D %"] = df_workings["1D %"].round(3)
 
         r = _1d_change_x / split_rcp
         f_down = _1d_change_x < 1.0 / threshold
@@ -2845,24 +3577,26 @@ class PriceHistory:
         #     f_down = f_down & ~(f_neg + f_div_before)
         f_up = _1d_change_x > threshold
         f_up_ndims = len(f_up.shape)
-        f_up_shifts = f_up if f_up_ndims==1 else f_up.any(axis=1)
+        f_up_shifts = f_up if f_up_ndims == 1 else f_up.any(axis=1)
         # In rare cases e.g. real disasters, the price actually drops massively on huge volume
         if f_up_shifts.any():
             nf_up_shifts = ~f_up_shifts
             flat_indices = np.where(nf_up_shifts)[0]
             f_down_ndims = len(f_down.shape)
-            down_dts = df2.index[f_down if f_down_ndims==1 else f_down.any(axis=1)]
+            down_dts = df2.index[f_down if f_down_ndims == 1 else f_down.any(axis=1)]
             for idx in np.where(f_up_shifts)[0]:
-                i = idx-1  # this is when price actually dropped
+                i = idx - 1  # this is when price actually dropped
                 dt = df2.index[i]
-                v = df2['Volume'].iloc[i]
+                v = df2["Volume"].iloc[i]
 
-                vol_change_pct = 0 if v == 0 else df2['Volume'].iloc[i-1] / v
+                vol_change_pct = 0 if v == 0 else df2["Volume"].iloc[i - 1] / v
                 logger.debug(f"- vol_change_pct = {vol_change_pct:.4f}")
-                if multiday and (i+1 < len(df2)):
-                    next_v = df2['Volume'].iloc[i+1]
+                if multiday and (i + 1 < len(df2)):
+                    next_v = df2["Volume"].iloc[i + 1]
                     if next_v > 0:
-                        vol_change_pct = max(vol_change_pct, df2['Volume'].iloc[i] / next_v)
+                        vol_change_pct = max(
+                            vol_change_pct, df2["Volume"].iloc[i] / next_v
+                        )
 
                 # if vol_change_pct > 5:
                 #     # big volume change +500%
@@ -2870,12 +3604,12 @@ class PriceHistory:
                 #     lookback = max(0, i-10)
                 #     lookahead = min(len(df2), i+10)
                 #     if (df2['Stock Splits'].iloc[lookback:lookahead]!=0.0).any():
-                #         # There's a stock split near the volume spike, so 
+                #         # There's a stock split near the volume spike, so
                 #         # assume false positive
                 #         continue
                 #     avg_vol_after = df2['Volume'].iloc[lookback:i-1].mean()
                 #     if not np.isnan(avg_vol_after) and avg_vol_after > 0 and v/avg_vol_after < 2.0:
-                #         # volume spike is actually a step-change, so 
+                #         # volume spike is actually a step-change, so
                 #         # probably missing stock split
                 #         continue
                 #     if f_up_ndims == 1:
@@ -2889,11 +3623,11 @@ class PriceHistory:
                 # are not triggers (big price moves).
                 i_pos_in_flat_indices = nf_up_shifts[:i].sum()
                 start = max(0, i_pos_in_flat_indices - 15)
-                end = min(len(flat_indices), start+30+1)
+                end = min(len(flat_indices), start + 30 + 1)
                 block = df2.iloc[flat_indices[start:end]]
                 block = block.sort_index()
                 # block_before = block.loc[:dt-_datetime.timedelta(1)]
-                down_dts_from = down_dts[down_dts>=dt]
+                down_dts_from = down_dts[down_dts >= dt]
                 if len(down_dts_from) > 0:
                     next_down_dt = min(down_dts_from)
                     if next_down_dt == dt:
@@ -2901,9 +3635,12 @@ class PriceHistory:
                         # is definitely a data error to repair.
                         block_after = None
                     else:
-                        block_after = block.loc[dt+_datetime.timedelta(1):next_down_dt-_datetime.timedelta(1)]
+                        block_after = block.loc[
+                            dt + _datetime.timedelta(1) : next_down_dt
+                            - _datetime.timedelta(1)
+                        ]
                 else:
-                    block_after = block.loc[dt+_datetime.timedelta(1):]
+                    block_after = block.loc[dt + _datetime.timedelta(1) :]
                 if block_after is not None and block_after.empty:
                     block_after = None
 
@@ -2912,7 +3649,7 @@ class PriceHistory:
                     distances /= distances.max()
                     weights = np.exp(-distances)
                     weights = np.array(weights) / np.sum(weights)
-                    values = block['Volume'].to_numpy()
+                    values = block["Volume"].to_numpy()
                     weighted_mean = np.sum(values * weights)
                     weighted_variance = np.sum(weights * (values - weighted_mean) ** 2)
                     weighted_std = np.sqrt(weighted_variance)
@@ -2924,7 +3661,7 @@ class PriceHistory:
 
                 def _calc_volume_zscore(volume, block):
                     # print(f"_calc_volume_zscore(volume={volume})")
-                    values = block['Volume'].to_numpy()
+                    values = block["Volume"].to_numpy()
                     std = np.std(values, ddof=1)
                     if std == 0.0:
                         return 0
@@ -2935,9 +3672,11 @@ class PriceHistory:
                 # z_score_before = _calc_volume_zscore(v, block_before)
                 # print(f"z_score_before = {z_score_before:.4f}")
                 if block_after is not None:
-                    z_score_after  = _calc_volume_zscore(v, block_after)
+                    z_score_after = _calc_volume_zscore(v, block_after)
                     # print(f"z_score_after  = {z_score_after:.4f}")
-                    z_score_after_d1 = _calc_volume_zscore(block_after['Volume'].iloc[0], block_after)
+                    z_score_after_d1 = _calc_volume_zscore(
+                        block_after["Volume"].iloc[0], block_after
+                    )
                     # print(f"z_score_after_d1 = {z_score_after_d1:.4f}")
                     # z_score_after_d2 = _calc_volume_zscore(block_after['Volume'].iloc[1], block_after)
                     # print(f"z_score_after_d2 = {z_score_after_d2:.4f}")
@@ -2945,89 +3684,99 @@ class PriceHistory:
                     if max(z_score_after, z_score_after_d1) > 2:
                         # There was a volume spike around this date, so
                         # probably something happened NOT a missing stock split.
-                        logger.debug(f"Detected false-positive split error on {dt.date()}, ignoring price drop")
+                        logger.debug(
+                            f"Detected false-positive split error on {dt.date()}, ignoring price drop"
+                        )
                         if f_up_ndims == 1:
                             f_up[idx] = False
                         else:
-                            f_up[idx,:] = False
+                            f_up[idx, :] = False
         f = f_down | f_up
         if not correct_columns_individually:
-            df_workings['r'] = r
-            df_workings['down'] = f_down
-            df_workings['up'] = f_up
-            df_workings['r'] = df_workings['r'].round(2).astype('str')
-            df_workings['f'] = f
+            df_workings["r"] = r
+            df_workings["down"] = f_down
+            df_workings["up"] = f_up
+            df_workings["r"] = df_workings["r"].round(2).astype("str")
+            df_workings["f"] = f
         else:
             for j in range(len(price_data_cols)):
                 c = price_data_cols[j]
-                df_workings[c+'_r'] = r[:, j]
-                df_workings[c+'_r'] = df_workings[c+'_r'].round(2).astype('str')
-                df_workings[c+'_down'] = f_down[:, j]
-                df_workings[c+'_up'] = f_up[:, j]
-                df_workings[c+'_f'] = f[:, j]
+                df_workings[c + "_r"] = r[:, j]
+                df_workings[c + "_r"] = df_workings[c + "_r"].round(2).astype("str")
+                df_workings[c + "_down"] = f_down[:, j]
+                df_workings[c + "_up"] = f_up[:, j]
+                df_workings[c + "_f"] = f[:, j]
 
         # Possible that extreme events caused the price spikes/dumps.
         # So for each signal, calculate local stdev for a custom threshold.
         for idx in np.where(f)[0]:
             dt = df2.index[idx]
-            idx_end = min(len(df2)-1, idx+2)
-            if interval.endswith('d'):
+            idx_end = min(len(df2) - 1, idx + 2)
+            if interval.endswith("d"):
                 lookback = 10
-            elif interval.endswith('m'):
+            elif interval.endswith("m"):
                 lookback = 100
             else:
                 lookback = 3
-            idx_start = max(0, idx-lookback)
+            idx_start = max(0, idx - lookback)
             changes_local = df_workings.iloc[idx_start:idx_end]
             if correct_columns_individually:
                 cols = price_data_cols
             else:
-                cols = ['n/a']
+                cols = ["n/a"]
             for c in cols:
-                if c == 'n/a':
-                    clean_changes = changes_local['1D %'][~changes_local['f']].to_numpy()
+                if c == "n/a":
+                    clean_changes = changes_local["1D %"][
+                        ~changes_local["f"]
+                    ].to_numpy()
                 else:
-                    clean_changes = changes_local[c+' 1D %'][~changes_local[c+'_f']].to_numpy()
+                    clean_changes = changes_local[c + " 1D %"][
+                        ~changes_local[c + "_f"]
+                    ].to_numpy()
                 avg = np.mean(clean_changes)
                 sd = np.std(clean_changes)
                 sd_pct = sd / avg
 
                 largest_change_pct = 5 * sd_pct
-                if interday and interval != '1d':
+                if interday and interval != "1d":
                     largest_change_pct *= 3
-                    if interval in ['1mo', '3mo']:
+                    if interval in ["1mo", "3mo"]:
                         largest_change_pct *= 2
                 threshold = (split_max + 1.0 + largest_change_pct) * 0.5
                 if correct_columns_individually:
-                    big_change = df_workings[c+' 1D %'].iloc[idx]
+                    big_change = df_workings[c + " 1D %"].iloc[idx]
                 else:
-                    big_change = df_workings['1D %'].iloc[idx]
-                    if big_change < threshold and big_change > 1.0/threshold:
+                    big_change = df_workings["1D %"].iloc[idx]
+                    if big_change < threshold and big_change > 1.0 / threshold:
                         # This price change is actually similar to local price volatily. False positive
                         if correct_columns_individually:
-                            logger.debug(f"Unusual '{c}' price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct*100:.1f}%)")
-                            df_workings.loc[dt, c+'_f'] = False
+                            logger.debug(
+                                f"Unusual '{c}' price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct * 100:.1f}%)"
+                            )
+                            df_workings.loc[dt, c + "_f"] = False
                         else:
-                            logger.debug(f"Unusual price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct*100:.1f}%)")
-                            df_workings.loc[dt, 'f'] = False
+                            logger.debug(
+                                f"Unusual price action @ {dt.date()} is actually similar to local price volatility, so ignoring (StdDev % mean = {sd_pct * 100:.1f}%)"
+                            )
+                            df_workings.loc[dt, "f"] = False
         if not correct_columns_individually:
-            f_down = f_down & df_workings['f'].to_numpy()
-            f_up = f_up & df_workings['f'].to_numpy()
+            f_down = f_down & df_workings["f"].to_numpy()
+            f_up = f_up & df_workings["f"].to_numpy()
         else:
             for j in range(len(price_data_cols)):
                 c = price_data_cols[j]
                 if c in debug_cols:
-                    f_down[:, j] = f_down[:, j] & df_workings[c+'_f']
-                    f_up[:, j] = f_up[:, j] & df_workings[c+'_f']
+                    f_down[:, j] = f_down[:, j] & df_workings[c + "_f"]
+                    f_up[:, j] = f_up[:, j] & df_workings[c + "_f"]
         f = f_down | f_up
 
         if not f.any():
-            logger.debug(f'No {fix_type}s detected', extra=log_extras)
+            logger.debug(f"No {fix_type}s detected", extra=log_extras)
             return df
 
         # Update: if any 100x changes are soon after a stock split, so could be confused with split error, then abort
         threshold_days = 30
-        f_splits = df2['Stock Splits'].to_numpy() != 0.0
+        f_splits = df2["Stock Splits"].to_numpy() != 0.0
         if change in [100.0, 0.01] and f_splits.any():
             indices_A = np.where(f_splits)[0]
             indices_B = np.where(f)[0]
@@ -3041,29 +3790,55 @@ class PriceHistory:
                 gap_min = gaps[f_pos].min()
                 gap_td = utils._interval_to_timedelta(interval) * gap_min
                 if isinstance(gap_td, _dateutil.relativedelta.relativedelta):
-                    threshold = _dateutil.relativedelta.relativedelta(days=threshold_days)
+                    threshold = _dateutil.relativedelta.relativedelta(
+                        days=threshold_days
+                    )
                 else:
                     threshold = _datetime.timedelta(days=threshold_days)
-                if isinstance(threshold, _dateutil.relativedelta.relativedelta) and isinstance(gap_td, _dateutil.relativedelta.relativedelta):
-                    idx = np.where(gaps==gap_min)[0][0]
+                if isinstance(
+                    threshold, _dateutil.relativedelta.relativedelta
+                ) and isinstance(gap_td, _dateutil.relativedelta.relativedelta):
+                    idx = np.where(gaps == gap_min)[0][0]
                     dt = df2.index[idx]
                     within_threshold = (dt + gap_td) < (dt + threshold)
                 else:
                     within_threshold = gap_td < threshold
                 if within_threshold:
-                    logger.info('100x changes are too soon after stock split events, aborting', extra=log_extras)
+                    logger.info(
+                        "100x changes are too soon after stock split events, aborting",
+                        extra=log_extras,
+                    )
                     return df
 
         if logger.isEnabledFor(logging.DEBUG):
-            df_workings['i'] = list(range(0, df_workings.shape[0]))
-            df_workings['i_rev'] = df_workings.shape[0]-1 - df_workings['i']
+            df_workings["i"] = list(range(0, df_workings.shape[0]))
+            df_workings["i_rev"] = df_workings.shape[0] - 1 - df_workings["i"]
             if correct_columns_individually:
-                f_change = df_workings[[c+'_down' for c in debug_cols]].any(axis=1) | df_workings[[c+'_up' for c in debug_cols]].any(axis=1)
+                f_change = df_workings[[c + "_down" for c in debug_cols]].any(
+                    axis=1
+                ) | df_workings[[c + "_up" for c in debug_cols]].any(axis=1)
             else:
-                f_change = df_workings['down'] | df_workings['up']
-            f_change = f_change | np.roll(f_change, -1) | np.roll(f_change, 1) | np.roll(f_change, -2) | np.roll(f_change, 2)
-            with pd.option_context('display.max_rows', None, 'display.max_columns', 10, 'display.width', 1000):  # more options can be specified also
-                logger.debug("price-repair-split: my workings:" + '\n' + str(df_workings[f_change]))
+                f_change = df_workings["down"] | df_workings["up"]
+            f_change = (
+                f_change
+                | np.roll(f_change, -1)
+                | np.roll(f_change, 1)
+                | np.roll(f_change, -2)
+                | np.roll(f_change, 2)
+            )
+            with pd.option_context(
+                "display.max_rows",
+                None,
+                "display.max_columns",
+                10,
+                "display.width",
+                1000,
+            ):  # more options can be specified also
+                logger.debug(
+                    "price-repair-split: my workings:"
+                    + "\n"
+                    + str(df_workings[f_change])
+                )
 
         def map_signals_to_ranges(f, f_up, f_down):
             # Ensure 0th element is False, because True is nonsense
@@ -3084,23 +3859,26 @@ class PriceHistory:
             for i in range(len(true_indices) - 1):
                 if i % 2 == 0:
                     if split > 1.0:
-                        adj = 'split' if f_down[true_indices[i]] else '1.0/split'
+                        adj = "split" if f_down[true_indices[i]] else "1.0/split"
                     else:
-                        adj = '1.0/split' if f_down[true_indices[i]] else 'split'
+                        adj = "1.0/split" if f_down[true_indices[i]] else "split"
                     ranges.append((true_indices[i], true_indices[i + 1], adj))
 
             if len(true_indices) % 2 != 0:
                 if split > 1.0:
-                    adj = 'split' if f_down[true_indices[-1]] else '1.0/split'
+                    adj = "split" if f_down[true_indices[-1]] else "1.0/split"
                 else:
-                    adj = '1.0/split' if f_down[true_indices[-1]] else 'split'
+                    adj = "1.0/split" if f_down[true_indices[-1]] else "split"
                 ranges.append((true_indices[-1], len(f), adj))
 
             return ranges
 
         if idx_latest_active is not None:
             idx_rev_latest_active = df.shape[0] - 1 - idx_latest_active
-            logger.debug(f'idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}', extra=log_extras)
+            logger.debug(
+                f"idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}",
+                extra=log_extras,
+            )
         if correct_columns_individually:
             f_corrected = np.full(n, False)
             if correct_volume:
@@ -3117,7 +3895,9 @@ class PriceHistory:
             for j in range(len(OHLC)):
                 c = OHLC[j]
                 idx_first_f = np.where(f)[0][0]
-                if appears_suspended and (idx_latest_active is not None and idx_latest_active >= idx_first_f):
+                if appears_suspended and (
+                    idx_latest_active is not None and idx_latest_active >= idx_first_f
+                ):
                     # Suspended midway during data date range.
                     # 1: process data before suspension in index-ascending (date-descending) order.
                     # 2: process data after suspension in index-descending order. Requires signals to be reversed,
@@ -3126,25 +3906,41 @@ class PriceHistory:
                     fj = f[:, j]
                     f_upj = f_up[:, j]
                     f_downj = f_down[:, j]
-                    ranges_before = map_signals_to_ranges(fj[idx_latest_active:], f_upj[idx_latest_active:], f_downj[idx_latest_active:])
+                    ranges_before = map_signals_to_ranges(
+                        fj[idx_latest_active:],
+                        f_upj[idx_latest_active:],
+                        f_downj[idx_latest_active:],
+                    )
                     if len(ranges_before) > 0:
                         # Shift each range back to global indexing
                         for i in range(len(ranges_before)):
                             r = ranges_before[i]
-                            ranges_before[i] = (r[0] + idx_latest_active, r[1] + idx_latest_active, r[2])
+                            ranges_before[i] = (
+                                r[0] + idx_latest_active,
+                                r[1] + idx_latest_active,
+                                r[2],
+                            )
                     f_rev_downj = np.flip(np.roll(f_upj, -1))  # correct
                     f_rev_upj = np.flip(np.roll(f_downj, -1))  # correct
                     f_revj = f_rev_upj | f_rev_downj
-                    ranges_after = map_signals_to_ranges(f_revj[idx_rev_latest_active:], f_rev_upj[idx_rev_latest_active:], f_rev_downj[idx_rev_latest_active:])
+                    ranges_after = map_signals_to_ranges(
+                        f_revj[idx_rev_latest_active:],
+                        f_rev_upj[idx_rev_latest_active:],
+                        f_rev_downj[idx_rev_latest_active:],
+                    )
                     if len(ranges_after) > 0:
                         # Shift each range back to global indexing:
                         for i in range(len(ranges_after)):
                             r = ranges_after[i]
-                            ranges_after[i] = (r[0] + idx_rev_latest_active, r[1] + idx_rev_latest_active, r[2])
+                            ranges_after[i] = (
+                                r[0] + idx_rev_latest_active,
+                                r[1] + idx_rev_latest_active,
+                                r[2],
+                            )
                         # Flip range to normal ordering
                         for i in range(len(ranges_after)):
                             r = ranges_after[i]
-                            ranges_after[i] = (n-r[1], n-r[0], r[2])
+                            ranges_after[i] = (n - r[1], n - r[0], r[2])
                     ranges = ranges_before
                     ranges.extend(ranges_after)
                 else:
@@ -3152,10 +3948,13 @@ class PriceHistory:
                 logger.debug(f"column '{c}' ranges: {ranges}", extra=log_extras)
                 if start_min is not None:
                     # Prune ranges that are older than start_min
-                    for i in range(len(ranges)-1, -1, -1):
+                    for i in range(len(ranges) - 1, -1, -1):
                         r = ranges[i]
                         if df2.index[r[0]].date() < start_min:
-                            logger.debug(f'Pruning {c} range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.', extra=log_extras)
+                            logger.debug(
+                                f"Pruning {c} range {df2.index[r[0]]}->{df2.index[r[1] - 1]} because too old.",
+                                extra=log_extras,
+                            )
                             del ranges[i]
 
                 if len(ranges) > 0:
@@ -3169,45 +3968,48 @@ class PriceHistory:
                 idxs = [i if OHLC_correct_ranges[i] else -1 for i in range(len(OHLC))]
                 idx = np.where(np.array(idxs) != -1)[0][0]
                 col = OHLC[idx]
-                logger.debug(f'Potential {fix_type} detected only in column {col}, so treating as false positive (ignore)', extra=log_extras)
+                logger.debug(
+                    f"Potential {fix_type} detected only in column {col}, so treating as false positive (ignore)",
+                    extra=log_extras,
+                )
             else:
                 # Only correct if at least 2 columns require correction.
-                n_corrected = [0,0,0,0]
+                n_corrected = [0, 0, 0, 0]
                 for j in range(len(OHLC)):
                     c = OHLC[j]
                     ranges = OHLC_correct_ranges[j]
                     if ranges is None:
                         ranges = []
                     for r in ranges:
-                        if r[2] == 'split':
+                        if r[2] == "split":
                             m = split
                             m_rcp = split_rcp
                         else:
                             m = split_rcp
                             m_rcp = split
                         if interday:
-                            msg = f"Corrected {fix_type} on col={c} range=[{df2.index[r[1]-1].date()}:{df2.index[r[0]].date()}] m={m:.4f}"
+                            msg = f"Corrected {fix_type} on col={c} range=[{df2.index[r[1] - 1].date()}:{df2.index[r[0]].date()}] m={m:.4f}"
                         else:
-                            msg = f"Corrected {fix_type} on col={c} range=[{df2.index[r[1]-1]}:{df2.index[r[0]]}] m={m:.4f}"
+                            msg = f"Corrected {fix_type} on col={c} range=[{df2.index[r[1] - 1]}:{df2.index[r[0]]}] m={m:.4f}"
                         logger.debug(msg, extra=log_extras)
                         # Instead of logging here, just count
-                        n_corrected[j] += r[1]-r[0]
-                        df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
-                        if c == 'Close':
-                            df2.iloc[r[0]:r[1], df2.columns.get_loc('Adj Close')] *= m
+                        n_corrected[j] += r[1] - r[0]
+                        df2.iloc[r[0] : r[1], df2.columns.get_loc(c)] *= m
+                        if c == "Close":
+                            df2.iloc[r[0] : r[1], df2.columns.get_loc("Adj Close")] *= m
                         if correct_volume:
-                            if c == 'Open':
-                                f_open_fixed[r[0]:r[1]] = True
-                            elif c == 'Close':
-                                f_close_fixed[r[0]:r[1]] = True
-                        f_corrected[r[0]:r[1]] = True
+                            if c == "Open":
+                                f_open_fixed[r[0] : r[1]] = True
+                            elif c == "Close":
+                                f_close_fixed[r[0] : r[1]] = True
+                        f_corrected[r[0] : r[1]] = True
                 if sum(n_corrected) > 0:
-                    counts_pretty = ''
+                    counts_pretty = ""
                     for j in range(len(OHLC)):
                         if n_corrected[j] != 0:
-                            if counts_pretty != '':
-                                counts_pretty += ', '
-                            counts_pretty += f'{OHLC[j]}={n_corrected[j]}x'
+                            if counts_pretty != "":
+                                counts_pretty += ", "
+                            counts_pretty += f"{OHLC[j]}={n_corrected[j]}x"
                     msg = f"Corrected: {counts_pretty}"
                     logger.info(msg, extra=log_extras)
 
@@ -3215,70 +4017,103 @@ class PriceHistory:
                 f_open_and_closed_fixed = f_open_fixed & f_close_fixed
                 f_open_xor_closed_fixed = np.logical_xor(f_open_fixed, f_close_fixed)
                 if f_open_and_closed_fixed.any():
-                    df2.loc[f_open_and_closed_fixed, "Volume"] = (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp).round().astype('int')
+                    df2.loc[f_open_and_closed_fixed, "Volume"] = (
+                        (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp)
+                        .round()
+                        .astype("int")
+                    )
                 if f_open_xor_closed_fixed.any():
-                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype('int')
+                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (
+                        (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp)
+                        .round()
+                        .astype("int")
+                    )
 
-            df2.loc[f_corrected, 'Repaired?'] = True
+            df2.loc[f_corrected, "Repaired?"] = True
 
         else:
             n_corrected = 0
             idx_first_f = np.where(f)[0][0]
-            if appears_suspended and (idx_latest_active is not None and idx_latest_active >= idx_first_f):
+            if appears_suspended and (
+                idx_latest_active is not None and idx_latest_active >= idx_first_f
+            ):
                 # Suspended midway during data date range.
                 # 1: process data before suspension in index-ascending (date-descending) order.
                 # 2: process data after suspension in index-descending order. Requires signals to be reversed,
                 #    then returned ranges to also be reversed, because this logic was originally written for
                 #    index-ascending (date-descending) order.
-                ranges_before = map_signals_to_ranges(f[idx_latest_active:], f_up[idx_latest_active:], f_down[idx_latest_active:])
+                ranges_before = map_signals_to_ranges(
+                    f[idx_latest_active:],
+                    f_up[idx_latest_active:],
+                    f_down[idx_latest_active:],
+                )
                 if len(ranges_before) > 0:
                     # Shift each range back to global indexing
                     for i in range(len(ranges_before)):
                         r = ranges_before[i]
-                        ranges_before[i] = (r[0] + idx_latest_active, r[1] + idx_latest_active, r[2])
+                        ranges_before[i] = (
+                            r[0] + idx_latest_active,
+                            r[1] + idx_latest_active,
+                            r[2],
+                        )
                 f_rev_down = np.flip(np.roll(f_up, -1))
                 f_rev_up = np.flip(np.roll(f_down, -1))
                 f_rev = f_rev_up | f_rev_down
-                ranges_after = map_signals_to_ranges(f_rev[idx_rev_latest_active:], f_rev_up[idx_rev_latest_active:], f_rev_down[idx_rev_latest_active:])
+                ranges_after = map_signals_to_ranges(
+                    f_rev[idx_rev_latest_active:],
+                    f_rev_up[idx_rev_latest_active:],
+                    f_rev_down[idx_rev_latest_active:],
+                )
                 if len(ranges_after) > 0:
                     # Shift each range back to global indexing:
                     for i in range(len(ranges_after)):
                         r = ranges_after[i]
-                        ranges_after[i] = (r[0] + idx_rev_latest_active, r[1] + idx_rev_latest_active, r[2])
+                        ranges_after[i] = (
+                            r[0] + idx_rev_latest_active,
+                            r[1] + idx_rev_latest_active,
+                            r[2],
+                        )
                     # Flip range to normal ordering
                     for i in range(len(ranges_after)):
                         r = ranges_after[i]
-                        ranges_after[i] = (n-r[1], n-r[0], r[2])
+                        ranges_after[i] = (n - r[1], n - r[0], r[2])
                 ranges = ranges_before
                 ranges.extend(ranges_after)
             else:
                 ranges = map_signals_to_ranges(f, f_up, f_down)
             if start_min is not None:
                 # Prune ranges that are older than start_min
-                for i in range(len(ranges)-1, -1, -1):
+                for i in range(len(ranges) - 1, -1, -1):
                     r = ranges[i]
                     if df2.index[r[0]].date() < start_min:
-                        logger.debug(f'Pruning range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.', extra=log_extras)
+                        logger.debug(
+                            f"Pruning range {df2.index[r[0]]}->{df2.index[r[1] - 1]} because too old.",
+                            extra=log_extras,
+                        )
                         del ranges[i]
             for r in ranges:
-                if r[2] == 'split':
+                if r[2] == "split":
                     m = split
                     m_rcp = split_rcp
                 else:
                     m = split_rcp
                     m_rcp = split
                 logger.debug(f"range={r} m={m}", extra=log_extras)
-                for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
-                    df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
+                for c in ["Open", "High", "Low", "Close", "Adj Close"]:
+                    df2.iloc[r[0] : r[1], df2.columns.get_loc(c)] *= m
                 if correct_dividend:
-                    df2.iloc[r[0]:r[1], df2.columns.get_loc('Dividends')] *= m
+                    df2.iloc[r[0] : r[1], df2.columns.get_loc("Dividends")] *= m
                 if correct_volume:
                     col_loc = df2.columns.get_loc("Volume")
-                    df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).round().astype('int')
-                df2.iloc[r[0]:r[1], df2.columns.get_loc('Repaired?')] = True
+                    df2.iloc[r[0] : r[1], col_loc] = (
+                        (df2.iloc[r[0] : r[1], col_loc] * m_rcp).round().astype("int")
+                    )
+                df2.iloc[r[0] : r[1], df2.columns.get_loc("Repaired?")] = True
                 if r[0] == r[1] - 1:
                     if interday:
-                        msg = f"Corrected {fix_type} on interval {df2.index[r[0]].date()}"
+                        msg = (
+                            f"Corrected {fix_type} on interval {df2.index[r[0]].date()}"
+                        )
                     else:
                         msg = f"Corrected {fix_type} on interval {df2.index[r[0]]}"
                 else:
@@ -3295,16 +4130,16 @@ class PriceHistory:
             if len(ranges) <= 2:
                 msg = "Corrected:"
                 for r in ranges:
-                    msg += f" {df2.index[r[1]-1].date()} -> {df2.index[r[0]].date()}"
+                    msg += f" {df2.index[r[1] - 1].date()} -> {df2.index[r[0]].date()}"
             else:
                 msg = f"Corrected: {n_corrected}x"
             logger.info(msg, extra=log_extras)
 
         if correct_volume:
-            f_na = df2['Volume'].isna()
+            f_na = df2["Volume"].isna()
             if f_na.any():
-                df2.loc[~f_na,'Volume'] = df2['Volume'][~f_na].round(0).astype('int')
+                df2.loc[~f_na, "Volume"] = df2["Volume"][~f_na].round(0).astype("int")
             else:
-                df2['Volume'] = df2['Volume'].round(0).astype('int')
+                df2["Volume"] = df2["Volume"].round(0).astype("int")
 
         return df2.sort_index()

@@ -1,17 +1,18 @@
 from __future__ import print_function
 
-import pandas as _pd
 from typing import Dict, Optional
+
+import polars as _pl
 
 from ..config import YfConfig
 from ..const import SECTOR_INDUSTY_MAPPING_LC
 from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_logger
+from .domain import _QUERY_URL_, Domain
 
-from .domain import Domain, _QUERY_URL_
 
 class Sector(Domain):
     """
-    Represents a financial market sector and allows retrieval of sector-related data 
+    Represents a financial market sector and allows retrieval of sector-related data
     such as top ETFs, top mutual funds, and industry data.
     """
 
@@ -20,17 +21,17 @@ class Sector(Domain):
         Args:
             key (str): The key representing the sector.
             session (requests.Session, optional): A session for making requests. Defaults to None.
-        
+
         .. seealso::
-   
+
             :attr:`Sector.industries <yfinance.Sector.industries>`
                 Map of sector and industry
         """
         super(Sector, self).__init__(key, session)
-        self._query_url: str = f'{_QUERY_URL_}/sectors/{self._key}'
+        self._query_url: str = f"{_QUERY_URL_}/sectors/{self._key}"
         self._top_etfs: Optional[Dict] = None
         self._top_mutual_funds: Optional[Dict] = None
-        self._industries: Optional[_pd.DataFrame] = None
+        self._industries: Optional[_pl.DataFrame] = None
 
     def __repr__(self):
         """
@@ -39,8 +40,8 @@ class Sector(Domain):
         Returns:
             str: A string representation of the object.
         """
-        return f'yfinance.Sector object <{self._key}>'
-    
+        return f"yfinance.Sector object <{self._key}>"
+
     @property
     def top_etfs(self) -> Dict[str, str]:
         """
@@ -63,20 +64,26 @@ class Sector(Domain):
         self._ensure_fetched(self._top_mutual_funds)
         return self._top_mutual_funds
 
-    @dynamic_docstring({"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING_LC,bullets=True)})
+    @dynamic_docstring(
+        {
+            "sector_industry": generate_list_table_from_dict(
+                SECTOR_INDUSTY_MAPPING_LC, bullets=True
+            )
+        }
+    )
     @property
-    def industries(self) -> _pd.DataFrame:
+    def industries(self) -> _pl.DataFrame:
         """
         Gets the industries within the sector.
 
         Returns:
-            pandas.DataFrame: A DataFrame with industries' key, name, symbol, and market weight.
+            polars.DataFrame: A DataFrame with industries' key, name, symbol, and market weight.
 
         {sector_industry}
         """
         self._ensure_fetched(self._industries)
         return self._industries
-    
+
     def _parse_top_etfs(self, top_etfs: Dict) -> Dict[str, str]:
         """
         Parses top ETF data from the API response.
@@ -87,7 +94,7 @@ class Sector(Domain):
         Returns:
             Dict[str, str]: A dictionary of ETF symbols and names.
         """
-        return {e.get('symbol'): e.get('name') for e in top_etfs}
+        return {e.get("symbol"): e.get("name") for e in top_etfs}
 
     def _parse_top_mutual_funds(self, top_mutual_funds: Dict) -> Dict[str, str]:
         """
@@ -99,9 +106,9 @@ class Sector(Domain):
         Returns:
             Dict[str, str]: A dictionary of mutual fund symbols and names.
         """
-        return {e.get('symbol'): e.get('name') for e in top_mutual_funds}
-    
-    def _parse_industries(self, industries: Dict) -> _pd.DataFrame:
+        return {e.get("symbol"): e.get("name") for e in top_mutual_funds}
+
+    def _parse_industries(self, industries: Dict) -> _pl.DataFrame:
         """
         Parses industry data from the API response into a DataFrame.
 
@@ -109,21 +116,35 @@ class Sector(Domain):
             industries (Dict): The raw industry data from the API response.
 
         Returns:
-            pandas.DataFrame: A DataFrame containing industry key, name, symbol, and market weight.
+            polars.DataFrame: A DataFrame containing industry key, name, symbol, and market weight.
         """
-        industries_column = ['key','name','symbol','market weight']
-        industries_values = [(i.get('key'),
-                              i.get('name'),
-                              i.get('symbol'),
-                              i.get('marketWeight',{}).get('raw', None)
-                              ) for i in industries if i.get('name') != 'All Industries']
-        return _pd.DataFrame(industries_values, columns=industries_column).set_index('key')
+        industries_values = [
+            (
+                i.get("key"),
+                i.get("name"),
+                i.get("symbol"),
+                i.get("marketWeight", {}).get("raw", None),
+            )
+            for i in industries
+            if i.get("name") != "All Industries"
+        ]
+        if not industries_values:
+            return _pl.DataFrame()
+        keys, names, symbols, weights = zip(*industries_values)
+        return _pl.DataFrame(
+            {
+                "key": list(keys),
+                "name": list(names),
+                "symbol": list(symbols),
+                "market weight": list(weights),
+            }
+        )
 
     def _fetch_and_parse(self) -> None:
         """
         Fetches and parses sector data from the API.
 
-        Fetches data for the sector and parses the top ETFs, top mutual funds, 
+        Fetches data for the sector and parses the top ETFs, top mutual funds,
         and industries within the sector. Stores the parsed data in the corresponding
         attributes `_top_etfs`, `_top_mutual_funds`, and `_industries`.
 
@@ -131,15 +152,17 @@ class Sector(Domain):
             Exception: If fetching or parsing the sector data fails.
         """
         result = None
-        
+
         try:
             result = self._fetch(self._query_url)
-            data = result['data']
+            data = result["data"]
             self._parse_and_assign_common(data)
 
-            self._top_etfs = self._parse_top_etfs(data.get('topETFs', {}))
-            self._top_mutual_funds = self._parse_top_mutual_funds(data.get('topMutualFunds', {}))
-            self._industries = self._parse_industries(data.get('industries', {}))
+            self._top_etfs = self._parse_top_etfs(data.get("topETFs", {}))
+            self._top_mutual_funds = self._parse_top_mutual_funds(
+                data.get("topMutualFunds", {})
+            )
+            self._industries = self._parse_industries(data.get("industries", {}))
 
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:

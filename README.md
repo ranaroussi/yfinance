@@ -14,6 +14,9 @@
 
 **yfinance** offers a Pythonic way to fetch financial & market data from [Yahoo!Ⓡ finance](https://finance.yahoo.com).
 
+> **v2.0.0 — Polars-native:** yfinance now returns [Polars](https://pola.rs) DataFrames instead of pandas.
+> Install the optional `[pandas]` extra and use `as_pandas=True` on `history()` for backward compatibility.
+
 ---
 
 > [!IMPORTANT]  
@@ -47,11 +50,55 @@
 
 ## Installation
 
-Install `yfinance` from PYPI using `pip`:
+Using uv (recommended):
 
-``` {.sourceCode .bash}
-$ pip install yfinance
+```sh
+uv add yfinance
 ```
+
+Using pip:
+
+```sh
+pip install yfinance
+```
+
+For pandas compatibility (optional):
+
+```sh
+uv add 'yfinance[pandas]'
+# or
+pip install 'yfinance[pandas]'
+```
+
+## Quick Start
+
+```python
+import yfinance as yf
+import polars as pl
+
+msft = yf.Ticker("MSFT")
+
+# Returns a polars DataFrame with a "Date" or "Datetime" column
+hist = msft.history(period="1mo")
+print(hist.head())
+
+# Filter by date range
+from datetime import date
+recent = hist.filter(pl.col("Date") >= date(2024, 1, 1))
+
+# Download multiple tickers — returns long-form DataFrame with "Ticker" column
+data = yf.download(["AAPL", "MSFT"], start="2024-01-01")
+print(data.filter(pl.col("Ticker") == "AAPL").head())
+
+# Convert to per-ticker dict
+by_ticker = yf.download_to_dict(data)
+aapl = by_ticker["AAPL"]
+
+# Optional: convert to pandas for compatibility
+hist_pd = msft.history(period="1mo", as_pandas=True)
+```
+
+---
 
 ### [yfinance relies on the community to investigate bugs and contribute code. Here's how you can help.](https://github.com/ranaroussi/yfinance/blob/main/CONTRIBUTING.md)
 

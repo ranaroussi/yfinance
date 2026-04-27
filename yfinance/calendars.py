@@ -1,17 +1,19 @@
-from __future__ import annotations # Just in case
+from __future__ import annotations  # Just in case
+
 import json
-from typing import Any, Optional, List, Union, Dict
 import warnings
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
-from requests import Session, Response, exceptions
-import pandas as pd
-from datetime import datetime, date, timedelta
+import polars as pl
+from requests import Response, Session, exceptions
 
 from .const import _QUERY1_URL_
-from .utils import log_indent_decorator, get_yf_logger, _parse_user_dt
-from .screener import screen
 from .data import YfData
 from .exceptions import YFException
+from .screener import screen
+from .utils import _parse_user_dt, get_yf_logger, log_indent_decorator
 
 
 class CalendarQuery:
@@ -71,7 +73,9 @@ class CalendarQuery:
         ops = self.operands
         return {
             "operator": op,
-            "operands": [o.to_dict() if isinstance(o, CalendarQuery) else o for o in ops],
+            "operands": [
+                o.to_dict() if isinstance(o, CalendarQuery) else o for o in ops
+            ],
         }
 
 
@@ -199,19 +203,27 @@ class Calendars:
         _start = self._parse_date_param(start)
         _end = self._parse_date_param(end)
         self._start = _start or datetime.now().strftime(DATE_STR_FORMAT)
-        self._end = _end or (datetime.strptime(self._start, DATE_STR_FORMAT) + timedelta(days=7)).strftime(DATE_STR_FORMAT)
+        self._end = _end or (
+            datetime.strptime(self._start, DATE_STR_FORMAT) + timedelta(days=7)
+        ).strftime(DATE_STR_FORMAT)
 
         if not start and end:
-            self._logger.debug(f"Incomplete boundary: did not provide `start`, using today {self._start=} to {self._end=}")
+            self._logger.debug(
+                f"Incomplete boundary: did not provide `start`, using today {self._start=} to {self._end=}"
+            )
         elif start and not end:
-            self._logger.debug(f"Incomplete boundary: did not provide `end`, using {self._start=} to {self._end=}: +7 days from self._start")
+            self._logger.debug(
+                f"Incomplete boundary: did not provide `end`, using {self._start=} to {self._end=}: +7 days from self._start"
+            )
 
         self._most_active_qy: CalendarQuery = CalendarQuery("or", [])
 
         self._cache_request_body = {}
-        self.calendars: Dict[str, pd.DataFrame] = {}
+        self.calendars: Dict[str, pl.DataFrame] = {}
 
-    def _parse_date_param(self, _date: Optional[Union[str, datetime, date, int]]) -> str:
+    def _parse_date_param(
+        self, _date: Optional[Union[str, datetime, date, int]]
+    ) -> str:
         if not _date:
             return ""
         else:
@@ -219,7 +231,7 @@ class Calendars:
 
     def _get_data(
         self, calendar_type: str, query: CalendarQuery, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         if calendar_type not in PREDEFINED_CALENDARS:
             raise YFException(f"Unknown calendar type: {calendar_type}")
 
@@ -258,7 +270,7 @@ class Calendars:
         self.calendars[calendar_type] = self._create_df(json_data)
         return self._cleanup_df(calendar_type)
 
-    def _create_df(self, json_data: dict) -> pd.DataFrame:
+    def _create_df(self, json_data: dict) -> pl.DataFrame:
         columns = []
         for col in json_data["finance"]["result"][0]["documents"][0]["columns"]:
             columns.append(col["label"])
@@ -268,26 +280,40 @@ class Calendars:
                 columns[-1] = "Timing"
 
         rows = json_data["finance"]["result"][0]["documents"][0]["rows"]
-        return pd.DataFrame(rows, columns=columns)
+        return pl.DataFrame(rows, schema=columns, orient="row")
 
-    def _cleanup_df(self, calendar_type: str) -> pd.DataFrame:
+    def _cleanup_df(self, calendar_type: str) -> pl.DataFrame:
         predef_cal: dict = PREDEFINED_CALENDARS[calendar_type]
-        df: pd.DataFrame = self.calendars[calendar_type]
-        if df.empty:
+        df: pl.DataFrame = self.calendars[calendar_type]
+        if df.is_empty():
             return df
 
         # Convert types
         nan_cols: list = predef_cal["nan_cols"]
         if nan_cols:
-            df[nan_cols] = df[nan_cols].astype("float64").replace(0.0, np.nan)
+            df = df.with_columns(
+                [pl.col(c).cast(pl.Float64).replace(0.0, None) for c in nan_cols]
+            )
 
-        # Format the dataframe
-        df.set_index(predef_cal["df_index"], inplace=True)
-        for rename_from, rename_to in predef_cal["renames"].items():
-            df.rename(columns={rename_from: rename_to}, inplace=True)
+        # Format the dataframe (keep index column as a regular column)
+        rename_map = {
+            rename_from: rename_to
+            for rename_from, rename_to in predef_cal["renames"].items()
+        }
+        if rename_map:
+            df = df.rename(rename_map)
 
         for datetime_col in predef_cal["datetime_cols"]:
-            df[datetime_col] = pd.to_datetime(df[datetime_col])
+            if datetime_col in df.columns and df[datetime_col].dtype == pl.Utf8:
+                # Parse eagerly on the Series to handle tz-aware strings correctly.
+                # str.to_datetime on a lazy Expr cannot auto-detect timezone offsets.
+                parsed = df[datetime_col].map_elements(
+                    lambda s: None
+                    if s is None
+                    else __import__("datetime").datetime.fromisoformat(s),
+                    return_dtype=pl.Datetime("us", "UTC"),
+                )
+                df = df.with_columns(parsed.alias(datetime_col))
 
         return df
 
@@ -365,7 +391,7 @@ class Calendars:
         limit=12,
         offset=0,
         force=False,
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """
         Retrieve earnings calendar from YF as a DataFrame.
         Will re-query every time it is called, overwriting previous data.
@@ -429,7 +455,7 @@ class Calendars:
     @log_indent_decorator
     def get_ipo_info_calendar(
         self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """
         Retrieve IPOs calendar from YF as a Dataframe.
 
@@ -454,9 +480,15 @@ class Calendars:
         query = CalendarQuery(
             "or",
             [
-                CalendarQuery("gtelt", ["startdatetime", _start or self._start, _end or self._end]),
-                CalendarQuery("gtelt", ["filingdate", _start or self._start, _end or self._end]),
-                CalendarQuery("gtelt", ["amendeddate", _start or self._start, _end or self._end]),
+                CalendarQuery(
+                    "gtelt", ["startdatetime", _start or self._start, _end or self._end]
+                ),
+                CalendarQuery(
+                    "gtelt", ["filingdate", _start or self._start, _end or self._end]
+                ),
+                CalendarQuery(
+                    "gtelt", ["amendeddate", _start or self._start, _end or self._end]
+                ),
             ],
         )
 
@@ -471,7 +503,7 @@ class Calendars:
     @log_indent_decorator
     def get_economic_events_calendar(
         self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """
         Retrieve Economic Events calendar from YF as a DataFrame.
 
@@ -495,7 +527,7 @@ class Calendars:
     @log_indent_decorator
     def get_splits_calendar(
         self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """
         Retrieve Splits calendar from YF as a DataFrame.
 
@@ -519,28 +551,28 @@ class Calendars:
     ### Easy / Default getter functions:
 
     @property
-    def earnings_calendar(self) -> pd.DataFrame:
+    def earnings_calendar(self) -> pl.DataFrame:
         """Earnings calendar with default settings."""
         if "sp_earnings" in self.calendars:
             return self.calendars["sp_earnings"]
         return self.get_earnings_calendar()
 
     @property
-    def ipo_info_calendar(self) -> pd.DataFrame:
+    def ipo_info_calendar(self) -> pl.DataFrame:
         """IPOs calendar with default settings."""
         if "ipo_info" in self.calendars:
             return self.calendars["ipo_info"]
         return self.get_ipo_info_calendar()
 
     @property
-    def economic_events_calendar(self) -> pd.DataFrame:
+    def economic_events_calendar(self) -> pl.DataFrame:
         """Economic events calendar with default settings."""
         if "economic_event" in self.calendars:
             return self.calendars["economic_event"]
         return self.get_economic_events_calendar()
 
     @property
-    def splits_calendar(self) -> pd.DataFrame:
+    def splits_calendar(self) -> pl.DataFrame:
         """Splits calendar with default settings."""
         if "splits" in self.calendars:
             return self.calendars["splits"]

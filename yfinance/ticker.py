@@ -18,12 +18,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+# NOTE: All public methods return polars DataFrames by default.
+# Use as_pandas=True on history() or call .to_pandas() on any result to convert.
 
 from __future__ import print_function
 
 from collections import namedtuple as _namedtuple
+from datetime import datetime, timezone
 
-import pandas as _pd
+import polars as _pl
 
 from .base import TickerBase
 from .const import _BASE_URL_
@@ -34,10 +37,51 @@ class Ticker(TickerBase):
     def __init__(self, ticker, session=None):
         super(Ticker, self).__init__(ticker, session=session)
         self._expirations = {}
-        self._underlying  = {}
+        self._underlying = {}
 
     def __repr__(self):
-        return f'yfinance.Ticker object <{self.ticker}>'
+        return f"yfinance.Ticker object <{self.ticker}>"
+
+    def history(self, *args, as_pandas: bool = False, **kwargs) -> _pl.DataFrame:
+        """Fetch price history for this ticker.
+
+        Parameters
+        ----------
+        as_pandas : bool, optional
+            If True, return a pandas DataFrame with a DatetimeIndex instead of
+            a polars DataFrame. Requires ``pandas`` to be installed
+            (``pip install 'yfinance[pandas]'``). Defaults to False.
+        *args, **kwargs :
+            All other arguments are forwarded to the underlying history scraper.
+
+        Returns
+        -------
+        polars.DataFrame or pandas.DataFrame
+        """
+        df = super().history(*args, **kwargs)
+        if as_pandas:
+            try:
+                import pandas as _pd  # noqa: F401
+                import pyarrow as _pa  # noqa: F401
+
+                result = df.to_pandas()
+                if "Datetime" in result.columns:
+                    result = result.set_index("Datetime")
+                elif "Date" in result.columns:
+                    result = result.set_index("Date")
+                return result
+            except ImportError:
+                import warnings
+
+                warnings.warn(
+                    "pandas and pyarrow are required for as_pandas=True. "
+                    "Install them with: pip install 'yfinance[pandas]'  "
+                    "or: uv add 'yfinance[pandas]'. "
+                    "Returning polars DataFrame instead.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        return df
 
     def _download_options(self, date=None):
         if date is None:
@@ -46,38 +90,53 @@ class Ticker(TickerBase):
             url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}?date={date}"
 
         r = self._data.get(url=url).json()
-        if len(r.get('optionChain', {}).get('result', [])) > 0:
-            for exp in r['optionChain']['result'][0]['expirationDates']:
-                self._expirations[_pd.Timestamp(exp, unit='s').strftime('%Y-%m-%d')] = exp
+        if len(r.get("optionChain", {}).get("result", [])) > 0:
+            for exp in r["optionChain"]["result"][0]["expirationDates"]:
+                self._expirations[
+                    datetime.fromtimestamp(exp, tz=timezone.utc).strftime("%Y-%m-%d")
+                ] = exp
 
-            self._underlying = r['optionChain']['result'][0].get('quote', {})
+            self._underlying = r["optionChain"]["result"][0].get("quote", {})
 
-            opt = r['optionChain']['result'][0].get('options', [])
+            opt = r["optionChain"]["result"][0].get("options", [])
 
-            return dict(**opt[0],underlying=self._underlying) if len(opt) > 0 else {}
+            return dict(**opt[0], underlying=self._underlying) if len(opt) > 0 else {}
         return {}
 
     def _options2df(self, opt, tz=None):
-        data = _pd.DataFrame(opt).reindex(columns=[
-            'contractSymbol',
-            'lastTradeDate',
-            'strike',
-            'lastPrice',
-            'bid',
-            'ask',
-            'change',
-            'percentChange',
-            'volume',
-            'openInterest',
-            'impliedVolatility',
-            'inTheMoney',
-            'contractSize',
-            'currency'])
+        col_order = [
+            "contractSymbol",
+            "lastTradeDate",
+            "strike",
+            "lastPrice",
+            "bid",
+            "ask",
+            "change",
+            "percentChange",
+            "volume",
+            "openInterest",
+            "impliedVolatility",
+            "inTheMoney",
+            "contractSize",
+            "currency",
+        ]
+        raw = _pl.DataFrame(opt)
+        available_cols = [c for c in col_order if c in raw.columns]
+        data = raw.select(available_cols)
 
-        data['lastTradeDate'] = _pd.to_datetime(
-            data['lastTradeDate'], unit='s', utc=True)
-        if tz is not None:
-            data['lastTradeDate'] = data['lastTradeDate'].dt.tz_convert(tz)
+        if "lastTradeDate" in data.columns:
+            data = data.with_columns(
+                _pl.col("lastTradeDate")
+                .cast(_pl.Int64)
+                .mul(1_000_000)
+                .cast(_pl.Datetime("us", "UTC"))
+                .alias("lastTradeDate")
+            )
+            if tz is not None:
+                data = data.with_columns(
+                    _pl.col("lastTradeDate").dt.convert_time_zone(tz)
+                )
+
         return data
 
     def option_chain(self, date=None, tz=None):
@@ -89,20 +148,23 @@ class Ticker(TickerBase):
             if date not in self._expirations:
                 raise ValueError(
                     f"Expiration `{date}` cannot be found. "
-                    f"Available expirations are: [{', '.join(self._expirations)}]")
+                    f"Available expirations are: [{', '.join(self._expirations)}]"
+                )
             date = self._expirations[date]
             options = self._download_options(date)
 
         if not options:
-            return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
-                "calls": None, "puts": None, "underlying": None
-            })
+            return _namedtuple("Options", ["calls", "puts", "underlying"])(
+                **{"calls": None, "puts": None, "underlying": None}
+            )
 
-        return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
-            "calls": self._options2df(options['calls'], tz=tz),
-            "puts": self._options2df(options['puts'], tz=tz),
-            "underlying": options['underlying']
-        })
+        return _namedtuple("Options", ["calls", "puts", "underlying"])(
+            **{
+                "calls": self._options2df(options["calls"], tz=tz),
+                "puts": self._options2df(options["puts"], tz=tz),
+                "underlying": options["underlying"],
+            }
+        )
 
     # ------------------------
 
@@ -111,47 +173,47 @@ class Ticker(TickerBase):
         return self.get_isin()
 
     @property
-    def major_holders(self) -> _pd.DataFrame:
+    def major_holders(self) -> _pl.DataFrame:
         return self.get_major_holders()
 
     @property
-    def institutional_holders(self) -> _pd.DataFrame:
+    def institutional_holders(self) -> _pl.DataFrame:
         return self.get_institutional_holders()
 
     @property
-    def mutualfund_holders(self) -> _pd.DataFrame:
+    def mutualfund_holders(self) -> _pl.DataFrame:
         return self.get_mutualfund_holders()
 
     @property
-    def insider_purchases(self) -> _pd.DataFrame:
+    def insider_purchases(self) -> _pl.DataFrame:
         return self.get_insider_purchases()
 
     @property
-    def insider_transactions(self) -> _pd.DataFrame:
+    def insider_transactions(self) -> _pl.DataFrame:
         return self.get_insider_transactions()
 
     @property
-    def insider_roster_holders(self) -> _pd.DataFrame:
+    def insider_roster_holders(self) -> _pl.DataFrame:
         return self.get_insider_roster_holders()
 
     @property
-    def dividends(self) -> _pd.Series:
+    def dividends(self) -> _pl.DataFrame:
         return self.get_dividends()
 
     @property
-    def capital_gains(self) -> _pd.Series:
+    def capital_gains(self) -> _pl.DataFrame:
         return self.get_capital_gains()
 
     @property
-    def splits(self) -> _pd.Series:
+    def splits(self) -> _pl.DataFrame:
         return self.get_splits()
 
     @property
-    def actions(self) -> _pd.DataFrame:
+    def actions(self) -> _pl.DataFrame:
         return self.get_actions()
 
     @property
-    def shares(self) -> _pd.DataFrame:
+    def shares(self) -> _pl.DataFrame:
         return self.get_shares()
 
     @property
@@ -163,7 +225,7 @@ class Ticker(TickerBase):
         return self.get_fast_info()
 
     @property
-    def valuation(self) -> _pd.DataFrame:
+    def valuation(self) -> _pl.DataFrame:
         return self.get_valuation_measures()
 
     @property
@@ -190,87 +252,87 @@ class Ticker(TickerBase):
         return self.get_upgrades_downgrades()
 
     @property
-    def earnings(self) -> _pd.DataFrame:
+    def earnings(self) -> _pl.DataFrame:
         return self.get_earnings()
 
     @property
-    def quarterly_earnings(self) -> _pd.DataFrame:
-        return self.get_earnings(freq='quarterly')
+    def quarterly_earnings(self) -> _pl.DataFrame:
+        return self.get_earnings(freq="quarterly")
 
     @property
-    def income_stmt(self) -> _pd.DataFrame:
+    def income_stmt(self) -> _pl.DataFrame:
         return self.get_income_stmt(pretty=True)
 
     @property
-    def quarterly_income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(pretty=True, freq='quarterly')
+    def quarterly_income_stmt(self) -> _pl.DataFrame:
+        return self.get_income_stmt(pretty=True, freq="quarterly")
 
     @property
-    def ttm_income_stmt(self) -> _pd.DataFrame:
-        return self.get_income_stmt(pretty=True, freq='trailing')
+    def ttm_income_stmt(self) -> _pl.DataFrame:
+        return self.get_income_stmt(pretty=True, freq="trailing")
 
     @property
-    def incomestmt(self) -> _pd.DataFrame:
+    def incomestmt(self) -> _pl.DataFrame:
         return self.income_stmt
 
     @property
-    def quarterly_incomestmt(self) -> _pd.DataFrame:
+    def quarterly_incomestmt(self) -> _pl.DataFrame:
         return self.quarterly_income_stmt
 
     @property
-    def ttm_incomestmt(self) -> _pd.DataFrame:
+    def ttm_incomestmt(self) -> _pl.DataFrame:
         return self.ttm_income_stmt
 
     @property
-    def financials(self) -> _pd.DataFrame:
+    def financials(self) -> _pl.DataFrame:
         return self.income_stmt
 
     @property
-    def quarterly_financials(self) -> _pd.DataFrame:
+    def quarterly_financials(self) -> _pl.DataFrame:
         return self.quarterly_income_stmt
 
     @property
-    def ttm_financials(self) -> _pd.DataFrame:
+    def ttm_financials(self) -> _pl.DataFrame:
         return self.ttm_income_stmt
 
     @property
-    def balance_sheet(self) -> _pd.DataFrame:
+    def balance_sheet(self) -> _pl.DataFrame:
         return self.get_balance_sheet(pretty=True)
 
     @property
-    def quarterly_balance_sheet(self) -> _pd.DataFrame:
-        return self.get_balance_sheet(pretty=True, freq='quarterly')
+    def quarterly_balance_sheet(self) -> _pl.DataFrame:
+        return self.get_balance_sheet(pretty=True, freq="quarterly")
 
     @property
-    def balancesheet(self) -> _pd.DataFrame:
+    def balancesheet(self) -> _pl.DataFrame:
         return self.balance_sheet
 
     @property
-    def quarterly_balancesheet(self) -> _pd.DataFrame:
+    def quarterly_balancesheet(self) -> _pl.DataFrame:
         return self.quarterly_balance_sheet
 
     @property
-    def cash_flow(self) -> _pd.DataFrame:
+    def cash_flow(self) -> _pl.DataFrame:
         return self.get_cash_flow(pretty=True, freq="yearly")
 
     @property
-    def quarterly_cash_flow(self) -> _pd.DataFrame:
-        return self.get_cash_flow(pretty=True, freq='quarterly')
+    def quarterly_cash_flow(self) -> _pl.DataFrame:
+        return self.get_cash_flow(pretty=True, freq="quarterly")
 
     @property
-    def ttm_cash_flow(self) -> _pd.DataFrame:
-        return self.get_cash_flow(pretty=True, freq='trailing')
+    def ttm_cash_flow(self) -> _pl.DataFrame:
+        return self.get_cash_flow(pretty=True, freq="trailing")
 
     @property
-    def cashflow(self) -> _pd.DataFrame:
+    def cashflow(self) -> _pl.DataFrame:
         return self.cash_flow
 
     @property
-    def quarterly_cashflow(self) -> _pd.DataFrame:
+    def quarterly_cashflow(self) -> _pl.DataFrame:
         return self.quarterly_cash_flow
 
     @property
-    def ttm_cashflow(self) -> _pd.DataFrame:
+    def ttm_cashflow(self) -> _pl.DataFrame:
         return self.ttm_cash_flow
 
     @property
@@ -278,31 +340,31 @@ class Ticker(TickerBase):
         return self.get_analyst_price_targets()
 
     @property
-    def earnings_estimate(self) -> _pd.DataFrame:
+    def earnings_estimate(self) -> _pl.DataFrame:
         return self.get_earnings_estimate()
 
     @property
-    def revenue_estimate(self) -> _pd.DataFrame:
+    def revenue_estimate(self) -> _pl.DataFrame:
         return self.get_revenue_estimate()
 
     @property
-    def earnings_history(self) -> _pd.DataFrame:
+    def earnings_history(self) -> _pl.DataFrame:
         return self.get_earnings_history()
 
     @property
-    def eps_trend(self) -> _pd.DataFrame:
+    def eps_trend(self) -> _pl.DataFrame:
         return self.get_eps_trend()
 
     @property
-    def eps_revisions(self) -> _pd.DataFrame:
+    def eps_revisions(self) -> _pl.DataFrame:
         return self.get_eps_revisions()
 
     @property
-    def growth_estimates(self) -> _pd.DataFrame:
+    def growth_estimates(self) -> _pl.DataFrame:
         return self.get_growth_estimates()
 
     @property
-    def sustainability(self) -> _pd.DataFrame:
+    def sustainability(self) -> _pl.DataFrame:
         return self.get_sustainability()
 
     @property
@@ -316,7 +378,7 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def earnings_dates(self) -> _pd.DataFrame:
+    def earnings_dates(self) -> _pl.DataFrame:
         return self.get_earnings_dates()
 
     @property
