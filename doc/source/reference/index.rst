@@ -28,6 +28,7 @@ The following are the publicly available classes, and functions exposed by the `
 - :attr:`FundQuery <yfinance.FundQuery>`: Class to build fund query filters.
 - :attr:`ETFQuery <yfinance.ETFQuery>`: Class to build ETF query filters.
 - :attr:`screen <yfinance.screen>`: Run equity/fund queries.
+- :attr:`Auth <yfinance.Auth>`: Class for handling Yahoo Finance authentication.
 - :attr:`config.debug.logging <yfinance.config>`: Enable verbose debug logging (``yf.config.debug.logging = True``).
 - :attr:`set_tz_cache_location <yfinance.set_tz_cache_location>`: Function to set the timezone cache location.
 
@@ -47,6 +48,7 @@ The following are the publicly available classes, and functions exposed by the `
    yfinance.websocket
    yfinance.sector_industry
    yfinance.screener
+   yfinance.auth
    yfinance.functions
 
    yfinance.funds_data
