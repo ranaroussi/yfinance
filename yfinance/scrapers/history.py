@@ -25,6 +25,10 @@ class PriceHistory:
         self._history_metadata = None
         self._history_metadata_formatted = False
 
+        self._dividends = None
+        self._splits = None
+        self._capital_gains = None
+
         # Limit recursion depth when repairing prices
         self._reconstruct_start_interval = None
 

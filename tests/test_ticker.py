@@ -133,6 +133,12 @@ class TestTicker(unittest.TestCase):
         assert isinstance(dat.actions, pd.DataFrame)
         assert dat.actions.empty
 
+        tkr = '6623.N'
+        dat = yf.Ticker(tkr, session=self.session)
+        dat.get_dividends(period="1y")
+        dat.get_splits(period="1y")
+        dat.get_capital_gains(period="1y")
+
     def test_invalid_period(self):
         tkr = 'VALE'
         dat = yf.Ticker(tkr, session=self.session)
