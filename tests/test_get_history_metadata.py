@@ -11,7 +11,7 @@ Two bugs fixed:
      YFPricesMissingError instead of returning the metadata already cached.
 """
 import unittest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 from yfinance.scrapers.history import PriceHistory
 from yfinance.exceptions import YFPricesMissingError
