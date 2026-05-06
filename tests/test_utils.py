@@ -1,15 +1,4 @@
-"""
-Tests for utils
-
-To run all tests in suite from commandline:
-   python -m unittest tests.utils
-
-Specific test class:
-   python -m unittest tests.utils.TestTicker
-
-"""
 from datetime import datetime
-from unittest import TestSuite
 
 import pandas as pd
 
@@ -194,15 +183,4 @@ class TestDateIntervalCheck(unittest.TestCase):
             self.assertEqual(_parse_user_dt(float(epoch), exchange_tz), expected)
 
 if __name__ == "__main__":
-    unittest.main()
-
-
-def suite():
-    ts: TestSuite = unittest.TestSuite()
-    ts.addTest(TestPandas("Test pandas"))
-    ts.addTest(TestUtils("Test utils"))
-    return ts
-
-
-if __name__ == '__main__':
     unittest.main()

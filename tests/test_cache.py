@@ -1,13 +1,3 @@
-"""
-Tests for cache
-
-To run all tests in suite from commandline:
-   python -m unittest tests.cache
-
-Specific test class:
-   python -m unittest tests.cache.TestCache
-
-"""
 from tests.context import yfinance as yf
 
 import unittest
