@@ -51,10 +51,10 @@ https://ranaroussi.github.io/yfinance/development/code.html#git-stuff
 
 ## Unit tests
 
-Tests have been written using the built-in Python module `unittest`. Examples:
+Tests have been written using `pytest`. You can run them with:
 
-- Run all tests: `python -m unittest discover -s tests`
+- Run all tests: `pytest tests/`
 
 https://ranaroussi.github.io/yfinance/development/testing.html
 
-> See the [Developer Guide](https://ranaroussi.github.io/yfinance/development/contributing.html#GIT-STUFF) for more information.
+> See the [Developer Guide](https://ranaroussi.github.io/yfinance/development) for more information.

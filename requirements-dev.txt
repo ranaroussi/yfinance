@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=9.0.3
+Sphinx==8.0.2
+pydata-sphinx-theme==0.15.4
+Jinja2==3.1.4
+sphinx-copybutton==0.5.2

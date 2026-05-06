@@ -1,50 +1,38 @@
 Unit Tests
 ----------
 
-Tests are written using Python&apos;s `unittest` module. Here are some ways to run tests:
-
-- **Run all price tests**:
-
-  .. code-block:: bash
-
-     python -m unittest tests.test_prices
-
-- **Run a subset of price tests**:
-
-  .. code-block:: bash
-
-     python -m unittest tests.test_prices.TestPriceRepair
-
-- **Run a specific test**:
-
-  .. code-block:: bash
-
-     python -m unittest tests.test_prices_repair.TestPriceRepair.test_ticker_missing
-
-- **General command**:
-
-  ..code-block:: bash
-
-     python -m unittest tests.{file}.{class}.{method}
+Tests are written using `pytest`. Here are some ways to run tests:
 
 - **Run all tests**:
 
   .. code-block:: bash
 
-     python -m unittest discover -s tests
+     pytest
 
-.. note::
+- **Run all ticker tests**:
 
-    The tests are currently failing already
+  .. code-block:: bash
 
-    Standard result:
+     pytest tests/test_ticker.py
 
-    **Failures:** 11
+- **Run a subset of ticker tests**:
 
-    **Errors:** 93
+  .. code-block:: bash
 
-    **Skipped:** 1
+     pytest tests/test_ticker.py::TestTicker
+
+- **Run a specific test**:
+
+  .. code-block:: bash
+
+     pytest tests/test_ticker.py::TestTicker::test_ticker_missing
+
+- **General command**:
+
+  .. code-block:: bash
+
+     pytest tests/{file}.py::{class}::{method}
 
 .. seealso::
 
-    See the ` ``unittest`` module <https://docs.python.org/3/library/unittest.html>`_ for more information.
+    See the ``pytest`` documentation <https://docs.pytest.org/en/stable/contents.html>`_ for more information.
