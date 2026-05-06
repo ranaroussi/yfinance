@@ -9,7 +9,7 @@ The `yfinance` package provides easy access to Yahoo! Finance's API to retrieve 
 
 
 Public API
-==========
+----------
 
 The following are the publicly available classes, and functions exposed by the `yfinance` package:
 
@@ -43,7 +43,6 @@ The following are the publicly available classes, and functions exposed by the `
    yfinance.financials
    yfinance.analysis
    yfinance.search
-   yfinance.lookup
    yfinance.websocket
    yfinance.sector_industry
    yfinance.screener

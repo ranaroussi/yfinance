@@ -23,4 +23,5 @@ ENV/
 /doc/_build/
 /doc/source/reference/api
 !yfinance.css
+!/doc/source/_templates/layout.html
 !/doc/source/development/assets/branches.png

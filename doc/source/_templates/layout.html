@@ -1,0 +1,16 @@
+{% extends "!layout.html" %}
+
+{% block extrahead %}
+{{ super() }}
+<meta name="description" content="yfinance documentation for downloading market data from Yahoo! Finance with a Pythonic API." />
+<meta name="keywords" content="yfinance, Yahoo Finance, market data, Python, pandas, financial data" />
+<meta name="author" content="{{ author|e }}" />
+<meta property="og:title" content="{{ title|striptags|e }} - yfinance documentation" />
+<meta property="og:description" content="Download market data from Yahoo! Finance with a Pythonic API." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="{{ pageurl|e }}" />
+<meta property="og:site_name" content="yfinance" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="{{ title|striptags|e }} - yfinance documentation" />
+<meta name="twitter:description" content="Download market data from Yahoo! Finance with a Pythonic API." />
+{% endblock %}
