@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'yfinance / Pythonic access to market data'
 copyright = '2017-2025 Ran Aroussi'
 author = 'Ran Aroussi'
+html_baseurl = 'https://ranaroussi.github.io/yfinance/'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -37,6 +38,7 @@ autodoc_default_options = {
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_title = 'yfinance'
+html_short_title = 'yfinance'
 html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
     "github_url": "https://github.com/ranaroussi/yfinance",
