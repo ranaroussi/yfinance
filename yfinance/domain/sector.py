@@ -15,18 +15,21 @@ class Sector(Domain):
     such as top ETFs, top mutual funds, and industry data.
     """
 
-    def __init__(self, key, session=None):
+    def __init__(self, key, session=None, region: str = "US"):
         """
         Args:
             key (str): The key representing the sector.
             session (requests.Session, optional): A session for making requests. Defaults to None.
-        
+            region (str): Yahoo region (ISO 3166-1 alpha-2 country code, e.g.
+                "US", "GB", "FR", "DE", "JP"). Scopes ``top_companies``,
+                ``top_etfs`` and ``top_mutual_funds``. Defaults to "US".
+
         .. seealso::
-   
+
             :attr:`Sector.industries <yfinance.Sector.industries>`
                 Map of sector and industry
         """
-        super(Sector, self).__init__(key, session)
+        super(Sector, self).__init__(key, session, region)
         self._query_url: str = f'{_QUERY_URL_}/sectors/{self._key}'
         self._top_etfs: Optional[Dict] = None
         self._top_mutual_funds: Optional[Dict] = None

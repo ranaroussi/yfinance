@@ -14,14 +14,17 @@ class Industry(Domain):
     Represents an industry within a sector.
     """
 
-    def __init__(self, key, session=None):
+    def __init__(self, key, session=None, region: str = "US"):
         """
         Args:
             key (str): The key identifier for the industry.
             session (optional): The session to use for requests.
+            region (str): Yahoo region (ISO 3166-1 alpha-2 country code, e.g.
+                "US", "GB", "FR", "DE", "JP"). Scopes top performing/growth
+                company listings. Defaults to "US".
         """
         YfData(session=session)
-        super(Industry, self).__init__(key, session)
+        super(Industry, self).__init__(key, session, region)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
 
         self._sector_key = None
