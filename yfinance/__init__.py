@@ -31,7 +31,7 @@ from .utils import enable_debug_mode
 from .cache import set_tz_cache_location
 from .domain.sector import Sector
 from .domain.industry import Industry
-from .domain.market import Market
+from .domain.market import Market, MarketRegion
 from .config import YfConfig as config
 from .data import Auth
 
@@ -44,7 +44,7 @@ __author__ = "Ran Aroussi"
 import warnings
 warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinance')
 
-__all__ = ['download', 'Market', 'Search', 'Lookup', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location',
+__all__ = ['download', 'Market', 'MarketRegion', 'Search', 'Lookup', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location',
            'Sector', 'Industry', 'WebSocket', 'AsyncWebSocket', 'Calendars', 'Auth']
 # screener stuff:
 __all__ += ['EquityQuery', 'FundQuery', 'ETFQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']

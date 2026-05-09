@@ -1,14 +1,39 @@
 import datetime as dt
 import json as _json
+from enum import Enum
 
 from ..config import YfConfig
 from ..const import _QUERY1_URL_
 from ..data import utils, YfData
 from ..exceptions import YFDataException
 
+
+class MarketRegion(str, Enum):
+    """Market regions accepted by Yahoo's ``quote/marketSummary`` endpoint.
+
+    Members are plain strings, so ``MarketRegion.EUROPE == "EUROPE"`` and
+    ``Market("EUROPE")`` continues to work. Pass an enum member for IDE
+    autocomplete and static checking: ``Market(MarketRegion.EUROPE)``.
+    """
+    US = "US"
+    GB = "GB"
+    ASIA = "ASIA"
+    EUROPE = "EUROPE"
+    RATES = "RATES"
+    COMMODITIES = "COMMODITIES"
+    CURRENCIES = "CURRENCIES"
+    CRYPTOCURRENCIES = "CRYPTOCURRENCIES"
+
+
 class Market:
-    def __init__(self, market:'str', session=None, timeout=30):
-        self.market = market
+    def __init__(self, market, session=None, timeout=30):
+        try:
+            self.market = MarketRegion(market).value
+        except ValueError:
+            valid = [m.value for m in MarketRegion]
+            raise ValueError(
+                f"Unknown market {market!r}. Valid markets: {valid}"
+            ) from None
         self.session = session
         self.timeout = timeout
 
@@ -75,11 +100,22 @@ class Market:
             self._status = self._status['finance']['marketTimes'][0]['marketTime'][0]
             self._status['timezone'] = self._status['timezone'][0]
             del self._status['time']  # redundant
+            # Yahoo's markettime endpoint silently ignores the `market` param
+            # and always returns U.S. data. Detect the mismatch so callers
+            # aren't misled into believing they got regional status data.
+            if self.market != "US" and self._status.get("id") == "us":
+                self._logger.warning(
+                    f"{self.market}: Yahoo markettime endpoint does not support "
+                    f"market={self.market!r}; status data unavailable."
+                )
+                self._status = None
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             self._logger.error(f"{self.market}: Failed to parse market status")
             self._logger.debug(f"{type(e)}: {e}")
+        if self._status is None:
+            return
         try:
             self._status.update({
                 "open": dt.datetime.fromisoformat(self._status["open"]),

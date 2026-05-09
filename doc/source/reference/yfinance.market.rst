@@ -39,3 +39,9 @@ There are 8 different markets available in Yahoo Finance.
 * COMMODITIES
 * CURRENCIES
 * CRYPTOCURRENCIES
+
+.. note::
+   Only `Market.summary` returns regional data for all of the values above.
+   `Market.status` is backed by Yahoo's `markettime` endpoint, which currently
+   ignores the `market` parameter and only returns U.S. data; for any non-`US`
+   market, `status` will therefore be `None` and a warning is logged.
