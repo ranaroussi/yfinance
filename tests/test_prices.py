@@ -413,7 +413,7 @@ class TestPriceHistory(unittest.TestCase):
         end_d = special_day + _dt.timedelta(days=7)
         df = dat.history(start=start_d, end=end_d, interval="1h", prepost=False, keepna=True)
         tg_last_dt = df.loc[str(special_day)].index[-1]
-        self.assertTrue(tg_last_dt.time() < time_early_close)
+        self.assertTrue(tg_last_dt.time() <= time_early_close)
 
         # Test no other afternoons (or mornings) were pruned
         start_d = _dt.date(special_day.year, 1, 1)
@@ -440,6 +440,54 @@ class TestPriceHistory(unittest.TestCase):
         last_dts = _pd.Series(df.index).groupby(df.index.date).last()
         dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)
         self.assertTrue(_np.equal(dfd.index.date, _pd.to_datetime(last_dts.index).date).all())
+
+    def test_fix_prepost_keeps_closing_auction_bar(self):
+        # Synthetic test: for exchanges where Yahoo's tradingPeriods.end
+        # undershoots the actual close (SAU, SAO, KSC, BUD, NZE, SES, JNB, DFM),
+        # Yahoo still returns a bar at index == end with the closing-auction price.
+        # The filter must keep that bar but drop anything strictly past end and
+        # any pre-market bar entirely before start.
+        from yfinance import utils
+
+        day = _pd.Timestamp("2024-01-02", tz="UTC")
+        start = day + _pd.Timedelta(hours=10)
+        end = day + _pd.Timedelta(hours=15)
+        tps = _pd.DataFrame(
+            {"start": [start], "end": [end]},
+            index=_pd.Index([day.normalize()], name="Date"),
+        )
+        idx = _pd.DatetimeIndex([
+            start - _pd.Timedelta(hours=1),  # pre-market: drop
+            start,                            # first regular bar: keep
+            end - _pd.Timedelta(hours=1),     # mid-session: keep
+            end,                              # closing-auction bar: keep (regression)
+            end + _pd.Timedelta(hours=1),     # post-close: drop
+        ])
+        quotes = _pd.DataFrame({"Open": range(5), "Close": range(5)}, index=idx)
+
+        result = utils.fix_Yahoo_returning_prepost_unrequested(quotes, "1h", tps)
+
+        self.assertIn(end, result.index, "closing-auction bar at index==end was dropped")
+        self.assertIn(start, result.index)
+        self.assertNotIn(start - _pd.Timedelta(hours=1), result.index)
+        self.assertNotIn(end + _pd.Timedelta(hours=1), result.index)
+
+    def test_intraday_closing_auction_bar_saudi(self):
+        # Integration check on Tadawul: hourly bar at the Yahoo-reported
+        # session end (15:00 AST) must be present.
+        tkr = "2222.SR"
+        dat = yf.Ticker(tkr, session=self.session)
+        df = dat.history(period="5d", interval="1h", prepost=False, auto_adjust=False)
+        if df.empty or not isinstance(df.index, _pd.DatetimeIndex):
+            self.skipTest("No hourly data available for 2222.SR")
+        md = dat.get_history_metadata()
+        if md.get("exchangeName") != "SAU":
+            self.skipTest("Yahoo no longer reports 2222.SR on SAU")
+        schedule_end = md["tradingPeriods"]["end"].iloc[-1]
+        last_day_bars = df[df.index.date == schedule_end.date()]
+        self.assertGreater(len(last_day_bars), 0)
+        self.assertEqual(last_day_bars.index[-1], schedule_end,
+                         "last hourly bar should sit at the Yahoo schedule end (closing auction)")
 
     def test_weekly_2rows_fix(self):
         tkr = "AMZN"
