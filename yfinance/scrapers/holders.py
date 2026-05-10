@@ -26,37 +26,37 @@ class Holders:
         self._insider_roster = None
 
     @property
-    def major(self) -> pd.DataFrame:
+    def major(self):
         if self._major is None:
             self._fetch_and_parse()
         return self._major
 
     @property
-    def institutional(self) -> pd.DataFrame:
+    def institutional(self):
         if self._institutional is None:
             self._fetch_and_parse()
         return self._institutional
 
     @property
-    def mutualfund(self) -> pd.DataFrame:
+    def mutualfund(self):
         if self._mutualfund is None:
             self._fetch_and_parse()
         return self._mutualfund
 
     @property
-    def insider_transactions(self) -> pd.DataFrame:
+    def insider_transactions(self):
         if self._insider_transactions is None:
             self._fetch_and_parse()
         return self._insider_transactions
 
     @property
-    def insider_purchases(self) -> pd.DataFrame:
+    def insider_purchases(self):
         if self._insider_purchases is None:
             self._fetch_and_parse()
         return self._insider_purchases
 
     @property
-    def insider_roster(self) -> pd.DataFrame:
+    def insider_roster(self):
         if self._insider_roster is None:
             self._fetch_and_parse()
         return self._insider_roster
@@ -76,13 +76,14 @@ class Holders:
                 raise
             utils.get_yf_logger().error(str(e) + e.response.text)
 
-            self._major = pd.DataFrame()
-            self._major_direct_holders = pd.DataFrame()
-            self._institutional = pd.DataFrame()
-            self._mutualfund = pd.DataFrame()
-            self._insider_transactions = pd.DataFrame()
-            self._insider_purchases = pd.DataFrame()
-            self._insider_roster = pd.DataFrame()
+            empty = utils.empty_backend_df
+            self._major = empty()
+            self._major_direct_holders = empty()
+            self._institutional = empty()
+            self._mutualfund = empty()
+            self._insider_transactions = empty()
+            self._insider_purchases = empty()
+            self._insider_roster = empty()
 
             return
 
@@ -113,11 +114,11 @@ class Holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
             del owner["maxAge"]
-        df = pd.DataFrame(holders)
-        if not df.empty:
-            df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)  # "pctHeld": "% Out"
-        self._institutional = df
+        self._institutional = utils.df_from_records(
+            holders,
+            datetime_unix_cols=["reportDate"],
+            rename={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"},
+        )
 
     def _parse_fund_ownership(self, data):
         holders = data.get("ownershipList", {})
@@ -125,11 +126,11 @@ class Holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
             del owner["maxAge"]
-        df = pd.DataFrame(holders)
-        if not df.empty:
-            df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)
-        self._mutualfund = df
+        self._mutualfund = utils.df_from_records(
+            holders,
+            datetime_unix_cols=["reportDate"],
+            rename={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"},
+        )
 
     def _parse_major_direct_holders(self, data):
         holders = data.get("holders", {})
@@ -137,15 +138,25 @@ class Holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
             del owner["maxAge"]
-        df = pd.DataFrame(holders)
-        if not df.empty:
-            df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "positionDirect": "Shares", "valueDirect": "Value"}, inplace=True)
-        self._major_direct_holders = df
+        self._major_direct_holders = utils.df_from_records(
+            holders,
+            datetime_unix_cols=["reportDate"],
+            rename={"reportDate": "Date Reported", "organization": "Holder", "positionDirect": "Shares", "valueDirect": "Value"},
+        )
 
     def _parse_major_holders_breakdown(self, data):
         if "maxAge" in data:
             del data["maxAge"]
+        if utils.current_backend() == 'polars':
+            import polars as pl
+            if not data:
+                self._major = pl.DataFrame()
+                return
+            self._major = pl.DataFrame(
+                {"Breakdown": list(data.keys()), "Value": list(data.values())},
+                strict=False,
+            )
+            return
         df = pd.DataFrame.from_dict(data, orient="index")
         if not df.empty:
             df.columns.name = "Breakdown"
@@ -158,10 +169,10 @@ class Holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
             del owner["maxAge"]
-        df = pd.DataFrame(holders)
-        if not df.empty:
-            df["startDate"] = pd.to_datetime(df["startDate"], unit="s")
-            df.rename(columns={
+        self._insider_transactions = utils.df_from_records(
+            holders,
+            datetime_unix_cols=["startDate"],
+            rename={
                 "startDate": "Start Date",
                 "filerName": "Insider",
                 "filerRelation": "Position",
@@ -170,9 +181,9 @@ class Holders:
                 "transactionText": "Text",
                 "shares": "Shares",
                 "value": "Value",
-                "ownership": "Ownership"  # ownership flag, direct or institutional
-            }, inplace=True)
-        self._insider_transactions = df
+                "ownership": "Ownership",
+            },
+        )
 
     def _parse_insider_holders(self, data):
         holders = data.get("holders", {})
@@ -180,14 +191,10 @@ class Holders:
             for k, v in owner.items():
                 owner[k] = self._parse_raw_values(v)
             del owner["maxAge"]
-        df = pd.DataFrame(holders)
-        if not df.empty:
-            if "positionDirectDate" in df:
-                df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
-            if "latestTransDate" in df:
-                df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
-
-            df.rename(columns={
+        self._insider_roster = utils.df_from_records(
+            holders,
+            datetime_unix_cols=["positionDirectDate", "latestTransDate"],
+            rename={
                 "name": "Name",
                 "relation": "Position",
                 "url": "URL",
@@ -196,46 +203,34 @@ class Holders:
                 "positionDirectDate": "Position Direct Date",
                 "positionDirect": "Shares Owned Directly",
                 "positionIndirectDate": "Position Indirect Date",
-                "positionIndirect": "Shares Owned Indirectly"
-            }, inplace=True)
-
-            df["Name"] = df["Name"].astype(str)
-            df["Position"] = df["Position"].astype(str)
-            df["URL"] = df["URL"].astype(str)
-            df["Most Recent Transaction"] = df["Most Recent Transaction"].astype(str)
-
-        self._insider_roster = df
+                "positionIndirect": "Shares Owned Indirectly",
+            },
+            str_cols=["Name", "Position", "URL", "Most Recent Transaction"],
+        )
 
     def _parse_net_share_purchase_activity(self, data):
-        df = pd.DataFrame(
-            {
-                "Insider Purchases Last " + data.get("period", ""): [
-                    "Purchases",
-                    "Sales",
-                    "Net Shares Purchased (Sold)",
-                    "Total Insider Shares Held",
-                    "% Net Shares Purchased (Sold)",
-                    "% Buy Shares",
-                    "% Sell Shares"
-                ],
-                "Shares": [
-                    data.get('buyInfoShares'),
-                    data.get('sellInfoShares'),
-                    data.get('netInfoShares'),
-                    data.get('totalInsiderShares'),
-                    data.get('netPercentInsiderShares'),
-                    data.get('buyPercentInsiderShares'),
-                    data.get('sellPercentInsiderShares')
-                ],
-                "Trans": [
-                    data.get('buyInfoCount'),
-                    data.get('sellInfoCount'),
-                    data.get('netInfoCount'),
-                    pd.NA,
-                    pd.NA,
-                    pd.NA,
-                    pd.NA
-                ]
-            }
+        label_col = "Insider Purchases Last " + data.get("period", "")
+        labels = [
+            "Purchases", "Sales", "Net Shares Purchased (Sold)",
+            "Total Insider Shares Held",
+            "% Net Shares Purchased (Sold)", "% Buy Shares", "% Sell Shares",
+        ]
+        shares = [data.get('buyInfoShares'), data.get('sellInfoShares'),
+                  data.get('netInfoShares'), data.get('totalInsiderShares'),
+                  data.get('netPercentInsiderShares'),
+                  data.get('buyPercentInsiderShares'),
+                  data.get('sellPercentInsiderShares')]
+        if utils.current_backend() == 'polars':
+            import polars as pl
+            trans = [data.get('buyInfoCount'), data.get('sellInfoCount'),
+                     data.get('netInfoCount'), None, None, None, None]
+            self._insider_purchases = pl.DataFrame(
+                {label_col: labels, "Shares": shares, "Trans": trans},
+                strict=False,
+            )
+            return
+        trans_pd = [data.get('buyInfoCount'), data.get('sellInfoCount'),
+                    data.get('netInfoCount'), pd.NA, pd.NA, pd.NA, pd.NA]
+        self._insider_purchases = pd.DataFrame(
+            {label_col: labels, "Shares": shares, "Trans": trans_pd}
         ).convert_dtypes()
-        self._insider_purchases = df

@@ -155,25 +155,23 @@ class Domain(ABC):
             "employee_count": overview.get('employeeCount', {}).get('raw', None)
         }
 
-    def _parse_top_companies(self, top_companies) -> Optional[_pd.DataFrame]:
+    def _parse_top_companies(self, top_companies):
         """
-        Parses the top companies data and converts it into a pandas DataFrame.
-
-        Args:
-            top_companies (Dict): The raw top companies data.
-
-        Returns:
-            Optional[pandas.DataFrame]: A DataFrame containing top company data, or None if no data is available.
+        Parses the top companies data into a DataFrame in the configured backend.
         """
+        from .. import utils as _utils
         top_companies_column = ['symbol', 'name', 'rating', 'market weight']
-        top_companies_values = [(c.get('symbol'), 
-                                c.get('name'), 
-                                c.get('rating'), 
+        top_companies_values = [(c.get('symbol'),
+                                c.get('name'),
+                                c.get('rating'),
                                 c.get('marketWeight',{}).get('raw',None)) for c in top_companies]
 
-        if not top_companies_values: 
+        if not top_companies_values:
             return None
-        
+
+        if _utils.current_backend() == 'polars':
+            import polars as pl
+            return pl.DataFrame({c: [row[i] for row in top_companies_values] for i, c in enumerate(top_companies_column)})
         return _pd.DataFrame(top_companies_values, columns=top_companies_column).set_index('symbol')
 
     @abstractmethod

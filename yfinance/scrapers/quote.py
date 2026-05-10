@@ -508,11 +508,12 @@ class Quote:
         return self._info
 
     @property
-    def sustainability(self) -> pd.DataFrame:
+    def sustainability(self):
+        b = utils.current_backend()
         if self._sustainability is None:
             result = self._fetch(modules=['esgScores'])
             if result is None:
-                self._sustainability = pd.DataFrame()
+                self._sustainability = utils.empty_backend_df()
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]
@@ -520,15 +521,20 @@ class Quote:
                     if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-                self._sustainability = pd.DataFrame(data)
+                if b == 'polars':
+                    import polars as pl
+                    self._sustainability = pl.DataFrame(data) if data else pl.DataFrame()
+                else:
+                    self._sustainability = pd.DataFrame(data)
         return self._sustainability
 
     @property
-    def recommendations(self) -> pd.DataFrame:
+    def recommendations(self):
+        b = utils.current_backend()
         if self._recommendations is None:
             result = self._fetch(modules=['recommendationTrend'])
             if result is None:
-                self._recommendations = pd.DataFrame()
+                self._recommendations = utils.empty_backend_df()
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
@@ -536,25 +542,39 @@ class Quote:
                     if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-                self._recommendations = pd.DataFrame(data)
+                if b == 'polars':
+                    import polars as pl
+                    self._recommendations = pl.DataFrame(data) if data else pl.DataFrame()
+                else:
+                    self._recommendations = pd.DataFrame(data)
         return self._recommendations
 
     @property
-    def upgrades_downgrades(self) -> pd.DataFrame:
+    def upgrades_downgrades(self):
+        b = utils.current_backend()
         if self._upgrades_downgrades is None:
             result = self._fetch(modules=['upgradeDowngradeHistory'])
             if result is None:
-                self._upgrades_downgrades = pd.DataFrame()
+                self._upgrades_downgrades = utils.empty_backend_df()
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
                     if len(data) == 0:
                         raise YFDataException(f"No upgrade/downgrade history found for {self._symbol}")
-                    df = pd.DataFrame(data)
-                    df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
-                    df.set_index('GradeDate', inplace=True)
-                    df.index = pd.to_datetime(df.index, unit='s')
-                    self._upgrades_downgrades = df
+                    rename = {"epochGradeDate": "GradeDate", 'firm': 'Firm',
+                              'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}
+                    if b == 'polars':
+                        import polars as pl
+                        df = pl.DataFrame(data).rename({k: v for k, v in rename.items() if k in pl.DataFrame(data).columns})
+                        if 'GradeDate' in df.columns:
+                            df = df.with_columns(pl.from_epoch(pl.col('GradeDate'), time_unit='s'))
+                        self._upgrades_downgrades = df
+                    else:
+                        df = pd.DataFrame(data)
+                        df.rename(columns=rename, inplace=True)
+                        df.set_index('GradeDate', inplace=True)
+                        df.index = pd.to_datetime(df.index, unit='s')
+                        self._upgrades_downgrades = df
                 except (KeyError, IndexError):
                     if not YfConfig.debug.hide_exceptions:
                         raise
@@ -575,7 +595,7 @@ class Quote:
         return self._sec_filings
 
     @property
-    def valuation_measures(self) -> pd.DataFrame:
+    def valuation_measures(self):
         if self._valuation_measures is None:
             self._fetch_valuation_measures()
         return self._valuation_measures
@@ -677,14 +697,14 @@ class Quote:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Failed to fetch key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
+            self._valuation_measures = utils.empty_backend_df()
             return
 
         try:
             soup = BeautifulSoup(response.text, "html.parser")
             table = soup.find("table")
             if table is None:
-                self._valuation_measures = pd.DataFrame()
+                self._valuation_measures = utils.empty_backend_df()
                 return
 
             headers = [th.get_text(strip=True) for th in table.find("tr").find_all(["th", "td"])]
@@ -692,6 +712,14 @@ class Quote:
             for tr in table.find_all("tr")[1:]:
                 cells = [td.get_text(strip=True) for td in tr.find_all(["th", "td"])]
                 rows.append(cells)
+
+            if utils.current_backend() == 'polars':
+                import polars as pl
+                if not rows:
+                    self._valuation_measures = pl.DataFrame()
+                    return
+                self._valuation_measures = pl.DataFrame({h: [r[i] for r in rows] for i, h in enumerate(headers)})
+                return
 
             df = pd.DataFrame(rows, columns=headers)
             df = df.set_index(df.columns[0])
@@ -701,7 +729,7 @@ class Quote:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Failed to parse key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
+            self._valuation_measures = utils.empty_backend_df()
 
     def _fetch_complementary(self):
         if self._already_fetched_complementary:

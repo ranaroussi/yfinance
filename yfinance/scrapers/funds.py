@@ -80,7 +80,7 @@ class FundsData:
         return self._fund_overview
 
     @property
-    def fund_operations(self) -> pd.DataFrame:
+    def fund_operations(self):
         """
         Returns the fund operations.
 
@@ -104,7 +104,7 @@ class FundsData:
         return self._asset_classes
 
     @property
-    def top_holdings(self) -> pd.DataFrame:
+    def top_holdings(self):
         """
         Returns the top holdings of the fund.
 
@@ -116,7 +116,7 @@ class FundsData:
         return self._top_holdings
 
     @property
-    def equity_holdings(self) -> pd.DataFrame:
+    def equity_holdings(self):
         """
         Returns the equity holdings of the fund.
 
@@ -128,7 +128,7 @@ class FundsData:
         return self._equity_holdings
 
     @property
-    def bond_holdings(self) -> pd.DataFrame:
+    def bond_holdings(self):
         """
         Returns the bond holdings of the fund.
 
@@ -255,49 +255,53 @@ class FundsData:
             _name.append(item["holdingName"])
             _holding_percent.append(item["holdingPercent"])
         
-        self._top_holdings = pd.DataFrame({
-            "Symbol": _symbol,
-            "Name": _name,
-            "Holding Percent": _holding_percent
-        }).set_index("Symbol")
+        polars = utils.current_backend() == 'polars'
+        if polars:
+            import polars as pl
+            self._top_holdings = pl.DataFrame({"Symbol": _symbol, "Name": _name, "Holding Percent": _holding_percent})
+        else:
+            self._top_holdings = pd.DataFrame({"Symbol": _symbol, "Name": _name, "Holding Percent": _holding_percent}).set_index("Symbol")
 
         # equity holdings
         _equity_holdings = data.get("equityHoldings", {})
-        self._equity_holdings = pd.DataFrame({
+        _na = None if polars else pd.NA
+        equity = {
             "Average": ["Price/Earnings", "Price/Book", "Price/Sales", "Price/Cashflow", "Median Market Cap", "3 Year Earnings Growth"],
             self._symbol: [
-                self._parse_raw_values(_equity_holdings.get("priceToEarnings", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToBook", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToSales", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToCashflow", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("medianMarketCap", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowth", pd.NA)),
+                self._parse_raw_values(_equity_holdings.get("priceToEarnings", _na)),
+                self._parse_raw_values(_equity_holdings.get("priceToBook", _na)),
+                self._parse_raw_values(_equity_holdings.get("priceToSales", _na)),
+                self._parse_raw_values(_equity_holdings.get("priceToCashflow", _na)),
+                self._parse_raw_values(_equity_holdings.get("medianMarketCap", _na)),
+                self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowth", _na)),
             ],
             "Category Average": [
-                self._parse_raw_values(_equity_holdings.get("priceToEarningsCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToBookCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToSalesCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("priceToCashflowCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("medianMarketCapCat", pd.NA)),
-                self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowthCat", pd.NA)),
+                self._parse_raw_values(_equity_holdings.get("priceToEarningsCat", _na)),
+                self._parse_raw_values(_equity_holdings.get("priceToBookCat", _na)),
+                self._parse_raw_values(_equity_holdings.get("priceToSalesCat", _na)),
+                self._parse_raw_values(_equity_holdings.get("priceToCashflowCat", _na)),
+                self._parse_raw_values(_equity_holdings.get("medianMarketCapCat", _na)),
+                self._parse_raw_values(_equity_holdings.get("threeYearEarningsGrowthCat", _na)),
             ]
-        }).set_index("Average")
-        
+        }
+        self._equity_holdings = pl.DataFrame(equity) if polars else pd.DataFrame(equity).set_index("Average")
+
         # bond holdings
         _bond_holdings = data.get("bondHoldings", {})
-        self._bond_holdings = pd.DataFrame({
+        bond = {
             "Average": ["Duration", "Maturity", "Credit Quality"],
             self._symbol: [
-                self._parse_raw_values(_bond_holdings.get("duration", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("maturity", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("creditQuality", pd.NA)),
+                self._parse_raw_values(_bond_holdings.get("duration", _na)),
+                self._parse_raw_values(_bond_holdings.get("maturity", _na)),
+                self._parse_raw_values(_bond_holdings.get("creditQuality", _na)),
             ],
             "Category Average": [
-                self._parse_raw_values(_bond_holdings.get("durationCat", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("maturityCat", pd.NA)),
-                self._parse_raw_values(_bond_holdings.get("creditQualityCat", pd.NA)),
+                self._parse_raw_values(_bond_holdings.get("durationCat", _na)),
+                self._parse_raw_values(_bond_holdings.get("maturityCat", _na)),
+                self._parse_raw_values(_bond_holdings.get("creditQualityCat", _na)),
             ]
-        }).set_index("Average")
+        }
+        self._bond_holdings = pl.DataFrame(bond) if polars else pd.DataFrame(bond).set_index("Average")
 
         # bond ratings
         self._bond_ratings = dict((key, d[key]) for d in data.get("bondRatings", []) for key in d)
@@ -321,16 +325,23 @@ class FundsData:
         _fund_operations = data.get("feesExpensesInvestment", {})
         _fund_operations_cat = data.get("feesExpensesInvestmentCat", {})
 
-        self._fund_operations = pd.DataFrame({
+        polars = utils.current_backend() == 'polars'
+        _na = None if polars else pd.NA
+        ops = {
             "Attributes": ["Annual Report Expense Ratio", "Annual Holdings Turnover", "Total Net Assets"],
             self._symbol: [
-                self._parse_raw_values(_fund_operations.get("annualReportExpenseRatio", pd.NA)),
-                self._parse_raw_values(_fund_operations.get("annualHoldingsTurnover", pd.NA)),
-                self._parse_raw_values(_fund_operations.get("totalNetAssets", pd.NA))
+                self._parse_raw_values(_fund_operations.get("annualReportExpenseRatio", _na)),
+                self._parse_raw_values(_fund_operations.get("annualHoldingsTurnover", _na)),
+                self._parse_raw_values(_fund_operations.get("totalNetAssets", _na)),
             ],
             "Category Average": [
-                self._parse_raw_values(_fund_operations_cat.get("annualReportExpenseRatio", pd.NA)),
-                self._parse_raw_values(_fund_operations_cat.get("annualHoldingsTurnover", pd.NA)),
-                self._parse_raw_values(_fund_operations_cat.get("totalNetAssets", pd.NA))
+                self._parse_raw_values(_fund_operations_cat.get("annualReportExpenseRatio", _na)),
+                self._parse_raw_values(_fund_operations_cat.get("annualHoldingsTurnover", _na)),
+                self._parse_raw_values(_fund_operations_cat.get("totalNetAssets", _na)),
             ]
-        }).set_index("Attributes")
+        }
+        if polars:
+            import polars as pl
+            self._fund_operations = pl.DataFrame(ops)
+        else:
+            self._fund_operations = pd.DataFrame(ops).set_index("Attributes")

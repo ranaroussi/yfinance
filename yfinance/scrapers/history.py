@@ -37,6 +37,295 @@ class PriceHistory:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 rounding=False, timeout=10,
+                raise_errors=False):
+        """Backend dispatch: polars users get polars; pandas users get pandas."""
+        if utils.current_backend() == 'polars':
+            return self._history_to_polars(
+                period=period, interval=interval, start=start, end=end,
+                prepost=prepost, actions=actions,
+                auto_adjust=auto_adjust, back_adjust=back_adjust, repair=repair,
+                keepna=keepna, rounding=rounding, timeout=timeout,
+                raise_errors=raise_errors,
+            )
+        return self._history_native(
+            period=period, interval=interval, start=start, end=end,
+            prepost=prepost, actions=actions,
+            auto_adjust=auto_adjust, back_adjust=back_adjust, repair=repair,
+            keepna=keepna, rounding=rounding, timeout=timeout,
+            raise_errors=raise_errors,
+        )
+
+    def _history_to_polars(self, period=period_default, interval="1d",
+                           start=None, end=None, prepost=False, actions=True,
+                           auto_adjust=True, back_adjust=False, repair=False,
+                           keepna=False, rounding=False, timeout=10,
+                           raise_errors=False):
+        """Polars-native history pipeline. Mirrors ``_history_native``'s
+        pandas pipeline using ``polars_helpers``.
+
+        Pandas bridges are used (and clearly marked) where the pandas logic is
+        too gnarly to rewrite without risk of regression: ``safe_merge_dfs``
+        (numpy.searchsorted with duplicate aggregation), the
+        ``fix_Yahoo_returning_live_separate`` block, and the full ``repair``
+        pipeline.
+        """
+        import polars as pl
+        from yfinance import polars_helpers as ph
+
+        logger = utils.get_yf_logger()
+        if raise_errors:
+            warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
+
+        payload = self._fetch_chart_payload(
+            period=period, interval=interval, start=start, end=end,
+            prepost=prepost, repair=repair,
+            raise_errors=raise_errors, timeout=timeout,
+        )
+        if payload is None:
+            return pl.DataFrame()
+        data = payload['data']
+        params = payload['params']
+        period = payload['period']
+        interval = payload['interval']
+        period_user = payload['period_user']
+        interval_user = payload['interval_user']
+        start = payload['start']
+        end = payload['end']
+        end_dt = payload['end_dt']
+        tz_exchange = payload['tz_exchange']
+        currency = payload['currency']
+        expect_capital_gains = payload['expect_capital_gains']
+
+        # ---- parse quotes (polars) ----
+        quotes = ph.parse_quotes(data["chart"]["result"][0])
+
+        # Yahoo bug fix - it often appends latest price even if after end date
+        if end and not quotes.is_empty():
+            # end_dt is tz-aware UTC; quotes 'Date' is currently naive UTC seconds.
+            cutoff_naive = end_dt.tz_convert('UTC').tz_localize(None).to_pydatetime()
+            quotes = quotes.filter(pl.col("Date") < cutoff_naive)
+
+        # 30m resample fix: Yahoo returns 60m for 30m bars, so we requested 15m
+        # and now resample to 30m here.
+        if interval.lower() == "30m":
+            logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
+            quotes = quotes.sort("Date").group_by_dynamic(
+                "Date", every="30m", label="left", closed="left"
+            ).agg([
+                pl.col("Open").first().alias("Open"),
+                pl.col("High").max().alias("High"),
+                pl.col("Low").min().alias("Low"),
+                pl.col("Close").last().alias("Close"),
+                pl.col("Adj Close").last().alias("Adj Close"),
+                pl.col("Volume").sum().alias("Volume"),
+            ])
+
+        # tz / dst / prepost
+        quotes = ph.set_df_tz(quotes, interval, tz_exchange)
+        quotes = ph.fix_Yahoo_dst_issue(quotes, interval)
+        intraday = params["interval"][-1] in ("m", 'h')
+        if not prepost and intraday and "tradingPeriods" in self._history_metadata:
+            tps = self._history_metadata["tradingPeriods"]
+            if not isinstance(tps, pd.DataFrame):
+                self._history_metadata = utils.format_history_metadata(self._history_metadata, tradingPeriodsOnly=True)
+                self._history_metadata_formatted = True
+                tps = self._history_metadata["tradingPeriods"]
+            quotes = ph.fix_Yahoo_returning_prepost_unrequested(quotes, interval, tps)
+
+        # ---- actions ----
+        dividends, splits, capital_gains = ph.parse_actions(data["chart"]["result"][0])
+        if not expect_capital_gains:
+            capital_gains = None
+
+        # tz on event frames
+        if splits is not None and not splits.is_empty():
+            splits = ph.set_df_tz(splits, interval, tz_exchange)
+        if dividends is not None and not dividends.is_empty():
+            dividends = ph.set_df_tz(dividends, interval, tz_exchange)
+        if capital_gains is not None and not capital_gains.is_empty():
+            capital_gains = ph.set_df_tz(capital_gains, interval, tz_exchange)
+
+        # FX-mismatch dividends. Polars-native using ph.dividends_convert_fx.
+        if dividends is not None and "currency" in dividends.columns:
+            price_currency = self._history_metadata.get('currency') or ''
+            mismatched = (dividends["currency"] != price_currency).any()
+            if mismatched and repair and price_currency != '':
+                # Wire fetcher to existing PriceHistory.history() path; pull last
+                # 'Close' as a float regardless of backend.
+                def _fetch_fx_close(tkr, _self=self, _repair=repair):
+                    fx_dat = PriceHistory(_self._data, tkr, _self.session)
+                    res = fx_dat.history(period='1mo', repair=_repair)
+                    if isinstance(res, pd.DataFrame):
+                        return float(res['Close'].iloc[-1])
+                    return float(res['Close'][-1])
+                dividends = ph.dividends_convert_fx(dividends, price_currency, _fetch_fx_close, repair)
+            # Stash pandas Series (with currency col) before dropping, mirroring legacy.
+            self._dividends = dividends.to_pandas().set_index("Date").rename_axis('Date')
+            dividends = dividends.drop("currency")
+        else:
+            # Set internal pandas Series caches (downstream code relies on this)
+            if dividends is not None and not dividends.is_empty():
+                self._dividends = dividends.to_pandas().set_index("Date")["Dividends"].rename_axis('Date')
+            else:
+                self._dividends = pd.Series()
+        if splits is not None and not splits.is_empty():
+            self._splits = splits.to_pandas().set_index("Date")["Stock Splits"].rename_axis('Date')
+        else:
+            self._splits = pd.Series()
+        if capital_gains is not None and not capital_gains.is_empty():
+            self._capital_gains = capital_gains.to_pandas().set_index("Date")["Capital Gains"].rename_axis('Date')
+        else:
+            self._capital_gains = pd.Series()
+
+        # Filter events by [start, end]
+        if start is not None and not quotes.is_empty():
+            start_d = quotes["Date"].min()
+            # Floor to day
+            start_d = pd.Timestamp(start_d).floor('D')
+            if dividends is not None and not dividends.is_empty():
+                dividends = dividends.filter(pl.col("Date") >= start_d.to_pydatetime())
+            if capital_gains is not None and not capital_gains.is_empty():
+                capital_gains = capital_gains.filter(pl.col("Date") >= start_d.to_pydatetime())
+            if splits is not None and not splits.is_empty():
+                splits = splits.filter(pl.col("Date") >= start_d.to_pydatetime())
+        if end is not None:
+            end_dt_sub1 = (end_dt - pd.Timedelta(1)).to_pydatetime()
+            if dividends is not None and not dividends.is_empty():
+                dividends = dividends.filter(pl.col("Date") <= end_dt_sub1)
+            if capital_gains is not None and not capital_gains.is_empty():
+                capital_gains = capital_gains.filter(pl.col("Date") <= end_dt_sub1)
+            if splits is not None and not splits.is_empty():
+                splits = splits.filter(pl.col("Date") <= end_dt_sub1)
+
+        # Non-intraday: re-localize Date column to tz_exchange at date-granularity
+        # (mirrors pandas ambiguous=True / nonexistent='shift_forward').
+        df_q = quotes.sort("Date")
+        if not intraday:
+            df_q = ph.tz_localize_daily(df_q, tz_exchange, "Date")
+            if dividends is not None and not dividends.is_empty():
+                dividends = ph.tz_localize_daily(dividends, tz_exchange, "Date")
+            if splits is not None and not splits.is_empty():
+                splits = ph.tz_localize_daily(splits, tz_exchange, "Date")
+            if capital_gains is not None and not capital_gains.is_empty():
+                capital_gains = ph.tz_localize_daily(capital_gains, tz_exchange, "Date")
+
+        # Polars-native safe_merge for events.
+        if dividends is not None and not dividends.is_empty():
+            df_q = ph.safe_merge_dfs(df_q, dividends.select(["Date", "Dividends"]), interval)
+        if "Dividends" in df_q.columns:
+            df_q = df_q.with_columns(pl.col("Dividends").fill_null(0.0))
+        else:
+            df_q = df_q.with_columns(pl.lit(0.0).alias("Dividends"))
+        if splits is not None and not splits.is_empty():
+            df_q = ph.safe_merge_dfs(df_q, splits.select(["Date", "Stock Splits"]), interval)
+        if "Stock Splits" in df_q.columns:
+            df_q = df_q.with_columns(pl.col("Stock Splits").fill_null(0.0))
+        else:
+            df_q = df_q.with_columns(pl.lit(0.0).alias("Stock Splits"))
+        if expect_capital_gains:
+            if capital_gains is not None and not capital_gains.is_empty():
+                df_q = ph.safe_merge_dfs(df_q, capital_gains.select(["Date", "Capital Gains"]), interval)
+            if "Capital Gains" in df_q.columns:
+                df_q = df_q.with_columns(pl.col("Capital Gains").fill_null(0.0))
+            else:
+                df_q = df_q.with_columns(pl.lit(0.0).alias("Capital Gains"))
+
+        # Polars-native fix_Yahoo_returning_live_separate.
+        df_q, last_trade = ph.fix_Yahoo_returning_live_separate(
+            df_q, params["interval"], tz_exchange, prepost,
+            repair=repair, currency=currency,
+        )
+        if last_trade is not None:
+            self._history_metadata['lastTrade'] = {'Price': last_trade['Close'], "Time": last_trade["Time"]}
+
+        # Drop duplicate Date rows (keep first).
+        df_q = df_q.unique(subset=["Date"], keep="first", maintain_order=True).sort("Date")
+
+        if repair:
+            # Polars-native dispatch: orchestrator accepts/returns a polars
+            # DataFrame when given one. Pandas conversion is contained inside
+            # ``_apply_repair`` as a documented residual bridge -- the repair
+            # sub-methods (``_fix_zeroes``, ``_fix_unit_mixups``,
+            # ``_fix_bad_div_adjust``, ``_fix_bad_stock_splits``,
+            # ``_repair_capital_gains``, ``_standardise_currency``) are
+            # ~1500 lines of pandas-idiomatic code (MultiIndex events,
+            # ``df.loc[mask, col]`` mass-assignment, ``pd.concat``,
+            # ``df._consolidate``) so a polars rewrite would be high risk
+            # for no observable benefit -- repair already re-fetches finer
+            # data, so the cost is dominated by network not by frame ops.
+            df, currency = self._apply_repair(df_q, interval, tz_exchange, prepost, currency)
+        else:
+            df = df_q
+
+        # Auto/back adjust (polars-native)
+        try:
+            if auto_adjust:
+                df = ph.auto_adjust(df)
+            elif back_adjust:
+                df = ph.back_adjust(df)
+        except Exception as e:
+            if raise_errors or (not YfConfig.debug.hide_exceptions):
+                raise
+            err_msg = ("auto_adjust failed with %s" if auto_adjust else "back_adjust failed with %s") % e
+            shared._DFS[self.ticker] = utils.empty_df()
+            shared._ERRORS[self.ticker] = err_msg
+            logger.error('%s: %s' % (self.ticker, err_msg))
+
+        # Rounding
+        if rounding:
+            digits = data["chart"]["result"][0]["meta"]["priceHint"]
+            num_cols = [c for c, dt in df.schema.items()
+                        if dt in (pl.Float32, pl.Float64) and c != "Date"]
+            df = df.with_columns([pl.col(c).round(digits) for c in num_cols])
+
+        # Volume cast to int64 (fill nulls with 0 first)
+        if "Volume" in df.columns:
+            df = df.with_columns(pl.col("Volume").fill_null(0).cast(pl.Int64))
+
+        # Rename Date to Datetime for intraday (mirrors pandas index name)
+        if intraday and "Date" in df.columns:
+            df = df.rename({"Date": "Datetime"})
+        date_col = "Datetime" if intraday else "Date"
+
+        # actions / keepna
+        if not actions:
+            df = df.drop([c for c in ("Dividends", "Stock Splits", "Capital Gains") if c in df.columns])
+        if not keepna:
+            data_colnames = [c for c in (_PRICE_COLNAMES_ + ['Volume', 'Dividends', 'Stock Splits', 'Capital Gains']) if c in df.columns]
+            if data_colnames:
+                # Drop rows where ALL data columns are null or zero.
+                first = data_colnames[0]
+                cond = pl.col(first).is_null() | (pl.col(first) == 0)
+                for c in data_colnames[1:]:
+                    cond = cond & (pl.col(c).is_null() | (pl.col(c) == 0))
+                df = df.filter(~cond)
+
+        # Resample (polars-native helper)
+        if interval != interval_user:
+            # Helper expects "Date" column; rename temporarily if intraday case.
+            # (In practice resample only triggers for daily->weekly/monthly/etc.)
+            if date_col != "Date":
+                df = df.rename({date_col: "Date"})
+            df = ph.resample(df, interval, interval_user, tz_exchange, period=period_user)
+            if date_col != "Date":
+                df = df.rename({"Date": date_col})
+
+        if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
+            self._reconstruct_start_interval = None
+
+        if df.is_empty():
+            logger.debug(f'{self.ticker}: yfinance returning OHLC: EMPTY')
+        elif df.height == 1:
+            logger.debug(f'{self.ticker}: yfinance returning OHLC: {df[date_col][0]} only')
+        else:
+            logger.debug(f'{self.ticker}: yfinance returning OHLC: {df[date_col][0]} -> {df[date_col][-1]}')
+
+        return df
+
+    def _history_native(self, period=period_default, interval="1d",
+                start=None, end=None, prepost=False, actions=True,
+                auto_adjust=True, back_adjust=False, repair=False, keepna=False,
+                rounding=False, timeout=10,
                 raise_errors=False) -> pd.DataFrame:
         """
         :Parameters:
@@ -84,6 +373,61 @@ class PriceHistory:
         if raise_errors:
             warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
 
+        payload = self._fetch_chart_payload(
+            period=period, interval=interval, start=start, end=end,
+            prepost=prepost, repair=repair,
+            raise_errors=raise_errors, timeout=timeout,
+        )
+        if payload is None:
+            return utils.empty_df()
+        data = payload['data']
+        params = payload['params']
+        period = payload['period']
+        interval = payload['interval']
+        period_user = payload['period_user']
+        interval_user = payload['interval_user']
+        start = payload['start']
+        end = payload['end']
+        end_dt = payload['end_dt']
+        start_user = payload['start_user']
+        end_user = payload['end_user']
+        tz = payload['tz']
+        tz_exchange = payload['tz_exchange']
+        currency = payload['currency']
+        expect_capital_gains = payload['expect_capital_gains']
+
+        # parse quotes
+        quotes = utils.parse_quotes(data["chart"]["result"][0])
+        # Yahoo bug fix - it often appends latest price even if after end date
+        if end and not quotes.empty:
+            if quotes.index[-1] >= end_dt.tz_convert('UTC').tz_localize(None):
+                quotes = quotes.drop(quotes.index[-1])
+        if quotes.empty:
+            msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
+        elif len(quotes) == 1:
+            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} only'
+        else:
+            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
+        logger.debug(msg)
+        # ---- continue native pipeline ----
+        return self._history_native_post_fetch(
+            quotes, data, params, period, period_user, interval, interval_user,
+            start, end, end_dt, start_user, end_user, tz, tz_exchange, currency,
+            expect_capital_gains, prepost, actions, auto_adjust, back_adjust,
+            repair, keepna, rounding, raise_errors,
+        )
+
+    def _fetch_chart_payload(self, period, interval, start, end,
+                             prepost, repair, raise_errors, timeout):
+        """Build URL params, fetch chart JSON, validate, set ``self._history_metadata``.
+
+        Returns a dict with all state required to continue the pipeline, or
+        ``None`` on validated failure (caller should return ``utils.empty_df()``).
+
+        Shared between the pandas (``_history_native``) and polars
+        (``_history_to_polars``) paths so the setup is identical.
+        """
+        logger = utils.get_yf_logger()
         interval_user = interval
         if period == period_default:
             period_user = None
@@ -111,7 +455,7 @@ class PriceHistory:
                         raise _exception
                     else:
                         logger.error(err_msg)
-                    return utils.empty_df()
+                    return None
                 if period == 'ytd':
                     start = _datetime.date(pd.Timestamp.now('UTC').tz_convert(tz).year, 1, 1)
                 else:
@@ -124,6 +468,10 @@ class PriceHistory:
 
         start_user = start
         end_user = end
+        # Initialize tz, end_dt, start_dt so they're always bound at end of method.
+        tz = None
+        start_dt = None
+        end_dt = None
         if start or end or (period and period.lower() == "max"):
             # Check can get TZ. Fail => probably delisted
             tz = self.tz
@@ -137,7 +485,7 @@ class PriceHistory:
                     raise _exception
                 else:
                     logger.error(err_msg)
-                return utils.empty_df()
+                return None
 
         if start:
             start_dt = utils._parse_user_dt(start, tz)
@@ -150,6 +498,7 @@ class PriceHistory:
             if not (start or end):
                 period = '1mo'  # default
             elif not start:
+                assert end_dt is not None
                 start_dt = end_dt - utils._interval_to_timedelta('1mo')
                 start = int(start_dt.timestamp())
             elif not end:
@@ -174,9 +523,11 @@ class PriceHistory:
             elif start or end:
                 period_td = utils._interval_to_timedelta(period)
                 if end is None:
+                    assert start_dt is not None
                     end_dt = start_dt + period_td
                     end = int(end_dt.timestamp())
                 if start is None:
+                    assert end_dt is not None
                     start_dt = end_dt - period_td
                     start = int(start_dt.timestamp())
                 period = None
@@ -297,7 +648,7 @@ class PriceHistory:
                 logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
-            return utils.empty_df()
+            return None
 
         # Select useful info from metadata
         quote_type = self._history_metadata["instrumentType"]
@@ -313,20 +664,35 @@ class PriceHistory:
             start -= utils._interval_to_timedelta(period)
             start -= _datetime.timedelta(days=4)
 
-        # parse quotes
-        quotes = utils.parse_quotes(data["chart"]["result"][0])
-        # Yahoo bug fix - it often appends latest price even if after end date
-        if end and not quotes.empty:
-            if quotes.index[-1] >= end_dt.tz_convert('UTC').tz_localize(None):
-                quotes = quotes.drop(quotes.index[-1])
-        if quotes.empty:
-            msg = f'{self.ticker}: yfinance received OHLC data: EMPTY'
-        elif len(quotes) == 1:
-            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} only'
-        else:
-            msg = f'{self.ticker}: yfinance received OHLC data: {quotes.index[0]} -> {quotes.index[-1]}'
-        logger.debug(msg)
+        return {
+            'data': data,
+            'params': params,
+            'period': period,
+            'period_user': period_user,
+            'interval': interval,
+            'interval_user': interval_user,
+            'start': start,
+            'end': end,
+            'start_dt': start_dt,
+            'end_dt': end_dt,
+            'start_user': start_user,
+            'end_user': end_user,
+            'tz': tz,
+            'tz_exchange': tz_exchange,
+            'currency': currency,
+            'expect_capital_gains': expect_capital_gains,
+        }
 
+    def _history_native_post_fetch(self, quotes, data, params, period, period_user,
+                                   interval, interval_user, start, end, end_dt,
+                                   start_user, end_user, tz, tz_exchange, currency,
+                                   expect_capital_gains, prepost, actions,
+                                   auto_adjust, back_adjust, repair, keepna,
+                                   rounding, raise_errors):
+        """Post-fetch portion of the pandas pipeline (extracted from
+        ``_history_native``). Operates on the pandas ``quotes`` DataFrame.
+        """
+        logger = utils.get_yf_logger()
         # 2) fix weird bug with Yahoo! - returning 60m for 30m bars
         if interval.lower() == "30m":
             logger.debug(f'{self.ticker}: resampling 30m OHLC from 15m')
@@ -462,34 +828,7 @@ class PriceHistory:
 
         if repair:
             # Do this before auto/back adjust
-            logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
-
-            df = df.sort_index()
-
-            # Must fix bad 'Adj Close' & dividends before 100x/split errors.
-            # First make currency consistent. On some exchanges, dividends often in different currency
-            # to prices, e.g. £ vs pence.
-            df, currency = self._standardise_currency(df, currency)
-            self._history_metadata['currency'] = currency
-
-            df = self._fix_bad_div_adjust(df, interval, currency)
-
-            # Need the latest/last row to be repaired before 100x/split repair:
-            if not df.empty:
-                df_last = self._fix_zeroes(df.iloc[-1:], interval, tz_exchange, prepost)
-                if 'Repaired?' not in df.columns:
-                    df['Repaired?'] = False
-                df = pd.concat([df.drop(df.index[-1]), df_last])
-
-            df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
-            df = self._fix_bad_stock_splits(df, interval, tz_exchange)
-            # Must repair 100x and split errors before price reconstruction
-            df = self._fix_zeroes(df, interval, tz_exchange, prepost)
-
-            # New:
-            df = self._repair_capital_gains(df)
-
-            df = df.sort_index()
+            df, currency = self._apply_repair(df, interval, tz_exchange, prepost, currency)
 
         # Auto/back adjust
         try:
@@ -544,12 +883,145 @@ class PriceHistory:
             self._reconstruct_start_interval = None
         return df
 
+    # ---- per-method polars wrappers ----
+    # These wrappers exist so the orchestrator ``_apply_repair`` can stay
+    # backend-aware without a single top-level pandas bridge: each wrapper
+    # round-trips polars<->pandas locally, mirroring the column/index
+    # promotion semantics ``_history_to_polars`` produces (a leading
+    # ``Date`` or ``Datetime`` column, no index). The pandas sub-methods
+    # themselves remain unchanged and pandas-only.
+
+    @staticmethod
+    def _pl_to_pd(df_pl):
+        from yfinance import polars_repair
+        return polars_repair.pl_to_pd(df_pl)
+
+    @staticmethod
+    def _pd_to_pl(pdf, date_col):
+        from yfinance import polars_repair
+        return polars_repair.pd_to_pl(pdf, date_col)
+
+    def _standardise_currency_polars(self, df_pl, currency):
+        from yfinance import polars_repair
+        return polars_repair.standardise_currency(self, df_pl, currency)
+
+    def _fix_bad_div_adjust_polars(self, df_pl, interval, currency):
+        from yfinance import polars_repair
+        return polars_repair.fix_bad_div_adjust(self, df_pl, interval, currency)
+
+    def _reconstruct_intervals_batch_polars(self, df_pl, interval, prepost, tag=-1):
+        from yfinance import polars_repair
+        return polars_repair.reconstruct_intervals_batch(self, df_pl, interval, prepost, tag)
+
+    def _fix_zeroes_polars(self, df_pl, interval, tz_exchange, prepost):
+        from yfinance import polars_repair
+        return polars_repair.fix_zeroes(self, df_pl, interval, tz_exchange, prepost)
+
+    def _fix_unit_mixups_polars(self, df_pl, interval, tz_exchange, prepost):
+        from yfinance import polars_repair
+        return polars_repair.fix_unit_mixups(self, df_pl, interval, tz_exchange, prepost)
+
+    def _fix_unit_random_mixups_polars(self, df_pl, interval, tz_exchange, prepost):
+        from yfinance import polars_repair
+        return polars_repair.fix_unit_random_mixups(self, df_pl, interval, tz_exchange, prepost)
+
+    def _fix_bad_stock_splits_polars(self, df_pl, interval, tz_exchange):
+        from yfinance import polars_repair
+        return polars_repair.fix_bad_stock_splits(self, df_pl, interval, tz_exchange)
+
+    def _repair_capital_gains_polars(self, df_pl):
+        from yfinance import polars_repair
+        return polars_repair.repair_capital_gains(self, df_pl)
+
+    def _apply_repair(self, df, interval, tz_exchange, prepost, currency):
+        """Apply the full repair pipeline.
+
+        Backend-aware orchestrator. The pandas sub-methods are unchanged
+        and pandas-only; for polars input we route through per-method
+        ``_<name>_polars`` wrappers that round-trip locally. Output is
+        bit-identical to the previous top-level bridge.
+        """
+        logger = utils.get_yf_logger()
+
+        polars_in = False
+        try:
+            import polars as pl  # local import: optional dep
+            if isinstance(df, pl.DataFrame):
+                polars_in = True
+        except ImportError:
+            pl = None  # type: ignore[assignment]
+
+        # Do this before auto/back adjust
+        logger.debug(f'{self.ticker}: checking OHLC for repairs ...')
+
+        if polars_in:
+            assert pl is not None
+            date_col = 'Datetime' if 'Datetime' in df.columns else 'Date'
+            df = df.sort(date_col)
+
+            # Must fix bad 'Adj Close' & dividends before 100x/split errors.
+            df, currency = self._standardise_currency_polars(df, currency)
+            self._history_metadata['currency'] = currency
+
+            df = self._fix_bad_div_adjust_polars(df, interval, currency)
+
+            # Need the latest/last row to be repaired before 100x/split repair:
+            if df.height > 0:
+                last_row = df.tail(1)
+                last_fixed = self._fix_zeroes_polars(last_row, interval, tz_exchange, prepost)
+                if 'Repaired?' not in df.columns:
+                    df = df.with_columns(pl.lit(False).alias('Repaired?'))
+                # align schemas before concat: last_fixed may have gained 'Repaired?'
+                if 'Repaired?' not in last_fixed.columns:
+                    last_fixed = last_fixed.with_columns(pl.lit(False).alias('Repaired?'))
+                head = df.head(df.height - 1)
+                # ensure column order matches
+                last_fixed = last_fixed.select(head.columns)
+                df = pl.concat([head, last_fixed], how='vertical_relaxed')
+
+            df = self._fix_unit_mixups_polars(df, interval, tz_exchange, prepost)
+            df = self._fix_bad_stock_splits_polars(df, interval, tz_exchange)
+            df = self._fix_zeroes_polars(df, interval, tz_exchange, prepost)
+            df = self._repair_capital_gains_polars(df)
+
+            df = df.sort(date_col)
+            return df, currency
+
+        df = df.sort_index()
+
+        # Must fix bad 'Adj Close' & dividends before 100x/split errors.
+        # First make currency consistent. On some exchanges, dividends often in different currency
+        # to prices, e.g. £ vs pence.
+        df, currency = self._standardise_currency(df, currency)
+        self._history_metadata['currency'] = currency
+
+        df = self._fix_bad_div_adjust(df, interval, currency)
+
+        # Need the latest/last row to be repaired before 100x/split repair:
+        if not df.empty:
+            df_last = self._fix_zeroes(df.iloc[-1:], interval, tz_exchange, prepost)
+            if 'Repaired?' not in df.columns:
+                df['Repaired?'] = False
+            df = pd.concat([df.drop(df.index[-1]), df_last])
+
+        df = self._fix_unit_mixups(df, interval, tz_exchange, prepost)
+        df = self._fix_bad_stock_splits(df, interval, tz_exchange)
+        # Must repair 100x and split errors before price reconstruction
+        df = self._fix_zeroes(df, interval, tz_exchange, prepost)
+
+        # New:
+        df = self._repair_capital_gains(df)
+
+        df = df.sort_index()
+
+        return df, currency
+
     def _get_history_cache(self, period="max", interval="1d", repair=False) -> pd.DataFrame:
         cache_key = (interval, period, repair)
         if cache_key not in self._history_cache.keys():
-            df = self.history(period=period, interval=interval, repair=repair, prepost=True)
-            self._history_cache[cache_key] = {'prices': df, 'dividends': self._dividends, 
-                                                'splits': self._splits, 
+            df = self._history_native(period=period, interval=interval, repair=repair, prepost=True)
+            self._history_cache[cache_key] = {'prices': df, 'dividends': self._dividends,
+                                                'splits': self._splits,
                                                 'capital gains': self._capital_gains}
         return self._history_cache[cache_key]
 
@@ -834,7 +1306,7 @@ class PriceHistory:
                 # YF's custom indented logger doesn't expose level
                 log_level = logger.level
                 logger.setLevel(logging.CRITICAL)
-            df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=True, prepost=prepost, repair=True, keepna=True)
+            df_fine = self._history_native(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=True, prepost=prepost, repair=True, keepna=True)
             if hasattr(logger, 'level'):
                 logger.setLevel(log_level)
             if df_fine is None or df_fine.empty:
@@ -2731,7 +3203,8 @@ class PriceHistory:
             df_workings['VolStr'] = ''
             df_workings.loc[fna, 'VolStr'] = 'NaN'
             df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).astype('int').astype('str') + 'm'
-            df_workings['Vol'] = df_workings['VolStr'] ; df_workings.drop('VolStr', axis=1)
+            df_workings['Vol'] = df_workings['VolStr']
+            df_workings.drop('VolStr', axis=1)
         else:
             df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
         debug_cols = ['Close']

@@ -94,17 +94,23 @@ class Lookup:
         return data
 
     @staticmethod
-    def _parse_response(response: dict) -> pd.DataFrame:
+    def _parse_response(response: dict):
         finance = response.get("finance", {})
         result = finance.get("result", [])
         result = result[0] if len(result) > 0 else {}
         documents = result.get("documents", [])
+        if utils.current_backend() == 'polars':
+            import polars as pl
+            if not documents:
+                return pl.DataFrame()
+            df = pl.DataFrame(documents)
+            return df if "symbol" in df.columns else pl.DataFrame()
         df = pd.DataFrame(documents)
         if "symbol" not in df.columns:
             return pd.DataFrame()
         return df.set_index("symbol")
 
-    def _get_data(self, lookup_type: str, count: int = 25) -> pd.DataFrame:
+    def _get_data(self, lookup_type: str, count: int = 25):
         return self._parse_response(self._fetch_lookup(lookup_type, count))
 
     def get_all(self, count=25) -> pd.DataFrame:

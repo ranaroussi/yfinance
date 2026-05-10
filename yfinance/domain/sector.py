@@ -65,7 +65,7 @@ class Sector(Domain):
 
     @dynamic_docstring({"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING_LC,bullets=True)})
     @property
-    def industries(self) -> _pd.DataFrame:
+    def industries(self):
         """
         Gets the industries within the sector.
 
@@ -101,7 +101,7 @@ class Sector(Domain):
         """
         return {e.get('symbol'): e.get('name') for e in top_mutual_funds}
     
-    def _parse_industries(self, industries: Dict) -> _pd.DataFrame:
+    def _parse_industries(self, industries: Dict):
         """
         Parses industry data from the API response into a DataFrame.
 
@@ -109,14 +109,20 @@ class Sector(Domain):
             industries (Dict): The raw industry data from the API response.
 
         Returns:
-            pandas.DataFrame: A DataFrame containing industry key, name, symbol, and market weight.
+            DataFrame in the configured backend with industry key, name, symbol, market weight.
         """
+        from .. import utils as _utils
         industries_column = ['key','name','symbol','market weight']
         industries_values = [(i.get('key'),
                               i.get('name'),
                               i.get('symbol'),
                               i.get('marketWeight',{}).get('raw', None)
                               ) for i in industries if i.get('name') != 'All Industries']
+        if _utils.current_backend() == 'polars':
+            import polars as pl
+            if not industries_values:
+                return pl.DataFrame()
+            return pl.DataFrame({c: [row[i] for row in industries_values] for i, c in enumerate(industries_column)})
         return _pd.DataFrame(industries_values, columns=industries_column).set_index('key')
 
     def _fetch_and_parse(self) -> None:

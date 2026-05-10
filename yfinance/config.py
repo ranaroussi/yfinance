@@ -33,6 +33,8 @@ class ConfigMgr:
         d = self.__getattr__('debug')
         d.hide_exceptions = True
         d.logging = False
+        df = self.__getattr__('dataframe')
+        df.backend = 'pandas'  # 'pandas' | 'polars' — output type for DataFrame-returning APIs
 
     def __getattr__(self, key):
         if not self._initialised:

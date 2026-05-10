@@ -254,6 +254,94 @@ def empty_earnings_dates_df():
     return empty
 
 
+def current_backend():
+    """Return the configured DataFrame backend (``'pandas'`` or ``'polars'``).
+
+    Raises ``ValueError`` if ``YfConfig.dataframe.backend`` is set to an
+    unsupported value.
+    """
+    from yfinance.config import YfConfig
+    b = (YfConfig.dataframe.backend or 'pandas').lower()
+    if b not in ('pandas', 'polars'):
+        raise ValueError(f"Unknown dataframe backend: {b!r}; expected 'pandas' or 'polars'.")
+    return b
+
+
+def empty_backend_df():
+    """Empty DataFrame in the configured backend."""
+    if current_backend() == 'polars':
+        import polars as _pl
+        return _pl.DataFrame()
+    return _pd.DataFrame()
+
+
+def series_to_backend(s, value_name=None):
+    """Return a Series-like object in the configured backend.
+
+    For pandas backend, returns the input ``pd.Series`` unchanged.
+    For polars, returns a 2-column ``pl.DataFrame`` (index → first column,
+    values → ``value_name`` or original Series name).
+    """
+    if current_backend() != 'polars':
+        return s
+    if s is None or not isinstance(s, _pd.Series):
+        return s
+    import polars as _pl
+    name = value_name or s.name or 'value'
+    idx_name = s.index.name or 'index'
+    df = _pd.DataFrame({idx_name: s.index, name: s.values})
+    return _pl.from_pandas(df)
+
+
+def df_to_backend(df):
+    """Convert a pandas DataFrame to the configured backend (polars promotes
+    index to first column). Used by APIs whose internals stay pandas-native."""
+    if current_backend() != 'polars':
+        return df
+    if df is None or not isinstance(df, _pd.DataFrame):
+        return df
+    import polars as _pl
+    if df.index.name is not None or not isinstance(df.index, _pd.RangeIndex):
+        df = df.reset_index()
+    return _pl.from_pandas(df)
+
+
+def df_from_records(records, *, datetime_unix_cols=(), rename=None, str_cols=()):
+    """Build a DataFrame from a list of dicts in the configured backend.
+
+    - ``datetime_unix_cols``: columns whose values are unix-seconds and need to
+      become datetime.
+    - ``rename``: dict of column renames applied after datetime conversion.
+    - ``str_cols``: columns to cast to string (after rename).
+    """
+    if current_backend() == 'polars':
+        import polars as _pl
+        if not records:
+            return _pl.DataFrame()
+        df = _pl.DataFrame(records)
+        for col in datetime_unix_cols:
+            if col in df.columns:
+                df = df.with_columns(_pl.from_epoch(_pl.col(col), time_unit='s').alias(col))
+        if rename:
+            df = df.rename({k: v for k, v in rename.items() if k in df.columns})
+        for col in str_cols:
+            if col in df.columns:
+                df = df.with_columns(_pl.col(col).cast(_pl.Utf8))
+        return df
+    df = _pd.DataFrame(records)
+    if df.empty:
+        return df
+    for col in datetime_unix_cols:
+        if col in df.columns:
+            df[col] = _pd.to_datetime(df[col], unit='s')
+    if rename:
+        df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+    for col in str_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str)
+    return df
+
+
 def build_template(data):
     """
     build_template returns the details required to rebuild any of the yahoo finance financial statements in the same order as the yahoo finance webpage. The function is built to be used on the "FinancialTemplateStore" json which appears in any one of the three yahoo finance webpages: "/financials", "/cash-flow" and "/balance-sheet".
@@ -853,7 +941,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
 
 def fix_Yahoo_dst_issue(df, interval):
-    if interval in ["1d", "1w", "1wk"]:
+    if interval in ("1d", "1w", "1wk"):
         # These intervals should start at time 00:00. But for some combinations of date and timezone,
         # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
         # The clue is (a) minutes=0 and (b) hour near 0.
@@ -1029,21 +1117,6 @@ def generate_list_table_from_dict(data: dict, bullets: bool=True, title: str=Non
             table += ' '*5 + f"- {value_str}\n"
     return table
 
-# def generate_list_table_from_dict_of_dict(data: dict, bullets: bool=True, title: str=None) -> str:
-#     """
-#     Generate a list-table for the docstring showing permitted keys/values.
-#     """
-#     table = _generate_table_configurations(title)
-#     for k in sorted(data.keys()):
-#         values = data[k]
-#         table += ' '*3 + f"* - {k}\n"
-#         if bullets:
-#             table += ' '*5 + "-\n"
-#             for value in sorted(values):
-#                 table += ' '*7 + f"- {value}\n"
-#         else:
-#             table += ' '*5 + f"- {values}\n"
-#     return table
 
 
 def generate_list_table_from_dict_universal(data: dict, bullets: bool=True, title: str=None, concat_keys=[]) -> str:

@@ -82,47 +82,35 @@ class Industry(Domain):
         self._ensure_fetched(self._top_growth_companies)
         return self._top_growth_companies
     
-    def _parse_top_performing_companies(self, top_performing_companies: Dict) -> Optional[_pd.DataFrame]:
-        """
-        Parses the top performing companies data.
-        
-        Args:
-            top_performing_companies (Dict): Dictionary containing top performing companies data.
-        
-        Returns:
-            Optional[pd.DataFrame]: DataFrame containing parsed top performing companies data.
-        """
+    def _parse_top_performing_companies(self, top_performing_companies: Dict):
+        from .. import utils as _utils
         compnaies_column = ['symbol','name','ytd return','last price','target price']
         compnaies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('lastPrice',{}).get('raw', None),
                              c.get('targetPrice',{}).get('raw', None),) for c in top_performing_companies]
-        
-        if not compnaies_values: 
-            return None
 
+        if not compnaies_values:
+            return None
+        if _utils.current_backend() == 'polars':
+            import polars as pl
+            return pl.DataFrame({c: [row[i] for row in compnaies_values] for i, c in enumerate(compnaies_column)})
         return _pd.DataFrame(compnaies_values, columns = compnaies_column).set_index('symbol')
-    
-    def _parse_top_growth_companies(self, top_growth_companies: Dict) -> Optional[_pd.DataFrame]:
-        """
-        Parses the top growth companies data.
-        
-        Args:
-            top_growth_companies (Dict): Dictionary containing top growth companies data.
-        
-        Returns:
-            Optional[pd.DataFrame]: DataFrame containing parsed top growth companies data.
-        """
+
+    def _parse_top_growth_companies(self, top_growth_companies: Dict):
+        from .. import utils as _utils
         compnaies_column = ['symbol','name','ytd return','growth estimate']
         compnaies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('growthEstimate',{}).get('raw', None),) for c in top_growth_companies]
-        
-        if not compnaies_values: 
-            return None
 
+        if not compnaies_values:
+            return None
+        if _utils.current_backend() == 'polars':
+            import polars as pl
+            return pl.DataFrame({c: [row[i] for row in compnaies_values] for i, c in enumerate(compnaies_column)})
         return _pd.DataFrame(compnaies_values, columns = compnaies_column).set_index('symbol')
 
     def _fetch_and_parse(self) -> None:

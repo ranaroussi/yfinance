@@ -51,6 +51,27 @@ from bs4 import BeautifulSoup
 
 _tz_info_fetch_ctr = 0
 
+
+def _prettify_financials(data, pretty, as_dict, acronyms):
+    """Apply ``pretty`` row-name formatting and ``as_dict`` conversion to a
+    financials table, supporting both pandas (metric-as-index) and polars
+    (``metric`` column) shapes."""
+    if utils.current_backend() == 'polars':
+        import polars as pl
+        if pretty and 'metric' in data.columns:
+            mapped = utils.camel2title(list(data['metric']), sep=' ', acronyms=acronyms)
+            data = data.with_columns(pl.Series('metric', mapped))
+        if as_dict:
+            return data.to_dict(as_series=False)
+        return data
+    if pretty:
+        data = data.copy()
+        data.index = utils.camel2title(data.index, sep=' ', acronyms=acronyms)
+    if as_dict:
+        return data.to_dict()
+    return data
+
+
 class TickerBase:
     def __init__(self, ticker, session=None):
         """
@@ -125,7 +146,8 @@ class TickerBase:
         self.ws = None
 
     @utils.log_indent_decorator
-    def history(self, *args, **kwargs) -> pd.DataFrame:
+    def history(self, *args, **kwargs):
+        # PriceHistory.history() dispatches on YfConfig.dataframe.backend.
         return self._lazy_load_price_history().history(*args, **kwargs)
 
     # ------------------------
@@ -391,13 +413,7 @@ class TickerBase:
         """
 
         data = self._fundamentals.financials.get_income_time_series(freq=freq)
-
-        if pretty:
-            data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
-        if as_dict:
-            return data.to_dict()
-        return data
+        return _prettify_financials(data, pretty, as_dict, ["EBIT", "EBITDA", "EPS", "NI"])
 
     def get_incomestmt(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(as_dict, pretty, freq)
@@ -421,13 +437,7 @@ class TickerBase:
 
 
         data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq)
-
-        if pretty:
-            data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
-        if as_dict:
-            return data.to_dict()
-        return data
+        return _prettify_financials(data, pretty, as_dict, ["PPE"])
 
     def get_balancesheet(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(as_dict, pretty, freq)
@@ -448,28 +458,23 @@ class TickerBase:
 
 
         data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq)
-
-        if pretty:
-            data = data.copy()
-            data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
-        if as_dict:
-            return data.to_dict()
-        return data
+        return _prettify_financials(data, pretty, as_dict, ["PPE"])
 
     def get_cashflow(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(as_dict, pretty, freq)
 
-    def get_dividends(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_dividends(period=period)
+    def get_dividends(self, period="max"):
+        return utils.series_to_backend(self._lazy_load_price_history().get_dividends(period=period), value_name='Dividends')
 
-    def get_capital_gains(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_capital_gains(period=period)
+    def get_capital_gains(self, period="max"):
+        return utils.series_to_backend(self._lazy_load_price_history().get_capital_gains(period=period), value_name='Capital Gains')
 
-    def get_splits(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_splits(period=period)
+    def get_splits(self, period="max"):
+        return utils.series_to_backend(self._lazy_load_price_history().get_splits(period=period), value_name='Stock Splits')
 
-    def get_actions(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_actions(period=period)
+    def get_actions(self, period="max"):
+        # get_actions returns a DataFrame, not a Series.
+        return utils.df_to_backend(self._lazy_load_price_history().get_actions(period=period))
 
     def get_shares(self, as_dict=False) -> Union[pd.DataFrame, dict]:
         data = self._fundamentals.shares
@@ -532,8 +537,10 @@ class TickerBase:
             return None
 
         df.index = df.index.tz_localize(tz)
+        df.index.name = 'Date'
+        df.name = 'Shares'
         df = df.sort_index()
-        return df
+        return utils.series_to_backend(df, value_name='Shares')
 
     def get_isin(self) -> Optional[str]:
         # *** experimental ***
@@ -613,16 +620,16 @@ class TickerBase:
         self._news = [article for article in news if not article.get('ad', [])]
         return self._news
 
-    def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+    def get_earnings_dates(self, limit = 12, offset = 0):
         if limit > 100:
             raise ValueError("Yahoo caps limit at 100")
 
         if self._earnings_dates and limit in self._earnings_dates:
-            return self._earnings_dates[limit]
+            return utils.df_to_backend(self._earnings_dates[limit])
 
         df = self._get_earnings_dates_using_scrape(limit, offset)
         self._earnings_dates[limit] = df
-        return df
+        return utils.df_to_backend(df)
 
     @utils.log_indent_decorator
     def _get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:

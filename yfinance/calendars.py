@@ -8,7 +8,7 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 
 from .const import _QUERY1_URL_
-from .utils import log_indent_decorator, get_yf_logger, _parse_user_dt
+from .utils import log_indent_decorator, get_yf_logger, _parse_user_dt, current_backend
 from .screener import screen
 from .data import YfData
 from .exceptions import YFException
@@ -258,7 +258,7 @@ class Calendars:
         self.calendars[calendar_type] = self._create_df(json_data)
         return self._cleanup_df(calendar_type)
 
-    def _create_df(self, json_data: dict) -> pd.DataFrame:
+    def _create_df(self, json_data: dict):
         columns = []
         for col in json_data["finance"]["result"][0]["documents"][0]["columns"]:
             columns.append(col["label"])
@@ -268,20 +268,41 @@ class Calendars:
                 columns[-1] = "Timing"
 
         rows = json_data["finance"]["result"][0]["documents"][0]["rows"]
+        if current_backend() == 'polars':
+            import polars as pl
+            if not rows:
+                return pl.DataFrame()
+            return pl.DataFrame({c: [r[i] for r in rows] for i, c in enumerate(columns)})
         return pd.DataFrame(rows, columns=columns)
 
-    def _cleanup_df(self, calendar_type: str) -> pd.DataFrame:
+    def _cleanup_df(self, calendar_type: str):
         predef_cal: dict = PREDEFINED_CALENDARS[calendar_type]
-        df: pd.DataFrame = self.calendars[calendar_type]
+        df = self.calendars[calendar_type]
+
+        if current_backend() == 'polars':
+            import polars as pl
+            if df.is_empty():
+                return df
+            nan_cols: list = predef_cal["nan_cols"]
+            for c in nan_cols:
+                if c in df.columns:
+                    df = df.with_columns(
+                        pl.when(pl.col(c).cast(pl.Float64) == 0.0).then(None).otherwise(pl.col(c).cast(pl.Float64)).alias(c)
+                    )
+            df = df.rename({k: v for k, v in predef_cal["renames"].items() if k in df.columns})
+            for datetime_col in predef_cal["datetime_cols"]:
+                if datetime_col in df.columns:
+                    df = df.with_columns(pl.col(datetime_col).str.to_datetime(strict=False))
+            self.calendars[calendar_type] = df
+            return df
+
         if df.empty:
             return df
 
-        # Convert types
         nan_cols: list = predef_cal["nan_cols"]
         if nan_cols:
             df[nan_cols] = df[nan_cols].astype("float64").replace(0.0, np.nan)
 
-        # Format the dataframe
         df.set_index(predef_cal["df_index"], inplace=True)
         for rename_from, rename_to in predef_cal["renames"].items():
             df.rename(columns={rename_from: rename_to}, inplace=True)
@@ -519,28 +540,28 @@ class Calendars:
     ### Easy / Default getter functions:
 
     @property
-    def earnings_calendar(self) -> pd.DataFrame:
+    def earnings_calendar(self):
         """Earnings calendar with default settings."""
         if "sp_earnings" in self.calendars:
             return self.calendars["sp_earnings"]
         return self.get_earnings_calendar()
 
     @property
-    def ipo_info_calendar(self) -> pd.DataFrame:
+    def ipo_info_calendar(self):
         """IPOs calendar with default settings."""
         if "ipo_info" in self.calendars:
             return self.calendars["ipo_info"]
         return self.get_ipo_info_calendar()
 
     @property
-    def economic_events_calendar(self) -> pd.DataFrame:
+    def economic_events_calendar(self):
         """Economic events calendar with default settings."""
         if "economic_event" in self.calendars:
             return self.calendars["economic_event"]
         return self.get_economic_events_calendar()
 
     @property
-    def splits_calendar(self) -> pd.DataFrame:
+    def splits_calendar(self):
         """Splits calendar with default settings."""
         if "splits" in self.calendars:
             return self.calendars["splits"]

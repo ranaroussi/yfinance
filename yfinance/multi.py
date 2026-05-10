@@ -224,6 +224,9 @@ def _download_impl(tickers, start=None, end=None, actions=False, threads=True,
             if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
                 shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
 
+    if utils.current_backend() == 'polars':
+        return _stitch_polars(tickers, ignore_tz, multi_level_index)
+
     try:
         data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
                           keys=shared._DFS.keys(), names=['Ticker', 'Price'])
@@ -243,6 +246,32 @@ def _download_impl(tickers, start=None, end=None, actions=False, threads=True,
         data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
 
     return data
+
+
+def _stitch_polars(tickers, ignore_tz, multi_level_index):
+    """Native long-form polars stitching: one row per (Date, Ticker)."""
+    import polars as pl
+    isin_lookup = shared._ISINS or {}
+    frames = []
+    for tkr, pdf in shared._DFS.items():
+        if pdf is None or len(pdf) == 0:
+            continue
+        index_name = pdf.index.name or 'Date'
+        local = pdf.reset_index()
+        if not ignore_tz and index_name in local.columns:
+            local[index_name] = _pd.to_datetime(local[index_name], utc=True)
+        plf = pl.from_pandas(local)
+        ticker_label = isin_lookup.get(tkr, tkr)
+        plf = plf.with_columns(pl.lit(ticker_label).alias('Ticker'))
+        # Move Ticker right after Date for readability.
+        cols = [index_name, 'Ticker'] + [c for c in plf.columns if c not in (index_name, 'Ticker')]
+        frames.append(plf.select(cols))
+    if not frames:
+        return pl.DataFrame()
+    out = pl.concat(frames, how='diagonal_relaxed')
+    if not multi_level_index and len(tickers) == 1:
+        out = out.drop('Ticker')
+    return out
 
 
 def _realign_dfs():
@@ -287,11 +316,14 @@ def _download_one(ticker, start=None, end=None,
                   prepost=False, rounding=False,
                   keepna=False, timeout=10):
     data = None
-    
+
     backup = YfConfig.network.hide_exceptions
     YfConfig.network.hide_exceptions = False
     try:
-        data = Ticker(ticker).history(
+        # download() stitches per-ticker dfs in pandas internally (and converts
+        # the final stitched frame for polars callers via _stitch_polars).
+        # _history_native() always returns pandas regardless of YfConfig backend.
+        data = Ticker(ticker)._lazy_load_price_history()._history_native(
                 period=period, interval=interval,
                 start=start, end=end, prepost=prepost,
                 actions=actions, auto_adjust=auto_adjust,
@@ -303,7 +335,7 @@ def _download_one(ticker, start=None, end=None,
         shared._DFS[ticker.upper()] = utils.empty_df()
         shared._ERRORS[ticker.upper()] = repr(e)
         shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
-
-    YfConfig.network.hide_exceptions = backup
+    finally:
+        YfConfig.network.hide_exceptions = backup
 
     return data

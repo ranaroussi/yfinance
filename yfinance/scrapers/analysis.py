@@ -8,6 +8,7 @@ from yfinance.data import YfData
 from yfinance.exceptions import YFException
 from yfinance.scrapers.quote import _QUOTE_SUMMARY_URL_
 
+
 class Analysis:
 
     def __init__(self, data: YfData, symbol: str):
@@ -27,7 +28,7 @@ class Analysis:
         self._eps_revisions = None
         self._growth_estimates = None
 
-    def _get_periodic_df(self, key, currency_key=None) -> pd.DataFrame:
+    def _get_periodic_df(self, key, currency_key=None):
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
 
@@ -42,6 +43,16 @@ class Analysis:
             data.append(row)
             if currency is None and currency_key is not None:
                 currency = item[key].get(currency_key)
+
+        if utils.current_backend() == 'polars':
+            import polars as pl
+            if len(data) == 0:
+                return pl.DataFrame()
+            df = pl.DataFrame(data)
+            if currency is not None:
+                df = df.with_columns(pl.lit(currency).alias('currency'))
+            return df
+
         if len(data) == 0:
             return pd.DataFrame()
         df = pd.DataFrame(data).set_index('period')
@@ -50,31 +61,27 @@ class Analysis:
         return df
 
     @property
-    def earnings_estimate(self) -> pd.DataFrame:
-        if self._earnings_estimate is not None:
-            return self._earnings_estimate
-        self._earnings_estimate = self._get_periodic_df('earningsEstimate', currency_key='earningsCurrency')
+    def earnings_estimate(self):
+        if self._earnings_estimate is None:
+            self._earnings_estimate = self._get_periodic_df('earningsEstimate', currency_key='earningsCurrency')
         return self._earnings_estimate
 
     @property
-    def revenue_estimate(self) -> pd.DataFrame:
-        if self._revenue_estimate is not None:
-            return self._revenue_estimate
-        self._revenue_estimate = self._get_periodic_df('revenueEstimate', currency_key='revenueCurrency')
+    def revenue_estimate(self):
+        if self._revenue_estimate is None:
+            self._revenue_estimate = self._get_periodic_df('revenueEstimate', currency_key='revenueCurrency')
         return self._revenue_estimate
 
     @property
-    def eps_trend(self) -> pd.DataFrame:
-        if self._eps_trend is not None:
-            return self._eps_trend
-        self._eps_trend = self._get_periodic_df('epsTrend', currency_key='epsTrendCurrency')
+    def eps_trend(self):
+        if self._eps_trend is None:
+            self._eps_trend = self._get_periodic_df('epsTrend', currency_key='epsTrendCurrency')
         return self._eps_trend
 
     @property
-    def eps_revisions(self) -> pd.DataFrame:
-        if self._eps_revisions is not None:
-            return self._eps_revisions
-        self._eps_revisions = self._get_periodic_df('epsRevisions', currency_key='epsRevisionsCurrency')
+    def eps_revisions(self):
+        if self._eps_revisions is None:
+            self._eps_revisions = self._get_periodic_df('epsRevisions', currency_key='epsRevisionsCurrency')
         return self._eps_revisions
 
     @property
@@ -103,9 +110,17 @@ class Analysis:
         return self._analyst_price_targets
 
     @property
-    def earnings_history(self) -> pd.DataFrame:
+    def earnings_history(self):
         if self._earnings_history is not None:
             return self._earnings_history
+
+        polars = utils.current_backend() == 'polars'
+
+        def _empty():
+            if polars:
+                import polars as pl
+                return pl.DataFrame()
+            return pd.DataFrame()
 
         try:
             data = self._fetch(['earningsHistory'])
@@ -113,7 +128,7 @@ class Analysis:
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._earnings_history = pd.DataFrame()
+            self._earnings_history = _empty()
             return self._earnings_history
 
         rows = []
@@ -127,20 +142,35 @@ class Analysis:
                 row[k] = v.get('raw', None)
             rows.append(row)
         if len(data) == 0:
-            return pd.DataFrame()
+            self._earnings_history = _empty()
+            return self._earnings_history
 
-        df = pd.DataFrame(rows)
-        if 'quarter' in df.columns:
-            df['quarter'] = pd.to_datetime(df['quarter'], format='%Y-%m-%d')
-            df.set_index('quarter', inplace=True)
+        if polars:
+            import polars as pl
+            df = pl.DataFrame(rows)
+            if 'quarter' in df.columns:
+                df = df.with_columns(pl.col('quarter').str.to_date(format='%Y-%m-%d'))
+        else:
+            df = pd.DataFrame(rows)
+            if 'quarter' in df.columns:
+                df['quarter'] = pd.to_datetime(df['quarter'], format='%Y-%m-%d')
+                df.set_index('quarter', inplace=True)
 
         self._earnings_history = df
         return self._earnings_history
 
     @property
-    def growth_estimates(self) -> pd.DataFrame:
+    def growth_estimates(self):
         if self._growth_estimates is not None:
             return self._growth_estimates
+
+        polars = utils.current_backend() == 'polars'
+
+        def _empty():
+            if polars:
+                import polars as pl
+                return pl.DataFrame()
+            return pd.DataFrame()
 
         if self._earnings_trend is None:
             self._fetch_earnings_trend()
@@ -151,7 +181,7 @@ class Analysis:
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._growth_estimates = pd.DataFrame()
+            self._growth_estimates = _empty()
             return self._growth_estimates
 
         data = []
@@ -171,9 +201,19 @@ class Analysis:
                         row = {'period': period, trend_name: estimate.get('growth')}
                         data.append(row)
         if len(data) == 0:
-            return pd.DataFrame()
+            self._growth_estimates = _empty()
+            return self._growth_estimates
 
-        self._growth_estimates = pd.DataFrame(data).set_index('period').dropna(how='all')
+        if polars:
+            import polars as pl
+            df = pl.DataFrame(data)
+            non_period = [c for c in df.columns if c != 'period']
+            if non_period:
+                mask = ~pl.all_horizontal([pl.col(c).is_null() for c in non_period])
+                df = df.filter(mask)
+            self._growth_estimates = df
+        else:
+            self._growth_estimates = pd.DataFrame(data).set_index('period').dropna(how='all')
         return self._growth_estimates
 
     # modified version from quote.py

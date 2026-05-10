@@ -34,9 +34,12 @@ class Fundamentals:
         return None
 
     @property
-    def shares(self) -> pd.DataFrame:
+    def shares(self):
         if self._shares is None:
             raise YFNotImplementedError('shares')
+        if utils.current_backend() == 'polars':
+            import polars as pl
+            return pl.from_pandas(self._shares.reset_index() if self._shares.index.name else self._shares)
         return self._shares
 
 
@@ -48,19 +51,19 @@ class Financials:
         self._balance_sheet_time_series = {}
         self._cash_flow_time_series = {}
 
-    def get_income_time_series(self, freq="yearly") -> pd.DataFrame:
+    def get_income_time_series(self, freq="yearly"):
         res = self._income_time_series
         if freq not in res:
             res[freq] = self._fetch_time_series("income", freq)
         return res[freq]
 
-    def get_balance_sheet_time_series(self, freq="yearly") -> pd.DataFrame:
+    def get_balance_sheet_time_series(self, freq="yearly"):
         res = self._balance_sheet_time_series
         if freq not in res:
             res[freq] = self._fetch_time_series("balance-sheet", freq)
         return res[freq]
 
-    def get_cash_flow_time_series(self, freq="yearly") -> pd.DataFrame:
+    def get_cash_flow_time_series(self, freq="yearly"):
         res = self._cash_flow_time_series
         if freq not in res:
             res[freq] = self._fetch_time_series("cash-flow", freq)
@@ -92,7 +95,7 @@ class Financials:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"{self._symbol}: Failed to create {name} financials table for reason: {e}")
-        return pd.DataFrame()
+        return utils.empty_backend_df()
 
     def _create_financials_table(self, name, timescale):
         if name == "income":
@@ -108,28 +111,22 @@ class Financials:
                 raise
             pass
 
-    def _get_financials_time_series(self, timescale, keys: list) -> pd.DataFrame:
+    def _get_financials_time_series(self, timescale, keys: list):
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly", "trailing": "trailing"}
         timescale = timescale_translation[timescale]
 
-        # Step 2: construct url:
         ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
         url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
-        # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
         end = pd.Timestamp.now('UTC').ceil("D")
         url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
-        # Step 3: fetch and reshape data
         json_str = self._data.cache_get(url=url).text
         json_data = json.loads(json_str)
         data_raw = json_data["timeseries"]["result"]
-        # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
         for d in data_raw:
             del d["meta"]
 
-        # Now reshape data into a table:
-        # Step 1: get columns and index:
         timestamps = set()
         data_unpacked = {}
         for x in data_raw:
@@ -139,6 +136,27 @@ class Financials:
                 else:
                     data_unpacked[k] = x[k]
         timestamps = sorted(list(timestamps))
+
+        # Strip the leading timescale ("annual"/"quarterly"/"trailing") from metric keys.
+        import re as _re
+        metric_keys = [_re.sub("^" + timescale, "", k) for k in data_unpacked.keys()]
+        ordered_metrics = [k for k in keys if k in metric_keys]
+
+        if utils.current_backend() == 'polars':
+            import polars as pl
+            iso_dates_desc = sorted([pd.Timestamp(t, unit='s').strftime('%Y-%m-%d') for t in timestamps], reverse=True)
+            if timescale == "trailing":
+                iso_dates_desc = iso_dates_desc[:1]
+            rows = []
+            for metric in ordered_metrics:
+                raw_key = next(rk for rk in data_unpacked.keys() if _re.sub("^" + timescale, "", rk) == metric)
+                values_by_date = {pd.Timestamp(x["asOfDate"]).strftime('%Y-%m-%d'): float(x["reportedValue"]["raw"]) if x.get("reportedValue") else None for x in data_unpacked[raw_key]}
+                row = {"metric": metric}
+                for d in iso_dates_desc:
+                    row[d] = values_by_date.get(d)
+                rows.append(row)
+            return pl.DataFrame(rows) if rows else pl.DataFrame()
+
         dates = pd.to_datetime(timestamps, unit="s")
         df = pd.DataFrame(columns=dates, index=list(data_unpacked.keys()))
         for k, v in data_unpacked.items():
@@ -148,15 +166,12 @@ class Financials:
 
         df.index = df.index.str.replace("^" + timescale, "", regex=True)
 
-        # Ensure float type, not object
         for d in df.columns:
             df[d] = df[d].astype('float')
 
-        # Reorder table to match order on Yahoo website
         df = df.reindex([k for k in keys if k in df.index])
         df = df[sorted(df.columns, reverse=True)]
 
-        # Trailing 12 months return only the first column.
         if (timescale == "trailing"):
             df = df.iloc[:, [0]]
 
