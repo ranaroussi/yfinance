@@ -591,7 +591,7 @@ class Quote:
         modules = ','.join([m for m in modules if m in quote_summary_valid_modules])
         if len(modules) == 0:
             raise YFException("No valid modules provided, see available modules using `valid_modules`")
-        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
+        params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol, "lang": YfConfig.locale.lang, "region": YfConfig.locale.region}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:
@@ -602,7 +602,7 @@ class Quote:
         return result
 
     def _fetch_additional_info(self):
-        params_dict = {"symbols": self._symbol, "formatted": "false"}
+        params_dict = {"symbols": self._symbol, "formatted": "false", "lang": YfConfig.locale.lang, "region": YfConfig.locale.region}
         try:
             result = self._data.get_raw_json(f"{_QUERY1_URL_}/v7/finance/quote?", params=params_dict)
         except curl_cffi.requests.exceptions.HTTPError as e:

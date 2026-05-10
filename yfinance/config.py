@@ -33,6 +33,9 @@ class ConfigMgr:
         d = self.__getattr__('debug')
         d.hide_exceptions = True
         d.logging = False
+        loc = self.__getattr__('locale')
+        loc.lang = "en-US"   # BCP-47 language tag for Yahoo v7/v10 endpoints
+        loc.region = "US"    # ISO 3166-1 alpha-2 country code
 
     def __getattr__(self, key):
         if not self._initialised:

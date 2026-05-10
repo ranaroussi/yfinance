@@ -738,7 +738,7 @@ class TickerBase:
 
         # Fetch data
         url = f"{_QUERY1_URL_}/v1/finance/visualization"
-        params = {"lang": "en-US", "region": "US"}
+        params = {"lang": YfConfig.locale.lang, "region": YfConfig.locale.region}
         body = {
             "size": limit,
             "query": { "operator": "eq", "operands": ["ticker", self.ticker] },
