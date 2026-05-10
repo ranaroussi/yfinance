@@ -92,17 +92,17 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top performing companies data.
         """
-        compnaies_column = ['symbol','name','ytd return','last price','target price']
-        compnaies_values = [(c.get('symbol', None),
+        companies_column = ['symbol','name','ytd return','last price','target price']
+        companies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('lastPrice',{}).get('raw', None),
                              c.get('targetPrice',{}).get('raw', None),) for c in top_performing_companies]
         
-        if not compnaies_values: 
+        if not companies_values: 
             return None
 
-        return _pd.DataFrame(compnaies_values, columns = compnaies_column).set_index('symbol')
+        return _pd.DataFrame(companies_values, columns = companies_column).set_index('symbol')
     
     def _parse_top_growth_companies(self, top_growth_companies: Dict) -> Optional[_pd.DataFrame]:
         """
@@ -114,16 +114,16 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top growth companies data.
         """
-        compnaies_column = ['symbol','name','ytd return','growth estimate']
-        compnaies_values = [(c.get('symbol', None),
+        companies_column = ['symbol','name','ytd return','growth estimate']
+        companies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('growthEstimate',{}).get('raw', None),) for c in top_growth_companies]
         
-        if not compnaies_values: 
+        if not companies_values: 
             return None
 
-        return _pd.DataFrame(compnaies_values, columns = compnaies_column).set_index('symbol')
+        return _pd.DataFrame(companies_values, columns = companies_column).set_index('symbol')
 
     def _fetch_and_parse(self) -> None:
         """

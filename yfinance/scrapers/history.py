@@ -2252,8 +2252,7 @@ class PriceHistory:
                 if c == 'adj_exceeds_prices':
                     continue
 
-                if c == 'phantom' and self.ticker in ['KAP.IL', 'SAND']:
-                    # Manually approve, but these are probably safe to assume ok
+                if c == 'phantom':
                     continue
 
                 if c == 'div_date_wrong':
@@ -2731,7 +2730,8 @@ class PriceHistory:
             df_workings['VolStr'] = ''
             df_workings.loc[fna, 'VolStr'] = 'NaN'
             df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).astype('int').astype('str') + 'm'
-            df_workings['Vol'] = df_workings['VolStr'] ; df_workings.drop('VolStr', axis=1)
+            df_workings['Vol'] = df_workings['VolStr']
+            df_workings.drop('VolStr', axis=1)
         else:
             df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
         debug_cols = ['Close']
