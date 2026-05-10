@@ -450,6 +450,27 @@ class TestPriceHistory(unittest.TestCase):
         df = dat.history(start=start, interval="1wk")
         self.assertTrue((df.index.weekday == 0).all())
 
+    def test_history_start_no_end_stable_url(self):
+        # period2 must be stable across calls in the same calendar day
+        # (requests_cache hit).
+        from unittest.mock import patch
+        captured = []
+        dat = yf.Ticker('MSFT')
+        real_get = dat._data.get
+        def spy(*args, **kw):
+            url = kw.get('url') or (args[0] if args else '')
+            params = kw.get('params') or (args[1] if len(args) > 1 else None)
+            if '/chart/' in url and params and 'period2' in params:
+                captured.append(params['period2'])
+            return real_get(*args, **kw)
+        with patch.object(dat._data, 'get', side_effect=spy):
+            dat.history(start='2024-01-01', interval='1d')
+            dat._history = None
+            dat.history(start='2024-01-01', interval='1d')
+        self.assertGreaterEqual(len(captured), 2)
+        self.assertEqual(captured[0], captured[1],
+                         f"period2 changed between calls: {captured[0]} vs {captured[1]}")
+
     def test_aggregate_capital_gains(self):
         # Setup
         tkr = "FXAIX"

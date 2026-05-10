@@ -153,7 +153,9 @@ class PriceHistory:
                 start_dt = end_dt - utils._interval_to_timedelta('1mo')
                 start = int(start_dt.timestamp())
             elif not end:
-                end_dt = pd.Timestamp.now('UTC').tz_convert(tz)
+                # Snap to next-day midnight in exchange tz so identical calls
+                # within the same calendar day produce a stable URL (cache hits).
+                end_dt = pd.Timestamp.now('UTC').tz_convert(tz).normalize() + pd.Timedelta(days=1)
                 end = int(end_dt.timestamp())
         else:
             if period.lower() == "max":
