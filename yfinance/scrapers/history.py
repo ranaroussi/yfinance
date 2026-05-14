@@ -9,7 +9,7 @@ import pandas as pd
 import time as _time
 import warnings
 
-from yfinance import shared, utils
+from yfinance import utils
 from yfinance.config import YfConfig
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default, _SENTINEL_
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
@@ -31,6 +31,8 @@ class PriceHistory:
 
         # Limit recursion depth when repairing prices
         self._reconstruct_start_interval = None
+
+        self._last_error = None
 
     @utils.log_indent_decorator
     def history(self, period=period_default, interval="1d",
@@ -105,8 +107,7 @@ class PriceHistory:
                     # Every valid ticker has a timezone. A missing timezone is a problem.
                     _exception = YFTzMissingError(self.ticker)
                     err_msg = str(_exception)
-                    shared._DFS[self.ticker] = utils.empty_df()
-                    shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                    self._last_error = err_msg.split(': ', 1)[1]
                     if raise_errors or (not YfConfig.debug.hide_exceptions):
                         raise _exception
                     else:
@@ -131,8 +132,7 @@ class PriceHistory:
                 # Every valid ticker has a timezone. A missing timezone is a problem.
                 _exception = YFTzMissingError(self.ticker)
                 err_msg = str(_exception)
-                shared._DFS[self.ticker] = utils.empty_df()
-                shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                self._last_error = err_msg.split(': ', 1)[1]
                 if raise_errors or (not YfConfig.debug.hide_exceptions):
                     raise _exception
                 else:
@@ -289,8 +289,7 @@ class PriceHistory:
 
         if fail:
             err_msg = str(_exception)
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+            self._last_error = err_msg.split(': ', 1)[1]
             if raise_errors or (not YfConfig.debug.hide_exceptions):
                 raise _exception
             else:
@@ -504,8 +503,7 @@ class PriceHistory:
                 err_msg = "auto_adjust failed with %s" % e
             else:
                 err_msg = "back_adjust failed with %s" % e
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
+            self._last_error = err_msg
             logger.error('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
