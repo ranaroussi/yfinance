@@ -3,6 +3,7 @@ from __future__ import print_function
 import pandas as _pd
 from typing import Dict, Optional
 
+from .._backend import DataFrameLike, df_to_backend
 from ..config import YfConfig
 from ..const import SECTOR_INDUSTY_MAPPING_LC
 from ..utils import dynamic_docstring, generate_list_table_from_dict, get_yf_logger
@@ -68,7 +69,7 @@ class Sector(Domain):
 
     @dynamic_docstring({"sector_industry": generate_list_table_from_dict(SECTOR_INDUSTY_MAPPING_LC,bullets=True)})
     @property
-    def industries(self) -> _pd.DataFrame:
+    def industries(self) -> DataFrameLike:
         """
         Gets the industries within the sector.
 
@@ -78,7 +79,7 @@ class Sector(Domain):
         {sector_industry}
         """
         self._ensure_fetched(self._industries)
-        return self._industries
+        return df_to_backend(self._industries, index_as_column='key')
     
     def _parse_top_etfs(self, top_etfs: Dict) -> Dict[str, str]:
         """

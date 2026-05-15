@@ -2,6 +2,7 @@ import pandas as pd
 from typing import Dict, Optional
 
 from yfinance import utils
+from yfinance._backend import DataFrameLike, df_to_backend
 from yfinance.config import YfConfig
 from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
@@ -80,7 +81,7 @@ class FundsData:
         return self._fund_overview
 
     @property
-    def fund_operations(self) -> pd.DataFrame:
+    def fund_operations(self) -> DataFrameLike:
         """
         Returns the fund operations.
 
@@ -89,7 +90,7 @@ class FundsData:
         """
         if self._fund_operations is None:
             self._fetch_and_parse()
-        return self._fund_operations
+        return df_to_backend(self._fund_operations, index_as_column='Attributes')
 
     @property
     def asset_classes(self) -> Dict[str, float]:
@@ -104,7 +105,7 @@ class FundsData:
         return self._asset_classes
 
     @property
-    def top_holdings(self) -> pd.DataFrame:
+    def top_holdings(self) -> DataFrameLike:
         """
         Returns the top holdings of the fund.
 
@@ -113,10 +114,10 @@ class FundsData:
         """
         if self._top_holdings is None:
             self._fetch_and_parse()
-        return self._top_holdings
+        return df_to_backend(self._top_holdings, index_as_column='Symbol')
 
     @property
-    def equity_holdings(self) -> pd.DataFrame:
+    def equity_holdings(self) -> DataFrameLike:
         """
         Returns the equity holdings of the fund.
 
@@ -125,10 +126,10 @@ class FundsData:
         """
         if self._equity_holdings is None:
             self._fetch_and_parse()
-        return self._equity_holdings
+        return df_to_backend(self._equity_holdings, index_as_column='Average')
 
     @property
-    def bond_holdings(self) -> pd.DataFrame:
+    def bond_holdings(self) -> DataFrameLike:
         """
         Returns the bond holdings of the fund.
 
@@ -137,7 +138,7 @@ class FundsData:
         """
         if self._bond_holdings is None:
             self._fetch_and_parse()
-        return self._bond_holdings
+        return df_to_backend(self._bond_holdings, index_as_column='Average')
 
     @property
     def bond_ratings(self) -> Dict[str, float]:

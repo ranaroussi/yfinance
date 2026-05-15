@@ -1,6 +1,9 @@
 import json
 
 
+_VALID_DATAFRAME_BACKENDS = ("pandas", "polars")
+
+
 class NestedConfig:
     def __init__(self, name, data):
         self.__dict__['name'] = name
@@ -10,6 +13,12 @@ class NestedConfig:
         return self.data.get(key)
 
     def __setattr__(self, key, value):
+        if self.__dict__['name'] == 'dataframe' and key == 'backend':
+            if value not in _VALID_DATAFRAME_BACKENDS:
+                raise ValueError(
+                    f"Unknown dataframe backend {value!r}; expected one of "
+                    f"{_VALID_DATAFRAME_BACKENDS}"
+                )
         self.data[key] = value
 
     def __len__(self):
@@ -36,6 +45,8 @@ class ConfigMgr:
         loc = self.__getattr__('locale')
         loc.lang = "en-US"   # BCP-47 language tag for Yahoo v7/v10 endpoints
         loc.region = "US"    # ISO 3166-1 alpha-2 country code
+        df = self.__getattr__('dataframe')
+        df.backend = 'pandas'
 
     def __getattr__(self, key):
         if not self._initialised:
