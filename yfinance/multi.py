@@ -22,12 +22,12 @@
 from __future__ import print_function
 
 import logging
+import os
 import threading
-import time as _time
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 
-import multitasking as _multitasking
 import pandas as _pd
 from curl_cffi import requests
 
@@ -155,20 +155,26 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
 
     if threads:
         if threads is True:
-            threads = min([len(tickers), _multitasking.cpu_count() * 2])
-        _multitasking.set_max_threads(threads)
-        for i, ticker in enumerate(tickers):
-            _download_one_threaded(ctx, ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust, repair=repair, keepna=keepna,
-                                   progress=(progress and i > 0),
-                                   rounding=rounding, timeout=timeout)
-        while True:
-            with ctx.lock:
-                if len(ctx.dfs) >= len(tickers):
-                    break
-            _time.sleep(0.01)
+            threads = min(len(tickers), (os.cpu_count() or 1) * 2)
+        # ThreadPoolExecutor's context exit blocks until every submitted future
+        # has finished, replacing the previous busy-wait on ctx.dfs.
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            futures = []
+            for i, ticker in enumerate(tickers):
+                futures.append(executor.submit(
+                    _download_one_threaded, ctx, ticker, period=period, interval=interval,
+                    start=start, end=end, prepost=prepost,
+                    actions=actions, auto_adjust=auto_adjust,
+                    back_adjust=back_adjust, repair=repair, keepna=keepna,
+                    progress=(progress and i > 0),
+                    rounding=rounding, timeout=timeout,
+                ))
+        # Workers catch their own exceptions into ctx.errors; a leaked exception
+        # here would be a programmer bug, surface it instead of swallowing.
+        for f in futures:
+            exc = f.exception()
+            if exc is not None:
+                raise exc
     else:
         for i, ticker in enumerate(tickers):
             _download_one(ctx, ticker, period=period, interval=interval,
@@ -247,7 +253,6 @@ def _realign_dfs(ctx):
             ~ctx.dfs[key].index.duplicated(keep='last')]
 
 
-@_multitasking.task
 def _download_one_threaded(ctx, ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period=None,
