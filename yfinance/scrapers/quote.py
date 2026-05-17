@@ -759,24 +759,73 @@ class Quote:
                 else:
                     self.info[k] = None
 
+    def _apply_split_from_corporate_actions(self, ca_block):
+        """Extract the next upcoming split from the 'corporateActions' payload
+        and populate Split Date / Split Ratio / Split Type on self._calendar.
+
+        Yahoo's payload shape:
+            {"corporateActions": [{"meta": {"eventType": "SPLIT",
+                                            "dateEpochMs": <ms>,
+                                            "splitRatio": "1:20"}, ...}],
+             "maxAge": 1}
+
+        Multiple actions can be present; we pick the earliest SPLIT.
+        """
+        if not ca_block:
+            return
+        actions = ca_block.get('corporateActions') or []
+        splits = [a for a in actions if (a.get('meta') or {}).get('eventType') == 'SPLIT'
+                  and (a.get('meta') or {}).get('dateEpochMs')]
+        if not splits:
+            return
+        next_split = min(splits, key=lambda a: a['meta']['dateEpochMs'])
+        meta = next_split['meta']
+        # dateEpochMs is milliseconds since epoch; resolve in UTC so the
+        # calendar date doesn't shift on machines in negative-offset zones.
+        self._calendar['Split Date'] = datetime.datetime.fromtimestamp(
+            meta['dateEpochMs'] / 1000, tz=datetime.timezone.utc
+        ).date()
+        if meta.get('splitRatio'):
+            self._calendar['Split Ratio'] = meta['splitRatio']
+        # 'header' carries the human-readable type ("Forward stock split" /
+        # "Reverse stock split"); preserve it verbatim so we don't have to
+        # second-guess Yahoo's classification.
+        if next_split.get('header'):
+            self._calendar['Split Type'] = next_split['header']
+
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
-        result = self._fetch(modules=['calendarEvents'])
+        result = self._fetch(modules=['calendarEvents', 'corporateActions'])
         if result is None:
             self._calendar = {}
             return
 
         try:
             self._calendar = dict()
-            _events = result["quoteSummary"]["result"][0]["calendarEvents"]
+            _result0 = result["quoteSummary"]["result"][0]
+            _events = _result0["calendarEvents"]
             if 'dividendDate' in _events:
                 self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
             if 'exDividendDate' in _events:
                 self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
-            # splits = _events.get('splitDate')  # need to check later, i will add code for this if found data
+            # Upcoming splits ship via the 'corporateActions' module (richer
+            # payload with ratio + type), not 'calendarEvents.splitDate' which
+            # is almost always absent. Fall back to calendarEvents.splitDate
+            # only if corporateActions is missing.
+            self._apply_split_from_corporate_actions(_result0.get('corporateActions'))
+            if 'Split Date' not in self._calendar and _events.get('splitDate'):
+                self._calendar['Split Date'] = datetime.datetime.fromtimestamp(_events['splitDate']).date()
             earnings = _events.get('earnings')
             if earnings is not None:
                 self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
+                # Yahoo's 'isEarningsDateEstimate' flag distinguishes confirmed
+                # dates from estimates — useful for downstream filtering. Note:
+                # earningsCallDate is intentionally *not* surfaced: in observed
+                # payloads it can point to a past quarter's call rather than
+                # the next one, so exposing it without disambiguation would
+                # mislead callers.
+                if 'isEarningsDateEstimate' in earnings:
+                    self._calendar['Is Earnings Date Estimate'] = earnings['isEarningsDateEstimate']
                 self._calendar['Earnings High'] = earnings.get('earningsHigh', None)
                 self._calendar['Earnings Low'] = earnings.get('earningsLow', None)
                 self._calendar['Earnings Average'] = earnings.get('earningsAverage', None)

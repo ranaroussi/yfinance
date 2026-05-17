@@ -872,8 +872,52 @@ class TestTickerMiscFinancials(unittest.TestCase):
         if self.ticker.ticker != "GOOGL":
             self.assertIn("Dividend Date", data.keys(), "data missing expected key")
         # ex-dividend date is not always available
+        # isEarningsDateEstimate is present in the raw payload whenever
+        # earnings info is known; surface it when Yahoo provides it.
+        if "Is Earnings Date Estimate" in data:
+            self.assertIsInstance(data["Is Earnings Date Estimate"], bool)
         data_cached = self.ticker.calendar
         self.assertIs(data, data_cached, "data not cached")
+
+    def test_calendar_split_from_corporate_actions(self):
+        """Mock the quoteSummary payload so the test is independent of any
+        live ticker happening to have an announced split today."""
+        from unittest.mock import patch
+        # 1779163200000 ms = 2026-05-19 04:00 UTC -> calendar date 2026-05-19
+        # regardless of the host machine's local timezone.
+        fake_payload = {"quoteSummary": {"result": [{
+            "calendarEvents": {"earnings": {"earningsDate": []}},
+            "corporateActions": {"corporateActions": [{
+                "header": "Reverse stock split",
+                "message": "FAKE announces 1 for 20 split effective May. 19, 2026",
+                "meta": {
+                    "eventType": "SPLIT",
+                    "dateEpochMs": 1779163200000,
+                    "splitRatio": "1:20",
+                },
+            }]},
+        }], "error": None}}
+        ticker = yf.Ticker("FAKE", session=self.session)
+        with patch.object(ticker._quote, "_fetch", return_value=fake_payload):
+            cal = ticker.calendar
+        import datetime as _dt
+        self.assertEqual(cal["Split Date"], _dt.date(2026, 5, 19))
+        self.assertEqual(cal["Split Ratio"], "1:20")
+        self.assertEqual(cal["Split Type"], "Reverse stock split")
+
+    def test_calendar_no_split_when_corporate_actions_empty(self):
+        """No SPLIT in corporateActions -> no Split* keys leak into calendar."""
+        from unittest.mock import patch
+        fake_payload = {"quoteSummary": {"result": [{
+            "calendarEvents": {"earnings": {"earningsDate": []}},
+            "corporateActions": {"corporateActions": []},
+        }], "error": None}}
+        ticker = yf.Ticker("FAKE2", session=self.session)
+        with patch.object(ticker._quote, "_fetch", return_value=fake_payload):
+            cal = ticker.calendar
+        self.assertNotIn("Split Date", cal)
+        self.assertNotIn("Split Ratio", cal)
+        self.assertNotIn("Split Type", cal)
 
     # # sustainability stopped working
     # def test_sustainability(self):

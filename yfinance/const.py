@@ -142,6 +142,7 @@ quote_summary_valid_modules = (
     "defaultKeyStatistics",  # KPIs (PE, enterprise value, EPS, EBITA, and more)
     "financialData",  # Financial KPIs (revenue, gross margins, operating cash flow, free cash flow, and more)
     "calendarEvents",  # future earnings date
+    "corporateActions",  # announced upcoming corporate actions (splits, etc.)
     "secFilings",  # SEC filings, such as 10K and 10Q reports
     "upgradeDowngradeHistory",  # upgrades and downgrades that analysts have given a company's stock
     "institutionOwnership",  # institutional ownership, holders and shares outstanding
