@@ -9,9 +9,8 @@ from urllib.parse import urlsplit, urljoin
 from bs4 import BeautifulSoup
 import datetime
 
-from frozendict import frozendict
-
 from . import utils, cache
+from .utils import frozendict
 from .config import YfConfig
 import threading
 

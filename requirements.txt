@@ -4,7 +4,6 @@ requests>=2.31
 multitasking>=0.0.7
 platformdirs>=2.0.0
 pytz>=2022.5
-frozendict>=2.3.4
 beautifulsoup4>=4.11.1
 lxml>=4.9.0
 peewee>=3.16.2
