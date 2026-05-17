@@ -35,7 +35,7 @@ from .domain.market import Market, MarketRegion
 from .config import YfConfig as config
 from .data import Auth
 
-from .screener.query import EquityQuery, FundQuery, ETFQuery
+from .screener.query import EquityQuery, FundQuery, ETFQuery, IndexQuery, FutureQuery, CryptoQuery, CurrencyQuery
 from .screener.screener import screen, PREDEFINED_SCREENER_QUERIES
 
 __version__ = version.version
@@ -47,7 +47,7 @@ warnings.filterwarnings('default', category=DeprecationWarning, module='^yfinanc
 __all__ = ['download', 'Market', 'MarketRegion', 'Search', 'Lookup', 'Ticker', 'Tickers', 'enable_debug_mode', 'set_tz_cache_location',
            'Sector', 'Industry', 'WebSocket', 'AsyncWebSocket', 'Calendars', 'Auth']
 # screener stuff:
-__all__ += ['EquityQuery', 'FundQuery', 'ETFQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
+__all__ += ['EquityQuery', 'FundQuery', 'ETFQuery', 'IndexQuery', 'FutureQuery', 'CryptoQuery', 'CurrencyQuery', 'screen', 'PREDEFINED_SCREENER_QUERIES']
 
 # Config stuff:
 _NOTSET=object()

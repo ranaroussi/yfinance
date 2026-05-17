@@ -5,6 +5,12 @@ from typing import List, Union, Dict, TypeVar, Literal
 from yfinance.const import EQUITY_SCREENER_EQ_MAP, EQUITY_SCREENER_FIELDS
 from yfinance.const import FUND_SCREENER_EQ_MAP, FUND_SCREENER_FIELDS
 from yfinance.const import ETF_SCREENER_EQ_MAP, ETF_SCREENER_FIELDS
+from yfinance.const import (
+    INDEX_SCREENER_FIELDS,
+    FUTURE_SCREENER_FIELDS,
+    CRYPTO_SCREENER_FIELDS,
+    CURRENCY_SCREENER_FIELDS,
+)
 from yfinance.exceptions import YFNotImplementedError
 from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 
@@ -257,3 +263,150 @@ class ETFQuery(QueryBase):
         {valid_values_table}
         """
         return ETF_SCREENER_EQ_MAP
+
+
+class IndexQuery(QueryBase):
+    """
+    The `IndexQuery` class constructs filters for indices (``quoteType=INDEX``).
+
+    Start with value operations: `EQ` (equals), `IS-IN` (is in), `BTWN` (between), `GT` (greater than), `LT` (less than), `GTE` (greater or equal), `LTE` (less or equal).
+
+    Combine them with logical operations: `AND`, `OR`.
+
+    The accepted field set was discovered empirically against Yahoo's screener API;
+    Yahoo does not document it. Pull requests adding more verified fields are welcome.
+
+    Example:
+
+        .. code-block:: python
+
+            from yfinance import IndexQuery
+
+            IndexQuery('and', [
+                IndexQuery('eq', ['region', 'us']),
+                IndexQuery('gt', ['percentchange', 1])
+            ])
+    """
+    @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(INDEX_SCREENER_FIELDS)})
+    @property
+    def valid_fields(self) -> Dict:
+        """
+        Valid operands, grouped by category.
+        {valid_operand_fields_table}
+        """
+        return INDEX_SCREENER_FIELDS
+
+    @property
+    def valid_values(self) -> Dict:
+        """No EQ value enum is currently mapped for this quote type; Yahoo will
+        reject invalid values at request time."""
+        return {}
+
+
+class FutureQuery(QueryBase):
+    """
+    The `FutureQuery` class constructs filters for futures (``quoteType=FUTURE``).
+
+    Start with value operations: `EQ` (equals), `IS-IN` (is in), `BTWN` (between), `GT` (greater than), `LT` (less than), `GTE` (greater or equal), `LTE` (less or equal).
+
+    Combine them with logical operations: `AND`, `OR`.
+
+    The accepted field set was discovered empirically against Yahoo's screener API;
+    Yahoo does not document it. Pull requests adding more verified fields are welcome.
+
+    Example:
+
+        .. code-block:: python
+
+            from yfinance import FutureQuery
+
+            FutureQuery('and', [
+                FutureQuery('eq', ['region', 'us']),
+                FutureQuery('gt', ['intradayprice', 0])
+            ])
+    """
+    @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(FUTURE_SCREENER_FIELDS)})
+    @property
+    def valid_fields(self) -> Dict:
+        """
+        Valid operands, grouped by category.
+        {valid_operand_fields_table}
+        """
+        return FUTURE_SCREENER_FIELDS
+
+    @property
+    def valid_values(self) -> Dict:
+        """No EQ value enum is currently mapped for this quote type; Yahoo will
+        reject invalid values at request time."""
+        return {}
+
+
+class CryptoQuery(QueryBase):
+    """
+    The `CryptoQuery` class constructs filters for crypto (``quoteType=CRYPTOCURRENCY``).
+
+    Start with value operations: `EQ` (equals), `IS-IN` (is in), `BTWN` (between), `GT` (greater than), `LT` (less than), `GTE` (greater or equal), `LTE` (less or equal).
+
+    Combine them with logical operations: `AND`, `OR`.
+
+    Crypto rows use the ``currency`` field (e.g. ``USD``) in place of ``region``.
+
+    Example:
+
+        .. code-block:: python
+
+            from yfinance import CryptoQuery
+
+            CryptoQuery('and', [
+                CryptoQuery('eq', ['currency', 'USD']),
+                CryptoQuery('gt', ['intradaymarketcap', 1_000_000_000])
+            ])
+    """
+    @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(CRYPTO_SCREENER_FIELDS)})
+    @property
+    def valid_fields(self) -> Dict:
+        """
+        Valid operands, grouped by category.
+        {valid_operand_fields_table}
+        """
+        return CRYPTO_SCREENER_FIELDS
+
+    @property
+    def valid_values(self) -> Dict:
+        """No EQ value enum is currently mapped for this quote type; Yahoo will
+        reject invalid values at request time."""
+        return {}
+
+
+class CurrencyQuery(QueryBase):
+    """
+    The `CurrencyQuery` class constructs filters for FX pairs (``quoteType=CURRENCY``).
+
+    Start with value operations: `EQ` (equals), `IS-IN` (is in), `BTWN` (between), `GT` (greater than), `LT` (less than), `GTE` (greater or equal), `LTE` (less or equal).
+
+    Combine them with logical operations: `AND`, `OR`.
+
+    Note: ``intradaymarketcap`` is not accepted by Yahoo for this quoteType.
+
+    Example:
+
+        .. code-block:: python
+
+            from yfinance import CurrencyQuery
+
+            CurrencyQuery('gt', ['percentchange', 0])
+    """
+    @dynamic_docstring({"valid_operand_fields_table": generate_list_table_from_dict_universal(CURRENCY_SCREENER_FIELDS)})
+    @property
+    def valid_fields(self) -> Dict:
+        """
+        Valid operands, grouped by category.
+        {valid_operand_fields_table}
+        """
+        return CURRENCY_SCREENER_FIELDS
+
+    @property
+    def valid_values(self) -> Dict:
+        """No EQ value enum is currently mapped for this quote type; Yahoo will
+        reject invalid values at request time."""
+        return {}

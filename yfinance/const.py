@@ -1135,6 +1135,38 @@ ETF_SCREENER_FIELDS = {
 }
 ETF_SCREENER_FIELDS = merge_two_level_dicts(ETF_SCREENER_FIELDS, COMMON_SCREENER_FIELDS)
 
+
+# Field sets for the non-EQUITY/FUND/ETF screeners. These were discovered
+# empirically against Yahoo's screener API (POST /v1/finance/screener with
+# quoteType=INDEX / FUTURE / CRYPTOCURRENCY / CURRENCY). Yahoo does not
+# document the per-quoteType field schema, so the lists below are the
+# verified intersection of what the API accepts -- pull requests adding
+# more once discovered are welcome.
+
+INDEX_SCREENER_FIELDS = {
+    "price": {"eodprice", "intradayprice", "intradaypricechange"},
+    "keystats": {"avgdailyvol3m", "dayvolume", "fiftytwowkpercentchange", "percentchange"},
+    "eq_fields": {"region", "exchange", "ticker", "sector", "industry"},
+}
+
+FUTURE_SCREENER_FIELDS = {
+    "price": {"eodprice", "intradayprice", "intradaypricechange"},
+    "keystats": {"avgdailyvol3m", "dayvolume", "fiftytwowkpercentchange", "percentchange"},
+    "eq_fields": {"region", "exchange", "ticker"},
+}
+
+CRYPTO_SCREENER_FIELDS = {
+    "price": {"eodprice", "intradayprice", "intradaypricechange"},
+    "keystats": {"avgdailyvol3m", "dayvolume", "fiftytwowkpercentchange", "percentchange", "intradaymarketcap"},
+    "eq_fields": {"currency", "exchange", "ticker"},
+}
+
+CURRENCY_SCREENER_FIELDS = {
+    "price": {"eodprice", "intradayprice", "intradaypricechange"},
+    "keystats": {"avgdailyvol3m", "dayvolume", "percentchange"},
+    "eq_fields": {"ticker"},
+}
+
 USER_AGENTS = [
     # Chrome
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",

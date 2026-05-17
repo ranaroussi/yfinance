@@ -10,6 +10,10 @@ from ..utils import dynamic_docstring, generate_list_table_from_dict_universal
 from .query import EquityQuery as EqyQy
 from .query import FundQuery as FndQy
 from .query import ETFQuery as EtfQy
+from .query import IndexQuery as IdxQy
+from .query import FutureQuery as FutQy
+from .query import CryptoQuery as CryQy
+from .query import CurrencyQuery as CurQy
 from .query import QueryBase, EquityQuery, FundQuery, ETFQuery
 
 _SCREENER_URL_ = f"{_QUERY1_URL_}/v1/finance/screener"
@@ -205,6 +209,14 @@ def screen(query: Union[str, EquityQuery, FundQuery, ETFQuery],
         post_query['quoteType'] = 'MUTUALFUND'
     elif isinstance(post_query['query'], EtfQy):
         post_query['quoteType'] = 'ETF'
+    elif isinstance(post_query['query'], IdxQy):
+        post_query['quoteType'] = 'INDEX'
+    elif isinstance(post_query['query'], FutQy):
+        post_query['quoteType'] = 'FUTURE'
+    elif isinstance(post_query['query'], CryQy):
+        post_query['quoteType'] = 'CRYPTOCURRENCY'
+    elif isinstance(post_query['query'], CurQy):
+        post_query['quoteType'] = 'CURRENCY'
     post_query['query'] = post_query['query'].to_dict()
     data = dumps(post_query, separators=(",", ":"), ensure_ascii=False)
 
