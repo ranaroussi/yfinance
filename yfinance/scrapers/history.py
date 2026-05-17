@@ -39,7 +39,7 @@ class PriceHistory:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 rounding=False, timeout=10,
-                raise_errors=False) -> pd.DataFrame:
+                raise_errors=False, tz=None) -> pd.DataFrame:
         """
         :Parameters:
             period : str
@@ -80,8 +80,17 @@ class PriceHistory:
               | Default: 10 seconds
             raise_errors : bool
                 If True, then raise errors as Exceptions instead of logging.
+            tz : str or datetime.tzinfo
+              | Optional: convert the output index to this timezone.
+              | Accepts an IANA name (e.g. "UTC", "Europe/Rome") or a tzinfo object.
+              | Default: None (keep the exchange's timezone).
+              | Note: for daily/weekly bars, converting to a tz that differs from
+              | the exchange will shift the calendar date of each bar.
         """
         logger = utils.get_yf_logger()
+
+        # Capture before internal code shadows the name with the exchange tz.
+        _output_tz = tz
 
         if raise_errors:
             warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
@@ -540,6 +549,19 @@ class PriceHistory:
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
+
+        if _output_tz is not None and not df.empty and df.index.tz is not None:
+            if interval_user in ("1d", "5d", "1wk", "1mo", "3mo"):
+                logger.warning(
+                    f"{self.ticker}: tz={_output_tz!r} on interval={interval_user!r}: "
+                    "daily/weekly bars are anchored to midnight at the exchange, so "
+                    "converting will shift their calendar date."
+                )
+            # pandas validates the tz here — bad strings raise UnknownTimeZoneError,
+            # bad types raise TypeError. We do not catch: silent fallback would
+            # corrupt the index.
+            df.index = df.index.tz_convert(_output_tz)
+
         return df
 
     def _get_history_cache(self, period="max", interval="1d", repair=False) -> pd.DataFrame:

@@ -298,6 +298,64 @@ class TestTickerHistory(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
+    def test_history_output_tz_none_is_noop(self):
+        # Regression guard: tz=None must not touch the index.
+        baseline = self.ticker.history(period="5d", interval="1h")
+        same = self.ticker.history(period="5d", interval="1h", tz=None)
+        self.assertEqual(str(baseline.index.tz), str(same.index.tz))
+
+    def test_history_output_tz_daily_warns(self):
+        # Daily/weekly bars shift calendar dates when converted -> must warn.
+        with self.assertLogs("yfinance", level="WARNING") as cm:
+            self.ticker.history(period="1mo", interval="1d", tz="UTC")
+        self.assertTrue(any("tz='UTC'" in m and "interval='1d'" in m for m in cm.output),
+            f"expected daily-tz warning, got: {cm.output}")
+
+    def test_history_output_tz(self):
+        # Default: exchange tz preserved (IBM = NYSE).
+        baseline = self.ticker.history(period="5d", interval="1h")
+        self.assertIsNotNone(baseline.index.tz)
+        baseline_tz_name = str(baseline.index.tz)
+        self.assertNotEqual(baseline_tz_name, "UTC")
+
+        # tz="UTC" converts the index, same moments in time.
+        utc = self.ticker.history(period="5d", interval="1h", tz="UTC")
+        self.assertEqual(str(utc.index.tz), "UTC")
+        # Same bars, just re-expressed in UTC.
+        self.assertEqual(len(utc), len(baseline))
+        for a, b in zip(baseline.index, utc.index):
+            self.assertEqual(a, b)
+
+        # tzinfo object is accepted too.
+        try:
+            from zoneinfo import ZoneInfo
+        except ImportError:
+            from backports.zoneinfo import ZoneInfo  # type: ignore
+        rome = self.ticker.history(period="5d", interval="1h", tz=ZoneInfo("Europe/Rome"))
+        self.assertEqual(str(rome.index.tz), "Europe/Rome")
+
+        # Invalid tz must raise, not silently fall back.
+        with self.assertRaises(Exception):
+            self.ticker.history(period="5d", interval="1h", tz="Not/AZone")
+
+    def test_download_output_tz(self):
+        # Default: exchange tz preserved (multi-tz fallback aside).
+        utc = yf.download("IBM", period="5d", interval="1h", session=self.session,
+                          progress=False, tz="UTC")
+        self.assertIsNotNone(utc.index.tz)
+        self.assertEqual(str(utc.index.tz), "UTC")
+
+        # tz wins over ignore_tz auto-default (daily would normally drop tz).
+        daily_utc = yf.download("IBM", period="1mo", interval="1d", session=self.session,
+                                progress=False, tz="UTC")
+        self.assertIsNotNone(daily_utc.index.tz)
+        self.assertEqual(str(daily_utc.index.tz), "UTC")
+
+        # Explicit conflict: ignore_tz=True + tz=... must raise, not silently pick one.
+        with self.assertRaises(ValueError):
+            yf.download("IBM", period="5d", interval="1h", session=self.session,
+                        progress=False, ignore_tz=True, tz="UTC")
+
     def test_history_metadata(self):
         # Mainly testing that if user requested price repair, 
         # that any metadata refetch also uses repaired data.

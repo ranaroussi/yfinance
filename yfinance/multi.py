@@ -55,7 +55,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
              repair=False, keepna=False, progress=True, period=period_default, interval="1d",
              prepost=False, rounding=False, timeout=10, session=None,
-             multi_level_index=True) -> Union[_pd.DataFrame, None]:
+             multi_level_index=True, tz=None) -> Union[_pd.DataFrame, None]:
     """
     Download yahoo tickers
     :Parameters:
@@ -105,6 +105,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Optional. Pass your own session object to be used for all requests
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
+        tz: str or datetime.tzinfo
+            Optional. Convert the output index to this timezone (e.g. "UTC",
+            "Europe/Rome"). Default is None: preserve the exchange tz for
+            single-tz results, or use UTC when combining multi-tz tickers.
+            Overrides ignore_tz.
     """
     return _download_impl(
         _DownloadCtx(),
@@ -112,7 +117,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         ignore_tz=ignore_tz, group_by=group_by, auto_adjust=auto_adjust,
         back_adjust=back_adjust, repair=repair, keepna=keepna, progress=progress,
         period=period, interval=interval, prepost=prepost, rounding=rounding,
-        timeout=timeout, session=session, multi_level_index=multi_level_index,
+        timeout=timeout, session=session, multi_level_index=multi_level_index, tz=tz,
     )
 
 
@@ -120,7 +125,7 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
                    ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
                    repair=False, keepna=False, progress=True, period=period_default, interval="1d",
                    prepost=False, rounding=False, timeout=10, session=None,
-                   multi_level_index=True):
+                   multi_level_index=True, tz=None):
     logger = utils.get_yf_logger()
     session = session or requests.Session(impersonate="chrome")
 
@@ -134,7 +139,12 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
         if progress:
             progress = False
 
-    if ignore_tz is None:
+    if tz is not None:
+        if ignore_tz is True:
+            raise ValueError("download(): tz= and ignore_tz=True are mutually exclusive — a tz-aware output index cannot also be tz-stripped.")
+        # Explicit output tz wins over ignore_tz auto-default.
+        ignore_tz = False
+    elif ignore_tz is None:
         ignore_tz = interval[-1] not in ('m', 'h')
 
     tickers = tickers if isinstance(
@@ -213,6 +223,10 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
         data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
                           keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
     data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
+    if tz is not None and data.index.tz is not None:
+        # pandas validates: bad tz strings/types raise here (UnknownTimeZoneError
+        # / TypeError). We do not catch — silent fallback would corrupt the index.
+        data.index = data.index.tz_convert(tz)
     data.rename(columns=ctx.isins, inplace=True)
 
     if group_by == 'column':
