@@ -198,6 +198,12 @@ class Ticker(TickerBase):
         return self.get_earnings(freq='quarterly')
 
     @property
+    def eps_history(self) -> _pd.DataFrame:
+        """Quarterly EPS history (actual vs estimate, surprise %, period end
+        and reported date) from the Yahoo ``earnings`` quoteSummary module."""
+        return self._fundamentals.eps_history
+
+    @property
     def income_stmt(self) -> _pd.DataFrame:
         return self.get_income_stmt(pretty=True)
 

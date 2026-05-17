@@ -1,13 +1,17 @@
 import datetime
 import json
-import warnings
 
 import pandas as pd
 
 from yfinance import utils, const
 from yfinance.config import YfConfig
+from yfinance.const import _BASE_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
+
+
+_QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary/"
+
 
 class Fundamentals:
 
@@ -16,6 +20,7 @@ class Fundamentals:
         self._symbol = symbol
 
         self._earnings = None
+        self._eps_history = None
         self._financials = None
         self._shares = None
 
@@ -30,8 +35,82 @@ class Fundamentals:
 
     @property
     def earnings(self) -> dict:
-        warnings.warn("'Ticker.earnings' is deprecated as not available via API. Look for \"Net Income\" in Ticker.income_stmt.", DeprecationWarning)
-        return None
+        """Revenue + earnings + profit margin from the Yahoo ``earnings``
+        quoteSummary module. Mirrors the chart shown on the quote page.
+
+        Returns a dict with keys ``yearly`` and ``quarterly`` mapping to
+        DataFrames (columns: Revenue, Earnings, Profit Margin), plus
+        ``financialCurrency``."""
+        if self._earnings is None:
+            self._fetch_earnings()
+        return self._earnings
+
+    @property
+    def eps_history(self) -> pd.DataFrame:
+        """Quarterly EPS history (actual vs estimate, surprise %, period end
+        and reported date) from the Yahoo ``earnings`` quoteSummary module.
+        The earnings-call beat/miss chart on the quote page."""
+        if self._eps_history is None:
+            self._fetch_earnings()
+        return self._eps_history
+
+    def _fetch_earnings(self) -> None:
+        """Single-shot fetch of the ``earnings`` module: populates both
+        ``self._earnings`` (revenue + earnings) and ``self._eps_history``
+        (EPS chart) so callers don't pay two HTTP calls."""
+        try:
+            resp = self._data.get(
+                url=_QUOTE_SUMMARY_URL_ + self._symbol,
+                params={"modules": "earnings"},
+            )
+            payload = resp.json()
+            block = (payload.get("quoteSummary") or {}).get("result") or []
+            block = block[0].get("earnings") if block else None
+        except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            utils.get_yf_logger().error(f"{self._symbol}: failed fetching earnings module: {e}")
+            block = None
+
+        currency = (block or {}).get("financialCurrency", "USD")
+        self._earnings = {
+            "yearly": self._parse_financials_chart((block or {}).get("financialsChart", {}).get("yearly", [])),
+            "quarterly": self._parse_financials_chart((block or {}).get("financialsChart", {}).get("quarterly", [])),
+            "financialCurrency": currency,
+        }
+        self._eps_history = self._parse_earnings_chart((block or {}).get("earningsChart", {}).get("quarterly", []))
+
+    @staticmethod
+    def _parse_financials_chart(rows: list) -> pd.DataFrame:
+        if not rows:
+            return pd.DataFrame(columns=["Revenue", "Earnings", "Profit Margin"])
+        df = pd.DataFrame([
+            {
+                "date": row.get("date"),
+                "Revenue": (row.get("revenue") or {}).get("raw"),
+                "Earnings": (row.get("earnings") or {}).get("raw"),
+                "Profit Margin": (row.get("profitMargin") or {}).get("raw"),
+            }
+            for row in rows
+        ])
+        return df.set_index("date")
+
+    @staticmethod
+    def _parse_earnings_chart(rows: list) -> pd.DataFrame:
+        if not rows:
+            return pd.DataFrame(columns=["EPS Actual", "EPS Estimate", "Surprise %", "Period End", "Reported Date"])
+        df = pd.DataFrame([
+            {
+                "date": row.get("date"),
+                "EPS Actual": (row.get("actual") or {}).get("raw"),
+                "EPS Estimate": (row.get("estimate") or {}).get("raw"),
+                "Surprise %": (float(row["surprisePct"]) if row.get("surprisePct") not in (None, "") else None),
+                "Period End": pd.to_datetime((row.get("periodEndDate") or {}).get("raw"), unit="s", errors="coerce"),
+                "Reported Date": pd.to_datetime((row.get("reportedDate") or {}).get("raw"), unit="s", errors="coerce"),
+            }
+            for row in rows
+        ])
+        return df.set_index("date")
 
     @property
     def shares(self) -> pd.DataFrame:

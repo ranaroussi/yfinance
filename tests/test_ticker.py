@@ -403,6 +403,56 @@ class TestTickerEarnings(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
         self.assertFalse(data.empty, "data is empty")
 
+    def test_earnings_chart_from_mocked_payload(self):
+        """Inject a synthetic 'earnings' quoteSummary payload and assert that
+        revenue+earnings (yearly/quarterly) and the EPS chart all surface."""
+        fake_resp = MagicMock()
+        fake_resp.json.return_value = {"quoteSummary": {"result": [{
+            "earnings": {
+                "financialCurrency": "USD",
+                "financialsChart": {
+                    "yearly": [
+                        {"date": 2024, "revenue": {"raw": 100}, "earnings": {"raw": 25}, "profitMargin": {"raw": 0.25}},
+                        {"date": 2025, "revenue": {"raw": 120}, "earnings": {"raw": 30}, "profitMargin": {"raw": 0.25}},
+                    ],
+                    "quarterly": [
+                        {"date": "1Q2025", "revenue": {"raw": 30}, "earnings": {"raw": 8}, "profitMargin": {"raw": 0.27}},
+                    ],
+                },
+                "earningsChart": {
+                    "quarterly": [
+                        {"date": "1Q2025", "actual": {"raw": 2.1}, "estimate": {"raw": 2.0},
+                         "surprisePct": "5.00", "periodEndDate": {"raw": 1743379200},
+                         "reportedDate": {"raw": 1745971200}},
+                    ],
+                },
+            },
+        }]}}
+
+        ticker = yf.Ticker("FAKE", session=self.session)
+        with patch.object(ticker._fundamentals._data, "get", return_value=fake_resp):
+            earn = ticker.earnings
+            qearn = ticker.quarterly_earnings
+            eps = ticker.eps_history
+
+        self.assertEqual(list(earn.columns), ["Revenue", "Earnings", "Profit Margin"])
+        self.assertEqual(earn.loc[2025, "Revenue"], 120)
+        self.assertEqual(qearn.loc["1Q2025", "Earnings"], 8)
+        self.assertEqual(eps.loc["1Q2025", "EPS Actual"], 2.1)
+        self.assertEqual(eps.loc["1Q2025", "Surprise %"], 5.0)
+        self.assertEqual(str(eps.loc["1Q2025", "Period End"].date()), "2025-03-31")
+
+    def test_earnings_empty_payload_returns_empty_frames(self):
+        """If Yahoo returns no earnings block, properties return empty frames
+        with the expected columns rather than raising."""
+        fake_resp = MagicMock()
+        fake_resp.json.return_value = {"quoteSummary": {"result": [{}]}}
+        ticker = yf.Ticker("EMPTY", session=self.session)
+        with patch.object(ticker._fundamentals._data, "get", return_value=fake_resp):
+            self.assertTrue(ticker.earnings.empty)
+            self.assertTrue(ticker.eps_history.empty)
+            self.assertEqual(list(ticker.earnings.columns), ["Revenue", "Earnings", "Profit Margin"])
+
     def test_earnings_dates_with_limit(self):
         # use ticker with lots of historic earnings
         ticker = yf.Ticker("IBM")
