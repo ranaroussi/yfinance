@@ -306,6 +306,38 @@ class TestTickerHistory(unittest.TestCase):
         md = self.ticker.history_metadata
         self.assertTrue(md['YF repair?'])
 
+    def test_download_intraday_preserves_exchange_tz(self):
+        """Regression guard for #2327: yf.download() on a single intraday ticker
+        should keep the index in the exchange tz, not force-convert to UTC."""
+        data = yf.download('SPY', period='5d', interval='1h',
+                           session=self.session, progress=False)
+        self.assertIsNotNone(data.index.tz, "intraday index lost its tz")
+        self.assertEqual(str(data.index.tz), 'America/New_York',
+            f"SPY intraday tz must be ET, got {data.index.tz}")
+
+    def test_download_intraday_same_tz_group_preserves_exchange_tz(self):
+        """Two tickers on the same exchange should also preserve that tz."""
+        data = yf.download(['AAPL', 'MSFT'], period='5d', interval='1h',
+                           session=self.session, progress=False)
+        self.assertIsNotNone(data.index.tz)
+        self.assertEqual(str(data.index.tz), 'America/New_York',
+            f"All-NYSE intraday tz must be ET, got {data.index.tz}")
+
+    def test_download_intraday_mixed_tz_falls_back_to_utc(self):
+        """When per-ticker tzs differ, concat needs a common tz -- UTC is the
+        only sensible fallback (was already the pre-fix behaviour for this case)."""
+        data = yf.download(['AAPL', 'BP.L'], period='5d', interval='1h',
+                           session=self.session, progress=False)
+        self.assertIsNotNone(data.index.tz)
+        self.assertEqual(str(data.index.tz), 'UTC',
+            f"Mixed-exchange intraday tz must be UTC, got {data.index.tz}")
+
+    def test_download_intraday_ignore_tz_strips_tz(self):
+        """Explicit ignore_tz=True must still produce a tz-naive index."""
+        data = yf.download('SPY', period='5d', interval='1h',
+                           session=self.session, progress=False, ignore_tz=True)
+        self.assertIsNone(data.index.tz)
+
     def test_download(self):
         tomorrow = pd.Timestamp.now().date() + pd.Timedelta(days=1)  # helps with caching
         for t in [False, True]:

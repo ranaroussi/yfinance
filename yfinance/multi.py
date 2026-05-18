@@ -200,6 +200,11 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
         for tb, syms in tbs.items():
             logger.debug(f'{syms}: ' + tb)
 
+    # Capture the per-ticker tz set *before* ignore_tz strips it. Lets us
+    # preserve the exchange tz when all results share one (the common
+    # single-ticker / single-exchange case) instead of forcing UTC.
+    tzs = {df.index.tz for df in ctx.dfs.values() if df is not None and df.shape[0] > 0}
+
     if ignore_tz:
         for tkr, df in ctx.dfs.items():
             if df is not None and df.shape[0] > 0:
@@ -213,6 +218,11 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
         data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
                           keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
     data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
+    # Preserve the exchange tz when all results share one (single-ticker /
+    # single-exchange common case); leave UTC when multiple exchanges
+    # collide and there's no shared market clock to convert to.
+    if not ignore_tz and len(tzs) == 1 and next(iter(tzs)) is not None:
+        data.index = data.index.tz_convert(next(iter(tzs)))
     data.rename(columns=ctx.isins, inplace=True)
 
     if group_by == 'column':
