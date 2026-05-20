@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix Market API docs reference link (38ad379)
 - Dependabot: disable no-reason version updates (4c544ca)
 - Version 1.3.0 (a17e8b1)
 - Merge pull request #2757 from ranaroussi/dev ([#2757]()) (d6afeeb)
