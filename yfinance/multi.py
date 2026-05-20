@@ -29,6 +29,7 @@ from typing import Union
 
 import multitasking as _multitasking
 import pandas as _pd
+import numpy as _np
 from ._http import new_session
 
 from . import Ticker, utils
@@ -204,15 +205,13 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
         for tkr, df in ctx.dfs.items():
             if df is not None and df.shape[0] > 0:
                 df.index = df.index.tz_localize(None)
-
+    ctx.dfs = reindex_dfs(ctx.dfs, ignore_tz)
     try:
         data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
                           keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
     except Exception:
-        _realign_dfs(ctx)
         data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
                           keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
-    data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
     data.rename(columns=ctx.isins, inplace=True)
 
     if group_by == 'column':
@@ -224,28 +223,32 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
 
     return data
 
+def reindex_dfs(dfs, ignore_tz):
+    if ignore_tz:
+        for tkr in dfs.keys():
+            if (dfs[tkr] is not None) and (not dfs[tkr].empty):
+                dfs[tkr].index = dfs[tkr].index.tz_localize(None)
+    else:
+        # Align each df to most common timezone.
+        # Compare strings since np.unique can't handle tz objects
+        tzs = [str(df.index.tz) for df in dfs.values() if df is not None and not df.empty]
+        if tzs:
+            # Find most common timezone
+            unique_tzs, counts = _np.unique(tzs, return_counts=True)
+            tz_mode = unique_tzs[counts.argmax()]
+            for tkr in dfs.keys():
+                if (dfs[tkr] is not None) and (not dfs[tkr].empty):
+                    dfs[tkr].index = dfs[tkr].index.tz_convert(tz_mode)
 
-def _realign_dfs(ctx):
-    idx_len = 0
-    idx = None
+    all_indices = set()
+    for df in dfs.values():
+        all_indices.update(df.index)
+    idx = sorted(all_indices)
+    idx = _pd.to_datetime(idx)
+    for key, df in dfs.items():
+        dfs[key] = df.reindex(idx)
 
-    for df in ctx.dfs.values():
-        if len(df) > idx_len:
-            idx_len = len(df)
-            idx = df.index
-
-    for key in list(ctx.dfs.keys()):
-        try:
-            ctx.dfs[key] = _pd.DataFrame(
-                index=idx, data=ctx.dfs[key]).drop_duplicates()
-        except Exception:
-            ctx.dfs[key] = _pd.concat([
-                utils.empty_df(idx), ctx.dfs[key].dropna()
-            ], axis=0, sort=True)
-
-        ctx.dfs[key] = ctx.dfs[key].loc[
-            ~ctx.dfs[key].index.duplicated(keep='last')]
-
+    return dfs
 
 @_multitasking.task
 def _download_one_threaded(ctx, ticker, start=None, end=None,
