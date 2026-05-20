@@ -27,7 +27,7 @@ from urllib.parse import quote as urlencode
 
 import numpy as np
 import pandas as pd
-from curl_cffi import requests
+from ._http import requests, new_session
 
 
 from . import utils, cache
@@ -81,7 +81,7 @@ class TickerBase:
                 ticker = base_symbol
 
         self.ticker = ticker.upper()
-        self.session = session or requests.Session(impersonate="chrome")
+        self.session = session or new_session()
         self._tz = None
 
         self._isin = None
