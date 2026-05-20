@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2753 from ranaroussi/dependabot/github_actions/actions/github-script-9.0.0 ([#2753]()) (803893a)
 - Merge pull request #2789 from gabrielchangamire-arch/fix-market-api-docs-reference-link ([#2789]()) (a497d4f)
 - Fix Market API docs reference link (38ad379)
 - Dependabot: disable no-reason version updates (4c544ca)
