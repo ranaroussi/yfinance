@@ -4,7 +4,7 @@ import socket
 import time as _time
 import json as _json
 
-from curl_cffi import requests
+from ._http import requests, new_session, is_supported_session, cookie_jar
 from urllib.parse import urlsplit, urljoin
 from bs4 import BeautifulSoup
 import datetime
@@ -91,7 +91,7 @@ class YfData(metaclass=SingletonMeta):
         self._cookie_lock = threading.Lock()
 
         self._session = None
-        self._set_session(session or requests.Session(impersonate="chrome"))
+        self._set_session(session or new_session())
 
     def set_login_cookies(self, cookie_t, cookie_y):
         with self._cookie_lock:
@@ -115,11 +115,12 @@ class YfData(metaclass=SingletonMeta):
             # Can't simply use a non-caching session to fetch cookie & crumb,
             # because then the caching-session won't have cookie.
             self._session_is_caching = True
-            # But since switch to curl_cffi, can't use requests_cache with it.
-            raise YFDataException("request_cache sessions don't work with curl_cffi, which is necessary now for Yahoo API. Solution: stop setting session, let YF handle.")
+            # requests_cache wraps the stdlib Session; it doesn't work with
+            # curl_cffi and tends to miss anyway because the Yahoo crumb rotates.
+            raise YFDataException("Caching sessions (e.g. requests_cache) are not supported. Solution: stop setting session, let yfinance handle.")
 
-        if not isinstance(session, requests.session.Session):
-            raise YFDataException(f"Yahoo API requires curl_cffi session not {type(session)}. Solution: stop setting session, let YF handle.")
+        if not is_supported_session(session):
+            raise YFDataException(f"Unsupported session type {type(session)}; expected curl_cffi or requests Session. Solution: stop setting session, let yfinance handle.")
 
         with self._cookie_lock:
             self._session = session
@@ -153,7 +154,7 @@ class YfData(metaclass=SingletonMeta):
     def _save_cookie_curlCffi(self):
         if self._session is None:
             return False
-        cookies = self._session.cookies.jar._cookies
+        cookies = cookie_jar(self._session)._cookies
         if len(cookies) == 0:
             return False
         yh_domains = [k for k in cookies.keys() if 'yahoo' in k]
@@ -189,7 +190,7 @@ class YfData(metaclass=SingletonMeta):
         if expired:
             utils.get_yf_logger().debug('cached cookie expired')
             return False
-        self._session.cookies.jar._cookies.update(cookies)
+        cookie_jar(self._session)._cookies.update(cookies)
         self._cookie = cookie
         return True
 

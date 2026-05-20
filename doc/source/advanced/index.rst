@@ -5,6 +5,7 @@ Advanced
 .. toctree::
    :maxdepth: 2
 
+   install
    logging
    config
    caching

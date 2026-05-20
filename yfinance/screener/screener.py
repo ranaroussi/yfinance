@@ -1,4 +1,4 @@
-import curl_cffi
+from yfinance._http import HTTPError
 from typing import Union
 import warnings
 from json import dumps
@@ -176,7 +176,7 @@ def screen(query: Union[str, EquityQuery, FundQuery, ETFQuery],
         resp = _data.get(url=_PREDEFINED_URL_, params=params_dict)
         try:
             resp.raise_for_status()
-        except curl_cffi.requests.exceptions.HTTPError:
+        except HTTPError:
             if query not in PREDEFINED_SCREENER_QUERIES:
                 print(f"yfinance.screen: '{query}' is probably not a predefined query.")
             raise

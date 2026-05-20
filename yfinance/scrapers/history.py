@@ -1,4 +1,4 @@
-from curl_cffi import requests
+from yfinance._http import new_session
 from math import isclose
 import bisect
 import datetime as _datetime
@@ -19,7 +19,7 @@ class PriceHistory:
         self._data = data
         self.ticker = ticker.upper()
         self.tz = tz
-        self.session = session or requests.Session(impersonate="chrome")
+        self.session = session or new_session()
 
         self._history_cache = {}
         self._history_metadata = None
