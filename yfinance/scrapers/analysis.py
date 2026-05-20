@@ -1,4 +1,4 @@
-import curl_cffi
+from yfinance._http import HTTPError
 import pandas as pd
 
 from yfinance import utils
@@ -187,7 +187,7 @@ class Analysis:
         params_dict = {"modules": modules, "corsDomain": "finance.yahoo.com", "formatted": "false", "symbol": self._symbol}
         try:
             result = self._data.get_raw_json(_QUOTE_SUMMARY_URL_ + f"/{self._symbol}", params=params_dict)
-        except curl_cffi.requests.exceptions.HTTPError as e:
+        except HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(str(e) + e.response.text)

@@ -30,7 +30,7 @@ from typing import Union
 import multitasking as _multitasking
 import pandas as _pd
 import numpy as _np
-from curl_cffi import requests
+from ._http import new_session
 
 from . import Ticker, utils
 from .data import YfData
@@ -123,7 +123,7 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
                    prepost=False, rounding=False, timeout=10, session=None,
                    multi_level_index=True):
     logger = utils.get_yf_logger()
-    session = session or requests.Session(impersonate="chrome")
+    session = session or new_session()
 
     YfData(session=session)
 

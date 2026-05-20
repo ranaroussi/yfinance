@@ -53,6 +53,8 @@ Install `yfinance` from PYPI using `pip`:
 $ pip install yfinance
 ```
 
+To install without `curl_cffi` for requests fallback, see [Advanced ▸ Installation](https://ranaroussi.github.io/yfinance/advanced/install.html).
+
 ### [yfinance relies on the community to investigate bugs and contribute code. Here's how you can help.](https://github.com/ranaroussi/yfinance/blob/main/CONTRIBUTING.md)
 
 ---

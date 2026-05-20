@@ -43,6 +43,34 @@ from yfinance import const
 from yfinance.exceptions import YFException
 from yfinance.config import YfConfig
 
+# Use the third-party ``frozendict`` package if installed; otherwise fall
+# back to a small pure-Python equivalent (PEP 814).
+try:
+    from frozendict import frozendict  # type: ignore[import-not-found]
+except ImportError:
+    class frozendict(dict):  # type: ignore[no-redef]
+        """Hashable, read-only ``dict`` used as an ``lru_cache`` key."""
+        __slots__ = ()
+
+        def __hash__(self):  # type: ignore[override]
+            return hash(frozenset(self.items()))
+
+        def __setitem__(self, *args, **kwargs):
+            raise TypeError(f"'{type(self).__name__}' object doesn't support item assignment")
+
+        def __delitem__(self, *args, **kwargs):
+            raise TypeError(f"'{type(self).__name__}' object doesn't support item deletion")
+
+        def _readonly(self, *args, **kwargs):
+            raise AttributeError(f"'{type(self).__name__}' object is read-only")
+
+        pop = _readonly  # type: ignore[assignment]
+        popitem = _readonly  # type: ignore[assignment]
+        clear = _readonly  # type: ignore[assignment]
+        update = _readonly  # type: ignore[assignment]
+        setdefault = _readonly  # type: ignore[assignment]
+
+
 # From https://stackoverflow.com/a/59128615
 def attributes(obj):
     disallowed_names = {
