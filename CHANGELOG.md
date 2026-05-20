@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge branch 'dev' into fix/download-tz (acd2c28)
 - Fix localized intraday download() always returning UTC (7538c1f)
 - Merge pull request #2802 from dokson/feature/optional-curl-cffi ([#2802]()) (9ca1c55)
 - Make curl_cffi optional with graceful fallback to requests (5d10c0c)
