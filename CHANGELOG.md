@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2825 from ranaroussi/fix/download-tz ([#2825]()) (6ab79ed)
 - Merge branch 'dev' into fix/download-tz (acd2c28)
 - Fix localized intraday download() always returning UTC (7538c1f)
 - Merge pull request #2802 from dokson/feature/optional-curl-cffi ([#2802]()) (9ca1c55)
