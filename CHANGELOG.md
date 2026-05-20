@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2802 from dokson/feature/optional-curl-cffi ([#2802]()) (9ca1c55)
 - Make curl_cffi optional with graceful fallback to requests (5d10c0c)
 - Merge pull request #2827 from ranaroussi/main ([#2827]()) (628a417)
 - Merge pull request #2821 from dokson/feature/drop-frozendict-dep ([#2821]()) (0c36060)
