@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2827 from ranaroussi/main ([#2827]()) (628a417)
 - Merge pull request #2821 from dokson/feature/drop-frozendict-dep ([#2821]()) (0c36060)
 - Drop frozendict hard dependency in favour of an internal fallback (593b47c)
 - Merge pull request #2752 from ranaroussi/dependabot/github_actions/astral-sh/ruff-action-4.0.0 ([#2752]()) (a766e8f)
