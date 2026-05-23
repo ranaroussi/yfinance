@@ -446,6 +446,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.screen.html">yfinance.screen</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.auth.html">Authentication</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Auth.html">Auth</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.functions.html">Functions and Utilities</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.download.html">yfinance.download</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.enable_debug_mode.html">yfinance.enable_debug_mode</a></li>
@@ -558,6 +562,13 @@ document.write(`
 <li><p>CURRENCIES</p></li>
 <li><p>CRYPTOCURRENCIES</p></li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only <cite>Market.summary</cite> returns regional data for all of the values above.
+<cite>Market.status</cite> is backed by Yahoo’s <cite>markettime</cite> endpoint, which currently
+ignores the <cite>market</cite> parameter and only returns U.S. data; for any non-<cite>US</cite>
+market, <cite>status</cite> will therefore be <cite>None</cite> and a warning is logged.</p>
+</div>
 </section>
 </section>
 

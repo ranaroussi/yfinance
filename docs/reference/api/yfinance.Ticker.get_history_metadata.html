@@ -446,6 +446,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="yfinance.screen.html">yfinance.screen</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.auth.html">Authentication</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="yfinance.Auth.html">Auth</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../yfinance.functions.html">Functions and Utilities</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.download.html">yfinance.download</a></li>
 <li class="toctree-l2"><a class="reference internal" href="yfinance.enable_debug_mode.html">yfinance.enable_debug_mode</a></li>
@@ -521,8 +525,11 @@ document.write(`
 <h1>yfinance.Ticker.get_history_metadata<a class="headerlink" href="#yfinance-ticker-get-history-metadata" title="Link to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="yfinance.Ticker.get_history_metadata">
-<span class="sig-prename descclassname"><span class="pre">Ticker.</span></span><span class="sig-name descname"><span class="pre">get_history_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#yfinance.Ticker.get_history_metadata" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">Ticker.</span></span><span class="sig-name descname"><span class="pre">get_history_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repair=&lt;object</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#yfinance.Ticker.get_history_metadata" title="Link to this definition">#</a></dt>
+<dd><p>repair default value depends on whether user requested price repair
+with previous history() call. If user did not set repair here, then
+it is set to match previous history() call.</p>
+</dd></dl>
 
 </section>
 

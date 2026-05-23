@@ -330,6 +330,7 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="logging.html">Logging</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="caching.html">Caching</a></li>
@@ -444,6 +445,27 @@ document.write(`
 </li>
 </ul>
 </section>
+<section id="locale">
+<h2>Locale<a class="headerlink" href="#locale" title="Link to this heading">#</a></h2>
+<p>Localized fields (<code class="docutils literal notranslate"><span class="pre">longName</span></code>, <code class="docutils literal notranslate"><span class="pre">shortName</span></code>, …) follow
+<code class="docutils literal notranslate"><span class="pre">yf.config.locale</span></code>. The default is <code class="docutils literal notranslate"><span class="pre">en-US</span></code> / <code class="docutils literal notranslate"><span class="pre">US</span></code>. Switch the Yahoo
+locale once at session start and every subsequent v7 / v10 endpoint call
+(<code class="docutils literal notranslate"><span class="pre">Ticker.info</span></code>, <code class="docutils literal notranslate"><span class="pre">Ticker.fast_info</span></code>, <code class="docutils literal notranslate"><span class="pre">Ticker.calendar</span></code>,
+<code class="docutils literal notranslate"><span class="pre">earnings_dates</span></code>, …) inherits it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">locale</span><span class="o">.</span><span class="n">lang</span> <span class="o">=</span> <span class="s2">&quot;zh-Hant-HK&quot;</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">locale</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="s2">&quot;HK&quot;</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">&quot;1810.HK&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;longName&quot;</span><span class="p">]</span>   <span class="c1"># → &#39;小米集團－Ｗ&#39;</span>
+
+<span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">locale</span><span class="o">.</span><span class="n">lang</span> <span class="o">=</span> <span class="s2">&quot;ja-JP&quot;</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">locale</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="s2">&quot;JP&quot;</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">&quot;7203.T&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;longName&quot;</span><span class="p">]</span>    <span class="c1"># → &#39;トヨタ自動車&#39;</span>
+</pre></div>
+</div>
+<p>Yahoo only returns translated values for tickers natively listed in that
+locale; <code class="docutils literal notranslate"><span class="pre">Ticker(&quot;AAPL&quot;)</span></code> keeps returning <code class="docutils literal notranslate"><span class="pre">&quot;Apple</span> <span class="pre">Inc.&quot;</span></code> under
+<code class="docutils literal notranslate"><span class="pre">ja-JP</span></code>.</p>
+</section>
 </section>
 
 
@@ -494,6 +516,7 @@ document.write(`
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#network">Network</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#debug">Debug</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#locale">Locale</a></li>
 </ul>
   </nav></div>
 

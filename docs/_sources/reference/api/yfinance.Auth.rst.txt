@@ -1,0 +1,33 @@
+﻿:orphan:
+
+Auth
+====
+
+.. currentmodule:: yfinance
+
+.. autoclass:: Auth
+   :exclude-members: user
+
+   
+   
+   .. rubric:: Attributes
+   
+   
+   .. autoattribute:: user
+      :noindex:
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   
+   .. automethod:: __init__
+      :noindex:
+   .. automethod:: check_login
+      :noindex:
+   .. automethod:: set_login_cookies
+      :noindex:
+   
+   

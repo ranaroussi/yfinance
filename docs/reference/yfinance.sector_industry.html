@@ -446,6 +446,10 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.screen.html">yfinance.screen</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.auth.html">Authentication</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/yfinance.Auth.html">Auth</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="yfinance.functions.html">Functions and Utilities</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.download.html">yfinance.download</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/yfinance.enable_debug_mode.html">yfinance.enable_debug_mode</a></li>
@@ -521,10 +525,10 @@ document.write(`
 <p>The <cite>Sector</cite> and <cite>Industry</cite> modules provide access to the Sector and Industry information.</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Sector.html#yfinance.Sector" title="yfinance.Sector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Sector</span></code></a>(key[, session])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Sector.html#yfinance.Sector" title="yfinance.Sector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Sector</span></code></a>(key[, session, region])</p></td>
 <td><p>Represents a financial market sector and allows retrieval of sector-related data such as top ETFs, top mutual funds, and industry data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Industry.html#yfinance.Industry" title="yfinance.Industry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Industry</span></code></a>(key[, session])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Industry.html#yfinance.Industry" title="yfinance.Industry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Industry</span></code></a>(key[, session, region])</p></td>
 <td><p>Represents an industry within a sector.</p></td>
 </tr>
 </tbody>
@@ -583,6 +587,17 @@ document.write(`
 </pre></div>
 </div>
 </section>
+<section id="region-scoping">
+<h2>Region scoping<a class="headerlink" href="#region-scoping" title="Link to this heading">#</a></h2>
+<p>By default <code class="docutils literal notranslate"><span class="pre">Sector</span></code> and <code class="docutils literal notranslate"><span class="pre">Industry</span></code> return U.S. data. Pass a Yahoo region
+(ISO 3166-1 alpha-2 country code, case-insensitive) to scope <code class="docutils literal notranslate"><span class="pre">top_companies</span></code>,
+<code class="docutils literal notranslate"><span class="pre">top_etfs</span></code>, <code class="docutils literal notranslate"><span class="pre">top_mutual_funds</span></code> and the industry top performing/growth lists:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s2">&quot;technology&quot;</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">&quot;GB&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">top_companies</span>     <span class="c1"># UK</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s2">&quot;technology&quot;</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">&quot;DE&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">top_companies</span>     <span class="c1"># Germany</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">Industry</span><span class="p">(</span><span class="s2">&quot;software-infrastructure&quot;</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">&quot;JP&quot;</span><span class="p">)</span>    <span class="c1"># Japan</span>
+</pre></div>
+</div>
+</section>
 </section>
 
 
@@ -633,6 +648,7 @@ document.write(`
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sector-class">Sector class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sample-code">Sample Code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#region-scoping">Region scoping</a></li>
 </ul>
   </nav></div>
 
