@@ -20,7 +20,7 @@ from yfinance.config import YfConfig
 import unittest
 # import requests_cache
 from unittest.mock import patch, MagicMock
-from typing import Union, Any, get_args, _GenericAlias
+from typing import Union, Any, get_args, get_origin
 # from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
@@ -62,17 +62,18 @@ ticker_attributes = (
 def assert_attribute_type(testClass: unittest.TestCase, instance, attribute_name, expected_type):
     try:
         attribute = getattr(instance, attribute_name)
-        if attribute is not None and expected_type is not Any:
-            err_msg = f'{attribute_name} type is {type(attribute)} not {expected_type}'
-            if isinstance(expected_type, _GenericAlias) and expected_type.__origin__ is Union:
-                allowed_types = get_args(expected_type)
-                testClass.assertTrue(isinstance(attribute, allowed_types), err_msg)
-            else:
-                testClass.assertEqual(type(attribute), expected_type, err_msg)
-    except Exception:
-        testClass.assertRaises(
-            YFNotImplementedError, lambda: getattr(instance, attribute_name)
-        )
+    except YFNotImplementedError:
+        # Some attributes legitimately raise on missing/bad tickers.
+        return
+
+    if attribute is not None and expected_type is not Any:
+        err_msg = f'{attribute_name} type is {type(attribute)} not {expected_type}'
+        if get_origin(expected_type) is Union:
+            allowed_types = get_args(expected_type)
+            testClass.assertTrue(isinstance(attribute, allowed_types), err_msg)
+        else:
+            testClass.assertEqual(type(attribute), expected_type, err_msg)
+
 
 class TestTicker(unittest.TestCase):
     session = None
@@ -308,23 +309,50 @@ class TestTickerHistory(unittest.TestCase):
 
     def test_download(self):
         tomorrow = pd.Timestamp.now().date() + pd.Timedelta(days=1)  # helps with caching
-        for t in [False, True]:
-            for i in [False, True]:
-                for m in [False, True]:
+        for threads in [False, True]:
+            for ignore_tz in [False, True]:
+                for mli in [False, True]:
                     for n in [1, 'all']:
-                        symbols = self.symbols[0] if n == 1 else self.symbols
-                        data = yf.download(symbols, end=tomorrow, session=self.session, 
-                                           threads=t, ignore_tz=i, multi_level_index=m)
-                        self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
-                        self.assertFalse(data.empty, "data is empty")
-                        if i:
-                            self.assertIsNone(data.index.tz)
-                        else:
-                            self.assertIsNotNone(data.index.tz)
-                        if (not m) and n == 1:
-                            self.assertFalse(isinstance(data.columns, pd.MultiIndex))
-                        else:
-                            self.assertIsInstance(data.columns, pd.MultiIndex)
+                        for interval in ['1d', '1h']:
+                            if n == 1:
+                                symbols = self.symbols[0]
+                            else:
+                                # Add some other countries
+                                symbols = self.symbols + ['BATS.L', '7974.T']
+                            data = yf.download(symbols, end=tomorrow, session=self.session, 
+                                               threads=threads, ignore_tz=ignore_tz, multi_level_index=mli,
+                                               interval=interval, progress=False)
+                            self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
+                            self.assertFalse(data.empty, "data is empty")
+                            if ignore_tz:
+                                self.assertIsNone(data.index.tz)
+                            else:
+                                self.assertIsNotNone(data.index.tz)
+                                self.assertEqual(str(data.index.tz), "America/New_York")
+                            if (not mli) and n == 1:
+                                self.assertFalse(isinstance(data.columns, pd.MultiIndex))
+                            else:
+                                self.assertIsInstance(data.columns, pd.MultiIndex)
+
+                            if interval == '1d':
+                                if ignore_tz:
+                                    self.assertTrue((data.index.hour == 0).all())
+                                    self.assertTrue((data.index.minute == 0).all())
+                                else:
+                                    self.assertTrue((data.index.minute == 0).all())
+                                    if n == 1:
+                                        self.assertTrue((data.index.hour == 0).all())
+                                    else:
+                                        self.assertTrue((data.index.hour != 0).any())
+                            elif interval == '1h':
+                                hours = pd.Index(data.index.hour)
+                                if ignore_tz:
+                                    self.assertTrue(((hours >= 7) & (hours <= 19)).all())
+                                else:
+                                    if n == 1:
+                                        self.assertTrue(((hours >= 7) & (hours <= 19)).all())
+                                    else:
+                                        self.assertTrue((~((hours >= 7) & (hours <= 19))).any())
 
     # Hopefully one day we find an equivalent "requests_cache" that works with "curl_cffi"
     # def test_no_expensive_calls_introduced(self):

@@ -654,6 +654,11 @@ class PriceHistory:
         else:
             df2 = df.resample(resample_period, label='left', closed='left', offset=offset).agg(resample_map)
         df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
+
+        # Handle NaNs from very long holidays.
+        prev_close = df2['Close'].shift(1).ffill()
+        for c in ['Open', 'High', 'Low', 'Close']:
+            df2[c] = df2[c].fillna(prev_close)
         return df2
 
     @utils.log_indent_decorator
@@ -2944,6 +2949,8 @@ class PriceHistory:
                 def _calc_volume_zscore(volume, block):
                     # print(f"_calc_volume_zscore(volume={volume})")
                     values = block['Volume'].to_numpy()
+                    if len(values) == 0 or (values == 0).all():
+                        return 0
                     std = np.std(values, ddof=1)
                     if std == 0.0:
                         return 0

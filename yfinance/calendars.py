@@ -424,7 +424,7 @@ class Calendars:
             limit=limit,
             offset=offset,
             force=force,
-        )
+        ).sort_values('Event Start Date', ascending=False)
 
     @log_indent_decorator
     def get_ipo_info_calendar(
