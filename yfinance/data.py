@@ -2,15 +2,15 @@ import functools
 from functools import lru_cache
 import socket
 import time as _time
+import json as _json
 
-from curl_cffi import requests
+from ._http import requests, new_session, is_supported_session, cookie_jar
 from urllib.parse import urlsplit, urljoin
 from bs4 import BeautifulSoup
 import datetime
 
-from frozendict import frozendict
-
 from . import utils, cache
+from .utils import frozendict
 from .config import YfConfig
 import threading
 
@@ -90,7 +90,15 @@ class YfData(metaclass=SingletonMeta):
         self._cookie_lock = threading.Lock()
 
         self._session = None
-        self._set_session(session or requests.Session(impersonate="chrome"))
+        self._set_session(session or new_session())
+
+    def set_login_cookies(self, cookie_t, cookie_y):
+        with self._cookie_lock:
+            self._session.cookies.update({
+                "T": cookie_t,
+                "Y": cookie_y
+            })
+            self._cookie = True
 
     def _set_session(self, session):
         if session is None:
@@ -106,11 +114,12 @@ class YfData(metaclass=SingletonMeta):
             # Can't simply use a non-caching session to fetch cookie & crumb,
             # because then the caching-session won't have cookie.
             self._session_is_caching = True
-            # But since switch to curl_cffi, can't use requests_cache with it.
-            raise YFDataException("request_cache sessions don't work with curl_cffi, which is necessary now for Yahoo API. Solution: stop setting session, let YF handle.")
+            # requests_cache wraps the stdlib Session; it doesn't work with
+            # curl_cffi and tends to miss anyway because the Yahoo crumb rotates.
+            raise YFDataException("Caching sessions (e.g. requests_cache) are not supported. Solution: stop setting session, let yfinance handle.")
 
-        if not isinstance(session, requests.session.Session):
-            raise YFDataException(f"Yahoo API requires curl_cffi session not {type(session)}. Solution: stop setting session, let YF handle.")
+        if not is_supported_session(session):
+            raise YFDataException(f"Unsupported session type {type(session)}; expected curl_cffi or requests Session. Solution: stop setting session, let yfinance handle.")
 
         with self._cookie_lock:
             self._session = session
@@ -144,7 +153,7 @@ class YfData(metaclass=SingletonMeta):
     def _save_cookie_curlCffi(self):
         if self._session is None:
             return False
-        cookies = self._session.cookies.jar._cookies
+        cookies = cookie_jar(self._session)._cookies
         if len(cookies) == 0:
             return False
         yh_domains = [k for k in cookies.keys() if 'yahoo' in k]
@@ -180,7 +189,7 @@ class YfData(metaclass=SingletonMeta):
         if expired:
             utils.get_yf_logger().debug('cached cookie expired')
             return False
-        self._session.cookies.jar._cookies.update(cookies)
+        cookie_jar(self._session)._cookies.update(cookies)
         self._cookie = cookie
         return True
 
@@ -492,7 +501,7 @@ class YfData(metaclass=SingletonMeta):
             timeout (int) : Raise TimeoutError if post doesn't respond
     
         Returns:
-            response (requests.Response) : Reponse instance received from the server after accepting cookie-consent post.
+            response (requests.Response) : Response instance received from the server after accepting cookie-consent post.
         """
         soup = BeautifulSoup(consent_resp.text, "html.parser")
     
@@ -542,3 +551,70 @@ class YfData(metaclass=SingletonMeta):
             action, data=data, headers=headers, timeout=timeout, allow_redirects=True
         )
         return response
+
+class Auth:
+    def __init__(self, session=None):
+        self._session = session
+        self._data = YfData(session)
+
+        self._user: dict | None = None
+
+    def set_login_cookies(self, cookie_t: str, cookie_y: str) -> None:
+        """
+        Set the login cookies to indicate that the user is logged in.
+
+        How to Obtain the Cookies:
+            1. Open your browser (e.g., Chrome, Firefox).
+            2. Log in to Yahoo Finance (https://finance.yahoo.com).
+            3. Open the browser's Developer Tools:
+               Press `F12` or `Ctrl + Shift + I` (Windows/Linux) or `Cmd + Option + I` (Mac).
+            4. Go to the "Application" tab (Chrome) or "Storage" tab (Firefox).
+            5. In the "Cookies" section, select `https://finance.yahoo.com`.
+            6. Look for the cookies named `T` and `Y`.
+            7. Copy the values of these cookies and pass them to this function.
+
+        Args:
+            cookie_t (str): The value for the 'T' cookie.
+            cookie_y (str): The value for the 'Y' cookie.
+        """
+        self._data.set_login_cookies(cookie_t, cookie_y)
+
+    def check_login(self) -> bool:
+        """Check whether the user is logged in to Yahoo Finance."""
+        if self._user:
+            return True
+
+        try:
+            response = self._data.get("https://finance.yahoo.com/")
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            script_tag = soup.find('script', id='nimbus-benji-config')
+            if not script_tag:
+                return False
+
+            config_json = script_tag.string
+            config_data = _json.loads(config_json).get('i13n')
+
+            if "user" in config_data and "guid" in config_data["user"]:
+                self._user = config_data["user"]
+                return True
+            else:
+                return False
+        except Exception as e:
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            utils.get_yf_logger().error(f"Error confirming login: {e}")
+            return False
+
+    @property
+    def user(self) -> dict | None:
+        """
+        Get the logged-in user's details.
+
+        Returns:
+            dict | None: A dictionary containing the user's details if logged in, or None if not logged in.
+        """
+        if self._user is not None or self.check_login():
+            return self._user
+
+        return None

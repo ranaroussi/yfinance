@@ -14,14 +14,17 @@ class Industry(Domain):
     Represents an industry within a sector.
     """
 
-    def __init__(self, key, session=None):
+    def __init__(self, key, session=None, region: str = "US"):
         """
         Args:
             key (str): The key identifier for the industry.
             session (optional): The session to use for requests.
+            region (str): Yahoo region (ISO 3166-1 alpha-2 country code, e.g.
+                "US", "GB", "FR", "DE", "JP"). Scopes top performing/growth
+                company listings. Defaults to "US".
         """
         YfData(session=session)
-        super(Industry, self).__init__(key, session)
+        super(Industry, self).__init__(key, session, region)
         self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
 
         self._sector_key = None
@@ -92,17 +95,17 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top performing companies data.
         """
-        compnaies_column = ['symbol','name','ytd return','last price','target price']
-        compnaies_values = [(c.get('symbol', None),
+        companies_column = ['symbol','name','ytd return','last price','target price']
+        companies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('lastPrice',{}).get('raw', None),
                              c.get('targetPrice',{}).get('raw', None),) for c in top_performing_companies]
         
-        if not compnaies_values: 
+        if not companies_values: 
             return None
 
-        return _pd.DataFrame(compnaies_values, columns = compnaies_column).set_index('symbol')
+        return _pd.DataFrame(companies_values, columns = companies_column).set_index('symbol')
     
     def _parse_top_growth_companies(self, top_growth_companies: Dict) -> Optional[_pd.DataFrame]:
         """
@@ -114,16 +117,16 @@ class Industry(Domain):
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top growth companies data.
         """
-        compnaies_column = ['symbol','name','ytd return','growth estimate']
-        compnaies_values = [(c.get('symbol', None),
+        companies_column = ['symbol','name','ytd return','growth estimate']
+        companies_values = [(c.get('symbol', None),
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('growthEstimate',{}).get('raw', None),) for c in top_growth_companies]
         
-        if not compnaies_values: 
+        if not companies_values: 
             return None
 
-        return _pd.DataFrame(compnaies_values, columns = compnaies_column).set_index('symbol')
+        return _pd.DataFrame(companies_values, columns = companies_column).set_index('symbol')
 
     def _fetch_and_parse(self) -> None:
         """

@@ -22,19 +22,34 @@
 from __future__ import print_function
 
 import logging
+import threading
 import time as _time
 import traceback
 from typing import Union
 
 import multitasking as _multitasking
 import pandas as _pd
-from curl_cffi import requests
+import numpy as _np
+from ._http import new_session
 
 from . import Ticker, utils
 from .data import YfData
-from . import shared
 from .config import YfConfig
 from .const import period_default
+
+
+class _DownloadCtx:
+    """Per-call scratch state for download(). Concurrent calls each get
+    their own instance, so no shared mutation between threads."""
+    __slots__ = ('dfs', 'errors', 'tracebacks', 'isins', 'progress_bar', 'lock')
+
+    def __init__(self):
+        self.dfs = {}
+        self.errors = {}
+        self.tracebacks = {}
+        self.isins = {}
+        self.progress_bar = None
+        self.lock = threading.Lock()
 
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True,
@@ -92,148 +107,112 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
     """
-    shared._LOCK.acquire()
-    try:
-        return _download_impl(
-            tickers, start=start, end=end, actions=actions, threads=threads,
-            ignore_tz=ignore_tz, group_by=group_by, auto_adjust=auto_adjust,
-            back_adjust=back_adjust, repair=repair, keepna=keepna, progress=progress,
-            period=period, interval=interval, prepost=prepost, rounding=rounding,
-            timeout=timeout, session=session, multi_level_index=multi_level_index,
-        )
-    finally:
-        shared._LOCK.release()
+    return _download_impl(
+        _DownloadCtx(),
+        tickers, start=start, end=end, actions=actions, threads=threads,
+        ignore_tz=ignore_tz, group_by=group_by, auto_adjust=auto_adjust,
+        back_adjust=back_adjust, repair=repair, keepna=keepna, progress=progress,
+        period=period, interval=interval, prepost=prepost, rounding=rounding,
+        timeout=timeout, session=session, multi_level_index=multi_level_index,
+    )
 
 
-def _download_impl(tickers, start=None, end=None, actions=False, threads=True,
+def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=True,
                    ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
                    repair=False, keepna=False, progress=True, period=period_default, interval="1d",
                    prepost=False, rounding=False, timeout=10, session=None,
                    multi_level_index=True):
     logger = utils.get_yf_logger()
-    session = session or requests.Session(impersonate="chrome")
+    session = session or new_session()
 
-    # Ensure data initialised with session.
     YfData(session=session)
 
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
-            # With DEBUG, each thread generates a lot of log messages.
-            # And with multi-threading, these messages will be interleaved, bad!
-            # So disable multi-threading to make log readable.
+            # multi-threaded log messages would interleave; serialize.
             logger.debug('Disabling multithreading because DEBUG logging enabled')
             threads = False
         if progress:
-            # Disable progress bar, interferes with display of log messages
             progress = False
 
     if ignore_tz is None:
-        # Set default value depending on interval
-        if interval[-1] in ['m', 'h']:
-            # Intraday
-            ignore_tz = False
-        else:
-            ignore_tz = True
+        ignore_tz = interval[-1] not in ('m', 'h')
 
-    # create ticker list
     tickers = tickers if isinstance(
         tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
 
-    # accept isin as ticker
-    shared._ISINS = {}
     _tickers_ = []
     for ticker in tickers:
         if utils.is_isin(ticker):
             isin = ticker
             ticker = utils.get_ticker_by_isin(ticker)
-            shared._ISINS[ticker] = isin
+            ctx.isins[ticker] = isin
         _tickers_.append(ticker)
 
-    tickers = _tickers_
-
-    tickers = list(set([ticker.upper() for ticker in tickers]))
+    tickers = list(set([t.upper() for t in _tickers_]))
 
     if progress:
-        shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
+        ctx.progress_bar = utils.ProgressBar(len(tickers), 'completed')
 
-    # reset shared._DFS
-    shared._DFS = {}
-    shared._ERRORS = {}
-    shared._TRACEBACKS = {}
-
-    # download using threads
     if threads:
         if threads is True:
             threads = min([len(tickers), _multitasking.cpu_count() * 2])
         _multitasking.set_max_threads(threads)
         for i, ticker in enumerate(tickers):
-            _download_one_threaded(ticker, period=period, interval=interval,
+            _download_one_threaded(ctx, ticker, period=period, interval=interval,
                                    start=start, end=end, prepost=prepost,
                                    actions=actions, auto_adjust=auto_adjust,
                                    back_adjust=back_adjust, repair=repair, keepna=keepna,
                                    progress=(progress and i > 0),
                                    rounding=rounding, timeout=timeout)
-        while len(shared._DFS) < len(tickers):
+        while True:
+            with ctx.lock:
+                if len(ctx.dfs) >= len(tickers):
+                    break
             _time.sleep(0.01)
-    # download synchronously
     else:
         for i, ticker in enumerate(tickers):
-            data = _download_one(ticker, period=period, interval=interval,
-                                 start=start, end=end, prepost=prepost,
-                                 actions=actions, auto_adjust=auto_adjust,
-                                 back_adjust=back_adjust, repair=repair, keepna=keepna,
-                                 rounding=rounding, timeout=timeout)
+            _download_one(ctx, ticker, period=period, interval=interval,
+                          start=start, end=end, prepost=prepost,
+                          actions=actions, auto_adjust=auto_adjust,
+                          back_adjust=back_adjust, repair=repair, keepna=keepna,
+                          rounding=rounding, timeout=timeout)
             if progress:
-                shared._PROGRESS_BAR.animate()
+                ctx.progress_bar.animate()
 
     if progress:
-        shared._PROGRESS_BAR.completed()
+        ctx.progress_bar.completed()
 
-    if shared._ERRORS:
-        # Send errors to logging module
-        logger = utils.get_yf_logger()
+    if ctx.errors:
         logger.error('\n%.f Failed download%s:' % (
-            len(shared._ERRORS), 's' if len(shared._ERRORS) > 1 else ''))
+            len(ctx.errors), 's' if len(ctx.errors) > 1 else ''))
 
-        # Log each distinct error once, with list of symbols affected
         errors = {}
-        for ticker in shared._ERRORS:
-            err = shared._ERRORS[ticker]
+        for ticker, err in ctx.errors.items():
             err = err.replace(f'${ticker}: ', '')
-            if err not in errors:
-                errors[err] = [ticker]
-            else:
-                errors[err].append(ticker)
-        for err in errors.keys():
-            logger.error(f'{errors[err]}: ' + err)
+            errors.setdefault(err, []).append(ticker)
+        for err, syms in errors.items():
+            logger.error(f'{syms}: ' + err)
 
-        # Log each distinct traceback once, with list of symbols affected
         tbs = {}
-        for ticker in shared._TRACEBACKS:
-            tb = shared._TRACEBACKS[ticker]
+        for ticker, tb in ctx.tracebacks.items():
             tb = tb.replace(f'${ticker}: ', '')
-            if tb not in tbs:
-                tbs[tb] = [ticker]
-            else:
-                tbs[tb].append(ticker)
-        for tb in tbs.keys():
-            logger.debug(f'{tbs[tb]}: ' + tb)
+            tbs.setdefault(tb, []).append(ticker)
+        for tb, syms in tbs.items():
+            logger.debug(f'{syms}: ' + tb)
 
     if ignore_tz:
-        for tkr in shared._DFS.keys():
-            if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
-                shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
-
+        for tkr, df in ctx.dfs.items():
+            if df is not None and df.shape[0] > 0:
+                df.index = df.index.tz_localize(None)
+    ctx.dfs = reindex_dfs(ctx.dfs, ignore_tz)
     try:
-        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
-                          keys=shared._DFS.keys(), names=['Ticker', 'Price'])
+        data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
+                          keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
     except Exception:
-        _realign_dfs()
-        data = _pd.concat(shared._DFS.values(), axis=1, sort=True,
-                          keys=shared._DFS.keys(), names=['Ticker', 'Price'])
-    data.index = _pd.to_datetime(data.index, utc=not ignore_tz)
-    # switch names back to isins if applicable
-    data.rename(columns=shared._ISINS, inplace=True)
+        data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
+                          keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
+    data.rename(columns=ctx.isins, inplace=True)
 
     if group_by == 'column':
         data.columns = data.columns.swaplevel(0, 1)
@@ -244,65 +223,77 @@ def _download_impl(tickers, start=None, end=None, actions=False, threads=True,
 
     return data
 
+def reindex_dfs(dfs, ignore_tz):
+    if ignore_tz:
+        for tkr in dfs.keys():
+            if (dfs[tkr] is not None) and (not dfs[tkr].empty):
+                dfs[tkr].index = dfs[tkr].index.tz_localize(None)
+    else:
+        # Align each df to most common timezone.
+        # Compare strings since np.unique can't handle tz objects
+        tzs = [str(df.index.tz) for df in dfs.values() if df is not None and not df.empty]
+        if tzs:
+            # Find most common timezone
+            unique_tzs, counts = _np.unique(tzs, return_counts=True)
+            tz_mode = unique_tzs[counts.argmax()]
+            for tkr in dfs.keys():
+                if (dfs[tkr] is not None) and (not dfs[tkr].empty):
+                    dfs[tkr].index = dfs[tkr].index.tz_convert(tz_mode)
 
-def _realign_dfs():
-    idx_len = 0
-    idx = None
+    all_indices = set()
+    for df in dfs.values():
+        all_indices.update(df.index)
+    idx = sorted(all_indices)
+    idx = _pd.to_datetime(idx)
+    for key, df in dfs.items():
+        dfs[key] = df.reindex(idx)
 
-    for df in shared._DFS.values():
-        if len(df) > idx_len:
-            idx_len = len(df)
-            idx = df.index
-
-    for key in shared._DFS.keys():
-        try:
-            shared._DFS[key] = _pd.DataFrame(
-                index=idx, data=shared._DFS[key]).drop_duplicates()
-        except Exception:
-            shared._DFS[key] = _pd.concat([
-                utils.empty_df(idx), shared._DFS[key].dropna()
-            ], axis=0, sort=True)
-
-        # remove duplicate index
-        shared._DFS[key] = shared._DFS[key].loc[
-            ~shared._DFS[key].index.duplicated(keep='last')]
-
+    return dfs
 
 @_multitasking.task
-def _download_one_threaded(ticker, start=None, end=None,
+def _download_one_threaded(ctx, ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period=None,
                            interval="1d", prepost=False,
                            keepna=False, rounding=False, timeout=10):
-    _download_one(ticker, start, end, auto_adjust, back_adjust, repair,
-                         actions, period, interval, prepost, rounding,
-                         keepna, timeout)
+    _download_one(ctx, ticker, start, end, auto_adjust, back_adjust, repair,
+                  actions, period, interval, prepost, rounding,
+                  keepna, timeout)
     if progress:
-        shared._PROGRESS_BAR.animate()
+        ctx.progress_bar.animate()
 
 
-def _download_one(ticker, start=None, end=None,
+def _download_one(ctx, ticker, start=None, end=None,
                   auto_adjust=False, back_adjust=False, repair=False,
                   actions=False, period=None, interval="1d",
                   prepost=False, rounding=False,
                   keepna=False, timeout=10):
     data = None
-    
+    sym = ticker.upper()
+
     backup = YfConfig.network.hide_exceptions
     YfConfig.network.hide_exceptions = False
     try:
-        data = Ticker(ticker).history(
-                period=period, interval=interval,
-                start=start, end=end, prepost=prepost,
-                actions=actions, auto_adjust=auto_adjust,
-                back_adjust=back_adjust, repair=repair,
-                rounding=rounding, keepna=keepna, timeout=timeout
+        tkr = Ticker(ticker)
+        data = tkr.history(
+            period=period, interval=interval,
+            start=start, end=end, prepost=prepost,
+            actions=actions, auto_adjust=auto_adjust,
+            back_adjust=back_adjust, repair=repair,
+            rounding=rounding, keepna=keepna, timeout=timeout
         )
-        shared._DFS[ticker.upper()] = data
+        with ctx.lock:
+            ctx.dfs[sym] = data
+            # PriceHistory records soft errors (e.g. delisted, missing tz)
+            # without raising; surface them so download() can log them.
+            ph = tkr._price_history
+            if ph is not None and ph._last_error is not None:
+                ctx.errors[sym] = ph._last_error
     except Exception as e:
-        shared._DFS[ticker.upper()] = utils.empty_df()
-        shared._ERRORS[ticker.upper()] = repr(e)
-        shared._TRACEBACKS[ticker.upper()] = traceback.format_exc()
+        with ctx.lock:
+            ctx.dfs[sym] = utils.empty_df()
+            ctx.errors[sym] = repr(e)
+            ctx.tracebacks[sym] = traceback.format_exc()
 
     YfConfig.network.hide_exceptions = backup
 

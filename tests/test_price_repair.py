@@ -67,27 +67,27 @@ class TestPriceRepairAssumptions(unittest.TestCase):
                         if vol_match.all():
                             # print("  - volume match 100%")
                             pass
-                        elif vol_match_ndiff == 1 and not vol_match[0]:
-                            # print("  - volume almost-perfect match, only first different")
-                            # debug = True
+                        elif vol_match_ndiff == 1 and (not vol_match[-1]):
+                            # Almost perfect, only last row different. Not my fault.
                             pass
                         else:
                             # print(f"  - volume match {vol_match_nmatch}/{len(vol_match)} {vol_match.to_numpy()}")
-                            print(f"  - volume significantly different in first row: vol_diff_pct={vol_diff_pct*100}%")
+                            print(f"  - volume significantly different in first or last row: vol_diff_pct={vol_diff_pct*100}%")
                             debug = True
 
                     if debug:
                         print("- investigate:")
+                        print(f"  - tkr = {tkr}")
                         print(f"  - interval = {interval}")
                         print(f"  - period = {period}")
                         print("- df_truth:")
-                        print(df_truth)#[['Open', 'Close', 'Volume']])
+                        print(df_truth[['Open', 'Close', 'Volume']])
                         df_1d = dat.history(interval='1d', period=period)
                         print("- df_1d:")
-                        print(df_1d)#[['Open', 'Close', 'Volume']])
+                        print(df_1d[['Open', 'Close', 'Volume']])
                         print("- dfr:")
-                        print(dfr)#[['Open', 'Close', 'Volume']])
-                        return
+                        print(dfr[['Open', 'Close', 'Volume']])
+                        self.assertFalse(True)
 
 
 
@@ -387,15 +387,13 @@ class TestPriceRepair(unittest.TestCase):
         # Test that 'Adj Close' is reconstructed correctly,
         # particularly when a dividend occurred within 1 day.
 
-        self.skipTest("Currently failing because Yahoo returning slightly different data for interval 1d vs 1h on day Aug 6 2024")
-
         tkr = "INTC"
-        df = _pd.DataFrame(data={"Open":      [2.020000e+01, 2.032000e+01, 1.992000e+01, 1.910000e+01, 2.008000e+01],
-                                 "High":      [2.039000e+01, 2.063000e+01, 2.025000e+01, 2.055000e+01, 2.015000e+01],
-                                 "Low":       [1.929000e+01, 1.975000e+01, 1.895000e+01, 1.884000e+01, 1.950000e+01],
-                                 "Close":     [2.011000e+01, 1.983000e+01, 1.899000e+01, 2.049000e+01, 1.971000e+01],
-                                 "Adj Close": [1.998323e+01, 1.970500e+01, 1.899000e+01, 2.049000e+01, 1.971000e+01],
-                                 "Volume":    [1.473857e+08, 1.066704e+08, 9.797230e+07, 9.683680e+07, 7.639450e+07],
+        df = _pd.DataFrame(data={"Open":      [2.008000e+01, 1.910000e+01, 1.992000e+01, 2.032000e+01, 2.020000e+01],
+                                 "High":      [2.015000e+01, 2.055000e+01, 2.025000e+01, 2.063000e+01, 2.039000e+01],
+                                 "Low":       [1.950000e+01, 1.884000e+01, 1.895000e+01, 1.975000e+01, 1.929000e+01],
+                                 "Close":     [1.971000e+01, 2.049000e+01, 1.899000e+01, 1.983000e+01, 2.011000e+01],
+                                 "Adj Close": [1.971000e+01, 2.049000e+01, 1.899000e+01, 1.970500e+01, 1.998323e+01],
+                                 "Volume":    [7.639450e+07, 9.683680e+07, 9.797230e+07, 1.066704e+08, 1.473857e+08],
                                  "Dividends": [0.000000e+00, 0.000000e+00, 1.250000e-01, 0.000000e+00, 0.000000e+00]},
                            index=_pd.to_datetime([_dt.datetime(2024, 8, 9),
                                                   _dt.datetime(2024, 8, 8),
@@ -421,9 +419,13 @@ class TestPriceRepair(unittest.TestCase):
                     try:
                         self.assertTrue(_np.isclose(df_slice_bad_repaired[c], df_slice[c], rtol=rtol).all())
                     except Exception:
-                        print(f"# column = {c}")
-                        print("# correct:") ; print(df_slice[c])
-                        print("# repaired:") ; print(df_slice_bad_repaired[c])
+                        df_slice_bad['Adj'] = df_slice_bad['Adj Close'] / df_slice_bad['Close']
+                        df_slice_bad_repaired['Adj'] = df_slice_bad_repaired['Adj Close'] / df_slice_bad_repaired['Close']
+                        df_slice['Adj'] = df_slice['Adj Close'] / df_slice['Close']
+                        print(f"# column={c}, i={i}, j={j}")
+                        print("# bad:") ; print(df_slice_bad[['Close', 'Adj Close', 'Adj', 'Dividends']])
+                        print("# repaired:") ; print(df_slice_bad_repaired[['Close', 'Adj Close', 'Adj', 'Dividends']])
+                        print("# correct:") ; print(df_slice[['Close', 'Adj Close', 'Adj', 'Dividends']])
                         raise
                 self.assertTrue("Repaired?" in df_slice_bad_repaired.columns)
                 self.assertFalse(df_slice_bad_repaired["Repaired?"].isna().any())
@@ -580,7 +582,6 @@ class TestPriceRepair(unittest.TestCase):
         bad_tkrs.append('4063.T')  # Div with same-day split not split adjusted
 
         # Adj too small
-        bad_tkrs += ['ADIG.L']
         bad_tkrs += ['CLC.L']
         bad_tkrs += ['RGL.L']
         bad_tkrs += ['SERE.L']

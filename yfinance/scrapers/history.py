@@ -1,4 +1,4 @@
-from curl_cffi import requests
+from yfinance._http import new_session
 from math import isclose
 import bisect
 import datetime as _datetime
@@ -9,9 +9,9 @@ import pandas as pd
 import time as _time
 import warnings
 
-from yfinance import shared, utils
+from yfinance import utils
 from yfinance.config import YfConfig
-from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default
+from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default, _SENTINEL_
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
 
 class PriceHistory:
@@ -19,14 +19,20 @@ class PriceHistory:
         self._data = data
         self.ticker = ticker.upper()
         self.tz = tz
-        self.session = session or requests.Session(impersonate="chrome")
+        self.session = session or new_session()
 
         self._history_cache = {}
         self._history_metadata = None
         self._history_metadata_formatted = False
 
+        self._dividends = None
+        self._splits = None
+        self._capital_gains = None
+
         # Limit recursion depth when repairing prices
         self._reconstruct_start_interval = None
+
+        self._last_error = None
 
     @utils.log_indent_decorator
     def history(self, period=period_default, interval="1d",
@@ -101,8 +107,7 @@ class PriceHistory:
                     # Every valid ticker has a timezone. A missing timezone is a problem.
                     _exception = YFTzMissingError(self.ticker)
                     err_msg = str(_exception)
-                    shared._DFS[self.ticker] = utils.empty_df()
-                    shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                    self._last_error = err_msg.split(': ', 1)[1]
                     if raise_errors or (not YfConfig.debug.hide_exceptions):
                         raise _exception
                     else:
@@ -127,8 +132,7 @@ class PriceHistory:
                 # Every valid ticker has a timezone. A missing timezone is a problem.
                 _exception = YFTzMissingError(self.ticker)
                 err_msg = str(_exception)
-                shared._DFS[self.ticker] = utils.empty_df()
-                shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+                self._last_error = err_msg.split(': ', 1)[1]
                 if raise_errors or (not YfConfig.debug.hide_exceptions):
                     raise _exception
                 else:
@@ -229,15 +233,19 @@ class PriceHistory:
                 raise
 
         # Store the meta data that gets retrieved simultaneously
-        safe_chart  = (data or {}).get('chart') or {}
-        result_list = safe_chart.get('result')
-        if isinstance(result_list, list) and len(result_list) > 0:
-            first_item = result_list[0] or {}
-            meta = first_item.get('meta') or {}
-        else:
+        try:
+            safe_chart  = (data or {}).get('chart') or {}
+            result_list = safe_chart.get('result')
+            if isinstance(result_list, list) and len(result_list) > 0:
+                first_item = result_list[0] or {}
+                meta = first_item.get('meta') or {}
+            else:
+                meta = {}
+        except Exception:
             meta = {}
 
         self._history_metadata = meta
+        self._history_metadata['YF repair?'] = repair
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
@@ -267,11 +275,11 @@ class PriceHistory:
             _price_data_debug += f"(Yahoo status_code = {data['status_code']})"
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
-        elif "chart" in data and data["chart"]["error"]:
+        elif "chart" in data and data["chart"] and data["chart"]["error"]:
             _price_data_debug += ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
-        elif "chart" not in data or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:
+        elif "chart" not in data or not data["chart"] or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
         elif period and period not in self._history_metadata['validRanges'] and not utils.is_valid_period_format(period):
@@ -281,8 +289,7 @@ class PriceHistory:
 
         if fail:
             err_msg = str(_exception)
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg.split(': ', 1)[1]
+            self._last_error = err_msg.split(': ', 1)[1]
             if raise_errors or (not YfConfig.debug.hide_exceptions):
                 raise _exception
             else:
@@ -496,8 +503,7 @@ class PriceHistory:
                 err_msg = "auto_adjust failed with %s" % e
             else:
                 err_msg = "back_adjust failed with %s" % e
-            shared._DFS[self.ticker] = utils.empty_df()
-            shared._ERRORS[self.ticker] = err_msg
+            self._last_error = err_msg
             logger.error('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
@@ -545,10 +551,23 @@ class PriceHistory:
                                                 'capital gains': self._capital_gains}
         return self._history_cache[cache_key]
 
-    def get_history_metadata(self) -> dict:
+    def get_history_metadata(self, repair=_SENTINEL_) -> dict:
+        """
+        repair default value depends on whether user requested price repair
+        with previous history() call. If user did not set repair here, then
+        it is set to match previous history() call.
+        """
+        
+        # - repair affects currency, particularly GBp -> GBP
         if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
             # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            self._get_history_cache(period="5d", interval="1h")['prices']
+            if repair == _SENTINEL_:
+                if self._history_metadata is not None:
+                    repair = self._history_metadata['YF repair?']
+                else:
+                    # default
+                    repair = False
+            self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
@@ -635,6 +654,11 @@ class PriceHistory:
         else:
             df2 = df.resample(resample_period, label='left', closed='left', offset=offset).agg(resample_map)
         df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
+
+        # Handle NaNs from very long holidays.
+        prev_close = df2['Close'].shift(1).ffill()
+        for c in ['Open', 'High', 'Low', 'Close']:
+            df2[c] = df2[c].fillna(prev_close)
         return df2
 
     @utils.log_indent_decorator
@@ -2231,8 +2255,7 @@ class PriceHistory:
                 if c == 'adj_exceeds_prices':
                     continue
 
-                if c == 'phantom' and self.ticker in ['KAP.IL', 'SAND']:
-                    # Manually approve, but these are probably safe to assume ok
+                if c == 'phantom':
                     continue
 
                 if c == 'div_date_wrong':
@@ -2710,7 +2733,8 @@ class PriceHistory:
             df_workings['VolStr'] = ''
             df_workings.loc[fna, 'VolStr'] = 'NaN'
             df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).astype('int').astype('str') + 'm'
-            df_workings['Vol'] = df_workings['VolStr'] ; df_workings.drop('VolStr', axis=1)
+            df_workings['Vol'] = df_workings['VolStr']
+            df_workings.drop('VolStr', axis=1)
         else:
             df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
         debug_cols = ['Close']
@@ -2925,6 +2949,8 @@ class PriceHistory:
                 def _calc_volume_zscore(volume, block):
                     # print(f"_calc_volume_zscore(volume={volume})")
                     values = block['Volume'].to_numpy()
+                    if len(values) == 0 or (values == 0).all():
+                        return 0
                     std = np.std(values, ddof=1)
                     if std == 0.0:
                         return 0

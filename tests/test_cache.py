@@ -18,13 +18,18 @@ import os
 class TestCache(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.original_cache_dir = yf.cache._TzDBManager.get_location()
         cls.tempCacheDir = tempfile.TemporaryDirectory()
         yf.set_tz_cache_location(cls.tempCacheDir.name)
 
     @classmethod
     def tearDownClass(cls):
         yf.cache._TzDBManager.close_db()
+        yf.cache._TzCacheManager._tz_cache = None
+        yf.cache._CookieCacheManager._Cookie_cache = None
+        yf.cache._ISINCacheManager._isin_cache = None
         cls.tempCacheDir.cleanup()
+        yf.set_tz_cache_location(cls.original_cache_dir)
 
     def test_storeTzNoRaise(self):
         # storing TZ to cache should never raise exception

@@ -1,4 +1,4 @@
-import curl_cffi
+from yfinance._http import HTTPError
 import pandas as pd
 
 from yfinance import utils
@@ -71,7 +71,7 @@ class Holders:
     def _fetch_and_parse(self):
         try:
             result = self._fetch()
-        except curl_cffi.requests.exceptions.HTTPError as e:
+        except HTTPError as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(str(e) + e.response.text)

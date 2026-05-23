@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pandas as pd
 
 from tests.context import yfinance as yf
-from yfinance import shared
 
 
 class TestDownloadThreadSafety(unittest.TestCase):
@@ -23,10 +22,12 @@ class TestDownloadThreadSafety(unittest.TestCase):
             index=idx,
         )
 
-        def mock_download_one(ticker, *args, **kwargs):
+        def mock_download_one(ctx, ticker, *args, **kwargs):
             time.sleep(0.05)
-            df = aapl_df if ticker.upper() == 'AAPL' else msft_df
-            shared._DFS[ticker.upper()] = df
+            sym = ticker.upper()
+            df = aapl_df if sym == 'AAPL' else msft_df
+            with ctx.lock:
+                ctx.dfs[sym] = df
             return df
 
         results = {}

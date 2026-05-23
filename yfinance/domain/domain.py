@@ -14,16 +14,20 @@ class Domain(ABC):
     and methods for fetching and parsing data. Derived classes must implement the `_fetch_and_parse()` method.
     """
 
-    def __init__(self, key: str, session=None):
+    def __init__(self, key: str, session=None, region: str = "US"):
         """
-        Initializes the Domain object with a key, session.
+        Initializes the Domain object with a key, session, and region.
 
         Args:
             key (str): Unique key identifying the domain entity.
             session (Optional[requests.Session]): Session object for HTTP requests. Defaults to None.
+            region (str): Yahoo region (ISO 3166-1 alpha-2 country code, e.g.
+                "US", "GB", "FR", "DE", "JP"). Determines the regional scope
+                of returned data such as ``top_companies``. Defaults to "US".
         """
         self._key: str = key
         self.session = session
+        self._region: str = region.strip().upper()
         self._data: YfData = YfData(session=session)
 
         self._name: Optional[str] = None
@@ -118,7 +122,7 @@ class Domain(ABC):
         Returns:
             Dict: The JSON response data from the request.
         """
-        params_dict = {"formatted": "true", "withReturns": "true", "lang": "en-US", "region": "US"}
+        params_dict = {"formatted": "true", "withReturns": "true", "lang": "en-US", "region": self._region}
         result = self._data.get_raw_json(query_url, params=params_dict)
         return result
 

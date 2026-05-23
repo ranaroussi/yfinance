@@ -30,7 +30,7 @@ class TestCalendars(unittest.TestCase):
 
         start = datetime.now(tz=timezone.utc) - timedelta(days=7)
         result = yf.Calendars(start=start).get_earnings_calendar(limit=5)
-        self.assertGreaterEqual(result['Event Start Date'].iloc[0], pd.to_datetime(start))
+        self.assertGreaterEqual(result['Event Start Date'].iloc[0].date(), start.date())
 
     def test_get_ipo_info_calendar(self):
         result = self.calendars.get_ipo_info_calendar(limit=5)

@@ -22,6 +22,9 @@ class TestCacheNoPermission(unittest.TestCase):
         else:  # Unix/Linux/MacOS
             # Use a writable directory
             cls.cache_path = "/yf-cache"
+        yf.cache._TzCacheManager._tz_cache = None
+        yf.cache._CookieCacheManager._Cookie_cache = None
+        yf.cache._ISINCacheManager._isin_cache = None
         yf.set_tz_cache_location(cls.cache_path)
 
     def test_tzCacheRootStore(self):
