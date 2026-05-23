@@ -1,6 +1,28 @@
 Change Log
 ===========
 
+1.4.0
+-----
+Features
+- Add Auth class for Logging In #2761
+- Allow region scoping for Sector and Industry (closes #2601) #2803
+- Make curl_cffi optional with fallback to requests (closes #2692) #2802
+Fixes
+- Add 'repair' to get_history_metadata() #2777
+- Adding try block for added protection to "meta" data #2778
+- Fix: _dts_in_same_interval("1mo") ignored year #2780
+- Fix TypeError when data['chart'] is None in history.py (#2670) #2794
+- Fix dividends error on unlisted tickers #2797
+- Fix #2784: validate Market region and stop returning misleading status #2801
+- Make yf.download() reentrant by removing shared module globals #2805
+- Allow lang and region scoping for Ticker (closes #2582) #2804
+- Fix localized intraday download() always returning UTC #2825
+Maintenance
+- chore: fix typos (prividing -> providing, Reponse -> Response) #2779
+- Fix Failing Tests #2792
+- Simplify phantom-dividend repair branch + drive-by typo/lint fixes #2810
+- Drop frozendict hard dependency in favour of an internal fallback #2821
+
 1.3.0
 -----
 Features:
