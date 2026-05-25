@@ -214,7 +214,7 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
                           keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
     data.rename(columns=ctx.isins, inplace=True)
 
-    if group_by == 'column':
+    if group_by == 'column' and isinstance(data.columns, _pd.MultiIndex):
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
 
@@ -240,11 +240,12 @@ def reindex_dfs(dfs, ignore_tz):
                 if (dfs[tkr] is not None) and (not dfs[tkr].empty):
                     dfs[tkr].index = dfs[tkr].index.tz_convert(tz_mode)
 
-    all_indices = set()
+    idx = None
     for df in dfs.values():
-        all_indices.update(df.index)
-    idx = sorted(all_indices)
-    idx = _pd.to_datetime(idx)
+        if df is not None and not df.empty:
+            idx = df.index if idx is None else idx.union(df.index)
+    if idx is None:
+        idx = _pd.DatetimeIndex([])
     for key, df in dfs.items():
         dfs[key] = df.reindex(idx)
 
