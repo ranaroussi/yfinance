@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve Date/Datetime index name in yf.download() output (c3db565)
 - Merge pull request #2830 from ranaroussi/main ([#2830]()) (754346f)
 - Version 1.4.0 (e005d2d)
 - Merge pull request #2828 from ranaroussi/dev ([#2828]()) (ff36bd7)
