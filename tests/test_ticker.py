@@ -324,6 +324,8 @@ class TestTickerHistory(unittest.TestCase):
                                                interval=interval, progress=False)
                             self.assertIsInstance(data, pd.DataFrame, "data has wrong type")
                             self.assertFalse(data.empty, "data is empty")
+                            expected_name = 'Datetime' if interval[-1] in ('m', 'h') else 'Date'
+                            self.assertEqual(data.index.name, expected_name)
                             if ignore_tz:
                                 self.assertIsNone(data.index.tz)
                             else:
