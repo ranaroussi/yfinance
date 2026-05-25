@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2832 from dokson/fix/download-index-name ([#2832]()) (1df338c)
 - Preserve Date/Datetime index name in yf.download() output (c3db565)
 - Merge pull request #2830 from ranaroussi/main ([#2830]()) (754346f)
 - Version 1.4.0 (e005d2d)
