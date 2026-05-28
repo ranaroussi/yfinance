@@ -1,6 +1,11 @@
 Change Log
 ===========
 
+1.4.1
+-----
+Fix
+- Preserve Date/Datetime index name in yf.download() output #2832
+
 1.4.0
 -----
 Features
