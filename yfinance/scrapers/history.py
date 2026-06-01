@@ -39,7 +39,8 @@ class PriceHistory:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 rounding=False, timeout=10,
-                raise_errors=False) -> pd.DataFrame:
+                raise_errors=False,
+                force_download=False) -> pd.DataFrame:
         """
         :Parameters:
             period : str
@@ -80,6 +81,10 @@ class PriceHistory:
               | Default: 10 seconds
             raise_errors : bool
                 If True, then raise errors as Exceptions instead of logging.
+            force_download : bool
+                If True, bypass cache and force download fresh data from Yahoo.
+                Useful during market hours when same-day prices change frequently.
+                Default: False.
         """
         logger = utils.get_yf_logger()
 
@@ -208,7 +213,7 @@ class PriceHistory:
         url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
         data = None
         get_fn = self._data.get
-        if end is not None:
+        if end is not None and not force_download:
             end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
             dt_now = pd.Timestamp.now('UTC')
             data_delay = _datetime.timedelta(minutes=30)
