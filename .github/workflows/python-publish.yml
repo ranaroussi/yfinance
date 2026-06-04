@@ -16,7 +16,7 @@ jobs:
 
     steps:
     # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         persist-credentials: false
     - name: Set up Python
