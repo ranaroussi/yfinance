@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2842 from ranaroussi/fix/price-repair-fx-switch ([#2842]()) (29fb02c)
 - Fix price-repair unit-switch sometimes applying twice (d3704c8)
 - Merge pull request #2832 from dokson/fix/download-index-name ([#2832]()) (1df338c)
 - Preserve Date/Datetime index name in yf.download() output (c3db565)
