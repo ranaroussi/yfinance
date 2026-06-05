@@ -635,6 +635,8 @@ class PriceHistory:
             else:
                 align_month = _datetime.datetime.now().strftime('%b').upper()
             resample_period = f"QS-{align_month}"
+        elif target_interval == '1d':
+            resample_period = '1D'
         else:
             raise ValueError(f"Not implemented resampling to interval '{target_interval}'")
         
@@ -1571,7 +1573,7 @@ class PriceHistory:
         return df
 
     @utils.log_indent_decorator
-    def _fix_bad_div_adjust(self, df, interval, currency):
+    def _fix_bad_div_adjust(self, df, interval, prepost, currency):
         # Look for dividend issues:
         # - dividend ~100x the Close change (a currency unit mixup)
         # - dividend missing from Adj Close
@@ -1584,6 +1586,7 @@ class PriceHistory:
             return df
         if interval in ['1wk', '1mo', '3mo', '1y']:
             return df
+        intraday = interval[-1] in ['h', 'm']
 
         if 'Capital Gains' in df.columns and (df['Capital Gains']>0).any():
             # So there are capital gains. This function only considers dividends. 
@@ -1670,27 +1673,36 @@ class PriceHistory:
             # div_too_big_improvement_threshold = 1
             div_too_big_improvement_threshold = 2
 
+            if intraday:
+                # Useful to also have day move (Close -> Close)
+                df2_day = df2.loc[str(dt.date())]
+                df2_day = self._resample(df2_day, interval, '1d')
             if isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*100, rel_tol = 0.025):
                 # Price has jumped ~100x on ex-div day, need to fix immediately.
-                drop_c2l = df2['Close'].iloc[div_idx-1]*100 - df2['Low'].iloc[div_idx]
+                drop = df2['Close'].iloc[div_idx-1]*100 - df2['Low'].iloc[div_idx]
                 div_pct = div / (df2['Close'].iloc[div_idx-1]*100)
                 true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
                 present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
                 if not isclose(present_adj, true_adjust, rel_tol = 0.025):
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
+                if intraday:
+                    day_move = df2['Close'].iloc[div_idx-1]*100 - df2_day['Close'].iloc[0]
             elif isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*0.01, rel_tol = 0.025):
                 # Price has dropped ~100x on ex-div day, need to fix immediately.
-                drop_c2l = df2['Close'].iloc[div_idx-1]*0.01 - df2['Low'].iloc[div_idx]
+                drop = df2['Close'].iloc[div_idx-1]*0.01 - df2['Low'].iloc[div_idx]
                 div_pct = div / (df2['Close'].iloc[div_idx-1]*0.01)
                 true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
                 present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
                 if not isclose(present_adj, true_adjust, rel_tol = 0.025):
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
+                if intraday:
+                    day_move = df2['Close'].iloc[div_idx-1]*0.01 - df2_day['Close'].iloc[0]
             else:
-                drop_c2l = df2['Close'].iloc[div_idx-1] - df2['Low'].iloc[div_idx]
-            drop = drop_c2l
+                drop = df2['Close'].iloc[div_idx-1] - df2['Low'].iloc[div_idx]
+                if intraday:
+                    day_move = df2['Close'].iloc[div_idx-1] - df2_day['Close'].iloc[0]
             if div_idx < len(df2)-1:
                 # # In low-volume scenarios, the price drop is day after not today.
                 # if df2['Close'].iloc[div_idx-1] == df2['Close'].iloc[div_idx] or \
@@ -1776,6 +1788,12 @@ class PriceHistory:
                     # drop_wo_vol = drop_2Dmax - typical_volatility
                     # Update: only use same-day change for too-small, to reduce false-positives
                     drop_wo_vol = drop - typical_volatility
+                    if drop_wo_vol > 0 and intraday and prepost:
+                        # First, check if pre/post silly games
+                        if day_move < 0.2*drop_wo_vol:
+                            # Price recovered by end of trading session, 
+                            # so class this as false positive
+                            drop_wo_vol = 0
                     if drop_wo_vol > 0:
                         diff = abs(div-drop_wo_vol)
                         diff_fx = abs((div*currency_divide)-drop_wo_vol)
