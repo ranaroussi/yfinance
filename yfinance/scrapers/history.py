@@ -1676,7 +1676,7 @@ class PriceHistory:
 
             if intraday:
                 # Useful to also have day move (Close -> Close)
-                df2_day = df2.loc[str(dt.date())]
+                df2_day = df2.loc[str(dt.date())].copy()
                 df2_day = self._resample(df2_day, interval, '1d')
             if isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*100, rel_tol = 0.025):
                 # Price has jumped ~100x on ex-div day, need to fix immediately.
