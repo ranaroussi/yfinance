@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix for PR #2843 (a48aa29)
 - Merge pull request #2843 from ranaroussi/fix/div-repair-premarket-false-positive ([#2843]()) (993dfa8)
 - Handle premarket silly games creating false-positive bad-dividend (8435868)
 - Merge pull request #2842 from ranaroussi/fix/price-repair-fx-switch ([#2842]()) (29fb02c)
