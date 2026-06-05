@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2843 from ranaroussi/fix/div-repair-premarket-false-positive ([#2843]()) (993dfa8)
 - Handle premarket silly games creating false-positive bad-dividend (8435868)
 - Merge pull request #2842 from ranaroussi/fix/price-repair-fx-switch ([#2842]()) (29fb02c)
 - Fix price-repair unit-switch sometimes applying twice (d3704c8)
