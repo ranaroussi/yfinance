@@ -2,7 +2,6 @@ import functools
 from functools import lru_cache
 import socket
 import time as _time
-import json as _json
 
 from ._http import requests, new_session, is_supported_session, cookie_jar
 from urllib.parse import urlsplit, urljoin
@@ -99,6 +98,11 @@ class YfData(metaclass=SingletonMeta):
                 "Y": cookie_y
             })
             self._cookie = True
+            # Drop any cached crumb: it may have been minted under a different
+            # (e.g. anonymous, or another account's) login state. Forcing a
+            # re-mint on the next request keeps the crumb matched to these
+            # cookies, so the login takes effect cleanly mid-process.
+            self._crumb = None
 
     def _set_session(self, session):
         if session is None:
@@ -552,16 +556,24 @@ class YfData(metaclass=SingletonMeta):
         )
         return response
 
+_SUBSCRIPTIONS_URL = "https://query1.finance.yahoo.com/ws/obi-integration/v1/subscriptions"
+
+# Yahoo Finance subscription tier ids. The subscriptions response reports the
+# account's tier as an integer in subscriptionView[].tier; tierRanking is
+# [3, 4, 5, 6] (there is no tier 1/2, and tier 4 is unmarketed). Reading the id
+# is more stable than inferring from granted features, which Yahoo reshuffles
+# between tiers for marketing reasons.
+_TIER_NAMES = {6: "gold", 5: "silver", 3: "bronze"}
+
+
 class Auth:
     def __init__(self, session=None):
         self._session = session
         self._data = YfData(session)
 
-        self._user: dict | None = None
-
-    def set_login_cookies(self, cookie_t: str, cookie_y: str) -> None:
+    def set_login_cookies(self, cookie_t: str, cookie_y: str) -> bool:
         """
-        Set the login cookies to indicate that the user is logged in.
+        Set the login cookies and verify they are valid.
 
         How to Obtain the Cookies:
             1. Open your browser (e.g., Chrome, Firefox).
@@ -576,35 +588,76 @@ class Auth:
         Args:
             cookie_t (str): The value for the 'T' cookie.
             cookie_y (str): The value for the 'Y' cookie.
+
+        Returns:
+            bool: ``True`` if the cookies are valid (the account is logged in),
+            ``False`` otherwise (also emitted as a warning). The cookies are
+            stored regardless. ``False`` can also mean Yahoo was transiently
+            unreachable, so it is not treated as a hard error.
         """
         self._data.set_login_cookies(cookie_t, cookie_y)
+        logged_in = self.check_login()
+        if not logged_in:
+            utils.get_yf_logger().warning(
+                "set_login_cookies: the provided cookies are not logged in "
+                "(or Yahoo is unreachable)."
+            )
+        return logged_in
 
-    def check_login(self) -> bool:
-        """Check whether the user is logged in to Yahoo Finance."""
-        if self._user:
-            return True
+    def _fetch_entitlement(self) -> dict | None:
+        """Fetch the account's subscription entitlement (live, not cached).
 
+        A single lightweight JSON call to the OBI subscriptions endpoint
+        determines both login state and subscription tier, avoiding any
+        consumer-web-page scraping. The result is intentionally not cached:
+        the endpoint is cheap and Yahoo does not rate-limit it at any realistic
+        volume, so a fresh call each time keeps the answer from going stale
+        (e.g. if the login session expires part-way through a long-running
+        process).
+
+        Returns:
+            dict | None: The entitlement ``result`` object when logged in, or
+            ``None`` when not logged in (anonymous sessions return HTTP 401).
+        """
         try:
-            response = self._data.get("https://finance.yahoo.com/")
-            soup = BeautifulSoup(response.text, 'html.parser')
-
-            script_tag = soup.find('script', id='nimbus-benji-config')
-            if not script_tag:
-                return False
-
-            config_json = script_tag.string
-            config_data = _json.loads(config_json).get('i13n')
-
-            if "user" in config_data and "guid" in config_data["user"]:
-                self._user = config_data["user"]
-                return True
-            else:
-                return False
+            response = self._data.get(_SUBSCRIPTIONS_URL)
+            if response.status_code != 200:
+                return None
+            result = (response.json() or {}).get("result")
+            if isinstance(result, dict) and result.get("guid"):
+                return result
+            return None
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Error confirming login: {e}")
-            return False
+            return None
+
+    def check_login(self) -> bool:
+        """Check whether the user is logged in to Yahoo Finance."""
+        return self._fetch_entitlement() is not None
+
+    def subscription_tier(self) -> str | None:
+        """Return the Yahoo Finance subscription tier of the logged-in account.
+
+        Read directly from the account's tier id in ``subscriptionView`` (the
+        value the account is billed against) rather than inferring it from the
+        granted feature set, which Yahoo reshuffles between tiers.
+
+        Returns:
+            str | None: ``'gold'``, ``'silver'`` or ``'bronze'`` for a named
+            subscription (``'premium'`` for a subscribed tier with no marketed
+            name), ``'free'`` when logged in without a subscription, or ``None``
+            when not logged in.
+        """
+        entitlement = self._fetch_entitlement()
+        if entitlement is None:
+            return None
+        active = [s for s in (entitlement.get("subscriptionView") or [])
+                  if s.get("action") == "ACTIVE"]
+        if not active:
+            return "free"
+        return _TIER_NAMES.get(active[0].get("tier"), "premium")
 
     @property
     def user(self) -> dict | None:
@@ -612,9 +665,7 @@ class Auth:
         Get the logged-in user's details.
 
         Returns:
-            dict | None: A dictionary containing the user's details if logged in, or None if not logged in.
+            dict | None: ``{'guid': ...}`` if logged in, or ``None`` if not.
         """
-        if self._user is not None or self.check_login():
-            return self._user
-
-        return None
+        entitlement = self._fetch_entitlement()
+        return {"guid": entitlement["guid"]} if entitlement else None

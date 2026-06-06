@@ -2,7 +2,7 @@
 import unittest
 from functools import lru_cache
 
-from yfinance.data import lru_cache_freezeargs
+from yfinance.data import SingletonMeta, YfData, lru_cache_freezeargs
 from yfinance.utils import frozendict
 
 
@@ -47,6 +47,22 @@ class TestFrozenDict(unittest.TestCase):
         self.assertEqual(call_count["n"], 1)
         self.assertEqual(fn({"a": 1, "b": 3}), 4)
         self.assertEqual(call_count["n"], 2)
+
+
+class TestYfDataLoginCookies(unittest.TestCase):
+    def test_set_login_cookies_invalidates_crumb(self):
+        # Logging in (or switching accounts) must drop a crumb minted under a
+        # different login state so the next request re-mints a matched crumb.
+        # Use a throwaway instance (YfData is a singleton) to avoid leaking the
+        # test cookies into the shared session other tests rely on.
+        SingletonMeta._instances.pop(YfData, None)
+        try:
+            data = YfData()
+            data._crumb = "stale-crumb-sentinel"
+            data.set_login_cookies("T-test-value", "Y-test-value")
+            self.assertIsNone(data._crumb)
+        finally:
+            SingletonMeta._instances.pop(YfData, None)
 
 
 if __name__ == "__main__":
