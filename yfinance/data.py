@@ -1,6 +1,7 @@
 import functools
 from functools import lru_cache
 import socket
+import re
 import time as _time
 import json as _json
 
@@ -552,6 +553,51 @@ class YfData(metaclass=SingletonMeta):
         )
         return response
 
+def _extract_window_yahoo_context(html: str) -> dict | None:
+    """Extract the server-rendered ``window.YAHOO.context`` object from a Yahoo Finance page.
+
+    The logged-in user identity is rendered server-side as a JavaScript
+    assignment ``window.YAHOO.context = {...}``. (The older
+    ``<script id="nimbus-benji-config">`` element is constructed client-side
+    only and is therefore absent from the fetched HTML.) Each candidate
+    assignment is brace-matched - ignoring braces inside string literals - and
+    the first one that parses as JSON is returned, so a stray occurrence inside
+    a JavaScript string literal is skipped rather than aborting the search.
+
+    Args:
+        html (str): Raw HTML of the Yahoo Finance homepage.
+
+    Returns:
+        dict | None: The parsed context object, or ``None`` if absent or unparseable.
+    """
+    for match in re.finditer(r"window\.YAHOO\.context\s*=\s*\{", html):
+        start = match.end() - 1  # index of the '{' captured by the regex
+        depth = 0
+        in_string = False
+        escaped = False
+        for i in range(start, len(html)):
+            ch = html[i]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+            elif ch == '"':
+                in_string = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return _json.loads(html[start:i + 1])
+                    except (ValueError, TypeError):
+                        break  # not valid JSON; try the next candidate match
+    return None
+
+
 class Auth:
     def __init__(self, session=None):
         self._session = session
@@ -586,20 +632,22 @@ class Auth:
 
         try:
             response = self._data.get("https://finance.yahoo.com/")
-            soup = BeautifulSoup(response.text, 'html.parser')
-
-            script_tag = soup.find('script', id='nimbus-benji-config')
-            if not script_tag:
+            context = _extract_window_yahoo_context(response.text)
+            if context is None:
                 return False
 
-            config_json = script_tag.string
-            config_data = _json.loads(config_json).get('i13n')
-
-            if "user" in config_data and "guid" in config_data["user"]:
-                self._user = config_data["user"]
+            user = context.get("user")
+            # Both 'authed' == '1' and a populated 'guid' only appear when the
+            # session is logged in; a logged-out page reports authed '0' and a
+            # 'user' object without a 'guid'.
+            if (
+                context.get("authed") == "1"
+                and isinstance(user, dict)
+                and user.get("guid")
+            ):
+                self._user = user
                 return True
-            else:
-                return False
+            return False
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
