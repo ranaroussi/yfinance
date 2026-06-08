@@ -70,6 +70,16 @@ class TestHttpBackend(unittest.TestCase):
         self.assertTrue(mod.is_supported_session(_stdlib_requests.Session()))
         self.assertFalse(mod.is_supported_session(object()))
 
+    def test_yfdata_rejects_caching_sessions(self):
+        from yfinance.data import YfData
+        from yfinance.exceptions import YFDataException
+
+        class CachingSession:
+            cache = object()
+
+        with self.assertRaisesRegex(YFDataException, "requests_cache.CachedSession"):
+            YfData(session=CachingSession())
+
 
 if __name__ == "__main__":
     unittest.main()
