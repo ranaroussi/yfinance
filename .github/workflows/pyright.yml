@@ -20,14 +20,20 @@ jobs:
       with:
         persist-credentials: false
 
+    - uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
     - name: Set up Python
-      # Verify: curl -s "https://api.github.com/repos/actions/setup-python/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+      run: uv python install 3.12
+
+    - name: Create virtual environment
+      run: uv venv
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyright
+      run: uv pip install -e ".[dev]"
 
     - name: Run Pyright
-      run: pyright . --level error
+      run: uv run pyright . --level error

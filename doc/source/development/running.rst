@@ -20,14 +20,16 @@ With Git
 1: Download from GitHub:
 
 .. code-block:: bash
-    git clone https://github.com/{user}/{repo}.git
-    pip install -r ./yfinance/requirements.txt
+    git clone https://github.com/ranaroussi/yfinance.git
+    cd yfinance
+    pip install -e ".[dev]"
 
 Or if a specific branch:
 
 .. code-block:: bash
-    git clone -b {branch} https://github.com/{user}/{repo}.git
-    pip install -r ./yfinance/requirements.txt
+    git clone -b {branch} https://github.com/ranaroussi/yfinance.git
+    cd yfinance
+    pip install -e ".[dev]"
 
 .. NOTE::
     Only do the next part if you are installing globally

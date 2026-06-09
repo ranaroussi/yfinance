@@ -1,37 +1,43 @@
 Unit Tests
 ----------
 
-Tests are written using Python&apos;s `unittest` module. Here are some ways to run tests:
+Tests are written using `pytest`. Install dev dependencies first if you haven't already:
 
-- **Run all price tests**:
+.. code-block:: bash
 
-  .. code-block:: bash
+   pip install -e ".[dev]"
 
-     python -m unittest tests.test_prices
-
-- **Run a subset of price tests**:
-
-  .. code-block:: bash
-
-     python -m unittest tests.test_prices.TestPriceRepair
-
-- **Run a specific test**:
-
-  .. code-block:: bash
-
-     python -m unittest tests.test_prices_repair.TestPriceRepair.test_ticker_missing
-
-- **General command**:
-
-  ..code-block:: bash
-
-     python -m unittest tests.{file}.{class}.{method}
+Here are some ways to run tests:
 
 - **Run all tests**:
 
   .. code-block:: bash
 
-     python -m unittest discover -s tests
+     pytest
+
+- **Run all tests in a file**:
+
+  .. code-block:: bash
+
+     pytest tests/test_prices.py
+
+- **Run a specific test class**:
+
+  .. code-block:: bash
+
+     pytest tests/test_prices.py::TestPriceRepair
+
+- **Run a specific test**:
+
+  .. code-block:: bash
+
+     pytest tests/test_prices_repair.py::TestPriceRepair::test_ticker_missing
+
+- **General command**:
+
+  .. code-block:: bash
+
+     pytest tests/{file}.py::{class}::{method}
 
 .. note::
 
@@ -47,4 +53,4 @@ Tests are written using Python&apos;s `unittest` module. Here are some ways to r
 
 .. seealso::
 
-    See the ` ``unittest`` module <https://docs.python.org/3/library/unittest.html>`_ for more information.
+    See the `pytest documentation <https://docs.pytest.org/>`_ for more information.
