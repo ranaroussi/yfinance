@@ -65,5 +65,63 @@ class TestYfDataLoginCookies(unittest.TestCase):
             SingletonMeta._instances.pop(YfData, None)
 
 
+class TestCookieStrategyLoginPreservation(unittest.TestCase):
+    """The csrf->basic strategy toggle must not wipe user-set login cookies.
+
+    Uses a throwaway YfData (the class is a SingletonMeta singleton) so the test
+    cookies / login flag don't leak into the shared session other tests use.
+    """
+
+    def setUp(self):
+        SingletonMeta._instances.pop(YfData, None)
+        self.data = YfData()
+        self.data._cookie_strategy = 'csrf'
+        self.data._cookie = None
+        self.data._crumb = None
+        self.data._logged_in = False
+        self.data._session.cookies.clear()
+        self.data._session.cookies.update({"T": "tval", "Y": "yval", "A3": "a3val"})
+
+    def tearDown(self):
+        SingletonMeta._instances.pop(YfData, None)
+
+    def test_logged_in_switch_keeps_login_cookies(self):
+        self.data._logged_in = True
+        self.data._set_cookie_strategy('basic')  # csrf->basic == the clearing branch
+        self.assertEqual(self.data._session.cookies.get("T"), "tval")
+        self.assertEqual(self.data._session.cookies.get("Y"), "yval")
+
+    def test_logged_out_switch_still_clears_jar(self):
+        # Not logged in: the toggle clears as before, so a bad/anonymous session
+        # can recover a fresh anonymous cookie.
+        self.data._logged_in = False
+        self.data._set_cookie_strategy('basic')
+        self.assertIsNone(self.data._session.cookies.get("T"))
+        self.assertIsNone(self.data._session.cookies.get("Y"))
+
+    def test_switch_resets_crumb_even_when_logged_in(self):
+        # The anonymous cookie/crumb refresh path must stay intact.
+        self.data._logged_in = True
+        self.data._crumb = "stale-crumb"
+        self.data._set_cookie_strategy('basic')
+        self.assertIsNone(self.data._crumb)
+
+    def test_set_login_cookies_marks_logged_in(self):
+        self.data._logged_in = False
+        self.data.set_login_cookies("T-v", "Y-v")
+        self.assertTrue(self.data._logged_in)
+
+    def test_optimistic_login_survives_strategy_toggle(self):
+        # set_login_cookies marks _logged_in True optimistically; a strategy
+        # toggle that fires before check_login confirms (e.g. the subscriptions
+        # request itself 4xx-ing) must still keep the freshly-set T/Y.
+        self.data._session.cookies.clear()
+        self.data.set_login_cookies("T-opt", "Y-opt")  # -> _logged_in = True
+        self.data._cookie_strategy = 'csrf'
+        self.data._set_cookie_strategy('basic')
+        self.assertEqual(self.data._session.cookies.get("T"), "T-opt")
+        self.assertEqual(self.data._session.cookies.get("Y"), "Y-opt")
+
+
 if __name__ == "__main__":
     unittest.main()

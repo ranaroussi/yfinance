@@ -8,7 +8,7 @@ The call is made live each time (not cached), so the answer never goes stale.
 import unittest
 from unittest import mock
 
-from yfinance.data import Auth, _SUBSCRIPTIONS_URL
+from yfinance.data import Auth, SingletonMeta, YfData, _SUBSCRIPTIONS_URL
 
 _GUID = "ABCDEFGHIJKLMNOPQRSTUV1234"
 
@@ -28,6 +28,13 @@ def _auth(status=200, result=None):
     auth._data = mock.MagicMock()
     auth._data.get.return_value = resp
     return auth
+
+
+def tearDownModule():
+    # _auth() builds a real Auth() (which registers a YfData singleton) before
+    # swapping in a mock, so drop the singleton afterwards to avoid leaking a
+    # stale instance into other test modules.
+    SingletonMeta._instances.pop(YfData, None)
 
 
 class TestAuthLogin(unittest.TestCase):
@@ -117,6 +124,33 @@ class TestSetLoginCookies(unittest.TestCase):
         with mock.patch("yfinance.data.utils.get_yf_logger") as get_logger:
             auth.set_login_cookies("bad", "bad")
             get_logger.return_value.warning.assert_called_once()
+
+
+class TestLoggedInFlag(unittest.TestCase):
+    """Auth reconciles YfData._logged_in with the verified login state."""
+
+    def test_entitlement_marks_logged_in_when_valid(self):
+        auth = _auth(200, _result())
+        auth.check_login()
+        auth._data._set_logged_in.assert_called_with(True)
+
+    def test_entitlement_marks_logged_out_when_anonymous(self):
+        auth = _auth(401)
+        auth.check_login()
+        auth._data._set_logged_in.assert_called_with(False)
+
+    def test_logged_in_unchanged_on_transient_error(self):
+        # A transient exception can't confirm login, so the cookie-preservation
+        # flag must NOT be touched (neither up nor down) — whether the error is
+        # hidden or re-raised depends on config, but either way _set_logged_in
+        # must not be called.
+        auth = _auth()
+        auth._data.get.side_effect = ConnectionError("boom")
+        try:
+            auth.check_login()
+        except ConnectionError:
+            pass
+        auth._data._set_logged_in.assert_not_called()
 
 
 if __name__ == "__main__":
