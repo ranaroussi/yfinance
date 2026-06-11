@@ -80,6 +80,11 @@ class YfData(metaclass=SingletonMeta):
     def __init__(self, session=None):
         self._crumb = None
         self._cookie = None
+        # Whether the user has supplied login cookies (see set_login_cookies).
+        # When logged in, the cookie-strategy toggle must not wipe the jar, or
+        # it would silently log the user out. Auth corrects this flag to reflect
+        # the real login state once it has been verified.
+        self._logged_in = False
 
         # Default to using 'basic' strategy
         self._cookie_strategy = 'basic'
@@ -98,11 +103,23 @@ class YfData(metaclass=SingletonMeta):
                 "Y": cookie_y
             })
             self._cookie = True
+            # Optimistically mark as logged in so a transient 4xx during the
+            # initial login verification can't wipe these cookies. Auth.check_login
+            # corrects this to the real state right after.
+            self._logged_in = True
             # Drop any cached crumb: it may have been minted under a different
             # (e.g. anonymous, or another account's) login state. Forcing a
             # re-mint on the next request keeps the crumb matched to these
             # cookies, so the login takes effect cleanly mid-process.
             self._crumb = None
+
+    def _set_logged_in(self, value):
+        """Thread-safe update of the login flag (also read under this lock in
+        _set_cookie_strategy). Auth calls this after verifying the real login
+        state, possibly from another thread, so the write must be serialized to
+        avoid a stale value clobbering a concurrent fresh login."""
+        with self._cookie_lock:
+            self._logged_in = value
 
     def _set_session(self, session):
         if session is None:
@@ -139,7 +156,12 @@ class YfData(metaclass=SingletonMeta):
         try:
             if self._cookie_strategy == 'csrf':
                 utils.get_yf_logger().debug(f'toggling cookie strategy {self._cookie_strategy} -> basic')
-                self._session.cookies.clear()
+                # Don't clear the jar while logged in: that would drop the
+                # user-set login cookies (T/Y) and silently log them out. The
+                # toggle still resets the anonymous cookie/crumb below, so the
+                # anonymous refresh path is unaffected.
+                if not self._logged_in:
+                    self._session.cookies.clear()
                 self._cookie_strategy = 'basic'
             else:
                 utils.get_yf_logger().debug(f'toggling cookie strategy {self._cookie_strategy} -> csrf')
@@ -621,20 +643,31 @@ class Auth:
         """
         try:
             response = self._data.get(_SUBSCRIPTIONS_URL)
-            if response.status_code != 200:
-                return None
-            result = (response.json() or {}).get("result")
-            if isinstance(result, dict) and result.get("guid"):
-                return result
+            if response.status_code == 200:
+                result = (response.json() or {}).get("result")
+                if isinstance(result, dict) and result.get("guid"):
+                    # Confirmed logged in: keep the login cookies protected.
+                    self._data._set_logged_in(True)
+                    return result
+            # A definitive non-logged-in answer (e.g. 401/403, or 200 without a
+            # guid): let the cookie-strategy toggle clear the stale jar again.
+            self._data._set_logged_in(False)
             return None
         except Exception as e:
+            # Transient/network error can't confirm login state either way, so
+            # leave _logged_in unchanged rather than flipping a valid login off.
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Error confirming login: {e}")
             return None
 
     def check_login(self) -> bool:
-        """Check whether the user is logged in to Yahoo Finance."""
+        """Check whether the user is logged in to Yahoo Finance.
+
+        Note: ``False`` during a transient error (e.g. Yahoo briefly
+        unreachable) means "could not confirm" rather than "logged out" — the
+        stored login cookies are kept and remain protected in that case.
+        """
         return self._fetch_entitlement() is not None
 
     def subscription_tier(self) -> str | None:
