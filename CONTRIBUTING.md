@@ -33,7 +33,7 @@ https://ranaroussi.github.io/yfinance/development/code.html
 
 The new docs website is generated automatically from code. https://ranaroussi.github.io/yfinance/index.html
 
-Remember to updates docs when you change code, and check docs locally.
+Remember to update docs when you change code, and check docs locally.
 
 https://ranaroussi.github.io/yfinance/development/documentation.html
 
