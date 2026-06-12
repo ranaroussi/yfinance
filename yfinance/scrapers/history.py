@@ -471,6 +471,11 @@ class PriceHistory:
             df, currency = self._standardise_currency(df, currency)
             self._history_metadata['currency'] = currency
 
+            f_na = df['Volume'].isna()
+            if f_na.any():
+                # Because converting to Int, need to handle NaNs
+                df.loc[f_na, 'Volume'] = 0
+
             df = self._fix_bad_div_adjust(df, interval, prepost, currency)
 
             # Need the latest/last row to be repaired before 100x/split repair:
