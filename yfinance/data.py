@@ -30,6 +30,12 @@ def _is_transient_error(exception):
 cache_maxsize = 64
 
 
+def _normalize_proxy(proxy):
+    if isinstance(proxy, str):
+        return {"http": proxy, "https": proxy}
+    return proxy
+
+
 def lru_cache_freezeargs(func):
     """
     Decorator transforms mutable dictionary and list arguments into immutable types
@@ -145,7 +151,7 @@ class YfData(metaclass=SingletonMeta):
         with self._cookie_lock:
             self._session = session
             if YfConfig.network.proxy is not None:
-                self._session.proxies = YfConfig.network.proxy
+                self._session.proxies = _normalize_proxy(YfConfig.network.proxy)
 
     def _set_cookie_strategy(self, strategy, have_lock=False):
         if strategy == self._cookie_strategy:
@@ -434,7 +440,7 @@ class YfData(metaclass=SingletonMeta):
         utils.get_yf_logger().debug(f'params={params}')
 
         # sync with config
-        self._session.proxies = YfConfig.network.proxy
+        self._session.proxies = _normalize_proxy(YfConfig.network.proxy)
 
         if params is None:
             params = {}
