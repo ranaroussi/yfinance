@@ -5,8 +5,12 @@ import datetime as _dt
 import sys
 import os
 import yfinance
+from yfinance.config import YfConfig
 # from requests_ratelimiter import LimiterSession
 # from pyrate_limiter import Duration, RequestRate, Limiter
+
+# Retry throttled/empty responses from Yahoo on CI IPs.
+YfConfig.network.retries = 2
 
 _parent_dp = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 _src_dp = _parent_dp
