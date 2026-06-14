@@ -1649,7 +1649,7 @@ class PriceHistory:
             df2['Adj Close'] = adjClose
         df2['Adj Close'] = df2['Adj Close'].replace([np.inf, -np.inf], np.nan)
         df2['Adj'] = df2['Adj Close'] / df2['Close']
-        df2['Adj'] = df2['Adj'].fillna(method='bfill')
+        df2['Adj'] = df2['Adj'].bfill()
         f_adjClose_na = df2['Adj Close'].isna() & (~df2['Close'].isna())
         df2.loc[f_adjClose_na, 'Adj Close'] = df2['Adj'][f_adjClose_na] * df2['Close'][f_adjClose_na]
         df2 = df2.drop('Adj', axis=1)
