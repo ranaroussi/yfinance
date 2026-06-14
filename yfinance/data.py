@@ -27,6 +27,11 @@ def _is_transient_error(exception):
     }
     return error_type_name in transient_error_types
 
+
+def _is_empty_response(response):
+    """Empty 2xx body (Yahoo throttling); retryable."""
+    return response.status_code < 400 and not response.content
+
 cache_maxsize = 64
 
 
@@ -463,6 +468,9 @@ class YfData(metaclass=SingletonMeta):
         for attempt in range(YfConfig.network.retries + 1):
             try:
                 response = request_method(**request_args)
+                if _is_empty_response(response) and attempt < YfConfig.network.retries:
+                    _time.sleep(2 ** attempt)
+                    continue
                 break
             except Exception as e:
                 if _is_transient_error(e) and attempt < YfConfig.network.retries:
