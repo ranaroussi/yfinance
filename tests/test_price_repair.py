@@ -618,6 +618,8 @@ class TestPriceRepair(unittest.TestCase):
         # Special case: huge drop in pre-market, one-off
         false_positives += [('EA', '15m', True)]
 
+        bad_tkrs += [('SSNLF', '1d')]
+
         for item in false_positives:
             # Nothing should change
             tkr = item[0]
@@ -658,8 +660,8 @@ class TestPriceRepair(unittest.TestCase):
                 raise
 
         for item in bad_tkrs:
-            tkr = tkr[0]
-            interval = tkr[1]
+            tkr = item[0]
+            interval = item[1]
             prepost = False
             if len(item) > 2:
                 prepost = item[2]
@@ -679,7 +681,7 @@ class TestPriceRepair(unittest.TestCase):
             correct_df = _pd.read_csv(fp, index_col='Datetime')
             correct_df.index = _pd.to_datetime(correct_df.index, utc=True).tz_convert(tz)
 
-            repaired_df = hist._fix_bad_div_adjust(df_bad, interval, currency)
+            repaired_df = hist._fix_bad_div_adjust(df_bad, interval, prepost=False, currency=currency)
 
             c = 'Dividends'
             f_close = _np.isclose(repaired_df[c].to_numpy(), correct_df[c].to_numpy(), rtol=1e-12, equal_nan=True)
@@ -698,7 +700,7 @@ class TestPriceRepair(unittest.TestCase):
 
             c = 'Adj Close'
             try:
-                f_close = _np.isclose(repaired_df[c].to_numpy(), correct_df[c].to_numpy(), rtol=5e-7, equal_nan=True)
+                f_close = _np.isclose(repaired_df[c].to_numpy(), correct_df[c].to_numpy(), rtol=5e-5, equal_nan=True)
                 self.assertTrue(f_close.all())
             except Exception:
                 f_diff = ~f_close

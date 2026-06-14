@@ -1633,6 +1633,27 @@ class PriceHistory:
             return df
         div_indices = np.where(f_div)[0]
 
+        f_inf = df2['Adj Close'].isin([np.inf, -np.inf])
+        if f_inf.any():
+            # In extreme rare case (SSNLF), Yahoo adj close
+            # is so bad that it overflows floating-point type into Infinity.
+            # So reduce those massive values.
+            f_ninf = ~f_inf
+            adjClose = df2['Adj Close'].to_numpy()
+            close = df2['Close'].to_numpy()
+            close10x = close*10
+            f_huge = f_ninf & (adjClose > close10x)
+            while f_huge.any():
+                adjClose[f_huge] = adjClose[f_huge]*0.001
+                f_huge = f_ninf & (adjClose > close10x)
+            df2['Adj Close'] = adjClose
+        df2['Adj Close'] = df2['Adj Close'].replace([np.inf, -np.inf], np.nan)
+        df2['Adj'] = df2['Adj Close'] / df2['Close']
+        df2['Adj'] = df2['Adj'].fillna(method='bfill')
+        f_adjClose_na = df2['Adj Close'].isna() & (~df2['Close'].isna())
+        df2.loc[f_adjClose_na, 'Adj Close'] = df2['Adj'][f_adjClose_na] * df2['Close'][f_adjClose_na]
+        df2 = df2.drop('Adj', axis=1)
+
         # Very rarely, the Close (not Adj Close) is already adjusted!
         # Clue is it's often lower than Low. 
         # E.g. ticker MPCC.OL - Oslo exchange data contradicts Yahoo.
