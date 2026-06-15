@@ -17,6 +17,7 @@ from tests.context import session_gbl
 from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError, YFDataException
 from yfinance.config import YfConfig
 
+import json
 import unittest
 # import requests_cache
 from unittest.mock import patch, MagicMock
@@ -1287,51 +1288,301 @@ class TestTickerFundsData(unittest.TestCase):
 
 class TestTickerValuationMeasures(unittest.TestCase):
 
-    _MOCK_HTML = """<html><body>
-    <table>
-        <tr><td></td><td>Current</td><td>12/31/2025</td><td>9/30/2025</td></tr>
-        <tr><td>Market Cap</td><td>3.76T</td><td>4.00T</td><td>3.76T</td></tr>
-        <tr><td>Enterprise Value</td><td>3.78T</td><td>4.04T</td><td>3.81T</td></tr>
-        <tr><td>Trailing P/E</td><td>32.39</td><td>36.44</td><td>38.64</td></tr>
-        <tr><td>Forward P/E</td><td>29.76</td><td>32.79</td><td>31.65</td></tr>
-        <tr><td>PEG Ratio (5yr expected)</td><td>2.27</td><td>2.75</td><td>2.44</td></tr>
-        <tr><td>Price/Sales</td><td>8.77</td><td>9.80</td><td>9.41</td></tr>
-        <tr><td>Price/Book</td><td>42.60</td><td>54.21</td><td>57.14</td></tr>
-        <tr><td>Enterprise Value/Revenue</td><td>8.68</td><td>9.71</td><td>9.32</td></tr>
-        <tr><td>Enterprise Value/EBITDA</td><td>24.73</td><td>27.92</td><td>26.87</td></tr>
-    </table>
-    </body></html>"""
+    # Valuation measures now come from the fundamentals-timeseries API instead
+    # of scraping the key-statistics HTML page. The output shape is preserved
+    # ('Current' + M/D/YYYY columns), but values are now raw floats (NaN for
+    # missing cells) rather than display strings.
+    # Note: 'timestamp' keys are present (as in the real API) and must be ignored;
+    # Trailing P/E intentionally lacks the 12/31/2025 quarter to exercise missing
+    # cells.
+    _MOCK_TS = {"timeseries": {"result": [
+        {"meta": {"type": ["quarterlyMarketCap"]}, "timestamp": [1758, 1767],
+         "quarterlyMarketCap": [
+             {"asOfDate": "2025-09-30", "reportedValue": {"raw": 3.76e12}},
+             {"asOfDate": "2025-12-31", "reportedValue": {"raw": 4.00e12}},
+         ]},
+        {"meta": {"type": ["trailingMarketCap"]}, "timestamp": [1780],
+         "trailingMarketCap": [
+             {"asOfDate": "2026-06-05", "reportedValue": {"raw": 4.514e12}},
+         ]},
+        {"meta": {"type": ["quarterlyPeRatio"]}, "timestamp": [1758],
+         "quarterlyPeRatio": [
+             {"asOfDate": "2025-09-30", "reportedValue": {"raw": 38.64}},
+         ]},
+        {"meta": {"type": ["trailingPeRatio"]}, "timestamp": [1780],
+         "trailingPeRatio": [
+             {"asOfDate": "2026-06-05", "reportedValue": {"raw": 37.21}},
+         ]},
+    ]}}
 
-    def _make_ticker_with_mock(self, html):
+    def _valuation_with_mock(self, payload):
         mock_response = MagicMock()
-        mock_response.text = html
+        mock_response.text = json.dumps(payload)
         with patch("yfinance.data.YfData.cache_get", return_value=mock_response):
-            dat = yf.Ticker("AAPL")
-            data = dat.valuation
-        return data
+            return yf.Ticker("AAPL").valuation
 
     def test_valuation_measures(self):
-        data = self._make_ticker_with_mock(self._MOCK_HTML)
-        self.assertEqual(data.shape, (9, 3), "unexpected shape")
+        data = self._valuation_with_mock(self._MOCK_TS)
+        # Shape preserved from the legacy scrape: 'Current' + newest-first
+        # M/D/YYYY columns. Values are now raw floats (NaN for missing).
         self.assertListEqual(list(data.columns), ["Current", "12/31/2025", "9/30/2025"])
         self.assertIn("Market Cap", data.index)
         self.assertIn("Trailing P/E", data.index)
-        self.assertIn("Enterprise Value/EBITDA", data.index)
         self.assertIsNone(data.index.name)
-        self.assertEqual(data.loc["Market Cap", "Current"], "3.76T")
-        self.assertEqual(data.loc["Forward P/E", "12/31/2025"], "32.79")
+        self.assertEqual(data.loc["Market Cap", "Current"], 4.514e12)
+        self.assertEqual(data.loc["Market Cap", "12/31/2025"], 4.00e12)
+        self.assertEqual(data.loc["Market Cap", "9/30/2025"], 3.76e12)
+        self.assertEqual(data.loc["Trailing P/E", "Current"], 37.21)
+        self.assertEqual(data.loc["Trailing P/E", "9/30/2025"], 38.64)
 
-    def test_valuation_measures_no_table(self):
-        data = self._make_ticker_with_mock("<html><body><p>No tables here</p></body></html>")
+    def test_valuation_measures_lists_all_measures(self):
+        # The key-statistics page always listed every measure, so the API output
+        # must keep all 9 rows rather than dropping the empty ones. The mock
+        # supplies only Market Cap + Trailing P/E, so the other 7 measures are
+        # present and entirely NaN.
+        data = self._valuation_with_mock(self._MOCK_TS)
+        self.assertEqual(len(data.index), 9)
+        self.assertIn("PEG Ratio (5yr expected)", data.index)
+        self.assertIn("Enterprise Value/EBITDA", data.index)
+        self.assertTrue(data.loc["PEG Ratio (5yr expected)"].isna().all())
+
+    def test_valuation_measures_missing_cell_is_nan(self):
+        # Trailing P/E lacks the 12/31/2025 quarter -> that cell is NaN, and the
+        # values are raw floats (float64 column, no display strings).
+        data = self._valuation_with_mock(self._MOCK_TS)
+        self.assertTrue(pd.isna(data.loc["Trailing P/E", "12/31/2025"]))
+        self.assertEqual(data["12/31/2025"].dtype, "float64")
+
+    def test_valuation_measures_empty(self):
+        data = self._valuation_with_mock({"timeseries": {"result": []}})
         self.assertIsInstance(data, pd.DataFrame)
         self.assertTrue(data.empty)
+
+    def test_valuation_measures_freq_yearly(self):
+        # freq='yearly' selects the annual* period columns; 'Current' still
+        # comes from the trailing series.
+        payload = {"timeseries": {"result": [
+            {"meta": {"type": ["annualMarketCap"]}, "timestamp": [1],
+             "annualMarketCap": [{"asOfDate": "2025-09-30", "reportedValue": {"raw": 3.76e12}}]},
+            {"meta": {"type": ["trailingMarketCap"]}, "timestamp": [2],
+             "trailingMarketCap": [{"asOfDate": "2026-06-05", "reportedValue": {"raw": 4.51e12}}]},
+        ]}}
+        mock_response = MagicMock()
+        mock_response.text = json.dumps(payload)
+        with patch("yfinance.data.YfData.cache_get", return_value=mock_response):
+            data = yf.Ticker("AAPL").get_valuation_measures(freq="yearly")
+        self.assertListEqual(list(data.columns), ["Current", "9/30/2025"])
+        self.assertEqual(data.loc["Market Cap", "Current"], 4.51e12)
+        self.assertEqual(data.loc["Market Cap", "9/30/2025"], 3.76e12)
+
+    def test_valuation_measures_invalid_freq(self):
+        with self.assertRaises(ValueError):
+            yf.Ticker("AAPL").get_valuation_measures(freq="bogus")
 
     def test_valuation_measures_fetch_error(self):
         with patch("yfinance.data.YfData.cache_get", side_effect=Exception("network error")):
-            dat = yf.Ticker("AAPL")
-            data = dat.valuation
+            data = yf.Ticker("AAPL").valuation
         self.assertIsInstance(data, pd.DataFrame)
         self.assertTrue(data.empty)
+
+
+class TestTickerValuationMeasuresPeriods(unittest.TestCase):
+
+    # The `periods` parameter caps the number of period (date) columns returned,
+    # newest first. The default (5) matches the old key-statistics page; users can
+    # opt into more (or all) history. These mocks supply >5 quarterly periods so
+    # the cap is observable.
+
+    @staticmethod
+    def _quarterly_payload(n):
+        # n descending quarter-end MarketCap points (newest period first in the
+        # eventual output) + a single trailing point for the 'Current' column.
+        quarters = [
+            ("2026-12-31", 5.0e12), ("2026-09-30", 4.9e12), ("2026-06-30", 4.8e12),
+            ("2026-03-31", 4.7e12), ("2025-12-31", 4.6e12), ("2025-09-30", 4.5e12),
+            ("2025-06-30", 4.4e12), ("2025-03-31", 4.3e12),
+        ][:n]
+        return {"timeseries": {"result": [
+            {"meta": {"type": ["quarterlyMarketCap"]}, "timestamp": list(range(n)),
+             "quarterlyMarketCap": [
+                 {"asOfDate": d, "reportedValue": {"raw": v}} for d, v in quarters
+             ]},
+            {"meta": {"type": ["trailingMarketCap"]}, "timestamp": [99],
+             "trailingMarketCap": [
+                 {"asOfDate": "2026-06-05", "reportedValue": {"raw": 5.1e12}},
+             ]},
+        ]}}
+
+    def _periods_cols(self, periods, n=6):
+        # Fetch with the given `periods`, returning the period (non-'Current')
+        # columns. n controls how many quarterly periods the mock supplies.
+        payload = self._quarterly_payload(n)
+        mock_response = MagicMock()
+        mock_response.text = json.dumps(payload)
+        with patch("yfinance.data.YfData.cache_get", return_value=mock_response):
+            data = yf.Ticker("AAPL").get_valuation_measures(periods=periods)
+        return data, [c for c in data.columns if c != "Current"]
+
+    def test_periods_default_is_five(self):
+        # 6 periods available, default caps to the newest 5.
+        data = self._valuation_default(n=6)
+        date_cols = [c for c in data.columns if c != "Current"]
+        self.assertEqual(len(date_cols), 5)
+        self.assertEqual(data.columns[0], "Current")
+        # Newest-first: the dropped column is the oldest (6th) one.
+        self.assertEqual(date_cols[0], "12/31/2026")
+        self.assertNotIn("9/30/2025", date_cols)  # the 6th-newest, dropped by the cap
+
+    def _valuation_default(self, n):
+        payload = self._quarterly_payload(n)
+        mock_response = MagicMock()
+        mock_response.text = json.dumps(payload)
+        with patch("yfinance.data.YfData.cache_get", return_value=mock_response):
+            # property uses the default periods=5
+            return yf.Ticker("AAPL").valuation
+
+    def test_periods_two(self):
+        data, date_cols = self._periods_cols(periods=2, n=6)
+        self.assertEqual(len(date_cols), 2)
+        self.assertListEqual(date_cols, ["12/31/2026", "9/30/2026"])  # newest two
+
+    def test_periods_zero_current_only(self):
+        data, date_cols = self._periods_cols(periods=0, n=6)
+        self.assertEqual(date_cols, [])
+        self.assertListEqual(list(data.columns), ["Current"])
+        self.assertEqual(data.shape, (9, 1))
+
+    def test_periods_none_all(self):
+        data, date_cols = self._periods_cols(periods=None, n=6)
+        self.assertEqual(len(date_cols), 6)  # all available, no cap
+
+    def test_periods_large_returns_all(self):
+        # A `periods` larger than the available history returns all, no error.
+        data, date_cols = self._periods_cols(periods=1000, n=6)
+        self.assertEqual(len(date_cols), 6)
+
+    def test_periods_fewer_available_than_default(self):
+        # Only 3 periods available; default of 5 returns the available 3 (no pad,
+        # no error).
+        data = self._valuation_default(n=3)
+        date_cols = [c for c in data.columns if c != "Current"]
+        self.assertEqual(len(date_cols), 3)
+
+    def test_periods_three_returns_three(self):
+        # An explicit count returns exactly that many newest period columns.
+        data, date_cols = self._periods_cols(periods=3, n=6)
+        self.assertEqual(len(date_cols), 3)
+        self.assertListEqual(date_cols, ["12/31/2026", "9/30/2026", "6/30/2026"])
+
+    def test_periods_accepts_numpy_int(self):
+        # numpy integers are valid (numbers.Integral) — common in pandas workflows.
+        import numpy as np
+        data, date_cols = self._periods_cols(periods=np.int64(3), n=6)
+        self.assertEqual(len(date_cols), 3)
+
+    def test_periods_decimal_raises_type_error(self):
+        # Decimal is a Number but not an Integral -> rejected.
+        from decimal import Decimal
+        with self.assertRaises(TypeError):
+            yf.Ticker("AAPL").get_valuation_measures(periods=Decimal(5))
+
+    def test_periods_negative_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            yf.Ticker("AAPL").get_valuation_measures(periods=-1)
+
+    def test_periods_float_raises_type_error(self):
+        with self.assertRaises(TypeError):
+            yf.Ticker("AAPL").get_valuation_measures(periods=3.5)
+
+    def test_periods_str_raises_type_error(self):
+        with self.assertRaises(TypeError):
+            yf.Ticker("AAPL").get_valuation_measures(periods="5")
+
+    def test_periods_bool_raises_type_error(self):
+        # bool is an int subclass, but a bool count is almost always a mistake.
+        with self.assertRaises(TypeError):
+            yf.Ticker("AAPL").get_valuation_measures(periods=True)
+
+    def test_periods_invalid_does_not_fetch(self):
+        # Validation happens before any network/cache fetch.
+        with patch("yfinance.data.YfData.cache_get") as mock_get:
+            with self.assertRaises(ValueError):
+                yf.Ticker("AAPL").get_valuation_measures(periods=-1)
+            mock_get.assert_not_called()
+
+    def test_periods_slicing_reuses_cache(self):
+        # Calling with different `periods` on the same ticker must reuse the one
+        # cached fetch (slicing on return), so cache_get fires only once per freq.
+        payload = self._quarterly_payload(6)
+        mock_response = MagicMock()
+        mock_response.text = json.dumps(payload)
+        with patch("yfinance.data.YfData.cache_get", return_value=mock_response) as mock_get:
+            tkr = yf.Ticker("AAPL")
+            first = tkr.get_valuation_measures(periods=2)
+            second = tkr.get_valuation_measures(periods=5)
+            self.assertEqual(mock_get.call_count, 1)
+        self.assertEqual(len([c for c in first.columns if c != "Current"]), 2)
+        self.assertEqual(len([c for c in second.columns if c != "Current"]), 5)
+
+    def test_periods_empty_result_ignores_periods(self):
+        # An empty result (ETF/invalid symbol) stays empty regardless of periods.
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({"timeseries": {"result": []}})
+        with patch("yfinance.data.YfData.cache_get", return_value=mock_response):
+            tkr = yf.Ticker("AAPL")
+            for p in (0, 2, None, 1000):
+                data = tkr.get_valuation_measures(periods=p)
+                self.assertIsInstance(data, pd.DataFrame)
+                self.assertTrue(data.empty)
+
+    def test_freq_isolation_no_cross_contamination(self):
+        # Quarterly, then monthly, then quarterly again on one ticker: the two
+        # freqs must yield DIFFERENT period columns (no cross-freq cache
+        # contamination), and the captured fetch `type` param differs per freq.
+        quarterly = {"timeseries": {"result": [
+            {"meta": {"type": ["quarterlyMarketCap"]}, "timestamp": [1],
+             "quarterlyMarketCap": [{"asOfDate": "2025-09-30", "reportedValue": {"raw": 3.0e12}}]},
+            {"meta": {"type": ["trailingMarketCap"]}, "timestamp": [2],
+             "trailingMarketCap": [{"asOfDate": "2026-06-05", "reportedValue": {"raw": 3.1e12}}]},
+        ]}}
+        monthly = {"timeseries": {"result": [
+            {"meta": {"type": ["monthlyMarketCap"]}, "timestamp": [1],
+             "monthlyMarketCap": [{"asOfDate": "2026-05-31", "reportedValue": {"raw": 3.2e12}}]},
+            {"meta": {"type": ["trailingMarketCap"]}, "timestamp": [2],
+             "trailingMarketCap": [{"asOfDate": "2026-06-05", "reportedValue": {"raw": 3.1e12}}]},
+        ]}}
+        captured_types = []
+
+        def _fake_cache_get(url, params=None, **kwargs):
+            captured_types.append((params or {}).get("type", ""))
+            resp = MagicMock()
+            # Pick the payload whose period prefix matches the requested types.
+            if "monthly" in (params or {}).get("type", ""):
+                resp.text = json.dumps(monthly)
+            else:
+                resp.text = json.dumps(quarterly)
+            return resp
+
+        with patch("yfinance.data.YfData.cache_get", side_effect=_fake_cache_get):
+            tkr = yf.Ticker("AAPL")
+            q1 = tkr.get_valuation_measures(freq="quarterly")
+            m1 = tkr.get_valuation_measures(freq="monthly")
+            q2 = tkr.get_valuation_measures(freq="quarterly")
+
+        q_cols = [c for c in q1.columns if c != "Current"]
+        m_cols = [c for c in m1.columns if c != "Current"]
+        self.assertListEqual(q_cols, ["9/30/2025"])
+        self.assertListEqual(m_cols, ["5/31/2026"])
+        self.assertNotEqual(q_cols, m_cols)
+        # quarterly fetched once (q2 reuses cache), monthly fetched once.
+        self.assertEqual(len(captured_types), 2)
+        self.assertIn("quarterly", captured_types[0])
+        self.assertIn("monthly", captured_types[1])
+        # The captured `type` param differs per freq.
+        self.assertNotEqual(captured_types[0], captured_types[1])
+        # quarterly result identical before/after the monthly call (no contamination).
+        self.assertListEqual(list(q1.columns), list(q2.columns))
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -1343,6 +1594,7 @@ def suite():
     suite.addTest(TestTickerInfo('Test info & fast_info'))
     suite.addTest(TestTickerFundsData('Test Funds Data'))
     suite.addTest(TestTickerValuationMeasures('Test valuation measures'))
+    suite.addTest(TestTickerValuationMeasuresPeriods('Test valuation measures periods'))
     return suite
 
 

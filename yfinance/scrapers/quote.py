@@ -1,9 +1,9 @@
 from yfinance._http import HTTPError
 import datetime
 import json
+import numbers
 import numpy as _np
 import pandas as pd
-from bs4 import BeautifulSoup
 
 from yfinance import utils
 from yfinance.config import YfConfig
@@ -18,6 +18,25 @@ info_retired_keys_price.update({"averageDailyVolume10Day", "averageVolume10days"
 info_retired_keys_exchange = {"currency", "exchange", "exchangeTimezoneName", "exchangeTimezoneShortName", "quoteType"}
 info_retired_keys_marketCap = {"marketCap"}
 info_retired_keys_symbol = {"symbol"}
+
+# Valuation-measure timeseries keys (fundamentals-timeseries API) -> display labels,
+# matching the rows historically shown on the Yahoo key-statistics page.
+_VALUATION_MEASURE_LABELS = {
+    "MarketCap": "Market Cap",
+    "EnterpriseValue": "Enterprise Value",
+    "PeRatio": "Trailing P/E",
+    "ForwardPeRatio": "Forward P/E",
+    "PegRatio": "PEG Ratio (5yr expected)",
+    "PsRatio": "Price/Sales",
+    "PbRatio": "Price/Book",
+    "EnterprisesValueRevenueRatio": "Enterprise Value/Revenue",
+    "EnterprisesValueEBITDARatio": "Enterprise Value/EBITDA",
+}
+# Public freq -> fundamentals-timeseries type prefix for the period columns.
+_VALUATION_FREQ_PREFIX = {"quarterly": "quarterly", "monthly": "monthly",
+                          "yearly": "annual", "trailing": "trailing"}
+
+
 info_retired_keys = info_retired_keys_price | info_retired_keys_exchange | info_retired_keys_marketCap | info_retired_keys_symbol
 
 
@@ -493,7 +512,7 @@ class Quote:
         self._upgrades_downgrades = None
         self._calendar = None
         self._sec_filings = None
-        self._valuation_measures = None
+        self._valuation_measures = {}  # keyed by freq
 
         self._already_scraped = False
         self._already_fetched = False
@@ -576,9 +595,52 @@ class Quote:
 
     @property
     def valuation_measures(self) -> pd.DataFrame:
-        if self._valuation_measures is None:
-            self._fetch_valuation_measures()
-        return self._valuation_measures
+        return self.get_valuation_measures()
+
+    def get_valuation_measures(self, freq="quarterly", periods=5) -> pd.DataFrame:
+        """Valuation measures (market cap, P/E, P/S, P/B, EV/EBITDA, ...).
+
+        Returns a DataFrame with the 9 valuation measures as rows and a
+        ``Current`` column plus period-end date columns (newest first). Values
+        are raw numeric measures (floats, with ``NaN`` for missing cells); the
+        date column labels remain ``"M/D/YYYY"`` strings.
+
+        Args:
+            freq: period columns to return — "quarterly" (default), "monthly",
+                "yearly" or "trailing". The "Current" column always reflects the
+                latest trailing value.
+            periods: cap on the number of period (date) columns returned, newest
+                first. Must be an int >= 0 or None. The default of 5 matches the
+                column count the old key-statistics page showed. ``periods=0``
+                returns only the "Current" column (a 9x1 DataFrame); ``None``
+                (or a value larger than the available history) returns every
+                available period column. The ``valuation`` property uses this
+                default — call the method form to control ``periods``.
+
+        Returns:
+            pd.DataFrame: valuation measures, ``Current`` first, sliced to at
+                most ``periods`` period columns.
+        """
+        # Validate `periods` before any fetch so a bad value never hits the network.
+        if periods is not None:
+            # Accept any integer (incl. numpy ints), but reject bool — it is an
+            # int subclass yet a bool column count is almost always a mistake.
+            if isinstance(periods, bool) or not isinstance(periods, numbers.Integral):
+                raise TypeError(f"periods must be an int >= 0 or None, not {type(periods).__name__}")
+            if periods < 0:
+                raise ValueError("periods must be >= 0 or None")
+
+        if freq not in self._valuation_measures:
+            self._valuation_measures[freq] = self._fetch_valuation_measures(freq)
+        df = self._valuation_measures[freq]
+
+        # The full df is cached per-freq; apply the `periods` cap by slicing on
+        # return so different `periods` values reuse the one cached fetch. Return
+        # a copy (the sliced path already does) so a caller can't mutate the cache.
+        if periods is None or df.empty:
+            return df.copy()
+        date_cols = [c for c in df.columns if c != "Current"]
+        return df[["Current"] + date_cols[:periods]]
 
     @staticmethod
     def valid_modules():
@@ -669,39 +731,97 @@ class Quote:
 
         self._info = {k: _format(k, v) for k, v in query1_info.items()}
 
-    def _fetch_valuation_measures(self):
-        url = f"https://finance.yahoo.com/quote/{self._symbol}/key-statistics"
+    def _fetch_valuation_measures(self, freq="quarterly"):
+        # Valuation measures come from the fundamentals-timeseries API (the same
+        # source as the income/balance-sheet/cash-flow statements) instead of
+        # scraping the key-statistics web page, which was fragile (it returned an
+        # empty table whenever Yahoo changed the page layout). The returned shape
+        # matches the previous scrape: measures as the index, a 'Current' column
+        # plus period-end date columns (newest first). Values are the raw numeric
+        # measures (floats, with NaN for missing cells) rather than the old
+        # display-formatted strings (e.g. '3.76T', '32.39'). ``freq``
+        # ('quarterly' / 'monthly' / 'yearly' / 'trailing') selects the period
+        # columns; 'Current' always comes from the trailing series.
+        prefix = _VALUATION_FREQ_PREFIX.get(freq)
+        if prefix is None:
+            raise ValueError(f"freq must be one of {list(_VALUATION_FREQ_PREFIX)}, not '{freq}'")
+        keys = list(_VALUATION_MEASURE_LABELS.keys())
+        # Always also fetch the 'trailing' series for the 'Current' column.
+        prefixes = sorted({prefix, "trailing"})
+        types = ",".join(f"{p}{k}" for k in keys for p in prefixes)
+        period1 = int(datetime.datetime(2016, 12, 31).timestamp())
+        period2 = int(pd.Timestamp.now("UTC").ceil("D").timestamp())
+        url = f"{_BASE_URL_}/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}"
+        params = {"symbol": self._symbol, "type": types, "period1": period1, "period2": period2}
         try:
-            response = self._data.cache_get(url=url)
+            # cache_get (not get_raw_json) to match scrapers/fundamentals.py and
+            # benefit from response caching for the same timeseries endpoint.
+            response = self._data.cache_get(url, params=params)
+            data = json.loads(response.text)
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            utils.get_yf_logger().error(f"Failed to fetch key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
-            return
+            utils.get_yf_logger().error(f"Failed to fetch valuation measures: {e}")
+            return pd.DataFrame()
 
         try:
-            soup = BeautifulSoup(response.text, "html.parser")
-            table = soup.find("table")
-            if table is None:
-                self._valuation_measures = pd.DataFrame()
-                return
+            result = (data.get("timeseries") or {}).get("result") or []
+            period = {}      # label -> {Timestamp: raw value}  (the requested freq)
+            trailing = {}    # label -> {Timestamp: raw value}
+            for item in result:
+                for type_name, points in item.items():
+                    if type_name in ("meta", "timestamp") or not isinstance(points, list):
+                        continue
+                    if prefix != "trailing" and type_name.startswith(prefix):
+                        base, target = type_name[len(prefix):], period
+                    elif type_name.startswith("trailing"):
+                        base, target = type_name[len("trailing"):], trailing
+                    else:
+                        continue
+                    label = _VALUATION_MEASURE_LABELS.get(base)
+                    if label is None:
+                        continue
+                    for point in points:
+                        if not point:
+                            continue
+                        as_of = point.get("asOfDate")
+                        value = (point.get("reportedValue") or {}).get("raw")
+                        if as_of is not None and value is not None:
+                            ts = pd.Timestamp(as_of).normalize()
+                            target.setdefault(label, {})[ts] = value
+            if prefix == "trailing":
+                period = trailing
+            if not period and not trailing:
+                return pd.DataFrame()
 
-            headers = [th.get_text(strip=True) for th in table.find("tr").find_all(["th", "td"])]
-            rows = []
-            for tr in table.find_all("tr")[1:]:
-                cells = [td.get_text(strip=True) for td in tr.find_all(["th", "td"])]
-                rows.append(cells)
+            # 'Current' column = each measure's most recent trailing value.
+            current = {label: series[max(series)] for label, series in trailing.items() if series}
 
-            df = pd.DataFrame(rows, columns=headers)
-            df = df.set_index(df.columns[0])
+            # Every period the API returns, newest first (no artificial cap).
+            dates = sorted({d for series in period.values() for d in series}, reverse=True)
+            date_cols = [f"{d.month}/{d.day}/{d.year}" for d in dates]
+            # Emit every measure as a row, even those with no data — the
+            # key-statistics page always listed all measures, so dropping them
+            # would lose rows the scrape kept (e.g. PEG Ratio / EV-EBITDA for
+            # BRK-B). Missing cells become NaN (the parse only stored non-None
+            # floats, so .get(..., nan) yields the raw value or NaN).
+            rows = {}
+            for label in _VALUATION_MEASURE_LABELS.values():
+                row = {"Current": current.get(label, _np.nan)}
+                series = period.get(label, {})
+                for d, col in zip(dates, date_cols):
+                    row[col] = series.get(d, _np.nan)
+                rows[label] = row
+            df = pd.DataFrame.from_dict(rows, orient="index")
+            df = df.reindex(list(_VALUATION_MEASURE_LABELS.values()))
+            df = df[["Current"] + date_cols]
             df.index.name = None
-            self._valuation_measures = df
+            return df
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            utils.get_yf_logger().error(f"Failed to parse key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
+            utils.get_yf_logger().error(f"Failed to parse valuation measures: {e}")
+            return pd.DataFrame()
 
     def _fetch_complementary(self):
         if self._already_fetched_complementary:
