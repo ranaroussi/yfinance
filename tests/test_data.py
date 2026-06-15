@@ -2,8 +2,26 @@
 import unittest
 from functools import lru_cache
 
-from yfinance.data import SingletonMeta, YfData, lru_cache_freezeargs
+from yfinance.data import SingletonMeta, YfData, _normalize_proxy, lru_cache_freezeargs
 from yfinance.utils import frozendict
+
+
+class TestProxyConfig(unittest.TestCase):
+    def test_proxy_string_applies_to_http_and_https(self):
+        proxy = "http://user:pass@example.com:8080"
+
+        self.assertEqual(
+            _normalize_proxy(proxy),
+            {"http": proxy, "https": proxy},
+        )
+
+    def test_proxy_mapping_is_preserved(self):
+        proxy = {"http": "http://proxy:8080", "https": "https://proxy:8443"}
+
+        self.assertIs(_normalize_proxy(proxy), proxy)
+
+    def test_proxy_none_is_preserved(self):
+        self.assertIsNone(_normalize_proxy(None))
 
 
 class TestFrozenDict(unittest.TestCase):
