@@ -661,6 +661,129 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data = self.ticker.get_income_stmt(as_dict=True, freq='trailing')
         self.assertIsInstance(data, dict, "data has wrong type")
 
+    def _run_chunked_fallback_scenario(self, statement_kind, getter_name):
+        """Simulate WSL2 / restrictive-proxy: Yahoo drops the long single-URL
+        fundamentals request but serves shorter chunked ones. Asserts the
+        fallback in `_get_financials_time_series` recovers populated data."""
+        from unittest.mock import patch, MagicMock
+        import curl_cffi.requests.exceptions
+        import json as _json
+        from yfinance import const
+        keys = const.fundamentals_keys[statement_kind]
+        ts1, ts2 = 1719792000, 1751328000  # 2024-07-01, 2025-07-01
+        chunk_payloads = []
+        for i in range(0, len(keys), 60):
+            result = []
+            for k in keys[i:i + 60]:
+                key_full = "annual" + k
+                result.append({
+                    "meta": {"symbol": ["MSFT"], "type": [key_full]},
+                    "timestamp": [ts1, ts2],
+                    key_full: [
+                        {"asOfDate": "2024-06-30", "reportedValue": {"raw": 1000.0 + i}},
+                        {"asOfDate": "2025-06-30", "reportedValue": {"raw": 2000.0 + i}},
+                    ],
+                })
+            chunk_payloads.append({"timeseries": {"result": result}})
+
+        call_count = {"n": 0}
+
+        def fake_cache_get(url=None, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise curl_cffi.requests.exceptions.Timeout(
+                    "Operation timed out after 30001 milliseconds with 0 bytes received", 28, None
+                )
+            resp = MagicMock()
+            resp.text = _json.dumps(chunk_payloads.pop(0))
+            return resp
+
+        ticker = yf.Ticker("MSFT", session=self.session)
+        ticker._fundamentals.financials._data.fundamentals_use_chunked = False
+        with patch.object(ticker._fundamentals.financials._data, "cache_get",
+                          side_effect=fake_cache_get):
+            data = getattr(ticker, getter_name)()
+
+        self.assertIsInstance(data, pd.DataFrame)
+        self.assertFalse(data.empty, f"{getter_name} fallback produced empty data")
+        self.assertGreaterEqual(call_count["n"], 3,
+            "expected first long-URL request to fail then chunked retries")
+
+    def test_balance_sheet_chunked_fallback_on_timeout(self):
+        self._run_chunked_fallback_scenario("balance-sheet", "get_balance_sheet")
+
+    def test_cash_flow_chunked_fallback_on_timeout(self):
+        self._run_chunked_fallback_scenario("cash-flow", "get_cashflow")
+
+    def test_chunked_fallback_is_sticky(self):
+        """After one timeout, subsequent fundamentals fetches must skip the
+        fast path so a loop over tickers doesn't eat one timeout per ticker."""
+        from unittest.mock import patch, MagicMock
+        import curl_cffi.requests.exceptions
+        import json as _json
+        ts1, ts2 = 1719792000, 1751328000
+
+        def make_payload_for(url):
+            type_part = url.split("&type=")[1].split("&")[0]
+            type_keys = type_part.split(",")
+            result = []
+            for kf in type_keys:
+                result.append({
+                    "meta": {"symbol": ["MSFT"], "type": [kf]},
+                    "timestamp": [ts1, ts2],
+                    kf: [
+                        {"asOfDate": "2024-06-30", "reportedValue": {"raw": 1.0}},
+                        {"asOfDate": "2025-06-30", "reportedValue": {"raw": 2.0}},
+                    ],
+                })
+            return {"timeseries": {"result": result}}
+
+        single_url_attempts = {"n": 0}
+
+        def fake_cache_get(url=None, **kwargs):
+            type_part = url.split("&type=")[1].split("&")[0]
+            n_types = len(type_part.split(","))
+            if n_types > 60:
+                single_url_attempts["n"] += 1
+                raise curl_cffi.requests.exceptions.Timeout(
+                    "Operation timed out after 30001 milliseconds with 0 bytes received", 28, None
+                )
+            resp = MagicMock()
+            resp.text = _json.dumps(make_payload_for(url))
+            return resp
+
+        ticker = yf.Ticker("MSFT", session=self.session)
+        data = ticker._fundamentals.financials._data
+        data.fundamentals_use_chunked = False
+        with patch.object(data, "cache_get", side_effect=fake_cache_get):
+            ticker.get_balance_sheet()
+            ticker.get_cashflow()
+
+        self.assertEqual(single_url_attempts["n"], 1,
+            "expected only the first fetch to try the long single URL")
+        self.assertTrue(data.fundamentals_use_chunked)
+
+    def test_chunked_fallback_reverts_flag_on_second_failure(self):
+        """If the chunked fallback also fails, URL length isn't the problem
+        — the sticky flag must revert so the next call retries the fast path."""
+        from unittest.mock import patch
+        import curl_cffi.requests.exceptions
+
+        def always_timeout(url=None, **kwargs):
+            raise curl_cffi.requests.exceptions.Timeout(
+                "Operation timed out", 28, None
+            )
+
+        ticker = yf.Ticker("MSFT", session=self.session)
+        data = ticker._fundamentals.financials._data
+        data.fundamentals_use_chunked = False
+        with patch.object(data, "cache_get", side_effect=always_timeout):
+            # hide_exceptions is True by default; the outer call swallows.
+            ticker.get_balance_sheet()
+
+        self.assertFalse(data.fundamentals_use_chunked,
+            "flag must revert when chunked fallback also fails")
+
     def test_balance_sheet(self):
         expected_keys = ["Total Assets", "Net PPE"]
         expected_periods_days = 365

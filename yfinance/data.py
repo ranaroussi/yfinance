@@ -93,6 +93,12 @@ class YfData(metaclass=SingletonMeta):
 
         self._cookie_lock = threading.Lock()
 
+        # Set to True after a single-URL fundamentals-timeseries fetch has
+        # failed (typically a silent drop on WSL2 NAT or restrictive corporate
+        # proxy). Sticky so a loop over tickers doesn't pay one timeout per
+        # ticker; reverted if the chunked fallback also fails.
+        self.fundamentals_use_chunked: bool = False
+
         self._session = None
         self._set_session(session or new_session())
 

@@ -108,25 +108,47 @@ class Financials:
                 raise
             pass
 
+    # Tuned so the resulting URL stays under ~2KB even for the longest "annual"
+    # prefix, which keeps it below the practical limits of typical NAT / proxy
+    # paths (notably WSL2, which silently drops the long single-shot URL).
+    _CHUNK_KEYS = 60
+
     def _get_financials_time_series(self, timescale, keys: list) -> pd.DataFrame:
         timescale_translation = {"yearly": "annual", "quarterly": "quarterly", "trailing": "trailing"}
         timescale = timescale_translation[timescale]
 
-        # Step 2: construct url:
-        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
-        url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
         end = pd.Timestamp.now('UTC').ceil("D")
-        url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
+        period_qs = f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
-        # Step 3: fetch and reshape data
-        json_str = self._data.cache_get(url=url).text
-        json_data = json.loads(json_str)
-        data_raw = json_data["timeseries"]["result"]
-        # data_raw = [v for v in data_raw if len(v) > 1] # Discard keys with no data
+        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._symbol}?symbol={self._symbol}"
+        full_url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys]) + period_qs
+
+        # Fast path: single long URL. Falls back to chunked requests if it
+        # fails (silent drop on WSL2 NAT / restrictive proxies). Sticky so a
+        # loop over tickers doesn't eat one timeout per ticker. If the chunked
+        # fallback also fails, URL length isn't the problem — revert the flag
+        # and re-raise so the next call retries the fast path.
+        if self._data.fundamentals_use_chunked:
+            data_raw = self._fetch_fundamentals_chunked(ts_url_base, timescale, keys, period_qs)
+        else:
+            try:
+                data_raw = self._fetch_fundamentals_payload(full_url)
+            except Exception as e:
+                utils.get_yf_logger().debug(
+                    f"{self._symbol}: single-URL fundamentals fetch failed ({type(e).__name__}); "
+                    f"falling back to chunked requests for this and subsequent fetches"
+                )
+                self._data.fundamentals_use_chunked = True
+                try:
+                    data_raw = self._fetch_fundamentals_chunked(ts_url_base, timescale, keys, period_qs)
+                except Exception:
+                    self._data.fundamentals_use_chunked = False
+                    raise
+
         for d in data_raw:
-            del d["meta"]
+            d.pop("meta", None)
 
         # Now reshape data into a table:
         # Step 1: get columns and index:
@@ -161,3 +183,22 @@ class Financials:
             df = df.iloc[:, [0]]
 
         return df
+
+    def _fetch_fundamentals_chunked(self, ts_url_base: str, timescale: str, keys: list, period_qs: str) -> list:
+        data_raw: list = []
+        for i in range(0, len(keys), self._CHUNK_KEYS):
+            chunk = keys[i:i + self._CHUNK_KEYS]
+            chunk_url = ts_url_base + "&type=" + ",".join([timescale + k for k in chunk]) + period_qs
+            data_raw.extend(self._fetch_fundamentals_payload(chunk_url))
+        return data_raw
+
+    def _fetch_fundamentals_payload(self, url: str) -> list:
+        """Fetch a fundamentals-timeseries URL and return the parsed `result`
+        list. Raises if Yahoo returns an empty / error payload (callers can
+        catch and fall back to chunked requests)."""
+        json_str = self._data.cache_get(url=url).text
+        json_data = json.loads(json_str)
+        result = (json_data.get("timeseries") or {}).get("result")
+        if not result:
+            raise YFException("Empty fundamentals-timeseries result")
+        return result
