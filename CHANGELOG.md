@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Price repair: fix error triggered by NaN volume (34b9f03)
 - Merge pull request #2850 from avesed/fix/preserve-login-cookies ([#2850]()) (09767ce)
 - Merge pull request #2853 from gyx09212214-prog/normalize-config-proxy-string ([#2853]()) (9fe6f93)
 - Fix 404 Developer Guide link in CONTRIBUTING.md (468d95c)
