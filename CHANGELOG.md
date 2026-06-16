@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2859 from ranaroussi/fix/div-repair-nan-volume ([#2859]()) (791097d)
 - Dividend repair: handle 'Adj Close' going to infinity (456eb96)
 - Fix for PR #2843 (a48aa29)
 - Merge pull request #2843 from ranaroussi/fix/div-repair-premarket-false-positive ([#2843]()) (993dfa8)
