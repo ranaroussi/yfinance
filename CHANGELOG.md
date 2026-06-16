@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2860 from ranaroussi/fix/div-repair-adj-infinity ([#2860]()) (e342597)
 - Fix typo in CONTRIBUTING.md: "updates" -> "update" (78b1bc2)
 - Normalize configured proxy strings (6066128)
 - Another fix for PR #2843 (b8a6ef1)
