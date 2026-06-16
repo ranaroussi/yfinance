@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix 404 Developer Guide link in CONTRIBUTING.md (468d95c)
 - Fix deprecation for PR ##2860 (7721954)
 - Merge pull request #2858 from riteshkew/fix-contributing-updates-typo ([#2858]()) (b027ee9)
 - Merge pull request #2859 from ranaroussi/fix/div-repair-nan-volume ([#2859]()) (791097d)
