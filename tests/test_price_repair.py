@@ -750,6 +750,43 @@ class TestPriceRepair(unittest.TestCase):
                     print(repaired_df[f2][c] - correct_df[f2][c])
                     raise
 
+    def _assert_ohlc_invariants(self, df, rtol=1e-6):
+        max_body = df[["Open", "Close"]].max(axis=1)
+        min_body = df[["Open", "Close"]].min(axis=1)
+        self.assertTrue((df["High"] >= max_body - rtol).all(),
+                        "High < max(Open, Close) found")
+        self.assertTrue((df["Low"] <= min_body + rtol).all(),
+                        "Low > min(Open, Close) found")
+
+    def test_ohlc_invariants_unit(self):
+        dat = yf.Ticker("AAPL", session=self.session)
+        hist = dat._lazy_load_price_history()
+
+        df_bad = _pd.DataFrame({
+            "Open": [100.0, 50.0],
+            "High": [99.0, 55.0],
+            "Low": [101.0, 45.0],
+            "Close": [100.5, 52.0],
+            "Volume": [1000, 2000],
+            "Repaired?": [False, False],
+        }, index=_pd.to_datetime(["2024-01-15", "2024-01-16"]))
+
+        df_fixed = hist._fix_ohlc_invariants(df_bad)
+        self._assert_ohlc_invariants(df_fixed)
+        self.assertGreaterEqual(df_fixed["High"].iloc[0], 100.5)
+        self.assertLessEqual(df_fixed["Low"].iloc[0], 100.0)
+        self.assertTrue(df_fixed["Repaired?"].iloc[0])
+
+    def test_ohlc_invariants_aapl(self):
+        dat = yf.Ticker("AAPL", session=self.session)
+        df = dat.history("max", repair=True)
+        self._assert_ohlc_invariants(df)
+
+    def test_ohlc_invariants_korean_stock(self):
+        dat = yf.Ticker("000020.KS", session=self.session)
+        df = dat.history("max", repair=True)
+        ratio = (df["Low"] / df[["Open", "Close"]].min(axis=1)).max()
+        self.assertLessEqual(ratio, 1.001)
 
 
 if __name__ == '__main__':

@@ -511,6 +511,9 @@ class PriceHistory:
             self._last_error = err_msg
             logger.error('%s: %s' % (self.ticker, err_msg))
 
+        if repair:
+            df = self._fix_ohlc_invariants(df)
+
         if rounding:
             df = np.round(df, data["chart"]["result"][0]["meta"]["priceHint"])
         df['Volume'] = df['Volume'].fillna(0).astype(np.int64)
@@ -1575,6 +1578,56 @@ class PriceHistory:
             df['Adj'] = df['Adj'].round(4)
         else:
             df = df.drop('Adj', axis=1)
+
+        return df
+
+    @utils.log_indent_decorator
+    def _fix_ohlc_invariants(self, df, warn_threshold=0.001):
+        # Ensure High >= max(Open, Close) and Low <= min(Open, Close).
+        # Floating-point noise from auto_adjust can violate this by ~1e-17;
+        # real Yahoo errors can be much larger (see issue #2857).
+
+        if df.empty:
+            return df
+
+        logger = utils.get_yf_logger()
+        log_extras = {'yf_cat': 'ohlc-invariant-repair', 'yf_symbol': self.ticker}
+
+        required = ['Open', 'High', 'Low', 'Close']
+        if not all(c in df.columns for c in required):
+            return df
+
+        df = df.copy()
+        max_body = df[['Open', 'Close']].max(axis=1)
+        min_body = df[['Open', 'Close']].min(axis=1)
+
+        invalid_high = df['High'] < max_body
+        invalid_low = df['Low'] > min_body
+
+        if not (invalid_high.any() or invalid_low.any()):
+            return df
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            high_err = ((max_body - df['High']) / max_body).where(invalid_high, 0)
+            low_err = ((df['Low'] - min_body) / min_body).where(invalid_low, 0)
+        max_err = pd.concat([high_err, low_err], axis=1).max(axis=1)
+
+        n_violations = (invalid_high | invalid_low).sum()
+        logger.debug(f'{self.ticker}: fixing {n_violations} OHLC invariant violation(s)', extra=log_extras)
+
+        df['High'] = df[['High', 'Open', 'Close']].max(axis=1)
+        df['Low'] = df[['Low', 'Open', 'Close']].min(axis=1)
+
+        big_errors = max_err > warn_threshold
+        if big_errors.any():
+            for dt in df.index[big_errors]:
+                logger.warning(
+                    f"{self.ticker}: OHLC invariant violation at {dt}: "
+                    f"error {max_err[dt]:.4%}. Clipped High/Low.",
+                    extra=log_extras)
+            if 'Repaired?' not in df.columns:
+                df['Repaired?'] = False
+            df.loc[big_errors, 'Repaired?'] = True
 
         return df
 
