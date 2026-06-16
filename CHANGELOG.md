@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Another fix for PR #2843 (b8a6ef1)
 - Merge pull request #2852 from HaozheZhang6/fix-developer-guide-404-link ([#2852]()) (6b85c9c)
 - Price repair: fix error triggered by NaN volume (34b9f03)
 - Merge pull request #2850 from avesed/fix/preserve-login-cookies ([#2850]()) (09767ce)
