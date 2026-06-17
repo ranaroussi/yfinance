@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Complementary info: guard against empty or malformed timeseries (e28ac20)
 - Fall back to chunked requests when single-URL fundamentals fetch fails (9a68cb5)
 - Merge pull request #2811 from dokson/fix/fundamentals-chunked-fallback ([#2811]()) (5f46455)
 - Merge pull request #2860 from ranaroussi/fix/div-repair-adj-infinity ([#2860]()) (e342597)
