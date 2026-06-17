@@ -754,10 +754,10 @@ class Quote:
                 raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
             for k in keys:
                 keydict = json_result["result"][0]
-                if k in keydict:
-                    self._info[k] = keydict[k][-1]["reportedValue"]["raw"]
+                if k in keydict and keydict[k]:
+                    self._info[k] = keydict[k][-1].get("reportedValue", {}).get("raw")
                 else:
-                    self.info[k] = None
+                    self._info[k] = None
 
     def _fetch_calendar(self):
         # secFilings return too old data, so not requesting it for now
