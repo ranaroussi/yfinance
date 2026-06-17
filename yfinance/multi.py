@@ -33,6 +33,7 @@ import numpy as _np
 from ._http import new_session
 
 from . import Ticker, utils
+from ._backend import df_to_backend
 from .data import YfData
 from .config import YfConfig
 from .const import period_default
@@ -221,7 +222,7 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
     if not multi_level_index and len(tickers) == 1:
         data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
 
-    return data
+    return df_to_backend(data, index_as_column='Date')
 
 def reindex_dfs(dfs, ignore_tz):
     if ignore_tz:

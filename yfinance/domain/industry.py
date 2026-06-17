@@ -4,10 +4,12 @@ import pandas as _pd
 from typing import Dict, Optional
 
 from .. import utils
+from .._backend import DataFrameLike, df_to_backend
 from ..config import YfConfig
 from ..data import YfData
 
 from .domain import Domain, _QUERY_URL_
+
 
 class Industry(Domain):
     """
@@ -25,7 +27,7 @@ class Industry(Domain):
         """
         YfData(session=session)
         super(Industry, self).__init__(key, session, region)
-        self._query_url = f'{_QUERY_URL_}/industries/{self._key}'
+        self._query_url = f"{_QUERY_URL_}/industries/{self._key}"
 
         self._sector_key = None
         self._sector_name = None
@@ -35,63 +37,69 @@ class Industry(Domain):
     def __repr__(self):
         """
         Returns a string representation of the Industry instance.
-        
+
         Returns:
             str: String representation of the Industry instance.
         """
-        return f'yfinance.Industry object <{self._key}>'
-    
+        return f"yfinance.Industry object <{self._key}>"
+
     @property
     def sector_key(self) -> str:
         """
         Returns the sector key of the industry.
-        
+
         Returns:
             str: The sector key.
         """
         self._ensure_fetched(self._sector_key)
         return self._sector_key
-    
+
     @property
     def sector_name(self) -> str:
         """
         Returns the sector name of the industry.
-        
+
         Returns:
             str: The sector name.
         """
         self._ensure_fetched(self._sector_name)
         return self._sector_name
-    
+
     @property
-    def top_performing_companies(self) -> Optional[_pd.DataFrame]:
+    def top_performing_companies(self) -> Optional[DataFrameLike]:
         """
         Returns the top performing companies in the industry.
-        
+
         Returns:
             Optional[pd.DataFrame]: DataFrame containing top performing companies.
         """
         self._ensure_fetched(self._top_performing_companies)
-        return self._top_performing_companies
-    
+        if self._top_performing_companies is None:
+            return None
+        return df_to_backend(self._top_performing_companies, index_as_column="symbol")
+
     @property
-    def top_growth_companies(self) -> Optional[_pd.DataFrame]:
+    def top_growth_companies(self) -> Optional[DataFrameLike]:
         """
         Returns the top growth companies in the industry.
-        
+
         Returns:
             Optional[pd.DataFrame]: DataFrame containing top growth companies.
         """
         self._ensure_fetched(self._top_growth_companies)
-        return self._top_growth_companies
-    
-    def _parse_top_performing_companies(self, top_performing_companies: Dict) -> Optional[_pd.DataFrame]:
+        if self._top_growth_companies is None:
+            return None
+        return df_to_backend(self._top_growth_companies, index_as_column="symbol")
+
+    def _parse_top_performing_companies(
+        self, top_performing_companies: Dict
+    ) -> Optional[_pd.DataFrame]:
         """
         Parses the top performing companies data.
-        
+
         Args:
             top_performing_companies (Dict): Dictionary containing top performing companies data.
-        
+
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top performing companies data.
         """
@@ -101,19 +109,19 @@ class Industry(Domain):
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('lastPrice',{}).get('raw', None),
                              c.get('targetPrice',{}).get('raw', None),) for c in top_performing_companies]
-        
-        if not companies_values: 
+
+        if not companies_values:
             return None
 
         return _pd.DataFrame(companies_values, columns = companies_column).set_index('symbol')
-    
+
     def _parse_top_growth_companies(self, top_growth_companies: Dict) -> Optional[_pd.DataFrame]:
         """
         Parses the top growth companies data.
-        
+
         Args:
             top_growth_companies (Dict): Dictionary containing top growth companies data.
-        
+
         Returns:
             Optional[pd.DataFrame]: DataFrame containing parsed top growth companies data.
         """
@@ -122,8 +130,8 @@ class Industry(Domain):
                              c.get('name', None),
                              c.get('ytdReturn',{}).get('raw', None),
                              c.get('growthEstimate',{}).get('raw', None),) for c in top_growth_companies]
-        
-        if not companies_values: 
+
+        if not companies_values:
             return None
 
         return _pd.DataFrame(companies_values, columns = companies_column).set_index('symbol')
@@ -133,16 +141,20 @@ class Industry(Domain):
         Fetches and parses the industry data.
         """
         result = None
-        
+
         try:
             result = self._fetch(self._query_url)
-            data = result['data']
+            data = result["data"]
             self._parse_and_assign_common(data)
 
-            self._sector_key = data.get('sectorKey')
-            self._sector_name = data.get('sectorName')
-            self._top_performing_companies = self._parse_top_performing_companies(data.get('topPerformingCompanies'))
-            self._top_growth_companies = self._parse_top_growth_companies(data.get('topGrowthCompanies'))
+            self._sector_key = data.get("sectorKey")
+            self._sector_name = data.get("sectorName")
+            self._top_performing_companies = self._parse_top_performing_companies(
+                data.get("topPerformingCompanies")
+            )
+            self._top_growth_companies = self._parse_top_growth_companies(
+                data.get("topGrowthCompanies")
+            )
 
             return result
         except Exception as e:

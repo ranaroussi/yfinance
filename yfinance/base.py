@@ -31,6 +31,7 @@ from ._http import requests, new_session
 
 
 from . import utils, cache
+from ._backend import DataFrameLike, SeriesLike, df_to_backend, series_to_backend
 from .const import _MIC_TO_YAHOO_SUFFIX, _SENTINEL_
 from .data import YfData
 from .config import YfConfig
@@ -125,7 +126,7 @@ class TickerBase:
         self.ws = None
 
     @utils.log_indent_decorator
-    def history(self, *args, **kwargs) -> pd.DataFrame:
+    def history(self, *args, **kwargs) -> DataFrameLike:
         return self._lazy_load_price_history().history(*args, **kwargs)
 
     # ------------------------
@@ -215,7 +216,7 @@ class TickerBase:
         data = self._quote.recommendations
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data)
 
     def get_recommendations_summary(self, as_dict=False):
         return self.get_recommendations(as_dict=as_dict)
@@ -229,7 +230,7 @@ class TickerBase:
         data = self._quote.upgrades_downgrades
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data, index_as_column='GradeDate')
 
     def get_calendar(self) -> dict:
         return self._quote.calendar
@@ -241,42 +242,42 @@ class TickerBase:
         data = self._holders.major
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data)
 
     def get_institutional_holders(self, as_dict=False):
         data = self._holders.institutional
         if data is not None:
             if as_dict:
                 return data.to_dict()
-            return data
+            return df_to_backend(data)
 
     def get_mutualfund_holders(self, as_dict=False):
         data = self._holders.mutualfund
         if data is not None:
             if as_dict:
                 return data.to_dict()
-            return data
+            return df_to_backend(data)
 
     def get_insider_purchases(self, as_dict=False):
         data = self._holders.insider_purchases
         if data is not None:
             if as_dict:
                 return data.to_dict()
-            return data
+            return df_to_backend(data)
 
     def get_insider_transactions(self, as_dict=False):
         data = self._holders.insider_transactions
         if data is not None:
             if as_dict:
                 return data.to_dict()
-            return data
+            return df_to_backend(data)
 
     def get_insider_roster_holders(self, as_dict=False):
         data = self._holders.insider_roster
         if data is not None:
             if as_dict:
                 return data.to_dict()
-            return data
+            return df_to_backend(data)
 
     def get_info(self) -> dict:
         data = self._quote.info
@@ -288,14 +289,13 @@ class TickerBase:
         return self._fast_info
 
     def get_valuation_measures(self):
-        data = self._quote.valuation_measures
-        return data
+        return df_to_backend(self._quote.valuation_measures)
 
     def get_sustainability(self, as_dict=False):
         data = self._quote.sustainability
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data)
 
     def get_analyst_price_targets(self) -> dict:
         """
@@ -310,7 +310,7 @@ class TickerBase:
         Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth
         """
         data = self._analysis.earnings_estimate
-        return data.to_dict() if as_dict else data
+        return data.to_dict() if as_dict else df_to_backend(data)
 
     def get_revenue_estimate(self, as_dict=False):
         """
@@ -318,7 +318,7 @@ class TickerBase:
         Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth
         """
         data = self._analysis.revenue_estimate
-        return data.to_dict() if as_dict else data
+        return data.to_dict() if as_dict else df_to_backend(data)
 
     def get_earnings_history(self, as_dict=False):
         """
@@ -326,7 +326,7 @@ class TickerBase:
         Columns:    epsEstimate  epsActual  epsDifference  surprisePercent
         """
         data = self._analysis.earnings_history
-        return data.to_dict() if as_dict else data
+        return data.to_dict() if as_dict else df_to_backend(data)
 
     def get_eps_trend(self, as_dict=False):
         """
@@ -335,7 +335,7 @@ class TickerBase:
         """
 
         data = self._analysis.eps_trend
-        return data.to_dict() if as_dict else data
+        return data.to_dict() if as_dict else df_to_backend(data)
 
     def get_eps_revisions(self, as_dict=False):
         """
@@ -344,7 +344,7 @@ class TickerBase:
         """
 
         data = self._analysis.eps_revisions
-        return data.to_dict() if as_dict else data
+        return data.to_dict() if as_dict else df_to_backend(data)
 
     def get_growth_estimates(self, as_dict=False):
         """
@@ -353,7 +353,7 @@ class TickerBase:
         """
 
         data = self._analysis.growth_estimates
-        return data.to_dict() if as_dict else data
+        return data.to_dict() if as_dict else df_to_backend(data)
 
     def get_earnings(self, as_dict=False, freq="yearly"):
         """
@@ -374,7 +374,7 @@ class TickerBase:
             dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
                 'financialCurrency']
             return dict_data
-        return data
+        return df_to_backend(data)
 
     def get_income_stmt(self, as_dict=False, pretty=False, freq="yearly"):
         """
@@ -397,7 +397,7 @@ class TickerBase:
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["EBIT", "EBITDA", "EPS", "NI"])
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data, index_as_column='metric')
 
     def get_incomestmt(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_income_stmt(as_dict, pretty, freq)
@@ -427,12 +427,12 @@ class TickerBase:
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data, index_as_column='metric')
 
     def get_balancesheet(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_balance_sheet(as_dict, pretty, freq)
 
-    def get_cash_flow(self, as_dict=False, pretty=False, freq="yearly") -> Union[pd.DataFrame, dict]:
+    def get_cash_flow(self, as_dict=False, pretty=False, freq="yearly") -> Union[DataFrameLike, dict]:
         """
         :Parameters:
             as_dict: bool
@@ -454,28 +454,29 @@ class TickerBase:
             data.index = utils.camel2title(data.index, sep=' ', acronyms=["PPE"])
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data, index_as_column='metric')
 
     def get_cashflow(self, as_dict=False, pretty=False, freq="yearly"):
         return self.get_cash_flow(as_dict, pretty, freq)
 
-    def get_dividends(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_dividends(period=period)
+    def get_dividends(self, period="max") -> SeriesLike:
+        return series_to_backend(self._lazy_load_price_history().get_dividends(period=period), index_as_column='Date', value_name='Dividends')
 
-    def get_capital_gains(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_capital_gains(period=period)
+    def get_capital_gains(self, period="max") -> SeriesLike:
+        return series_to_backend(self._lazy_load_price_history().get_capital_gains(period=period), index_as_column='Date', value_name='Capital Gains')
 
-    def get_splits(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_splits(period=period)
+    def get_splits(self, period="max") -> SeriesLike:
+        return series_to_backend(self._lazy_load_price_history().get_splits(period=period), index_as_column='Date', value_name='Stock Splits')
 
-    def get_actions(self, period="max") -> pd.Series:
-        return self._lazy_load_price_history().get_actions(period=period)
+    def get_actions(self, period="max") -> SeriesLike:
+        actions = self._lazy_load_price_history().get_actions(period=period)
+        return df_to_backend(actions, index_as_column='Date') if hasattr(actions, 'columns') else series_to_backend(actions, index_as_column='Date')
 
-    def get_shares(self, as_dict=False) -> Union[pd.DataFrame, dict]:
+    def get_shares(self, as_dict=False) -> Union[DataFrameLike, dict]:
         data = self._fundamentals.shares
         if as_dict:
             return data.to_dict()
-        return data
+        return df_to_backend(data)
 
     @utils.log_indent_decorator
     def get_shares_full(self, start=None, end=None):
@@ -533,7 +534,7 @@ class TickerBase:
 
         df.index = df.index.tz_localize(tz)
         df = df.sort_index()
-        return df
+        return series_to_backend(df, index_as_column='Date', value_name='Shares')
 
     def get_isin(self) -> Optional[str]:
         # *** experimental ***
@@ -613,16 +614,16 @@ class TickerBase:
         self._news = [article for article in news if not article.get('ad', [])]
         return self._news
 
-    def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
+    def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[DataFrameLike]:
         if limit > 100:
             raise ValueError("Yahoo caps limit at 100")
 
         if self._earnings_dates and limit in self._earnings_dates:
-            return self._earnings_dates[limit]
+            return df_to_backend(self._earnings_dates[limit], index_as_column='Earnings Date')
 
         df = self._get_earnings_dates_using_scrape(limit, offset)
         self._earnings_dates[limit] = df
-        return df
+        return df_to_backend(df, index_as_column='Earnings Date') if df is not None else df
 
     @utils.log_indent_decorator
     def _get_earnings_dates_using_scrape(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:

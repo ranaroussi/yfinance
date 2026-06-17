@@ -25,6 +25,7 @@ from collections import namedtuple as _namedtuple
 
 import pandas as _pd
 
+from ._backend import DataFrameLike, SeriesLike, df_to_backend
 from .base import TickerBase
 from .const import _BASE_URL_
 from .scrapers.funds import FundsData
@@ -58,7 +59,7 @@ class Ticker(TickerBase):
         return {}
 
     def _options2df(self, opt, tz=None):
-        data = _pd.DataFrame(opt).reindex(columns=[
+        data = DataFrameLike(opt).reindex(columns=[
             'contractSymbol',
             'lastTradeDate',
             'strike',
@@ -78,7 +79,7 @@ class Ticker(TickerBase):
             data['lastTradeDate'], unit='s', utc=True)
         if tz is not None:
             data['lastTradeDate'] = data['lastTradeDate'].dt.tz_convert(tz)
-        return data
+        return df_to_backend(data)
 
     def option_chain(self, date=None, tz=None):
         if date is None:
@@ -111,47 +112,47 @@ class Ticker(TickerBase):
         return self.get_isin()
 
     @property
-    def major_holders(self) -> _pd.DataFrame:
+    def major_holders(self) -> DataFrameLike:
         return self.get_major_holders()
 
     @property
-    def institutional_holders(self) -> _pd.DataFrame:
+    def institutional_holders(self) -> DataFrameLike:
         return self.get_institutional_holders()
 
     @property
-    def mutualfund_holders(self) -> _pd.DataFrame:
+    def mutualfund_holders(self) -> DataFrameLike:
         return self.get_mutualfund_holders()
 
     @property
-    def insider_purchases(self) -> _pd.DataFrame:
+    def insider_purchases(self) -> DataFrameLike:
         return self.get_insider_purchases()
 
     @property
-    def insider_transactions(self) -> _pd.DataFrame:
+    def insider_transactions(self) -> DataFrameLike:
         return self.get_insider_transactions()
 
     @property
-    def insider_roster_holders(self) -> _pd.DataFrame:
+    def insider_roster_holders(self) -> DataFrameLike:
         return self.get_insider_roster_holders()
 
     @property
-    def dividends(self) -> _pd.Series:
+    def dividends(self) -> SeriesLike:
         return self.get_dividends()
 
     @property
-    def capital_gains(self) -> _pd.Series:
+    def capital_gains(self) -> SeriesLike:
         return self.get_capital_gains()
 
     @property
-    def splits(self) -> _pd.Series:
+    def splits(self) -> SeriesLike:
         return self.get_splits()
 
     @property
-    def actions(self) -> _pd.DataFrame:
+    def actions(self) -> DataFrameLike:
         return self.get_actions()
 
     @property
-    def shares(self) -> _pd.DataFrame:
+    def shares(self) -> DataFrameLike:
         return self.get_shares()
 
     @property
@@ -163,7 +164,7 @@ class Ticker(TickerBase):
         return self.get_fast_info()
 
     @property
-    def valuation(self) -> _pd.DataFrame:
+    def valuation(self) -> DataFrameLike:
         return self.get_valuation_measures()
 
     @property
@@ -190,87 +191,87 @@ class Ticker(TickerBase):
         return self.get_upgrades_downgrades()
 
     @property
-    def earnings(self) -> _pd.DataFrame:
+    def earnings(self) -> DataFrameLike:
         return self.get_earnings()
 
     @property
-    def quarterly_earnings(self) -> _pd.DataFrame:
+    def quarterly_earnings(self) -> DataFrameLike:
         return self.get_earnings(freq='quarterly')
 
     @property
-    def income_stmt(self) -> _pd.DataFrame:
+    def income_stmt(self) -> DataFrameLike:
         return self.get_income_stmt(pretty=True)
 
     @property
-    def quarterly_income_stmt(self) -> _pd.DataFrame:
+    def quarterly_income_stmt(self) -> DataFrameLike:
         return self.get_income_stmt(pretty=True, freq='quarterly')
 
     @property
-    def ttm_income_stmt(self) -> _pd.DataFrame:
+    def ttm_income_stmt(self) -> DataFrameLike:
         return self.get_income_stmt(pretty=True, freq='trailing')
 
     @property
-    def incomestmt(self) -> _pd.DataFrame:
+    def incomestmt(self) -> DataFrameLike:
         return self.income_stmt
 
     @property
-    def quarterly_incomestmt(self) -> _pd.DataFrame:
+    def quarterly_incomestmt(self) -> DataFrameLike:
         return self.quarterly_income_stmt
 
     @property
-    def ttm_incomestmt(self) -> _pd.DataFrame:
+    def ttm_incomestmt(self) -> DataFrameLike:
         return self.ttm_income_stmt
 
     @property
-    def financials(self) -> _pd.DataFrame:
+    def financials(self) -> DataFrameLike:
         return self.income_stmt
 
     @property
-    def quarterly_financials(self) -> _pd.DataFrame:
+    def quarterly_financials(self) -> DataFrameLike:
         return self.quarterly_income_stmt
 
     @property
-    def ttm_financials(self) -> _pd.DataFrame:
+    def ttm_financials(self) -> DataFrameLike:
         return self.ttm_income_stmt
 
     @property
-    def balance_sheet(self) -> _pd.DataFrame:
+    def balance_sheet(self) -> DataFrameLike:
         return self.get_balance_sheet(pretty=True)
 
     @property
-    def quarterly_balance_sheet(self) -> _pd.DataFrame:
+    def quarterly_balance_sheet(self) -> DataFrameLike:
         return self.get_balance_sheet(pretty=True, freq='quarterly')
 
     @property
-    def balancesheet(self) -> _pd.DataFrame:
+    def balancesheet(self) -> DataFrameLike:
         return self.balance_sheet
 
     @property
-    def quarterly_balancesheet(self) -> _pd.DataFrame:
+    def quarterly_balancesheet(self) -> DataFrameLike:
         return self.quarterly_balance_sheet
 
     @property
-    def cash_flow(self) -> _pd.DataFrame:
+    def cash_flow(self) -> DataFrameLike:
         return self.get_cash_flow(pretty=True, freq="yearly")
 
     @property
-    def quarterly_cash_flow(self) -> _pd.DataFrame:
+    def quarterly_cash_flow(self) -> DataFrameLike:
         return self.get_cash_flow(pretty=True, freq='quarterly')
 
     @property
-    def ttm_cash_flow(self) -> _pd.DataFrame:
+    def ttm_cash_flow(self) -> DataFrameLike:
         return self.get_cash_flow(pretty=True, freq='trailing')
 
     @property
-    def cashflow(self) -> _pd.DataFrame:
+    def cashflow(self) -> DataFrameLike:
         return self.cash_flow
 
     @property
-    def quarterly_cashflow(self) -> _pd.DataFrame:
+    def quarterly_cashflow(self) -> DataFrameLike:
         return self.quarterly_cash_flow
 
     @property
-    def ttm_cashflow(self) -> _pd.DataFrame:
+    def ttm_cashflow(self) -> DataFrameLike:
         return self.ttm_cash_flow
 
     @property
@@ -278,31 +279,31 @@ class Ticker(TickerBase):
         return self.get_analyst_price_targets()
 
     @property
-    def earnings_estimate(self) -> _pd.DataFrame:
+    def earnings_estimate(self) -> DataFrameLike:
         return self.get_earnings_estimate()
 
     @property
-    def revenue_estimate(self) -> _pd.DataFrame:
+    def revenue_estimate(self) -> DataFrameLike:
         return self.get_revenue_estimate()
 
     @property
-    def earnings_history(self) -> _pd.DataFrame:
+    def earnings_history(self) -> DataFrameLike:
         return self.get_earnings_history()
 
     @property
-    def eps_trend(self) -> _pd.DataFrame:
+    def eps_trend(self) -> DataFrameLike:
         return self.get_eps_trend()
 
     @property
-    def eps_revisions(self) -> _pd.DataFrame:
+    def eps_revisions(self) -> DataFrameLike:
         return self.get_eps_revisions()
 
     @property
-    def growth_estimates(self) -> _pd.DataFrame:
+    def growth_estimates(self) -> DataFrameLike:
         return self.get_growth_estimates()
 
     @property
-    def sustainability(self) -> _pd.DataFrame:
+    def sustainability(self) -> DataFrameLike:
         return self.get_sustainability()
 
     @property
@@ -316,7 +317,7 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def earnings_dates(self) -> _pd.DataFrame:
+    def earnings_dates(self) -> DataFrameLike:
         return self.get_earnings_dates()
 
     @property

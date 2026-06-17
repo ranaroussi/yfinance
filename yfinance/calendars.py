@@ -7,6 +7,7 @@ from requests import Session, Response, exceptions
 import pandas as pd
 from datetime import datetime, date, timedelta
 
+from ._backend import DataFrameLike, df_to_backend
 from .const import _QUERY1_URL_
 from .utils import log_indent_decorator, get_yf_logger, _parse_user_dt
 from .screener import screen
@@ -219,7 +220,7 @@ class Calendars:
 
     def _get_data(
         self, calendar_type: str, query: CalendarQuery, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> DataFrameLike:
         if calendar_type not in PREDEFINED_CALENDARS:
             raise YFException(f"Unknown calendar type: {calendar_type}")
 
@@ -256,7 +257,11 @@ class Calendars:
             raise YFException(json_data.get("finance", {}).get("error", {}))
 
         self.calendars[calendar_type] = self._create_df(json_data)
-        return self._cleanup_df(calendar_type)
+        return self._to_backend(calendar_type)
+
+    def _to_backend(self, calendar_type: str):
+        df = self._cleanup_df(calendar_type)
+        return df_to_backend(df, index_as_column=PREDEFINED_CALENDARS[calendar_type]["df_index"])
 
     def _create_df(self, json_data: dict) -> pd.DataFrame:
         columns = []
@@ -365,7 +370,7 @@ class Calendars:
         limit=12,
         offset=0,
         force=False,
-    ) -> pd.DataFrame:
+    ) -> DataFrameLike:
         """
         Retrieve earnings calendar from YF as a DataFrame.
         Will re-query every time it is called, overwriting previous data.
@@ -429,7 +434,7 @@ class Calendars:
     @log_indent_decorator
     def get_ipo_info_calendar(
         self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> DataFrameLike:
         """
         Retrieve IPOs calendar from YF as a Dataframe.
 
@@ -471,7 +476,7 @@ class Calendars:
     @log_indent_decorator
     def get_economic_events_calendar(
         self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> DataFrameLike:
         """
         Retrieve Economic Events calendar from YF as a DataFrame.
 
@@ -495,7 +500,7 @@ class Calendars:
     @log_indent_decorator
     def get_splits_calendar(
         self, start=None, end=None, limit=12, offset=0, force=False
-    ) -> pd.DataFrame:
+    ) -> DataFrameLike:
         """
         Retrieve Splits calendar from YF as a DataFrame.
 
@@ -519,29 +524,29 @@ class Calendars:
     ### Easy / Default getter functions:
 
     @property
-    def earnings_calendar(self) -> pd.DataFrame:
+    def earnings_calendar(self) -> DataFrameLike:
         """Earnings calendar with default settings."""
         if "sp_earnings" in self.calendars:
-            return self.calendars["sp_earnings"]
+            return self._to_backend("sp_earnings")
         return self.get_earnings_calendar()
 
     @property
-    def ipo_info_calendar(self) -> pd.DataFrame:
+    def ipo_info_calendar(self) -> DataFrameLike:
         """IPOs calendar with default settings."""
         if "ipo_info" in self.calendars:
-            return self.calendars["ipo_info"]
+            return self._to_backend("ipo_info")
         return self.get_ipo_info_calendar()
 
     @property
-    def economic_events_calendar(self) -> pd.DataFrame:
+    def economic_events_calendar(self) -> DataFrameLike:
         """Economic events calendar with default settings."""
         if "economic_event" in self.calendars:
-            return self.calendars["economic_event"]
+            return self._to_backend("economic_event")
         return self.get_economic_events_calendar()
 
     @property
-    def splits_calendar(self) -> pd.DataFrame:
+    def splits_calendar(self) -> DataFrameLike:
         """Splits calendar with default settings."""
         if "splits" in self.calendars:
-            return self.calendars["splits"]
+            return self._to_backend("splits")
         return self.get_splits_calendar()

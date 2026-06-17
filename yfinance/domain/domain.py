@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import pandas as _pd
 from typing import Dict, List, Optional
 
+from .._backend import DataFrameLike, df_to_backend
 from ..const import _QUERY1_URL_
 from ..data import YfData
 from ..ticker import Ticker
@@ -91,7 +92,7 @@ class Domain(ABC):
         return self._overview
 
     @property
-    def top_companies(self) -> Optional[_pd.DataFrame]:
+    def top_companies(self) -> Optional[DataFrameLike]:
         """
         Retrieves the top companies within the domain entity.
 
@@ -99,7 +100,9 @@ class Domain(ABC):
             pandas.DataFrame: A DataFrame containing the top companies in the domain.
         """
         self._ensure_fetched(self._top_companies)
-        return self._top_companies 
+        if self._top_companies is None:
+            return None
+        return df_to_backend(self._top_companies, index_as_column='symbol')
 
     @property
     def research_reports(self) -> List[Dict[str, str]]:

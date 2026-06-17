@@ -20,9 +20,12 @@
 #
 
 import json as _json
+from typing import Any
+
 import pandas as pd
 
 from . import utils
+from ._backend import df_to_backend
 from .config import YfConfig
 from .const import _QUERY1_URL_
 from .data import YfData
@@ -94,20 +97,20 @@ class Lookup:
         return data
 
     @staticmethod
-    def _parse_response(response: dict) -> pd.DataFrame:
+    def _parse_response(response: dict) -> Any:
         finance = response.get("finance", {})
         result = finance.get("result", [])
         result = result[0] if len(result) > 0 else {}
         documents = result.get("documents", [])
         df = pd.DataFrame(documents)
         if "symbol" not in df.columns:
-            return pd.DataFrame()
-        return df.set_index("symbol")
+            return df_to_backend(pd.DataFrame())
+        return df_to_backend(df.set_index("symbol"), index_as_column="symbol")
 
-    def _get_data(self, lookup_type: str, count: int = 25) -> pd.DataFrame:
+    def _get_data(self, lookup_type: str, count: int = 25) -> Any:
         return self._parse_response(self._fetch_lookup(lookup_type, count))
 
-    def get_all(self, count=25) -> pd.DataFrame:
+    def get_all(self, count=25) -> Any:
         """
         Returns all available financial instruments.
 
@@ -116,7 +119,7 @@ class Lookup:
         """
         return self._get_data("all", count)
 
-    def get_stock(self, count=25) -> pd.DataFrame:
+    def get_stock(self, count=25) -> Any:
         """
         Returns stock related financial instruments.
 
@@ -125,7 +128,7 @@ class Lookup:
         """
         return self._get_data("equity", count)
 
-    def get_mutualfund(self, count=25) -> pd.DataFrame:
+    def get_mutualfund(self, count=25) -> Any:
         """
         Returns mutual funds related financial instruments.
 
@@ -134,7 +137,7 @@ class Lookup:
         """
         return self._get_data("mutualfund", count)
 
-    def get_etf(self, count=25) -> pd.DataFrame:
+    def get_etf(self, count=25) -> Any:
         """
         Returns ETFs related financial instruments.
 
@@ -143,7 +146,7 @@ class Lookup:
         """
         return self._get_data("etf", count)
 
-    def get_index(self, count=25) -> pd.DataFrame:
+    def get_index(self, count=25) -> Any:
         """
         Returns Indices related financial instruments.
 
@@ -152,7 +155,7 @@ class Lookup:
         """
         return self._get_data("index", count)
 
-    def get_future(self, count=25) -> pd.DataFrame:
+    def get_future(self, count=25) -> Any:
         """
         Returns Futures related financial instruments.
 
@@ -161,7 +164,7 @@ class Lookup:
         """
         return self._get_data("future", count)
 
-    def get_currency(self, count=25) -> pd.DataFrame:
+    def get_currency(self, count=25) -> Any:
         """
         Returns Currencies related financial instruments.
 
@@ -170,7 +173,7 @@ class Lookup:
         """
         return self._get_data("currency", count)
 
-    def get_cryptocurrency(self, count=25) -> pd.DataFrame:
+    def get_cryptocurrency(self, count=25) -> Any:
         """
         Returns Cryptocurrencies related financial instruments.
 
@@ -180,41 +183,41 @@ class Lookup:
         return self._get_data("cryptocurrency", count)
 
     @property
-    def all(self) -> pd.DataFrame:
+    def all(self) -> Any:
         """Returns all available financial instruments."""
         return self._get_data("all")
 
     @property
-    def stock(self) -> pd.DataFrame:
+    def stock(self) -> Any:
         """Returns stock related financial instruments."""
         return self._get_data("equity")
 
     @property
-    def mutualfund(self) -> pd.DataFrame:
+    def mutualfund(self) -> Any:
         """Returns mutual funds related financial instruments."""
         return self._get_data("mutualfund")
 
     @property
-    def etf(self) -> pd.DataFrame:
+    def etf(self) -> Any:
         """Returns ETFs related financial instruments."""
         return self._get_data("etf")
 
     @property
-    def index(self) -> pd.DataFrame:
+    def index(self) -> Any:
         """Returns Indices related financial instruments."""
         return self._get_data("index")
 
     @property
-    def future(self) -> pd.DataFrame:
+    def future(self) -> Any:
         """Returns Futures related financial instruments."""
         return self._get_data("future")
 
     @property
-    def currency(self) -> pd.DataFrame:
+    def currency(self) -> Any:
         """Returns Currencies related financial instruments."""
         return self._get_data("currency")
 
     @property
-    def cryptocurrency(self) -> pd.DataFrame:
+    def cryptocurrency(self) -> Any:
         """Returns Cryptocurrencies related financial instruments."""
         return self._get_data("cryptocurrency")

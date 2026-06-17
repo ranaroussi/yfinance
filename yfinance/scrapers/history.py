@@ -10,6 +10,7 @@ import time as _time
 import warnings
 
 from yfinance import utils
+from yfinance._backend import DataFrameLike, df_to_backend
 from yfinance.config import YfConfig
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default, _SENTINEL_
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
@@ -39,7 +40,7 @@ class PriceHistory:
                 start=None, end=None, prepost=False, actions=True,
                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
                 rounding=False, timeout=10,
-                raise_errors=False) -> pd.DataFrame:
+                raise_errors=False) -> DataFrameLike:
         """
         :Parameters:
             period : str
@@ -112,7 +113,7 @@ class PriceHistory:
                         raise _exception
                     else:
                         logger.error(err_msg)
-                    return utils.empty_df()
+                    return df_to_backend(utils.empty_df(), index_as_column='Date')
                 if period == 'ytd':
                     start = _datetime.date(pd.Timestamp.now('UTC').tz_convert(tz).year, 1, 1)
                 else:
@@ -137,7 +138,7 @@ class PriceHistory:
                     raise _exception
                 else:
                     logger.error(err_msg)
-                return utils.empty_df()
+                return df_to_backend(utils.empty_df(), index_as_column='Date')
 
         if start:
             start_dt = utils._parse_user_dt(start, tz)
@@ -296,7 +297,7 @@ class PriceHistory:
                 logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
-            return utils.empty_df()
+            return df_to_backend(utils.empty_df(), index_as_column='Date')
 
         # Select useful info from metadata
         quote_type = self._history_metadata["instrumentType"]
@@ -545,7 +546,7 @@ class PriceHistory:
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
-        return df
+        return df_to_backend(df, index_as_column='Date')
 
     def _get_history_cache(self, period="max", interval="1d", repair=False) -> pd.DataFrame:
         cache_key = (interval, period, repair)

@@ -68,6 +68,7 @@ setup(
     extras_require={
         'nospam': ['requests_cache>=1.0', 'requests_ratelimiter>=0.3.1'],
         'repair': ['scipy>=1.6.3'],
+        'polars': ['polars>=1.0'],
     },
     # Include protobuf files for websocket support
     package_data={
