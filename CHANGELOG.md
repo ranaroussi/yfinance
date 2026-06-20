@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Change valuation measures from HTML scraping to the Yahoo API; add freq and periods flags (03e9238)
 - Merge pull request #2863 from joaopedroassad/fix/complementary-empty-timeseries-guard ([#2863]()) (d2738a1)
 - Complementary info: guard against empty or malformed timeseries (e28ac20)
 - Fall back to chunked requests when single-URL fundamentals fetch fails (9a68cb5)
