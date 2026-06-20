@@ -15,7 +15,7 @@ import pandas as pd
 
 import unittest
 
-from yfinance.utils import is_valid_period_format, _dts_in_same_interval, _parse_user_dt
+from yfinance.utils import is_valid_period_format, _dts_in_same_interval, _parse_user_dt, parse_actions
 
 
 class TestPandas(unittest.TestCase):
@@ -59,6 +59,26 @@ class TestUtils(unittest.TestCase):
         self.assertFalse(is_valid_period_format(None))    # None input
         self.assertFalse(is_valid_period_format("0d"))    # Zero is invalid
         self.assertTrue(is_valid_period_format("999mo"))  # Large number valid
+
+
+class TestParseActions(unittest.TestCase):
+    def test_capital_gains_with_currency_field(self):
+        # Yahoo returns capital-gains events with the same shape as dividends,
+        # i.e. {date, amount, currency} (funds/ETFs). The currency column has to
+        # be handled the same way dividends already are; otherwise the positional
+        # `capital_gains.columns = ["Capital Gains"]` assignment raises
+        # "Length mismatch" on the extra column and crashes Ticker.history().
+        data = {
+            "events": {
+                "capitalGains": {
+                    "1577854800": {"date": 1577854800, "amount": 1.5, "currency": ""},
+                    "1609477200": {"date": 1609477200, "amount": 2.0, "currency": ""},
+                }
+            }
+        }
+        _dividends, _splits, capital_gains = parse_actions(data)
+        self.assertEqual(list(capital_gains.columns), ["Capital Gains"])
+        self.assertEqual(capital_gains["Capital Gains"].tolist(), [1.5, 2.0])
 
 
 class TestDateIntervalCheck(unittest.TestCase):

@@ -584,7 +584,10 @@ def parse_actions(data):
             capital_gains.set_index("date", inplace=True)
             capital_gains.index = _pd.to_datetime(capital_gains.index, unit="s")
             capital_gains.sort_index(inplace=True)
-            capital_gains.columns = ["Capital Gains"]
+            if 'currency' in capital_gains.columns and (capital_gains['currency'] == '').all():
+                # Currency column useless, drop it.
+                capital_gains = capital_gains.drop('currency', axis=1)
+            capital_gains = capital_gains.rename(columns={'amount': 'Capital Gains'})
 
         if "splits" in data["events"] and len(data["events"]['splits']) > 0:
             splits = _pd.DataFrame(
