@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2867 from he-yufeng/fix/screener-eps-fields-missing-comma ([#2867]()) (baeb6e0)
 - Fix missing comma splitting two equity screener EPS fields (98e8057)
 - Merge pull request #2851 from avesed/fix/valuation-measures-api ([#2851]()) (1ab7a43)
 - Change valuation measures from HTML scraping to the Yahoo API; add freq and periods flags (03e9238)
