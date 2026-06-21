@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
+from yfinance.const import EQUITY_SCREENER_FIELDS
 from yfinance.screener.screener import screen
 from yfinance.screener.query import EquityQuery
 
@@ -33,6 +34,20 @@ class TestScreener(unittest.TestCase):
 
         response = screen(self.predefined)
         self.assertEqual(response, {'key': 'value'})
+
+    def test_no_screener_field_is_two_fields_concatenated(self):
+        # A missing comma between two adjacent string literals silently
+        # concatenates them into one invalid field (this is how netepsbasic and
+        # netepsdiluted got merged). Guard the whole class instead of that one
+        # instance: every screener field is `metric` or `metric.period`, so a
+        # field carrying more than one '.' is two fields stuck together.
+        for category, fields in EQUITY_SCREENER_FIELDS.items():
+            for field in fields:
+                self.assertLessEqual(
+                    field.count('.'), 1,
+                    f"{category} field {field!r} has multiple '.' segments — "
+                    f"likely two fields concatenated by a missing comma",
+                )
 
 if __name__ == '__main__':
     unittest.main()
