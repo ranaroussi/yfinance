@@ -681,18 +681,21 @@ class Quote:
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         result = self._fetch(modules=modules)
         additional_info = self._fetch_additional_info()
-        if additional_info is not None and result is not None:
+
+        if result is None:
+            result = {}
+
+        if additional_info is not None:
             result.update(additional_info)
-        else:
-            result = additional_info
 
         query1_info = {}
         for quote in ["quoteSummary", "quoteResponse"]:
-            if quote in result and len(result[quote]["result"]) > 0:
-                result[quote]["result"][0]["symbol"] = self._symbol
+            quote_result = result.get(quote, {}).get("result", [])
+
+            if len(quote_result) > 0:
+                quote_result[0]["symbol"] = self._symbol
                 query_info = next(
-                    (info for info in result.get(quote, {}).get("result", [])
-                    if info["symbol"] == self._symbol),
+                    (info for info in quote_result if info.get("symbol") == self._symbol),
                     None,
                 )
                 if query_info:
