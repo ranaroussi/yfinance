@@ -84,6 +84,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Default is False
         auto_adjust: bool
             Adjust all OHLC automatically? Default is True
+        back_adjust: bool
+            Back-adjust data to mimic true historical prices? Default is False
         repair: bool
             Detect currency unit 100x mixups and attempt repair
             Default is False
@@ -94,6 +96,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Download dividend + stock splits data. Default is False
         threads: bool / int
             How many threads to use for mass downloading. Default is True
+        progress: bool
+            Show progress bar during download? Default is True
         ignore_tz: bool
             When combining from different timezones, ignore that part of datetime.
             Default depends on interval. Intraday = False. Day+ = True.
