@@ -44,6 +44,7 @@ class FundsData:
         self._bond_ratings = None
         self._sector_weightings = None
 
+    @property
     def quote_type(self) -> str:
         """
         Returns the quote type of the fund.

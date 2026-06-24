@@ -1402,6 +1402,16 @@ class TestTickerFundsData(unittest.TestCase):
             ticker = yf.Ticker("AAPL", session=self.session) # stock, not funds
             ticker.funds_data._fetch_and_parse()
 
+    def test_quote_type_is_property(self):
+        # quote_type was the only FundsData accessor missing @property, so
+        # `funds_data.quote_type` returned the bound method instead of the
+        # parsed string. Pre-set the cache to keep this offline/deterministic.
+        from yfinance.scrapers.funds import FundsData
+        funds = FundsData(MagicMock(), "TEST")
+        funds._quote_type = "ETF"
+        self.assertIsInstance(funds.quote_type, str)
+        self.assertEqual(funds.quote_type, "ETF")
+
     def test_description(self):
         for ticker in self.test_tickers:
             description = ticker.funds_data.description
