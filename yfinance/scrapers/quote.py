@@ -619,10 +619,19 @@ class Quote:
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         result = self._fetch(modules=modules)
         additional_info = self._fetch_additional_info()
-        if additional_info is not None and result is not None:
-            result.update(additional_info)
-        else:
+        if result is None:
             result = additional_info
+        elif additional_info is not None:
+            result.update(additional_info)
+        # else: `result` is valid and there's no additional info to merge — keep it.
+
+        if result is None:
+            # Both Yahoo endpoints returned no data (e.g. an empty or blocked
+            # payload via a proxy/session). Leave info unset rather than raising
+            # "argument of type 'NoneType' is not ..." on the membership test
+            # below; callers already handle a missing `_info` (see the `info`
+            # property and `_fetch_complementary`).
+            return
 
         query1_info = {}
         for quote in ["quoteSummary", "quoteResponse"]:
