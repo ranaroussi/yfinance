@@ -200,7 +200,7 @@ class FundsData:
             logger.error(f"Failed to get fund data for '{self._symbol}' reason: {e}")
             logger.debug("Got response: ")
             logger.debug("-------------")
-            logger.debug(f" {data}")
+            logger.debug(f" {result}")
             logger.debug("-------------")
 
     @staticmethod
