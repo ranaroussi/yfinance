@@ -1248,6 +1248,46 @@ class TestTickerInfo(unittest.TestCase):
             q._fetch_complementary()
         self.assertEqual(q._info["trailingPegRatio"], 1.23)
 
+    def test_complementary_info_empty_result_timeseries(self):
+        # Companion to test_complementary_info_sparse_timeseries, one level up
+        # the same access chain. Yahoo can return the timeseries envelope with
+        # an empty/missing/null 'result' (or omit 'timeseries'/'finance'
+        # entirely). The previous code read json_result["error"] and
+        # json_result["result"][0] without guarding, raising
+        # TypeError/KeyError/IndexError and breaking .info for the whole
+        # ticker. It should degrade to None instead.
+        from yfinance.scrapers.quote import Quote
+
+        degrade_to_none = [
+            # 'result' is an empty list -> would raise IndexError
+            '{"timeseries": {"error": null, "result": []}}',
+            # 'result' key missing -> would raise KeyError
+            '{"timeseries": {"error": null}}',
+            # 'result' is null -> would raise TypeError
+            '{"timeseries": {"error": null, "result": null}}',
+            # neither 'timeseries' nor 'finance' present -> json_result is None
+            '{}',
+        ]
+        for payload in degrade_to_none:
+            data = MagicMock()
+            data.cache_get.return_value.text = payload
+            q = Quote(data, "TEST")
+            q._info = {}
+            with patch.object(Quote, "_fetch_info", return_value=None):
+                q._fetch_complementary()
+            self.assertIsNone(q._info["trailingPegRatio"],
+                              f"Expected None for payload: {payload}")
+
+        # Happy path still extracts the raw value
+        payload = '{"timeseries": {"error": null, "result": [{"trailingPegRatio": [{"reportedValue": {"raw": 1.23}}]}]}}'
+        data = MagicMock()
+        data.cache_get.return_value.text = payload
+        q = Quote(data, "TEST")
+        q._info = {}
+        with patch.object(Quote, "_fetch_info", return_value=None):
+            q._fetch_complementary()
+        self.assertEqual(q._info["trailingPegRatio"], 1.23)
+
     def test_isin_info(self):
         isin_list = {"ES0137650018": True,
                      "does_not_exist": True,  # Nonexistent but doesn't raise an error
