@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2877 from joaopedroassad/guard-fetch-complementary-empty-result ([#2877]()) (07abc74)
 - Complementary info: guard against empty or missing timeseries result (e0dea0c)
 - Fix _fetch_info handling of None responses (974fac8)
 - Merge pull request #2869 from parthdongre/fix-fetch-info-none ([#2869]()) (eea80d7)
