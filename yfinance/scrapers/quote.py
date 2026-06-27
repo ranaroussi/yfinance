@@ -872,11 +872,12 @@ class Quote:
 
             json_str = self._data.cache_get(url=url).text
             json_data = json.loads(json_str)
-            json_result = json_data.get("timeseries") or json_data.get("finance")
-            if json_result["error"] is not None:
-                raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result["error"]))
+            json_result = json_data.get("timeseries") or json_data.get("finance") or {}
+            if json_result.get("error") is not None:
+                raise YFException("Failed to parse json response from Yahoo Finance: " + str(json_result.get("error")))
+            result = json_result.get("result") or []
+            keydict = result[0] if result else {}
             for k in keys:
-                keydict = json_result["result"][0]
                 if k in keydict and keydict[k]:
                     self._info[k] = keydict[k][-1].get("reportedValue", {}).get("raw")
                 else:
