@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Complementary info: guard against empty or missing timeseries result (e0dea0c)
 - Fix _fetch_info handling of None responses (974fac8)
 - Merge pull request #2869 from parthdongre/fix-fetch-info-none ([#2869]()) (eea80d7)
 - Merge pull request #2867 from he-yufeng/fix/screener-eps-fields-missing-comma ([#2867]()) (baeb6e0)
