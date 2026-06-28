@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Merge pull request #2836 from ranaroussi/dev ([#2836]()) (15ba022)
 - Version 1.5.0 (b375cd8)
 - Add missing changes for #2860 (818ab63)
 - Fix PD not parsing Adj Close to float (df54d12)
