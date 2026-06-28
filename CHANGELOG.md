@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Version 1.4.1 (125b12e)
 - Merge pull request #2836 from ranaroussi/dev ([#2836]()) (15ba022)
 - Version 1.5.0 (b375cd8)
 - Add missing changes for #2860 (818ab63)
