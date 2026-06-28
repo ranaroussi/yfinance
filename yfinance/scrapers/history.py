@@ -244,7 +244,8 @@ class PriceHistory:
         except Exception:
             meta = {}
 
-        self._history_metadata = meta
+        if meta or self._history_metadata is None:
+            self._history_metadata = meta
         self._history_metadata['YF repair?'] = repair
 
         intraday = params["interval"][-1] in ("m", 'h')
@@ -572,7 +573,11 @@ class PriceHistory:
                 else:
                     # default
                     repair = False
-            self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
+            try:
+                self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
+            except YFPricesMissingError:
+                # tradingPeriods is optional enrichment; return whatever metadata we already have
+                pass
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
