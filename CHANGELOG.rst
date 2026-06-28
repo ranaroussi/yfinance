@@ -24,7 +24,7 @@ Patches - price repair
 
 1.4.1
 -----
-Patches
+Fix
 - Preserve Date/Datetime index name in yf.download() output #2832
 
 1.4.0
