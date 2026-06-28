@@ -149,7 +149,13 @@ class YfData(metaclass=SingletonMeta):
             self._session_is_caching = True
             # requests_cache wraps the stdlib Session; it doesn't work with
             # curl_cffi and tends to miss anyway because the Yahoo crumb rotates.
-            raise YFDataException("Caching sessions (e.g. requests_cache) are not supported. Solution: stop setting session, let yfinance handle.")
+            raise YFDataException(
+                "Caching sessions such as requests_cache.CachedSession are not supported. "
+                "They wrap a requests.Session, which is incompatible with yfinance's curl_cffi "
+                "session and can miss when Yahoo rotates cookies or crumbs. "
+                "Do not set a caching session; let yfinance manage the session and use "
+                "set_tz_cache_location() to configure the built-in persistent cache."
+            )
 
         if not is_supported_session(session):
             raise YFDataException(f"Unsupported session type {type(session)}; expected curl_cffi or requests Session. Solution: stop setting session, let yfinance handle.")
