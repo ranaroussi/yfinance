@@ -467,7 +467,13 @@ No eixo ambiental e de testes, o CodeCarbon registrou queda de ~54% nas emissõe
 
 ## 6. Percepções sobre a Prática
 
-[PREENCHER PELO ALUNO: Escreva aqui como foi a experiência de usar uma LLM para refatorar o código, quais foram as facilidades e as dificuldades encontradas].
+O uso de uma LLM como assistente na refatoração do **yfinance** mostrou-se útil quando combinado com métricas objetivas e testes automatizados. A ferramenta acelerou tarefas repetitivas — identificar smells no Pylint, sugerir *Extract Method*, agrupar atributos em dicionários internos e aplicar *guard clauses* — e manteve coerência ao longo de dezenas de arquivos. Em módulos menores (`screener.py`, `search.py`, `base.py`), o ciclo *refatorar → validar com Pylint focalizado → rodar Pytest* funcionou de forma fluida, o que reduziu o tempo em relação a uma refatoração manual arquivo por arquivo.
+
+Entre as facilidades, destacam-se: (1) a capacidade de decompor funções monolíticas preservando assinaturas públicas; (2) a padronização de soluções recorrentes — por exemplo, substituir múltiplos `self._cache_* = None` por um único `self._cache` — aplicada de forma uniforme em scrapers como `Analysis`, `Fundamentals` e `Quote`; (3) a geração de documentação e relatórios a partir dos artefatos já coletados (`metrics-before-*` e `metrics-after-*`), facilitando a comparação antes/depois exigida pelo trabalho.
+
+As dificuldades, porém, reforçam que a LLM não substitui revisão humana nem validação contínua. Em `history.py`, a refatoração automatizada exigiu várias iterações e correções pontuais (métodos truncados, `continue` vs `return`, helpers sem `@staticmethod`). Substituições em massa no código — como trocar `self._` por `self._cache.` — quebraram referências legítimas (`self._data`, `self._symbol`) e nomes de métodos em `quote.py`. Tentativas iniciais com *dataclass* para agrupar atributos também dispararam R0902, levando à adoção de dicionários simples. Houve ainda regressão temporária em `FastInfo`, que acessava `self._tkr._quote` removido na refatoração de `TickerBase`, corrigida com uma *property* de compatibilidade.
+
+Outro aprendizado foi metodológico: refatorar **um arquivo por vez**, com Pylint restrito aos smells-alvo e Pytest do módulo correspondente, evitou acumular erros difíceis de rastrear. A queda marginal do score global do Pylint (7,86 → 7,44), apesar de zerar os smells exigidos, mostra que a LLM tende a resolver o problema imediato, mas não necessariamente melhora convenções de estilo (`line-too-long`, docstrings ausentes em helpers novos). Por fim, a experiência confirma que LLMs são ferramentas produtivas em manutenção evolutiva de software open-source, desde que o engenheiro mantenha o controle da estratégia, valide cada etapa com ferramentas de QA e trate o código gerado como rascunho técnico sujeito a revisão — não como entrega final automática.
 
 ## 7. Links
 
