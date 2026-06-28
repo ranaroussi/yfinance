@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix PD not parsing Adj Close to float (df54d12)
 - Merge pull request #2877 from joaopedroassad/guard-fetch-complementary-empty-result ([#2877]()) (07abc74)
 - Complementary info: guard against empty or missing timeseries result (e0dea0c)
 - Fix _fetch_info handling of None responses (974fac8)
