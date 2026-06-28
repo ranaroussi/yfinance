@@ -10,26 +10,31 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        python-version: "3.12"
-        cache: 'pip'
+        persist-credentials: false
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      with:
+        version: "latest"
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt pytest
+      run: uv pip install -e ".[dev]"
 
-    - name: Run non-cache tests
-      run: pytest tests/ --ignore tests/test_cache.py --ignore tests/test_price_repair.py
-
-    - name: Run cache tests
-      run: |
-        pytest tests/test_cache.py::TestCache
-        pytest tests/test_cache.py::TestCacheNoPermission
+    - name: Run tests
+      run: uv run pytest tests/ -v --tb=short --ignore=tests/test_price_repair.py

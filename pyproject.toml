@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yfinance"
+version = "1.4.1"
+description = "Download Market Data from Yahoo! Finance’s API"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache" }
+authors = [
+    { name = "Ran Aroussi", email = "ran@aroussi.com" }
+]
+keywords = ["pandas", "yahoo finance", "pandas datareader"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "beautifulsoup4>=4.11.1",
+    "curl-cffi>=0.15",
+    "lxml>=4.9.0",
+    "multitasking>=0.0.7",
+    "numpy>=1.16.5",
+    "pandas>=1.3.0",
+    "peewee>=3.16.2",
+    "platformdirs>=2.0.0",
+    "protobuf>=3.19.0",
+    "pytz>=2022.5",
+    "requests>=2.31",
+    "requests-cache>=1.0",
+    "requests-ratelimiter>=0.3.1",
+    "scipy>=1.6.3",
+    "websockets>=13.0",
+]
+
+[project.urls]
+Homepage = "https://ranaroussi.github.io/yfinance/"
+Repository = "https://github.com/ranaroussi/yfinance"
+
+[project.optional-dependencies]
+dev = [
+    "jinja2==3.1.4",
+    "pydata-sphinx-theme==0.15.4",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.16",
+    "sphinx==8.0.2",
+    "sphinx-copybutton==0.5.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE.txt"]
+
+[tool.setuptools.packages.find]
+exclude = ["contrib", "docs", "tests", "examples"]
+ 
+[tool.setuptools.package-data]
+yfinance = ["pricing.proto", "pricing_pb2.py", "data/*"]
+
+[tool.ruff]
+exclude = ["yfinance/pricing_pb2.py"]
+
+[tool.ruff.lint]
+ignore = ["E702"]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+reportGeneralTypeIssues = "warning"
+reportArgumentType = "warning"
+reportOptionalMemberAccess = "warning"
+reportOperatorIssue = "warning"
+reportAttributeAccessIssue = "warning"
+reportMissingImports = "warning"
+reportReturnType = "warning"
+reportAssignmentType = "warning"
+reportOptionalSubscript = "warning"
+reportOptionalIterable = "warning"
+reportCallIssue = "warning"
+reportUnhashable = "warning"
