@@ -280,6 +280,9 @@ class TickerBase:
 
     def get_info(self) -> dict:
         data = self._quote.info
+        data['bookValuePerShare'] = data['bookValue']
+        bal_sheet = self.get_balance_sheet()
+        data['bookValue'] = bal_sheet.loc['TangibleBookValue'][0]
         return data
 
     def get_fast_info(self):
