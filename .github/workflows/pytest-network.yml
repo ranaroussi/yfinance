@@ -1,22 +1,24 @@
-name: Pytest
+name: Pytest (live)
 
 on:
-  pull_request:
-    branches:
-      - master
-      - main
-      - dev
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  network:
+    # Live tests against Yahoo. Flaky by nature, so scheduled-only (off PRs).
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
       with:
         python-version: "3.12"
         cache: 'pip'
@@ -27,7 +29,7 @@ jobs:
         pip install -r requirements.txt pytest
 
     - name: Run non-cache tests
-      run: pytest tests/ --ignore tests/test_cache.py --ignore tests/test_price_repair.py
+      run: pytest -m network --ignore tests/test_cache.py --ignore tests/test_price_repair.py
 
     - name: Run cache tests
       run: |
