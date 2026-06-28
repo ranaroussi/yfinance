@@ -731,7 +731,7 @@ EQUITY_SCREENER_FIELDS = {
         "ebitdamargin.lasttwelvemonths",
         "ebit.lasttwelvemonths",
         "basicepscontinuingoperations.lasttwelvemonths",
-        "netepsbasic.lasttwelvemonths"
+        "netepsbasic.lasttwelvemonths",
         "netepsdiluted.lasttwelvemonths"},
     "balance_sheet":{
         "totalassets.lasttwelvemonths",

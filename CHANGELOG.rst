@@ -1,6 +1,27 @@
 Change Log
 ===========
 
+1.5.0
+-----
+Minor
+- Fall back to chunked requests when single-URL fundamentals fetch times out #2811
+- Replace valuation-measures HTML scrape with timeseries API #2851
+Patches
+- Determine login and subscription tier via the subscriptions API #2845
+- Preserve user login cookies across cookie-strategy switches #2850
+- Normalize configured proxy strings #2853
+- Fix 404 Developer Guide link in CONTRIBUTING.md #2852
+- Fix typo in CONTRIBUTING.md: "updates" -> "update" #2858
+- Complementary info: guard against empty or malformed timeseries #2863
+- Fix missing comma splitting two equity screener EPS fields #2867
+- Fix _fetch_info handling of None responses #2869
+- Complementary info: guard against empty or missing timeseries result #2877
+Patches - price repair
+- Fix price-repair unit-switch sometimes applying twice #2842
+- Handle premarket silly games creating false-positive bad-dividend #2843
+- Price repair: fix error triggered by NaN volume #2859
+- Dividend repair: handle 'Adj Close' going to infinity #2860
+
 1.4.1
 -----
 Fix

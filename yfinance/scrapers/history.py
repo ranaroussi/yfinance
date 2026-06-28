@@ -471,7 +471,12 @@ class PriceHistory:
             df, currency = self._standardise_currency(df, currency)
             self._history_metadata['currency'] = currency
 
-            df = self._fix_bad_div_adjust(df, interval, currency)
+            f_na = df['Volume'].isna()
+            if f_na.any():
+                # Because converting to Int, need to handle NaNs
+                df.loc[f_na, 'Volume'] = 0
+
+            df = self._fix_bad_div_adjust(df, interval, prepost, currency)
 
             # Need the latest/last row to be repaired before 100x/split repair:
             if not df.empty:
@@ -635,6 +640,8 @@ class PriceHistory:
             else:
                 align_month = _datetime.datetime.now().strftime('%b').upper()
             resample_period = f"QS-{align_month}"
+        elif target_interval == '1d':
+            resample_period = '1D'
         else:
             raise ValueError(f"Not implemented resampling to interval '{target_interval}'")
         
@@ -1088,6 +1095,7 @@ class PriceHistory:
             for c in _PRICE_COLNAMES_:
                 df[c] *= m
         self._history_metadata["currency"] = currency2
+        self._history_metadata["currencyRepaired"] = True
 
         f_div = df['Dividends']!=0.0
         if f_div.any():
@@ -1323,7 +1331,7 @@ class PriceHistory:
             n = 1000
         else:
             n = 100
-        return self._fix_prices_sudden_change(df, interval, tz_exchange, n, correct_dividend=True)
+        return self._fix_prices_sudden_change(df, interval, tz_exchange, n, unit_switch=True, correct_dividend=True)
 
     @utils.log_indent_decorator
     def _fix_zeroes(self, df, interval, tz_exchange, prepost):
@@ -1571,7 +1579,7 @@ class PriceHistory:
         return df
 
     @utils.log_indent_decorator
-    def _fix_bad_div_adjust(self, df, interval, currency):
+    def _fix_bad_div_adjust(self, df, interval, prepost, currency):
         # Look for dividend issues:
         # - dividend ~100x the Close change (a currency unit mixup)
         # - dividend missing from Adj Close
@@ -1584,6 +1592,7 @@ class PriceHistory:
             return df
         if interval in ['1wk', '1mo', '3mo', '1y']:
             return df
+        intraday = interval[-1] in ['h', 'm']
 
         if 'Capital Gains' in df.columns and (df['Capital Gains']>0).any():
             # So there are capital gains. This function only considers dividends. 
@@ -1623,6 +1632,27 @@ class PriceHistory:
             logger.debug('No dividends to check', extra=log_extras)
             return df
         div_indices = np.where(f_div)[0]
+
+        f_inf = df2['Adj Close'].isin([np.inf, -np.inf])
+        if f_inf.any():
+            # In extreme rare case (SSNLF), Yahoo adj close
+            # is so bad that it overflows floating-point type into Infinity.
+            # So reduce those massive values.
+            f_ninf = ~f_inf
+            adjClose = df2['Adj Close'].to_numpy()
+            close = df2['Close'].to_numpy()
+            close10x = close*10
+            f_huge = f_ninf & (adjClose > close10x)
+            while f_huge.any():
+                adjClose[f_huge] = adjClose[f_huge]*0.001
+                f_huge = f_ninf & (adjClose > close10x)
+            df2['Adj Close'] = adjClose
+        df2['Adj Close'] = df2['Adj Close'].replace([np.inf, -np.inf], np.nan)
+        df2['Adj'] = df2['Adj Close'] / df2['Close']
+        df2['Adj'] = df2['Adj'].bfill()
+        f_adjClose_na = df2['Adj Close'].isna() & (~df2['Close'].isna())
+        df2.loc[f_adjClose_na, 'Adj Close'] = df2['Adj'][f_adjClose_na] * df2['Close'][f_adjClose_na]
+        df2 = df2.drop('Adj', axis=1)
 
         # Very rarely, the Close (not Adj Close) is already adjusted!
         # Clue is it's often lower than Low. 
@@ -1670,27 +1700,36 @@ class PriceHistory:
             # div_too_big_improvement_threshold = 1
             div_too_big_improvement_threshold = 2
 
+            if intraday:
+                # Useful to also have day move (Close -> Close)
+                df2_day = df2.loc[str(dt.date())].copy()
+                df2_day = self._resample(df2_day, interval, '1d')
             if isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*100, rel_tol = 0.025):
                 # Price has jumped ~100x on ex-div day, need to fix immediately.
-                drop_c2l = df2['Close'].iloc[div_idx-1]*100 - df2['Low'].iloc[div_idx]
+                drop = df2['Close'].iloc[div_idx-1]*100 - df2['Low'].iloc[div_idx]
                 div_pct = div / (df2['Close'].iloc[div_idx-1]*100)
                 true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
                 present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
                 if not isclose(present_adj, true_adjust, rel_tol = 0.025):
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
+                if intraday:
+                    day_move = df2['Close'].iloc[div_idx-1]*100 - df2_day['Close'].iloc[0]
             elif isclose(df2['Low'].iloc[div_idx], df2['Close'].iloc[div_idx-1]*0.01, rel_tol = 0.025):
                 # Price has dropped ~100x on ex-div day, need to fix immediately.
-                drop_c2l = df2['Close'].iloc[div_idx-1]*0.01 - df2['Low'].iloc[div_idx]
+                drop = df2['Close'].iloc[div_idx-1]*0.01 - df2['Low'].iloc[div_idx]
                 div_pct = div / (df2['Close'].iloc[div_idx-1]*0.01)
                 true_adjust = 1.0 - div / (df2['Close'].iloc[div_idx-1]*100)
                 present_adj = df2['Adj Close'].iloc[div_idx-1] / df2['Close'].iloc[div_idx-1]
                 if not isclose(present_adj, true_adjust, rel_tol = 0.025):
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Adj Close'] = true_adjust * df2['Close'].loc[:dt-_datetime.timedelta(seconds=1)]
                     df2.loc[:dt-_datetime.timedelta(seconds=1), 'Repaired?'] = True
+                if intraday:
+                    day_move = df2['Close'].iloc[div_idx-1]*0.01 - df2_day['Close'].iloc[0]
             else:
-                drop_c2l = df2['Close'].iloc[div_idx-1] - df2['Low'].iloc[div_idx]
-            drop = drop_c2l
+                drop = df2['Close'].iloc[div_idx-1] - df2['Low'].iloc[div_idx]
+                if intraday:
+                    day_move = df2['Close'].iloc[div_idx-1] - df2_day['Close'].iloc[0]
             if div_idx < len(df2)-1:
                 # # In low-volume scenarios, the price drop is day after not today.
                 # if df2['Close'].iloc[div_idx-1] == df2['Close'].iloc[div_idx] or \
@@ -1776,6 +1815,12 @@ class PriceHistory:
                     # drop_wo_vol = drop_2Dmax - typical_volatility
                     # Update: only use same-day change for too-small, to reduce false-positives
                     drop_wo_vol = drop - typical_volatility
+                    if drop_wo_vol > 0 and intraday and prepost:
+                        # First, check if pre/post silly games
+                        if day_move < 0.2*drop_wo_vol:
+                            # Price recovered by end of trading session, 
+                            # so class this as false positive
+                            drop_wo_vol = 0
                     if drop_wo_vol > 0:
                         diff = abs(div-drop_wo_vol)
                         diff_fx = abs((div*currency_divide)-drop_wo_vol)
@@ -2233,7 +2278,7 @@ class PriceHistory:
 
                 if c == 'div_too_small':
                     true_threshold = 1.0
-                    fals_threshold = 0.1
+                    fals_threshold = 0.15
                     if 'adj_exceeds_div' not in cluster.columns:
                         # Adjustment confirms dividends => more likely that 'div_too_small' are false positives: NOT too small
                         true_threshold = 6/11
@@ -2656,7 +2701,7 @@ class PriceHistory:
         return df
 
     @utils.log_indent_decorator
-    def _fix_prices_sudden_change(self, df, interval, tz_exchange, change, correct_volume=False, correct_dividend=False):
+    def _fix_prices_sudden_change(self, df, interval, tz_exchange, change, unit_switch=False, correct_volume=False, correct_dividend=False):
         if df.empty:
             return df
 
@@ -2668,7 +2713,7 @@ class PriceHistory:
         interday = interval in ['1d', '1wk', '1mo', '3mo']
         multiday = interval in ['1wk', '1mo', '3mo']
 
-        if change in [100.0, 0.01]:
+        if unit_switch:
             fix_type = '100x error'
             log_extras['yf_cat'] = 'price-repair-100x'
             start_min = None
@@ -2834,8 +2879,7 @@ class PriceHistory:
         threshold = (split_max + 1.0 + largest_change_pct) * 0.5
         logger.debug(f"threshold={threshold:.3f}, threshold_rcp={1.0/threshold:.3f}", extra=log_extras)
 
-        if 'Repaired?' not in df2.columns:
-            df2['Repaired?'] = False
+        sudden_change_repaired = np.full(len(df2), False)
 
         if correct_columns_individually:
             _1d_change_x = np.full((n, 4), 1.0)
@@ -3124,6 +3168,8 @@ class PriceHistory:
 
             return ranges
 
+        any_m_lt_1 = False
+
         if idx_latest_active is not None:
             idx_rev_latest_active = df.shape[0] - 1 - idx_latest_active
             logger.debug(f'idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}', extra=log_extras)
@@ -3211,6 +3257,7 @@ class PriceHistory:
                         else:
                             m = split_rcp
                             m_rcp = split
+                        any_m_lt_1 = any_m_lt_1 or m < 0.99
                         if interday:
                             msg = f"Corrected {fix_type} on col={c} range=[{df2.index[r[1]-1].date()}:{df2.index[r[0]].date()}] m={m:.4f}"
                         else:
@@ -3245,7 +3292,7 @@ class PriceHistory:
                 if f_open_xor_closed_fixed.any():
                     df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype('int')
 
-            df2.loc[f_corrected, 'Repaired?'] = True
+            sudden_change_repaired[f_corrected] = True
 
         else:
             n_corrected = 0
@@ -3293,6 +3340,7 @@ class PriceHistory:
                 else:
                     m = split_rcp
                     m_rcp = split
+                any_m_lt_1 = any_m_lt_1 or m < 0.99
                 logger.debug(f"range={r} m={m}", extra=log_extras)
                 for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
@@ -3301,7 +3349,7 @@ class PriceHistory:
                 if correct_volume:
                     col_loc = df2.columns.get_loc("Volume")
                     df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).round().astype('int')
-                df2.iloc[r[0]:r[1], df2.columns.get_loc('Repaired?')] = True
+                sudden_change_repaired[r[0]:r[1]] = True
                 if r[0] == r[1] - 1:
                     if interday:
                         msg = f"Corrected {fix_type} on interval {df2.index[r[0]].date()}"
@@ -3325,6 +3373,27 @@ class PriceHistory:
             else:
                 msg = f"Corrected: {n_corrected}x"
             logger.info(msg, extra=log_extras)
+
+        if unit_switch and any_m_lt_1:
+            # m < 1 means thats the switch was repaired in favour of the major currency
+            # e.g. USD beat cents
+            # But check if _standardise_currency() already did that.
+            if 'currencyRepaired' in self._history_metadata and self._history_metadata['currencyRepaired']:
+                # Yes it did, which means this repair did it again.
+                # Revert the second.
+                m = change
+                m_rcp = 1.0/change
+                for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
+                    df2[c] *= m
+                if correct_dividend:
+                    df2['Dividends'] *= m
+                if correct_volume:
+                    df2['Volume'] = (df2['Volume'] * m_rcp).round().astype('int')
+                sudden_change_repaired = ~sudden_change_repaired
+
+        if 'Repaired?' not in df2.columns:
+            df2['Repaired?'] = False
+        df2['Repaired?'] = df2['Repaired?'].to_numpy() | sudden_change_repaired
 
         if correct_volume:
             f_na = df2['Volume'].isna()

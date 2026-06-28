@@ -35,6 +35,7 @@ import warnings
 
 import numpy as _np
 import pandas as _pd
+from pandas.api.types import is_float_dtype
 import pytz as _tz
 from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
@@ -554,10 +555,12 @@ def parse_quotes(data):
                             "Close": closes,
                             "Adj Close": adjclose,
                             "Volume": volumes})
-
     quotes.index = _pd.to_datetime(timestamps, unit="s")
     quotes.sort_index(inplace=True)
-
+    for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
+        if not is_float_dtype(quotes[c].dtype):
+            # Only seen when Adj Close contains Infinity.
+            quotes[c] = quotes[c].astype('float')
     return quotes
 
 

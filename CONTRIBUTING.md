@@ -33,7 +33,7 @@ https://ranaroussi.github.io/yfinance/development/code.html
 
 The new docs website is generated automatically from code. https://ranaroussi.github.io/yfinance/index.html
 
-Remember to updates docs when you change code, and check docs locally.
+Remember to update docs when you change code, and check docs locally.
 
 https://ranaroussi.github.io/yfinance/development/documentation.html
 
@@ -57,4 +57,4 @@ Tests have been written using the built-in Python module `unittest`. Examples:
 
 https://ranaroussi.github.io/yfinance/development/testing.html
 
-> See the [Developer Guide](https://ranaroussi.github.io/yfinance/development/contributing.html#GIT-STUFF) for more information.
+> See the [Developer Guide](https://ranaroussi.github.io/yfinance/development/code.html#git-stuff) for more information.

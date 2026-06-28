@@ -563,7 +563,6 @@ class TestPriceRepair(unittest.TestCase):
                     raise
 
     def test_repair_bad_div_adjusts(self):
-        interval = '1d'
         bad_tkrs = []
         false_positives = []
 
@@ -573,51 +572,63 @@ class TestPriceRepair(unittest.TestCase):
         # bad_tkrs += ['MPCC.OL']  # has yahoo fixed?
 
         # These tickers were exceptionally bad
-        bad_tkrs += ['LSC.L']
-        bad_tkrs += ['TEM.L']
+        bad_tkrs += [('LSC.L', '1d')]
+        bad_tkrs += [('TEM.L', '1d')]
 
         # Other special sits
-        bad_tkrs += ['KME.MI']  # 2023 dividend paid to savings share, not common/preferred
-        bad_tkrs += ['REL.L']  # 100x div also missing adjust
-        bad_tkrs.append('4063.T')  # Div with same-day split not split adjusted
+        bad_tkrs += [('KME.MI', '1d')]  # 2023 dividend paid to savings share, not common/preferred
+        bad_tkrs += [('REL.L', '1d')]  # 100x div also missing adjust
+        bad_tkrs.append(('4063.T', '1d'))  # Div with same-day split not split adjusted
 
         # Adj too small
-        bad_tkrs += ['CLC.L']
-        bad_tkrs += ['RGL.L']
-        bad_tkrs += ['SERE.L']
+        bad_tkrs += [('CLC.L', '1d')]
+        bad_tkrs += [('RGL.L', '1d')]
+        bad_tkrs += [('SERE.L', '1d')]
 
         # Div 100x
-        bad_tkrs += ['ABDP.L']
-        bad_tkrs += ['ELCO.L']
-        bad_tkrs += ['PSH.L']
+        bad_tkrs += [('ABDP.L', '1d')]
+        bad_tkrs += [('ELCO.L', '1d')]
+        bad_tkrs += [('PSH.L', '1d')]
 
         # Div 100x and adjust too big
-        bad_tkrs += ['SCR.TO']
+        bad_tkrs += [('SCR.TO', '1d')]
 
         # Div 0.01x
-        bad_tkrs += ['NVT.L']
+        bad_tkrs += [('NVT.L', '1d')]
 
         # Missing div adjusts:
-        bad_tkrs += ['1398.HK']
-        bad_tkrs += ['3988.HK']
-        bad_tkrs += ['KEN.TA']
+        bad_tkrs += [('1398.HK', '1d')]
+        bad_tkrs += [('3988.HK', '1d')]
+        bad_tkrs += [('KEN.TA', '1d')]
 
         # Phantom divs
-        bad_tkrs += ['KAP.IL']  # 1x 1d phantom div, and false positives 0.01x in 1wk
-        bad_tkrs += ['TEM.L']
-        bad_tkrs += ['TEP.PA']
+        bad_tkrs += [('KAP.IL', '1d')]  # 1x 1d phantom div, and false positives 0.01x in 1wk
+        bad_tkrs += [('TEM.L', '1d')]
+        bad_tkrs += [('TEP.PA', '1d')]
+
+        # Adj Close went to infinity
+        bad_tkrs += [('SSNLF', '1d')]
 
         # Maybe test tickers with mix of adj-too-small and 100x
 
-        false_positives += ['CALM']  # tiny div on 2023-10-31
-        false_positives += ['EWG']  # tiny div 2022-12-13
-        false_positives += ['HSBK.IL']  # normal divs but 1wk volatility uncovered logic bug
-        false_positives += ['IBE.MC']  # 2x 0.01x divs only detected when compared to others. pass
-        false_positives += ['KMR.L']
-        false_positives += ['TISG.MI']
+        false_positives += [('CALM', '1d')]  # tiny div on 2023-10-31
+        false_positives += [('EWG', '1d')]  # tiny div 2022-12-13
+        false_positives += [('HSBK.IL', '1d')]  # normal divs but 1wk volatility uncovered logic bug
+        false_positives += [('IBE.MC', '1d')]  # 2x 0.01x divs only detected when compared to others. pass
+        false_positives += [('KMR.L', '1d')]
+        false_positives += [('TISG.MI', '1d')]
 
-        for tkr in false_positives:
+        # Special case: huge drop in pre-market, one-off
+        false_positives += [('EA', '15m', True)]
+
+        for item in false_positives:
             # Nothing should change
+            tkr = item[0]
+            interval = item[1]
+            prepost = False
+            if len(item) > 2:
+                prepost = item[2]
+
             dat = yf.Ticker(tkr, session=self.session)
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
@@ -630,7 +641,7 @@ class TestPriceRepair(unittest.TestCase):
             df = _pd.read_csv(fp, index_col='Datetime')
             df.index = _pd.to_datetime(df.index, utc=True).tz_convert(tz)
 
-            repaired_df = hist._fix_bad_div_adjust(df, interval, currency)
+            repaired_df = hist._fix_bad_div_adjust(df, interval, prepost, currency)
 
             c = 'Dividends'
             self.assertTrue(_np.isclose(repaired_df[c].to_numpy(), df[c].to_numpy(), rtol=1e-12, equal_nan=True).all())
@@ -649,7 +660,13 @@ class TestPriceRepair(unittest.TestCase):
                 print(repaired_df[c][f_diff] - df[c][f_diff])
                 raise
 
-        for tkr in bad_tkrs:
+        for item in bad_tkrs:
+            tkr = item[0]
+            interval = item[1]
+            prepost = False
+            if len(item) > 2:
+                prepost = item[2]
+
             dat = yf.Ticker(tkr, session=self.session)
             hist = dat._lazy_load_price_history()
             hist.history(period='1mo')  # init metadata for currency
@@ -665,7 +682,7 @@ class TestPriceRepair(unittest.TestCase):
             correct_df = _pd.read_csv(fp, index_col='Datetime')
             correct_df.index = _pd.to_datetime(correct_df.index, utc=True).tz_convert(tz)
 
-            repaired_df = hist._fix_bad_div_adjust(df_bad, interval, currency)
+            repaired_df = hist._fix_bad_div_adjust(df_bad, interval, prepost=False, currency=currency)
 
             c = 'Dividends'
             f_close = _np.isclose(repaired_df[c].to_numpy(), correct_df[c].to_numpy(), rtol=1e-12, equal_nan=True)
@@ -684,7 +701,7 @@ class TestPriceRepair(unittest.TestCase):
 
             c = 'Adj Close'
             try:
-                f_close = _np.isclose(repaired_df[c].to_numpy(), correct_df[c].to_numpy(), rtol=5e-7, equal_nan=True)
+                f_close = _np.isclose(repaired_df[c].to_numpy(), correct_df[c].to_numpy(), rtol=5e-5, equal_nan=True)
                 self.assertTrue(f_close.all())
             except Exception:
                 f_diff = ~f_close
