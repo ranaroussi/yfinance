@@ -280,6 +280,10 @@ class TickerBase:
 
     def get_info(self) -> dict:
         data = self._quote.info
+        if data['quoteType'] == 'ETF':
+            holders = self.get_institutional_holders()
+            expenseRatio = holders[holders[0] == 'Expense Ratio (net)'][1].values[0]
+            data['annualReportExpenseRatio'] = float(expenseRatio.strip('%'))/100
         return data
 
     def get_fast_info(self):
