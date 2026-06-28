@@ -630,8 +630,11 @@ def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
     idx = quotes.index.copy()
     quotes = quotes.merge(tps_df, how="left")
     quotes.index = idx
-    # "end" = end of regular trading hours (including any auction)
-    f_drop = quotes.index >= quotes["end"]
+    # "end" = end of regular trading hours per Yahoo metadata. For some exchanges
+    # (SAU, SAO, KSC, BUD, NZE, SES, JNB, DFM, ...) Yahoo's `end` undershoots the
+    # real close by omitting the closing auction, but still returns a bar at that
+    # timestamp containing the auction's Close. Use strict > so that bar survives.
+    f_drop = quotes.index > quotes["end"]
     td = _interval_to_timedelta(interval)
     f_drop = f_drop | (quotes.index + td <= quotes["start"])
     if f_drop.any():
