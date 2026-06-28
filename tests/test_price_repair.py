@@ -606,6 +606,9 @@ class TestPriceRepair(unittest.TestCase):
         bad_tkrs += [('TEM.L', '1d')]
         bad_tkrs += [('TEP.PA', '1d')]
 
+        # Adj Close went to infinity
+        bad_tkrs += [('SSNLF', '1d')]
+
         # Maybe test tickers with mix of adj-too-small and 100x
 
         false_positives += [('CALM', '1d')]  # tiny div on 2023-10-31
@@ -617,8 +620,6 @@ class TestPriceRepair(unittest.TestCase):
 
         # Special case: huge drop in pre-market, one-off
         false_positives += [('EA', '15m', True)]
-
-        bad_tkrs += [('SSNLF', '1d')]
 
         for item in false_positives:
             # Nothing should change

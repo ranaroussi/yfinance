@@ -2278,7 +2278,7 @@ class PriceHistory:
 
                 if c == 'div_too_small':
                     true_threshold = 1.0
-                    fals_threshold = 0.1
+                    fals_threshold = 0.15
                     if 'adj_exceeds_div' not in cluster.columns:
                         # Adjustment confirms dividends => more likely that 'div_too_small' are false positives: NOT too small
                         true_threshold = 6/11
