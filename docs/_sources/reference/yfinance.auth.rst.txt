@@ -11,7 +11,8 @@ Authentication
 
 Class
 ------------
-The `Auth` module, allows you to login to Yahoo! Finance.
+The `Auth` module lets you log in to Yahoo! Finance, check the login state and
+read the account's subscription tier.
 
 .. autosummary::
    :toctree: api/
@@ -20,7 +21,7 @@ The `Auth` module, allows you to login to Yahoo! Finance.
 
 Auth Sample Code
 ------------------
-The `Auth` module, allows you to login to Yahoo! Finance.
+Logging in with browser cookies, then checking the login state and subscription tier:
 
 .. literalinclude:: examples/auth.py
    :language: python

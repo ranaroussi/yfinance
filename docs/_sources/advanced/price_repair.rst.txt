@@ -6,6 +6,8 @@ The new argument ``repair=True`` in ``history()`` and ``download()`` will attemp
 
 The returned table will have a new column ``Repaired?`` that specifies if row was repaired.
 
+This can also repair currency mixups, so check ``Ticker.history_metadata['currency']`` after for true currency. Not ``Ticker.info``.
+
 Price repair
 ============
 

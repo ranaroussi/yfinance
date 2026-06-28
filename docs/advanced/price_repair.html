@@ -397,6 +397,7 @@ document.write(`
 <h1>Price Repair<a class="headerlink" href="#price-repair" title="Link to this heading">#</a></h1>
 <p>The new argument <code class="docutils literal notranslate"><span class="pre">repair=True</span></code> in <code class="docutils literal notranslate"><span class="pre">history()</span></code> and <code class="docutils literal notranslate"><span class="pre">download()</span></code> will attempt to fix a variety of price errors caused by Yahoo. Only US market data appears perfect, I guess Yahoo doesn’t care much about rest of world?</p>
 <p>The returned table will have a new column <code class="docutils literal notranslate"><span class="pre">Repaired?</span></code> that specifies if row was repaired.</p>
+<p>This can also repair currency mixups, so check <code class="docutils literal notranslate"><span class="pre">Ticker.history_metadata['currency']</span></code> after for true currency. Not <code class="docutils literal notranslate"><span class="pre">Ticker.info</span></code>.</p>
 <section id="id1">
 <h2>Price repair<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
 <section id="missing-dividend-adjustment">

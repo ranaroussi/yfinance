@@ -533,7 +533,7 @@ document.write(`
 <dd><p>Get the logged-in user’s details.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>A dictionary containing the user’s details if logged in, or None if not logged in.</p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">{'guid':</span> <span class="pre">...}</span></code> if logged in, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if not.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>dict | None</p>
@@ -551,12 +551,15 @@ document.write(`
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">check_login</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span></dt>
 <dd><p>Check whether the user is logged in to Yahoo Finance.</p>
+<p>Note: <code class="docutils literal notranslate"><span class="pre">False</span></code> during a transient error (e.g. Yahoo briefly
+unreachable) means “could not confirm” rather than “logged out” — the
+stored login cookies are kept and remain protected in that case.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">set_login_cookies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cookie_t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cookie_y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span></dt>
-<dd><p>Set the login cookies to indicate that the user is logged in.</p>
+<span class="sig-name descname"><span class="pre">set_login_cookies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cookie_t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cookie_y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span></dt>
+<dd><p>Set the login cookies and verify they are valid.</p>
 <dl class="simple">
 <dt>How to Obtain the Cookies:</dt><dd><ol class="arabic simple">
 <li><p>Open your browser (e.g., Chrome, Firefox).</p></li>
@@ -576,6 +579,35 @@ Press <cite>F12</cite> or <cite>Ctrl + Shift + I</cite> (Windows/Linux) or <cite
 <li><p><strong>cookie_t</strong> (<em>str</em>) – The value for the ‘T’ cookie.</p></li>
 <li><p><strong>cookie_y</strong> (<em>str</em>) – The value for the ‘Y’ cookie.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the cookies are valid (the account is logged in),
+<code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise (also emitted as a warning). The cookies are
+stored regardless. <code class="docutils literal notranslate"><span class="pre">False</span></code> can also mean Yahoo was transiently
+unreachable, so it is not treated as a hard error.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">subscription_tier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
+<dd><p>Return the Yahoo Finance subscription tier of the logged-in account.</p>
+<p>Read directly from the account’s tier id in <code class="docutils literal notranslate"><span class="pre">subscriptionView</span></code> (the
+value the account is billed against) rather than inferring it from the
+granted feature set, which Yahoo reshuffles between tiers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'gold'</span></code>, <code class="docutils literal notranslate"><span class="pre">'silver'</span></code> or <code class="docutils literal notranslate"><span class="pre">'bronze'</span></code> for a named
+subscription (<code class="docutils literal notranslate"><span class="pre">'premium'</span></code> for a subscribed tier with no marketed
+name), <code class="docutils literal notranslate"><span class="pre">'free'</span></code> when logged in without a subscription, or <code class="docutils literal notranslate"><span class="pre">None</span></code>
+when not logged in.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -584,12 +616,15 @@ Press <cite>F12</cite> or <cite>Ctrl + Shift + I</cite> (Windows/Linux) or <cite
 <dt class="sig sig-object py" id="yfinance.Auth.check_login">
 <span class="sig-name descname"><span class="pre">check_login</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#yfinance.Auth.check_login" title="Link to this definition">#</a></dt>
 <dd><p>Check whether the user is logged in to Yahoo Finance.</p>
+<p>Note: <code class="docutils literal notranslate"><span class="pre">False</span></code> during a transient error (e.g. Yahoo briefly
+unreachable) means “could not confirm” rather than “logged out” — the
+stored login cookies are kept and remain protected in that case.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="yfinance.Auth.set_login_cookies">
-<span class="sig-name descname"><span class="pre">set_login_cookies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cookie_t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cookie_y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#yfinance.Auth.set_login_cookies" title="Link to this definition">#</a></dt>
-<dd><p>Set the login cookies to indicate that the user is logged in.</p>
+<span class="sig-name descname"><span class="pre">set_login_cookies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cookie_t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cookie_y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#yfinance.Auth.set_login_cookies" title="Link to this definition">#</a></dt>
+<dd><p>Set the login cookies and verify they are valid.</p>
 <dl class="simple">
 <dt>How to Obtain the Cookies:</dt><dd><ol class="arabic simple">
 <li><p>Open your browser (e.g., Chrome, Firefox).</p></li>
@@ -609,6 +644,35 @@ Press <cite>F12</cite> or <cite>Ctrl + Shift + I</cite> (Windows/Linux) or <cite
 <li><p><strong>cookie_t</strong> (<em>str</em>) – The value for the ‘T’ cookie.</p></li>
 <li><p><strong>cookie_y</strong> (<em>str</em>) – The value for the ‘Y’ cookie.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the cookies are valid (the account is logged in),
+<code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise (also emitted as a warning). The cookies are
+stored regardless. <code class="docutils literal notranslate"><span class="pre">False</span></code> can also mean Yahoo was transiently
+unreachable, so it is not treated as a hard error.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yfinance.Auth.subscription_tier">
+<span class="sig-name descname"><span class="pre">subscription_tier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#yfinance.Auth.subscription_tier" title="Link to this definition">#</a></dt>
+<dd><p>Return the Yahoo Finance subscription tier of the logged-in account.</p>
+<p>Read directly from the account’s tier id in <code class="docutils literal notranslate"><span class="pre">subscriptionView</span></code> (the
+value the account is billed against) rather than inferring it from the
+granted feature set, which Yahoo reshuffles between tiers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'gold'</span></code>, <code class="docutils literal notranslate"><span class="pre">'silver'</span></code> or <code class="docutils literal notranslate"><span class="pre">'bronze'</span></code> for a named
+subscription (<code class="docutils literal notranslate"><span class="pre">'premium'</span></code> for a subscribed tier with no marketed
+name), <code class="docutils literal notranslate"><span class="pre">'free'</span></code> when logged in without a subscription, or <code class="docutils literal notranslate"><span class="pre">None</span></code>
+when not logged in.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -666,6 +730,7 @@ Press <cite>F12</cite> or <cite>Ctrl + Shift + I</cite> (Windows/Linux) or <cite
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Auth"><code class="docutils literal notranslate"><span class="pre">Auth</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Auth.check_login"><code class="docutils literal notranslate"><span class="pre">Auth.check_login()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Auth.set_login_cookies"><code class="docutils literal notranslate"><span class="pre">Auth.set_login_cookies()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#yfinance.Auth.subscription_tier"><code class="docutils literal notranslate"><span class="pre">Auth.subscription_tier()</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -29,5 +29,7 @@ Auth
       :noindex:
    .. automethod:: set_login_cookies
       :noindex:
+   .. automethod:: subscription_tier
+      :noindex:
    
    

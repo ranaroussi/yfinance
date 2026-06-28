@@ -528,7 +528,8 @@ You must manually obtain and set the authentication cookies.</p>
 </div>
 <section id="class">
 <h2>Class<a class="headerlink" href="#class" title="Link to this heading">#</a></h2>
-<p>The <cite>Auth</cite> module, allows you to login to Yahoo! Finance.</p>
+<p>The <cite>Auth</cite> module lets you log in to Yahoo! Finance, check the login state and
+read the account’s subscription tier.</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Auth.html#yfinance.Auth" title="yfinance.Auth"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Auth</span></code></a>([session])</p></td>
@@ -540,25 +541,29 @@ You must manually obtain and set the authentication cookies.</p>
 </section>
 <section id="auth-sample-code">
 <h2>Auth Sample Code<a class="headerlink" href="#auth-sample-code" title="Link to this heading">#</a></h2>
-<p>The <cite>Auth</cite> module, allows you to login to Yahoo! Finance.</p>
+<p>Logging in with browser cookies, then checking the login state and subscription tier:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
 <span class="n">auth</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Auth</span><span class="p">()</span>
 
-<span class="c1"># Set log in cookies from browser</span>
-<span class="n">auth</span><span class="o">.</span><span class="n">set_login_cookies</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;COOKIE_T&quot;</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;COOKIE_Y&quot;</span><span class="p">))</span>
-
-<span class="c1"># Check if the cookies worked</span>
-<span class="k">if</span> <span class="n">auth</span><span class="o">.</span><span class="n">check_login</span><span class="p">():</span>
+<span class="c1"># Set login cookies obtained from your browser. The call stores them, validates</span>
+<span class="c1"># them with a live login check, and returns whether the account is logged in.</span>
+<span class="k">if</span> <span class="n">auth</span><span class="o">.</span><span class="n">set_login_cookies</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;COOKIE_T&quot;</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;COOKIE_Y&quot;</span><span class="p">)):</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Logged in&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Invalid cookie&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Invalid or expired cookies&quot;</span><span class="p">)</span>
 
-<span class="c1"># Every subsequent request sent to Yahoo Finance will now be under the logged-in user.</span>
+<span class="c1"># Every subsequent request sent to Yahoo Finance is now under the logged-in user.</span>
 
-<span class="c1"># Access user information</span>
-<span class="n">auth</span><span class="o">.</span><span class="n">user</span>
+<span class="c1"># Re-check the live login state at any time (re-queried each call, never cached).</span>
+<span class="n">auth</span><span class="o">.</span><span class="n">check_login</span><span class="p">()</span>        <span class="c1"># -&gt; True / False</span>
+
+<span class="c1"># Yahoo Finance subscription tier of the logged-in account.</span>
+<span class="n">auth</span><span class="o">.</span><span class="n">subscription_tier</span><span class="p">()</span>  <span class="c1"># -&gt; &#39;gold&#39; / &#39;silver&#39; / &#39;bronze&#39; / &#39;free&#39; / None</span>
+
+<span class="c1"># Access user information.</span>
+<span class="n">auth</span><span class="o">.</span><span class="n">user</span>                 <span class="c1"># -&gt; {&#39;guid&#39;: ...} or None</span>
 </pre></div>
 </div>
 </section>
