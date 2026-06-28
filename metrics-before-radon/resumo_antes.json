@@ -1,0 +1,232 @@
+{
+  "worst5_files": [
+    {
+      "arquivo": "yfinance/scrapers/history.py",
+      "funcoes": 20,
+      "cc_media": 39.65,
+      "cc_max": 245,
+      "cc_soma": 793,
+      "pior_rank": "F",
+      "pior_funcao": "_fix_bad_div_adjust"
+    },
+    {
+      "arquivo": "yfinance/multi.py",
+      "funcoes": 6,
+      "cc_media": 10.33,
+      "cc_max": 36,
+      "cc_soma": 62,
+      "pior_rank": "E",
+      "pior_funcao": "_download_impl"
+    },
+    {
+      "arquivo": "yfinance/utils.py",
+      "funcoes": 56,
+      "cc_media": 4.66,
+      "cc_max": 28,
+      "cc_soma": 261,
+      "pior_rank": "D",
+      "pior_funcao": "safe_merge_dfs"
+    },
+    {
+      "arquivo": "yfinance/screener/screener.py",
+      "funcoes": 1,
+      "cc_media": 24.0,
+      "cc_max": 24,
+      "cc_soma": 24,
+      "pior_rank": "D",
+      "pior_funcao": "screen"
+    },
+    {
+      "arquivo": "yfinance/scrapers/quote.py",
+      "funcoes": 52,
+      "cc_media": 3.87,
+      "cc_max": 18,
+      "cc_soma": 201,
+      "pior_rank": "C",
+      "pior_funcao": "_fetch_info"
+    }
+  ],
+  "best5_files": [
+    {
+      "arquivo": "yfinance/exceptions.py",
+      "funcoes": 8,
+      "cc_media": 1.12,
+      "cc_max": 2,
+      "cc_soma": 9,
+      "pior_rank": "A",
+      "pior_funcao": "__init__"
+    },
+    {
+      "arquivo": "yfinance/config.py",
+      "funcoes": 10,
+      "cc_media": 1.4,
+      "cc_max": 3,
+      "cc_soma": 14,
+      "pior_rank": "A",
+      "pior_funcao": "__getattr__"
+    },
+    {
+      "arquivo": "yfinance/_http.py",
+      "funcoes": 5,
+      "cc_media": 2.2,
+      "cc_max": 3,
+      "cc_soma": 11,
+      "pior_rank": "A",
+      "pior_funcao": "_warn_once_on_fallback"
+    },
+    {
+      "arquivo": "yfinance/__init__.py",
+      "funcoes": 1,
+      "cc_media": 3.0,
+      "cc_max": 3,
+      "cc_soma": 3,
+      "pior_rank": "A",
+      "pior_funcao": "set_config"
+    },
+    {
+      "arquivo": "yfinance/domain/domain.py",
+      "funcoes": 14,
+      "cc_media": 1.21,
+      "cc_max": 3,
+      "cc_soma": 17,
+      "pior_rank": "A",
+      "pior_funcao": "_parse_top_companies"
+    }
+  ],
+  "worst5_funcs": [
+    {
+      "arquivo": "yfinance/scrapers/history.py",
+      "tipo": "method",
+      "nome": "_fix_bad_div_adjust",
+      "rank_cc": "F",
+      "complexity": 245
+    },
+    {
+      "arquivo": "yfinance/scrapers/history.py",
+      "tipo": "method",
+      "nome": "history",
+      "rank_cc": "F",
+      "complexity": 153
+    },
+    {
+      "arquivo": "yfinance/scrapers/history.py",
+      "tipo": "method",
+      "nome": "_fix_prices_sudden_change",
+      "rank_cc": "F",
+      "complexity": 147
+    },
+    {
+      "arquivo": "yfinance/scrapers/history.py",
+      "tipo": "method",
+      "nome": "_reconstruct_intervals_batch",
+      "rank_cc": "F",
+      "complexity": 96
+    },
+    {
+      "arquivo": "yfinance/multi.py",
+      "tipo": "function",
+      "nome": "_download_impl",
+      "rank_cc": "E",
+      "complexity": 36
+    }
+  ],
+  "best5_funcs": [
+    {
+      "arquivo": "yfinance/base.py",
+      "tipo": "method",
+      "nome": "history",
+      "rank_cc": "A",
+      "complexity": 1
+    },
+    {
+      "arquivo": "yfinance/base.py",
+      "tipo": "method",
+      "nome": "get_recommendations_summary",
+      "rank_cc": "A",
+      "complexity": 1
+    },
+    {
+      "arquivo": "yfinance/base.py",
+      "tipo": "method",
+      "nome": "get_calendar",
+      "rank_cc": "A",
+      "complexity": 1
+    },
+    {
+      "arquivo": "yfinance/base.py",
+      "tipo": "method",
+      "nome": "get_sec_filings",
+      "rank_cc": "A",
+      "complexity": 1
+    },
+    {
+      "arquivo": "yfinance/base.py",
+      "tipo": "method",
+      "nome": "get_info",
+      "rank_cc": "A",
+      "complexity": 1
+    }
+  ],
+  "worst5_mi": [
+    {
+      "arquivo": "yfinance/scrapers/history.py",
+      "mi": 0.0,
+      "rank_mi": "C"
+    },
+    {
+      "arquivo": "yfinance/utils.py",
+      "mi": 3.97,
+      "rank_mi": "C"
+    },
+    {
+      "arquivo": "yfinance/scrapers/quote.py",
+      "mi": 6.8,
+      "rank_mi": "C"
+    },
+    {
+      "arquivo": "yfinance/cache.py",
+      "mi": 20.63,
+      "rank_mi": "A"
+    },
+    {
+      "arquivo": "yfinance/data.py",
+      "mi": 27.09,
+      "rank_mi": "A"
+    }
+  ],
+  "best5_mi": [
+    {
+      "arquivo": "yfinance/shared.py",
+      "mi": 100.0,
+      "rank_mi": "A"
+    },
+    {
+      "arquivo": "yfinance/version.py",
+      "mi": 100.0,
+      "rank_mi": "A"
+    },
+    {
+      "arquivo": "yfinance/domain/__init__.py",
+      "mi": 100.0,
+      "rank_mi": "A"
+    },
+    {
+      "arquivo": "yfinance/scrapers/__init__.py",
+      "mi": 100.0,
+      "rank_mi": "A"
+    },
+    {
+      "arquivo": "yfinance/screener/__init__.py",
+      "mi": 100.0,
+      "rank_mi": "A"
+    }
+  ],
+  "total_raw": {
+    "arquivo": "TOTAL",
+    "loc": 12978,
+    "lloc": 7892,
+    "sloc": 9170,
+    "comments": 1185,
+    "multi": 976
+  }
+}

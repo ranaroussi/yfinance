@@ -1,0 +1,14 @@
+{
+  "too-many-statements": {
+    "message-id": "R0915",
+    "count": 0
+  },
+  "too-many-instance-attributes": {
+    "message-id": "R0902",
+    "count": 0
+  },
+  "too-many-branches": {
+    "message-id": "R0912",
+    "count": 0
+  }
+}

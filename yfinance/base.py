@@ -82,16 +82,12 @@ class TickerBase:
 
         self.ticker = ticker.upper()
         self.session = session or new_session()
-        self._tz = None
-
-        self._isin = None
-        self._news = []
-        self._shares = None
-
-        self._earnings_dates = {}
-
-        self._earnings = None
-        self._financials = None
+        self._lazy = {
+            'tz': None, 'isin': None, 'news': [], 'shares': None,
+            'earnings_dates': {}, 'earnings': None, 'financials': None,
+            'price_history': None, 'funds_data': None, 'fast_info': None,
+            'message_handler': None, 'ws': None,
+        }
 
         # raise an error if user tries to give empty ticker
         if self.ticker == "":
@@ -111,18 +107,17 @@ class TickerBase:
             if self.ticker:
                 c.store(isin, self.ticker)
 
-        # self._price_history = PriceHistory(self._data, self.ticker)
-        self._price_history = None  # lazy-load
-        self._analysis = Analysis(self._data, self.ticker)
-        self._holders = Holders(self._data, self.ticker)
-        self._quote = Quote(self._data, self.ticker)
-        self._fundamentals = Fundamentals(self._data, self.ticker)
-        self._funds_data = None
 
-        self._fast_info = None
+        self._scrapers = {
+            'analysis': Analysis(self._data, self.ticker),
+            'holders': Holders(self._data, self.ticker),
+            'quote': Quote(self._data, self.ticker),
+            'fundamentals': Fundamentals(self._data, self.ticker),
+        }
 
-        self._message_handler = None
-        self.ws = None
+    @property
+    def _quote(self):
+        return self._scrapers['quote']
 
     @utils.log_indent_decorator
     def history(self, *args, **kwargs) -> pd.DataFrame:
@@ -131,13 +126,14 @@ class TickerBase:
     # ------------------------
 
     def _lazy_load_price_history(self):
-        if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
-        return self._price_history
+        if self._lazy['price_history'] is None:
+            self._lazy['price_history'] = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+        self._price_history = self._lazy['price_history']
+        return self._lazy['price_history']
 
     def _get_ticker_tz(self, timeout):
-        if self._tz is not None:
-            return self._tz
+        if self._lazy['tz'] is not None:
+            return self._lazy['tz']
         c = cache.get_tz_cache()
         tz = c.lookup(self.ticker)
 
@@ -165,7 +161,7 @@ class TickerBase:
             else:
                 tz = None
 
-        self._tz = tz
+        self._lazy['tz'] = tz
         return tz
 
     @utils.log_indent_decorator
@@ -212,7 +208,7 @@ class TickerBase:
         Returns a DataFrame with the recommendations
         Columns: period  strongBuy  buy  hold  sell  strongSell
         """
-        data = self._quote.recommendations
+        data = self._scrapers['quote'].recommendations
         if as_dict:
             return data.to_dict()
         return data
@@ -226,73 +222,73 @@ class TickerBase:
         Index: date of grade
         Columns: firm toGrade fromGrade action
         """
-        data = self._quote.upgrades_downgrades
+        data = self._scrapers['quote'].upgrades_downgrades
         if as_dict:
             return data.to_dict()
         return data
 
     def get_calendar(self) -> dict:
-        return self._quote.calendar
+        return self._scrapers['quote'].calendar
 
     def get_sec_filings(self) -> dict:
-        return self._quote.sec_filings
+        return self._scrapers['quote'].sec_filings
 
     def get_major_holders(self, as_dict=False):
-        data = self._holders.major
+        data = self._scrapers['holders'].major
         if as_dict:
             return data.to_dict()
         return data
 
     def get_institutional_holders(self, as_dict=False):
-        data = self._holders.institutional
+        data = self._scrapers['holders'].institutional
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
     def get_mutualfund_holders(self, as_dict=False):
-        data = self._holders.mutualfund
+        data = self._scrapers['holders'].mutualfund
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
     def get_insider_purchases(self, as_dict=False):
-        data = self._holders.insider_purchases
+        data = self._scrapers['holders'].insider_purchases
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
     def get_insider_transactions(self, as_dict=False):
-        data = self._holders.insider_transactions
+        data = self._scrapers['holders'].insider_transactions
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
     def get_insider_roster_holders(self, as_dict=False):
-        data = self._holders.insider_roster
+        data = self._scrapers['holders'].insider_roster
         if data is not None:
             if as_dict:
                 return data.to_dict()
             return data
 
     def get_info(self) -> dict:
-        data = self._quote.info
+        data = self._scrapers['quote'].info
         return data
 
     def get_fast_info(self):
-        if self._fast_info is None:
-            self._fast_info = FastInfo(self)
-        return self._fast_info
+        if self._lazy['fast_info'] is None:
+            self._lazy['fast_info'] = FastInfo(self)
+        return self._lazy['fast_info']
 
     def get_valuation_measures(self):
-        data = self._quote.valuation_measures
+        data = self._scrapers['quote'].valuation_measures
         return data
 
     def get_sustainability(self, as_dict=False):
-        data = self._quote.sustainability
+        data = self._scrapers['quote'].sustainability
         if as_dict:
             return data.to_dict()
         return data
@@ -301,7 +297,7 @@ class TickerBase:
         """
         Keys:   current  low  high  mean  median
         """
-        data = self._analysis.analyst_price_targets
+        data = self._scrapers['analysis'].analyst_price_targets
         return data
 
     def get_earnings_estimate(self, as_dict=False):
@@ -309,7 +305,7 @@ class TickerBase:
         Index:      0q  +1q  0y  +1y
         Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth
         """
-        data = self._analysis.earnings_estimate
+        data = self._scrapers['analysis'].earnings_estimate
         return data.to_dict() if as_dict else data
 
     def get_revenue_estimate(self, as_dict=False):
@@ -317,7 +313,7 @@ class TickerBase:
         Index:      0q  +1q  0y  +1y
         Columns:    numberOfAnalysts  avg  low  high  yearAgoRevenue  growth
         """
-        data = self._analysis.revenue_estimate
+        data = self._scrapers['analysis'].revenue_estimate
         return data.to_dict() if as_dict else data
 
     def get_earnings_history(self, as_dict=False):
@@ -325,7 +321,7 @@ class TickerBase:
         Index:      pd.DatetimeIndex
         Columns:    epsEstimate  epsActual  epsDifference  surprisePercent
         """
-        data = self._analysis.earnings_history
+        data = self._scrapers['analysis'].earnings_history
         return data.to_dict() if as_dict else data
 
     def get_eps_trend(self, as_dict=False):
@@ -334,7 +330,7 @@ class TickerBase:
         Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo
         """
 
-        data = self._analysis.eps_trend
+        data = self._scrapers['analysis'].eps_trend
         return data.to_dict() if as_dict else data
 
     def get_eps_revisions(self, as_dict=False):
@@ -343,7 +339,7 @@ class TickerBase:
         Columns:    upLast7days  upLast30days  downLast7days  downLast30days
         """
 
-        data = self._analysis.eps_revisions
+        data = self._scrapers['analysis'].eps_revisions
         return data.to_dict() if as_dict else data
 
     def get_growth_estimates(self, as_dict=False):
@@ -352,7 +348,7 @@ class TickerBase:
         Columns:    stock  industry  sector  index
         """
 
-        data = self._analysis.growth_estimates
+        data = self._scrapers['analysis'].growth_estimates
         return data.to_dict() if as_dict else data
 
     def get_earnings(self, as_dict=False, freq="yearly"):
@@ -366,12 +362,12 @@ class TickerBase:
                 Default is "yearly"
         """
 
-        if self._fundamentals.earnings is None:
+        if self._scrapers['fundamentals'].earnings is None:
             return None
-        data = self._fundamentals.earnings[freq]
+        data = self._scrapers['fundamentals'].earnings[freq]
         if as_dict:
             dict_data = data.to_dict()
-            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._earnings else self._earnings[
+            dict_data['financialCurrency'] = 'USD' if 'financialCurrency' not in self._lazy['earnings'] else self._lazy['earnings'][
                 'financialCurrency']
             return dict_data
         return data
@@ -390,7 +386,7 @@ class TickerBase:
                 Default is "yearly"
         """
 
-        data = self._fundamentals.financials.get_income_time_series(freq=freq)
+        data = self._scrapers['fundamentals'].financials.get_income_time_series(freq=freq)
 
         if pretty:
             data = data.copy()
@@ -420,7 +416,7 @@ class TickerBase:
         """
 
 
-        data = self._fundamentals.financials.get_balance_sheet_time_series(freq=freq)
+        data = self._scrapers['fundamentals'].financials.get_balance_sheet_time_series(freq=freq)
 
         if pretty:
             data = data.copy()
@@ -447,7 +443,7 @@ class TickerBase:
         """
 
 
-        data = self._fundamentals.financials.get_cash_flow_time_series(freq=freq)
+        data = self._scrapers['fundamentals'].financials.get_cash_flow_time_series(freq=freq)
 
         if pretty:
             data = data.copy()
@@ -472,17 +468,12 @@ class TickerBase:
         return self._lazy_load_price_history().get_actions(period=period)
 
     def get_shares(self, as_dict=False) -> Union[pd.DataFrame, dict]:
-        data = self._fundamentals.shares
+        data = self._scrapers['fundamentals'].shares
         if as_dict:
             return data.to_dict()
         return data
 
-    @utils.log_indent_decorator
-    def get_shares_full(self, start=None, end=None):
-        logger = utils.get_yf_logger()
-
-
-        # Process dates
+    def _parse_shares_date_range(self, start, end, logger):
         tz = self._get_ticker_tz(timeout=10)
         dt_now = pd.Timestamp.now('UTC').tz_convert(tz)
         if start is not None:
@@ -492,24 +483,27 @@ class TickerBase:
         if end is None:
             end = dt_now
         if start is None:
-            start = end - pd.Timedelta(days=548)  # 18 months
+            start = end - pd.Timedelta(days=548)
         if start >= end:
             logger.error("Start date must be before end")
-            return None
-        start = start.floor("D")
-        end = end.ceil("D")
+            return None, None
+        return start.floor("D"), end.ceil("D")
 
-        # Fetch
-        ts_url_base = f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self.ticker}?symbol={self.ticker}"
+    def _fetch_shares_json(self, start, end, logger):
+        ts_url_base = (
+            f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/"
+            f"{self.ticker}?symbol={self.ticker}"
+        )
         shares_url = f"{ts_url_base}&period1={int(start.timestamp())}&period2={int(end.timestamp())}"
         try:
-            json_data = self._data.cache_get(url=shares_url)
-            json_data = json_data.json()
+            return self._data.cache_get(url=shares_url).json()
         except (_json.JSONDecodeError, requests.exceptions.RequestException):
             if not YfConfig.debug.hide_exceptions:
                 raise
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
+
+    def _parse_shares_series(self, json_data, logger):
         try:
             fail = json_data["finance"]["error"]["code"] == "Bad Request"
         except KeyError:
@@ -519,40 +513,54 @@ class TickerBase:
                 raise requests.exceptions.HTTPError("Yahoo web request for share count returned 'Bad Request'")
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
-
         shares_data = json_data["timeseries"]["result"]
         if "shares_out" not in shares_data[0]:
             return None
         try:
-            df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))
+            return pd.Series(
+                shares_data[0]["shares_out"],
+                index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"),
+            )
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             logger.error(f"{self.ticker}: Failed to parse shares count data: {e}")
             return None
 
+    @utils.log_indent_decorator
+    def get_shares_full(self, start=None, end=None):
+        logger = utils.get_yf_logger()
+        start, end = self._parse_shares_date_range(start, end, logger)
+        if start is None:
+            return None
+        json_data = self._fetch_shares_json(start, end, logger)
+        if json_data is None:
+            return None
+        df = self._parse_shares_series(json_data, logger)
+        if df is None:
+            return None
+        tz = self._get_ticker_tz(timeout=10)
         df.index = df.index.tz_localize(tz)
-        df = df.sort_index()
-        return df
+        return df.sort_index()
 
     def get_isin(self) -> Optional[str]:
         # *** experimental ***
-        if self._isin is not None:
-            return self._isin
+        if self._lazy['isin'] is not None:
+            return self._lazy['isin']
 
         ticker = self.ticker.upper()
 
         if "-" in ticker or "^" in ticker:
-            self._isin = '-'
-            return self._isin
+            self._lazy['isin'] = '-'
+            return self._lazy['isin']
 
         q = ticker
 
-        if self._quote.info is None:
-            # Don't print error message cause self._quote.info will print one
+        if self._scrapers['quote'].info is None:
+            # Don't print error message cause self._scrapers['quote'].info will print one
             return None
-        if "shortName" in self._quote.info:
-            q = self._quote.info['shortName']
+        if "shortName" in self._scrapers['quote'].info:
+            q = self._scrapers['quote'].info['shortName']
 
         url = f'https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=25&query={urlencode(q)}'
         data = self._data.cache_get(url=url).text
@@ -562,19 +570,19 @@ class TickerBase:
             if q.lower() in data.lower():
                 search_str = '"|'
                 if search_str not in data:
-                    self._isin = '-'
-                    return self._isin
+                    self._lazy['isin'] = '-'
+                    return self._lazy['isin']
             else:
-                self._isin = '-'
-                return self._isin
+                self._lazy['isin'] = '-'
+                return self._lazy['isin']
 
-        self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
-        return self._isin
+        self._lazy['isin'] = data.split(search_str)[1].split('"')[0].split('|')[0]
+        return self._lazy['isin']
 
     def get_news(self, count=10, tab="news") -> list:
         """Allowed options for tab: "news", "all", "press releases"""
-        if self._news:
-            return self._news
+        if self._lazy['news']:
+            return self._lazy['news']
 
         logger = utils.get_yf_logger()
 
@@ -610,18 +618,18 @@ class TickerBase:
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
 
-        self._news = [article for article in news if not article.get('ad', [])]
-        return self._news
+        self._lazy['news'] = [article for article in news if not article.get('ad', [])]
+        return self._lazy['news']
 
     def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
         if limit > 100:
             raise ValueError("Yahoo caps limit at 100")
 
-        if self._earnings_dates and limit in self._earnings_dates:
-            return self._earnings_dates[limit]
+        if self._lazy['earnings_dates'] and limit in self._lazy['earnings_dates']:
+            return self._lazy['earnings_dates'][limit]
 
         df = self._get_earnings_dates_using_scrape(limit, offset)
-        self._earnings_dates[limit] = df
+        self._lazy['earnings_dates'][limit] = df
         return df
 
     @utils.log_indent_decorator
@@ -786,7 +794,7 @@ class TickerBase:
         df.set_index('Earnings Date', inplace=True)
         df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)  # Compatibility
 
-        self._earnings_dates[limit] = df
+        self._lazy['earnings_dates'][limit] = df
         return df
 
     def get_history_metadata(self, repair=_SENTINEL_) -> dict:
@@ -798,14 +806,14 @@ class TickerBase:
         return self._lazy_load_price_history().get_history_metadata(repair=repair)
 
     def get_funds_data(self) -> Optional[FundsData]:
-        if not self._funds_data:
-            self._funds_data = FundsData(self._data, self.ticker)
+        if not self._lazy['funds_data']:
+            self._lazy['funds_data'] = FundsData(self._data, self.ticker)
         
-        return self._funds_data
+        return self._lazy['funds_data']
 
     def live(self, message_handler=None, verbose=True):
-        self._message_handler = message_handler
+        self._lazy['message_handler'] = message_handler
 
-        self.ws = WebSocket(verbose=verbose)
-        self.ws.subscribe(self.ticker)
-        self.ws.listen(self._message_handler)
+        self._lazy['ws'] = WebSocket(verbose=verbose)
+        self._lazy['ws'].subscribe(self.ticker)
+        self._lazy['ws'].listen(self._lazy['message_handler'])

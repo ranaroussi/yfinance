@@ -611,6 +611,8 @@ def parse_actions(data):
 def set_df_tz(df, interval, tz):
     if df.index.tz is None:
         df.index = df.index.tz_localize("UTC")
+    if isinstance(tz, str):
+        tz = _tz.timezone(tz)
     df.index = df.index.tz_convert(tz)
     return df
 
@@ -665,6 +667,73 @@ def _dts_in_same_interval(dt1, dt2, interval):
     return last_rows_same_interval
 
 
+
+def _fix_yahoo_daily_duplicate_row(quotes):
+    dt1 = quotes.index[-1]
+    dt2 = quotes.index[-2]
+    if quotes.index.tz is None:
+        dt1 = dt1.tz_localize("UTC")
+        dt2 = dt2.tz_localize("UTC")
+    if dt1.date() != dt2.date():
+        return quotes, None
+    dropped_row = quotes.iloc[-2]
+    return _pd.concat([quotes.iloc[:-2], quotes.iloc[-1:]]), dropped_row
+
+
+def _fix_yahoo_repair_currency_ratio(quotes, idx1, idx2, ss, currency):
+    if currency == 'KWF':
+        currency_divide = 1000
+    else:
+        currency_divide = 100
+    if abs(ss / currency_divide - 1) <= 0.25:
+        return
+    ratio = quotes.loc[idx1, const._PRICE_COLNAMES_] / quotes.loc[idx2, const._PRICE_COLNAMES_]
+    if ((ratio / currency_divide - 1).abs() < 0.05).all():
+        for c in const._PRICE_COLNAMES_:
+            quotes.loc[idx2, c] *= 100
+    elif ((ratio * currency_divide - 1).abs() < 0.05).all():
+        for c in const._PRICE_COLNAMES_:
+            quotes.loc[idx2, c] *= 0.01
+
+
+def _fix_yahoo_merge_intraday_rows(quotes, interval, prepost, repair, currency):
+    dt1 = quotes.index[-1]
+    dt2 = quotes.index[-2]
+    if quotes.index.tz is None:
+        dt1 = dt1.tz_localize("UTC")
+        dt2 = dt2.tz_localize("UTC")
+    if not _dts_in_same_interval(dt2, dt1, interval):
+        return quotes, None
+    idx1 = quotes.index[-1]
+    idx2 = quotes.index[-2]
+    if idx1 == idx2:
+        return quotes, None
+    if prepost and dt1.second == 0:
+        return quotes, None
+    ss = quotes['Stock Splits'].iloc[-2:].replace(0, 1).prod()
+    if repair:
+        _fix_yahoo_repair_currency_ratio(quotes, idx1, idx2, ss, currency)
+    if _np.isnan(quotes.loc[idx2, "Open"]):
+        quotes.loc[idx2, "Open"] = quotes["Open"].iloc[-1]
+    if not _np.isnan(quotes["High"].iloc[-1]):
+        quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[-1], quotes["High"].iloc[-2]])
+        if "Adj High" in quotes.columns:
+            quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[-1], quotes["Adj High"].iloc[-2]])
+    if not _np.isnan(quotes["Low"].iloc[-1]):
+        quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[-1], quotes["Low"].iloc[-2]])
+        if "Adj Low" in quotes.columns:
+            quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[-1], quotes["Adj Low"].iloc[-2]])
+    quotes.loc[idx2, "Close"] = quotes["Close"].iloc[-1]
+    if "Adj Close" in quotes.columns:
+        quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[-1]
+    quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[-1]
+    quotes.loc[idx2, "Dividends"] += quotes["Dividends"].iloc[-1]
+    if ss != 1.0:
+        quotes.loc[idx2, "Stock Splits"] = ss
+    dropped_row = quotes.iloc[-1]
+    return quotes.drop(quotes.index[-1]), dropped_row
+
+
 def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, repair=False, currency=None):
     # Yahoo bug fix. If market is open today then Yahoo normally returns
     # todays data as a separate row from rest-of week/month interval in above row.
@@ -676,207 +745,140 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
 
     dropped_row = None
     if len(quotes) > 1:
-        dt1 = quotes.index[-1]
-        dt2 = quotes.index[-2]
-        if quotes.index.tz is None:
-            dt1 = dt1.tz_localize("UTC")
-            dt2 = dt2.tz_localize("UTC")
-        dt1 = dt1.tz_convert(tz_exchange)
-        dt2 = dt2.tz_convert(tz_exchange)
         if interval == "1d":
-            # Similar bug in daily data except most data is simply duplicated
-            # - exception is volume, *slightly* greater on final row (and matches website)
-            if dt1.date() == dt2.date():
-                # Last two rows are on same day. Drop second-to-last row
-                dropped_row = quotes.iloc[-2]
-                quotes = _pd.concat([quotes.iloc[:-2], quotes.iloc[-1:]])
+            quotes, dropped_row = _fix_yahoo_daily_duplicate_row(quotes)
         else:
-            if _dts_in_same_interval(dt2, dt1, interval):
-                # Last two rows are within same interval
-                idx1 = quotes.index[-1]
-                idx2 = quotes.index[-2]
-                if idx1 == idx2:
-                    # Yahoo returning last interval duplicated, which means
-                    # Yahoo is not returning live data (phew!)
-                    return quotes, None
-
-                if prepost:
-                    # Possibly dt1 is just start of post-market
-                    if dt1.second == 0:
-                        # assume post-market interval
-                        return quotes, None
-
-                ss = quotes['Stock Splits'].iloc[-2:].replace(0,1).prod()
-                if repair:
-                    # First, check if one row is ~100x the other. A £/pence mixup on LSE.
-                    # Avoid if a stock split near 100
-                    if currency == 'KWF':
-                        # Kuwaiti Dinar divided into 1000 not 100
-                        currency_divide = 1000
-                    else:
-                        currency_divide = 100
-                    # if ss < 75 or ss > 125:
-                    if abs(ss/currency_divide-1) > 0.25:
-                        ratio = quotes.loc[idx1, const._PRICE_COLNAMES_] / quotes.loc[idx2, const._PRICE_COLNAMES_]
-                        if ((ratio/currency_divide-1).abs() < 0.05).all():
-                            # newer prices are 100x
-                            for c in const._PRICE_COLNAMES_:
-                                quotes.loc[idx2, c] *= 100
-                        elif((ratio*currency_divide-1).abs() < 0.05).all():
-                            # newer prices are 0.01x
-                            for c in const._PRICE_COLNAMES_:
-                                quotes.loc[idx2, c] *= 0.01
-
-                if _np.isnan(quotes.loc[idx2, "Open"]):
-                    quotes.loc[idx2, "Open"] = quotes["Open"].iloc[-1]
-                # Note: nanmax() & nanmin() ignores NaNs, but still need to check not all are NaN to avoid warnings
-                if not _np.isnan(quotes["High"].iloc[-1]):
-                    quotes.loc[idx2, "High"] = _np.nanmax([quotes["High"].iloc[-1], quotes["High"].iloc[-2]])
-                    if "Adj High" in quotes.columns:
-                        quotes.loc[idx2, "Adj High"] = _np.nanmax([quotes["Adj High"].iloc[-1], quotes["Adj High"].iloc[-2]])
-
-                if not _np.isnan(quotes["Low"].iloc[-1]):
-                    quotes.loc[idx2, "Low"] = _np.nanmin([quotes["Low"].iloc[-1], quotes["Low"].iloc[-2]])
-                    if "Adj Low" in quotes.columns:
-                        quotes.loc[idx2, "Adj Low"] = _np.nanmin([quotes["Adj Low"].iloc[-1], quotes["Adj Low"].iloc[-2]])
-
-                quotes.loc[idx2, "Close"] = quotes["Close"].iloc[-1]
-                if "Adj Close" in quotes.columns:
-                    quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[-1]
-                quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[-1]
-                quotes.loc[idx2, "Dividends"] += quotes["Dividends"].iloc[-1]
-                if ss != 1.0:
-                    quotes.loc[idx2, "Stock Splits"] = ss
-                dropped_row = quotes.iloc[-1]
-                quotes = quotes.drop(quotes.index[-1])
+            quotes, dropped_row = _fix_yahoo_merge_intraday_rows(
+                quotes, interval, prepost, repair, currency)
 
     return quotes, dropped_row
 
 
-def safe_merge_dfs(df_main, df_sub, interval):
-    if df_main.empty:
-        return df_main
 
-    data_cols = [c for c in df_sub.columns if c not in df_main]
-    data_col = data_cols[0]
 
-    df_main = df_main.sort_index()
-    intraday = interval.endswith('m') or interval.endswith('s')
+def _safe_merge_reindex_events(df, new_index, data_col_name):
+    if len(new_index) == len(set(new_index)):
+        df.index = new_index
+        return df
+    df["_NewIndex"] = new_index
+    if data_col_name in ["Dividends", "Capital Gains"]:
+        df = df.groupby("_NewIndex").sum()
+        df.index.name = None
+    elif data_col_name == "Stock Splits":
+        df = df.groupby("_NewIndex").prod()
+        df.index.name = None
+    else:
+        raise YFException(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
+    if "_NewIndex" in df.columns:
+        df = df.drop("_NewIndex", axis=1)
+    return df
 
-    td = _interval_to_timedelta(interval)
+
+def _safe_merge_calc_indices(df_main, df_sub, intraday, td):
     if intraday:
-        # On some exchanges the event can occur before market open.
-        # Problem when combining with intraday data.
-        # Solution = use dates, not datetimes, to map/merge.
+        df_main = df_main.copy()
+        df_sub = df_sub.copy()
         df_main['_date'] = df_main.index.date
         df_sub['_date'] = df_sub.index.date
-        indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
+        indices = _np.searchsorted(
+            _np.append(df_main['_date'], [df_main['_date'].iloc[-1] + td]),
+            df_sub['_date'], side='left')
         df_main = df_main.drop('_date', axis=1)
         df_sub = df_sub.drop('_date', axis=1)
     else:
-        indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
-        indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
-    # Numpy.searchsorted does not handle out-of-range well, so handle manually:
+        indices = _np.searchsorted(
+            _np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
+        indices -= 1
+    return df_main, df_sub, indices
+
+
+def _safe_merge_mark_out_of_range(indices, df_main, df_sub, intraday, td):
+    indices = indices.copy()
     if intraday:
         for i in range(len(df_sub.index)):
             dt = df_sub.index[i].date()
             if dt < df_main.index[0].date() or dt >= df_main.index[-1].date() + _datetime.timedelta(days=1):
-                # Out-of-range
                 indices[i] = -1
     else:
         for i in range(len(df_sub.index)):
             dt = df_sub.index[i]
             if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-                # Out-of-range
                 indices[i] = -1
+    return indices
 
-    f_outOfRange = indices == -1
-    if f_outOfRange.any():
-        if intraday:
-            # Discard out-of-range dividends in intraday data, assume user not interested
-            df_sub = df_sub[~f_outOfRange]
-            if df_sub.empty:
-                df_main['Dividends'] = 0.0
-                return df_main
 
-            # df_sub changed so recalc indices:
-            df_main['_date'] = df_main.index.date
-            df_sub['_date'] = df_sub.index.date
-            indices = _np.searchsorted(_np.append(df_main['_date'], [df_main['_date'].iloc[-1]+td]), df_sub['_date'], side='left')
-            df_main = df_main.drop('_date', axis=1)
-            df_sub = df_sub.drop('_date', axis=1)
-        else:
-            empty_row_data = {**{c:[_np.nan] for c in const._PRICE_COLNAMES_}, 'Volume':[0]}
-            if interval == '1d':
-                # For 1d, add all out-of-range event dates
-                for i in _np.where(f_outOfRange)[0]:
-                    dt = df_sub.index[i]
-                    get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
-                    empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
-                    df_main = _pd.concat([df_main, empty_row], sort=True)
-            else:
-                # Else, only add out-of-range event dates if occurring in interval
-                # immediately after last price row
-                last_dt = df_main.index[-1]
-                next_interval_start_dt = last_dt + td
-                next_interval_end_dt = next_interval_start_dt + td
-                for i in _np.where(f_outOfRange)[0]:
-                    dt = df_sub.index[i]
-                    if next_interval_start_dt <= dt < next_interval_end_dt:
-                        get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
-                        empty_row = _pd.DataFrame(data=empty_row_data, index=[dt])
-                        df_main = _pd.concat([df_main, empty_row], sort=True)
-            df_main = df_main.sort_index()
+def _safe_merge_add_empty_rows(df_main, df_sub, indices, interval, td, data_col):
+    empty_row_data = {**{c: [_np.nan] for c in const._PRICE_COLNAMES_}, 'Volume': [0]}
+    f_out = indices == -1
+    if interval == '1d':
+        for i in _np.where(f_out)[0]:
+            dt = df_sub.index[i]
+            get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+            df_main = _pd.concat([df_main, _pd.DataFrame(data=empty_row_data, index=[dt])], sort=True)
+    else:
+        last_dt = df_main.index[-1]
+        next_start = last_dt + td
+        next_end = next_start + td
+        for i in _np.where(f_out)[0]:
+            dt = df_sub.index[i]
+            if next_start <= dt < next_end:
+                get_yf_logger().debug(f"Adding out-of-range {data_col} @ {dt.date()} in new prices row of NaNs")
+                df_main = _pd.concat([df_main, _pd.DataFrame(data=empty_row_data, index=[dt])], sort=True)
+    return df_main.sort_index()
 
-            # Re-calculate indices
-            indices = _np.searchsorted(_np.append(df_main.index, df_main.index[-1] + td), df_sub.index, side='right')
-            indices -= 1  # Convert from [[i-1], [i]) to [[i], [i+1])
-            # Numpy.searchsorted does not handle out-of-range well, so handle manually:
-            for i in range(len(df_sub.index)):
-                dt = df_sub.index[i]
-                if dt < df_main.index[0] or dt >= df_main.index[-1] + td:
-                    # Out-of-range
-                    indices[i] = -1
 
-    f_outOfRange = indices == -1
-    if f_outOfRange.any():
-        if intraday or interval in ['1d', '1wk']:
-            raise YFException(f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: {df_sub.index[f_outOfRange]}")
-        get_yf_logger().debug(f'Discarding these {data_col} events:' + '\n' + str(df_sub[f_outOfRange]))
-        df_sub = df_sub[~f_outOfRange].copy()
-        indices = indices[~f_outOfRange]
+def _safe_merge_handle_out_of_range(df_main, df_sub, indices, intraday, interval, td, data_col):
+    f_out = indices == -1
+    if not f_out.any():
+        return df_main, df_sub, indices
+    if intraday:
+        df_sub = df_sub[~f_out]
+        if df_sub.empty:
+            df_main['Dividends'] = 0.0
+            return df_main, df_sub, None
+        df_main, df_sub, indices = _safe_merge_calc_indices(df_main, df_sub, intraday, td)
+        indices = _safe_merge_mark_out_of_range(indices, df_main, df_sub, intraday, td)
+        return df_main, df_sub, indices
+    df_main = _safe_merge_add_empty_rows(df_main, df_sub, indices, interval, td, data_col)
+    df_main, df_sub, indices = _safe_merge_calc_indices(df_main, df_sub, intraday, td)
+    indices = _safe_merge_mark_out_of_range(indices, df_main, df_sub, intraday, td)
+    return df_main, df_sub, indices
 
-    def _reindex_events(df, new_index, data_col_name):
-        if len(new_index) == len(set(new_index)):
-            # No duplicates, easy
-            df.index = new_index
-            return df
 
-        df["_NewIndex"] = new_index
-        # Duplicates present within periods but can aggregate
-        if data_col_name in ["Dividends", "Capital Gains"]:
-            # Add
-            df = df.groupby("_NewIndex").sum()
-            df.index.name = None
-        elif data_col_name == "Stock Splits":
-            # Product
-            df = df.groupby("_NewIndex").prod()
-            df.index.name = None
-        else:
-            raise YFException(f"New index contains duplicates but unsure how to aggregate for '{data_col_name}'")
-        if "_NewIndex" in df.columns:
-            df = df.drop("_NewIndex", axis=1)
-        return df
+def _safe_merge_finalize_out_of_range(df_sub, indices, intraday, interval, data_col):
+    f_out = indices == -1
+    if not f_out.any():
+        return df_sub, indices
+    if intraday or interval in ['1d', '1wk']:
+        raise YFException(
+            f"The following '{data_col}' events are out-of-range, did not expect with interval {interval}: "
+            f"{df_sub.index[f_out]}")
+    get_yf_logger().debug(f'Discarding these {data_col} events:\n' + str(df_sub[f_out]))
+    df_sub = df_sub[~f_out].copy()
+    return df_sub, indices[~f_out]
 
+def safe_merge_dfs(df_main, df_sub, interval):
+    if df_main.empty:
+        return df_main
+
+    data_col = [c for c in df_sub.columns if c not in df_main][0]
+    df_main = df_main.sort_index()
+    intraday = interval.endswith('m') or interval.endswith('s')
+    td = _interval_to_timedelta(interval)
+
+    df_main, df_sub, indices = _safe_merge_calc_indices(df_main, df_sub, intraday, td)
+    indices = _safe_merge_mark_out_of_range(indices, df_main, df_sub, intraday, td)
+    df_main, df_sub, indices = _safe_merge_handle_out_of_range(
+        df_main, df_sub, indices, intraday, interval, td, data_col)
+    if indices is None:
+        return df_main
+
+    df_sub, indices = _safe_merge_finalize_out_of_range(df_sub, indices, intraday, interval, data_col)
     new_index = df_main.index[indices]
-    df_sub = _reindex_events(df_sub, new_index, data_col)
-
+    df_sub = _safe_merge_reindex_events(df_sub, new_index, data_col)
     df = df_main.join(df_sub)
-    f_na = df[data_col].isna()
-    data_lost = sum(~f_na) < df_sub.shape[0]
-    if data_lost:
+    if sum(~df[data_col].isna()) < df_sub.shape[0]:
         raise YFException('Data was lost in merge, investigate')
-
     return df
 
 
@@ -901,63 +903,68 @@ def is_valid_timezone(tz: str) -> bool:
     return True
 
 
+
+
+def _format_md_scalar_timestamps(md, tz):
+    for k in ["firstTradeDate", "regularMarketTime"]:
+        if k in md and md[k] is not None and isinstance(md[k], int):
+            md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
+    if "currentTradingPeriod" not in md:
+        return
+    for m in ["regular", "pre", "post"]:
+        period = md["currentTradingPeriod"].get(m)
+        if period is None or not isinstance(period.get("start"), int):
+            continue
+        for t in ["start", "end"]:
+            period[t] = _pd.to_datetime(period[t], unit='s', utc=True).tz_convert(tz)
+        period.pop("gmtoffset", None)
+        period.pop("timezone", None)
+
+
+def _format_trading_periods_list(tps, tz):
+    df = _pd.DataFrame.from_records(_np.hstack(tps))
+    df = df.drop(["timezone", "gmtoffset"], axis=1)
+    df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
+    df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
+    return df
+
+
+def _format_trading_periods_dict(tps, tz):
+    pre_df = _pd.DataFrame.from_records(_np.hstack(tps["pre"]))
+    post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
+    regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
+    pre_df = pre_df.rename(columns={"start": "pre_start", "end": "pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
+    post_df = post_df.rename(columns={"start": "post_start", "end": "post_end"}).drop(["timezone", "gmtoffset"], axis=1)
+    regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
+    cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
+    df = regular_df.join(pre_df).join(post_df)
+    for c in cols:
+        df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
+    return df[cols]
+
+
+def _format_trading_periods_index(df, tz):
+    df.index = _pd.to_datetime(df["start"].dt.date)
+    df.index = df.index.tz_localize(tz)
+    df.index.name = "Date"
+    return df
+
 def format_history_metadata(md, tradingPeriodsOnly=True):
-    if not isinstance(md, dict):
+    if not isinstance(md, dict) or len(md) == 0:
         return md
-    if len(md) == 0:
-        return md
-
     tz = md["exchangeTimezoneName"]
-
     if not tradingPeriodsOnly:
-        for k in ["firstTradeDate", "regularMarketTime"]:
-            if k in md and md[k] is not None:
-                if isinstance(md[k], int):
-                    md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
-
-        if "currentTradingPeriod" in md:
-            for m in ["regular", "pre", "post"]:
-                if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
-                    for t in ["start", "end"]:
-                        md["currentTradingPeriod"][m][t] = \
-                            _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
-                    del md["currentTradingPeriod"][m]["gmtoffset"]
-                    del md["currentTradingPeriod"][m]["timezone"]
-
-    if "tradingPeriods" in md:
-        tps = md["tradingPeriods"]
-        if tps == {"pre": [], "post": []}:
-            # Ignore
-            pass
-        elif isinstance(tps, (list, dict)):
-            if isinstance(tps, list):
-                # Only regular times
-                df = _pd.DataFrame.from_records(_np.hstack(tps))
-                df = df.drop(["timezone", "gmtoffset"], axis=1)
-                df["start"] = _pd.to_datetime(df["start"], unit='s', utc=True).dt.tz_convert(tz)
-                df["end"] = _pd.to_datetime(df["end"], unit='s', utc=True).dt.tz_convert(tz)
-            elif isinstance(tps, dict):
-                # Includes pre- and post-market
-                pre_df = _pd.DataFrame.from_records(_np.hstack(tps["pre"]))
-                post_df = _pd.DataFrame.from_records(_np.hstack(tps["post"]))
-                regular_df = _pd.DataFrame.from_records(_np.hstack(tps["regular"]))
-
-                pre_df = pre_df.rename(columns={"start": "pre_start", "end": "pre_end"}).drop(["timezone", "gmtoffset"], axis=1)
-                post_df = post_df.rename(columns={"start": "post_start", "end": "post_end"}).drop(["timezone", "gmtoffset"], axis=1)
-                regular_df = regular_df.drop(["timezone", "gmtoffset"], axis=1)
-
-                cols = ["pre_start", "pre_end", "start", "end", "post_start", "post_end"]
-                df = regular_df.join(pre_df).join(post_df)
-                for c in cols:
-                    df[c] = _pd.to_datetime(df[c], unit='s', utc=True).dt.tz_convert(tz)
-                df = df[cols]
-
-            df.index = _pd.to_datetime(df["start"].dt.date)
-            df.index = df.index.tz_localize(tz)
-            df.index.name = "Date"
-
-            md["tradingPeriods"] = df
-
+        _format_md_scalar_timestamps(md, tz)
+    tps = md.get("tradingPeriods")
+    if tps is None or tps == {"pre": [], "post": []}:
+        return md
+    if isinstance(tps, list):
+        df = _format_trading_periods_list(tps, tz)
+    elif isinstance(tps, dict):
+        df = _format_trading_periods_dict(tps, tz)
+    else:
+        return md
+    md["tradingPeriods"] = _format_trading_periods_index(df, tz)
     return md
 
 
@@ -1074,99 +1081,73 @@ def generate_list_table_from_dict(data: dict, bullets: bool=True, title: str=Non
 #     return table
 
 
+
+
+def _format_table_scalar_values(table, values, bullets):
+    lengths = [len(str(v)) for v in values]
+    if bullets and max(lengths) > 5:
+        table += ' '*5 + "-\n"
+        for value in sorted(values):
+            table += ' '*7 + f"- {value}\n"
+    else:
+        table += ' '*5 + f"- {', '.join(sorted(values))}\n"
+    return table
+
+
+def _format_table_k2_values(k2, k2_values):
+    if isinstance(k2_values, set):
+        k2_values = list(k2_values)
+    elif isinstance(k2_values, dict) and len(k2_values) == 0:
+        k2_values = []
+    if isinstance(k2_values, list):
+        k2_values = sorted(k2_values)
+        if all(isinstance(v, (int, float, str)) for v in k2_values):
+            return _re.sub(r"[{}\[\]']", "", str(k2_values))
+    return str(k2_values)
+
+
+def _append_table_block_line(table_add, k2, k2_values_str, block_format):
+    if '\n' in k2_values_str:
+        table_add += '| ' + f"{k2}: " + "\n"
+        for j, line in enumerate(k2_values_str.split('\n')):
+            table_add += ' '*7 + '|' + ' '*5 + line
+            if j < len(k2_values_str.split('\n')) - 1:
+                table_add += "\n"
+    else:
+        prefix = '| ' if block_format else '* '
+        table_add += prefix + f"{k2}: " + k2_values_str + "\n"
+    return table_add
+
 def generate_list_table_from_dict_universal(data: dict, bullets: bool=True, title: str=None, concat_keys=[]) -> str:
     """
     Generate a list-table for the docstring showing permitted keys/values.
     """
     table = _generate_table_configurations(title)
-    for k in data.keys():
-        values = data[k]
-
+    for k, values in data.items():
         table += ' '*3 + f"* - {k}\n"
-        if isinstance(values, dict):
-            table_add = ''
-
-            concat_short_lines = k in concat_keys
-
-            if bullets:
-                k_keys = sorted(list(values.keys()))
+        if not isinstance(values, dict):
+            table = _format_table_scalar_values(table, values, bullets)
+            continue
+        table_add = ''
+        concat_short_lines = k in concat_keys
+        k_keys = sorted(list(values.keys()))
+        block_format = 'query' in k_keys
+        current_line = ''
+        for i, k2 in enumerate(k_keys):
+            k2_values_str = _format_table_k2_values(k2, values[k2])
+            if len(current_line) > 0 and (len(current_line) + len(k2_values_str) > 40):
+                table_add += current_line + '\n'
                 current_line = ''
-                block_format = 'query' in k_keys
-                for i in range(len(k_keys)):
-                    k2 = k_keys[i]
-                    k2_values = values[k2]
-                    k2_values_str = None
-                    if isinstance(k2_values, set):
-                        k2_values = list(k2_values)
-                    elif isinstance(k2_values, dict) and len(k2_values) == 0:
-                        k2_values = []
-                    if isinstance(k2_values, list):
-                        k2_values = sorted(k2_values)
-                        all_scalar = all(isinstance(k2v, (int, float, str)) for k2v in k2_values)
-                        if all_scalar:
-                            k2_values_str = _re.sub(r"[{}\[\]']", "", str(k2_values))
-
-                    if k2_values_str is None:
-                        k2_values_str = str(k2_values)
-
-                    if len(current_line) > 0 and (len(current_line) + len(k2_values_str) > 40):
-                        # new line
-                        table_add += current_line + '\n'
-                        current_line = ''
-
-                    if concat_short_lines:
-                        if current_line == '':
-                            current_line += ' '*5
-                            if i == 0:
-                                # Only add dash to first
-                                current_line += "- "
-                            else:
-                                current_line += "  "
-                            # Don't draw bullet points:
-                            current_line += '| '
-                        else:
-                            current_line += '.  '
-                        current_line += f"{k2}: " + k2_values_str
-                    else:
-                        table_add += ' '*5
-                        if i == 0:
-                            # Only add dash to first
-                            table_add += "- "
-                        else:
-                            table_add += "  "
-
-                        if '\n' in k2_values_str:
-                            # Block format multiple lines
-                            table_add += '| ' + f"{k2}: " + "\n"
-                            k2_values_str_lines = k2_values_str.split('\n')
-                            for j in range(len(k2_values_str_lines)):
-                                line = k2_values_str_lines[j]
-                                table_add += ' '*7 + '|' + ' '*5 + line
-                                if j < len(k2_values_str_lines)-1:
-                                    table_add += "\n"
-                        else:
-                            if block_format:
-                                table_add += '| '
-                            else:
-                                table_add += '* '
-                            table_add += f"{k2}: " + k2_values_str
-
-                        table_add += "\n"
-                if current_line != '':
-                    table_add += current_line + '\n'
+            if concat_short_lines:
+                if current_line == '':
+                    current_line += ' '*5 + ("- " if i == 0 else "  ") + '| '
+                else:
+                    current_line += '.  '
+                current_line += f"{k2}: " + k2_values_str
             else:
-                table_add += ' '*5 + f"- {values}\n"
-
-            table += table_add
-
-        else:
-            lengths = [len(str(v)) for v in values]
-            if bullets and max(lengths) > 5:
-                table += ' '*5 + "-\n"
-                for value in sorted(values):
-                    table += ' '*7 + f"- {value}\n"
-            else:
-                value_str = ', '.join(sorted(values))
-                table += ' '*5 + f"- {value_str}\n"
-
+                table_add += ' '*5 + ("- " if i == 0 else "  ")
+                table_add = _append_table_block_line(table_add, k2, k2_values_str, block_format)
+        if current_line:
+            table_add += current_line + '\n'
+        table += table_add
     return table

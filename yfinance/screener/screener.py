@@ -60,6 +60,101 @@ PREDEFINED_SCREENER_QUERIES = {
                 "query": EtfQy('and', [EtfQy('eq', ['region', 'us']), EtfQy('is-in', ['categoryname', 'Corporate Bond', 'Emerging Markets Bond', 'Emerging-Markets Local-Currency Bond', 'High Yield Bond', 'Intermediate-Term Bond', 'Long-Term Bond', 'Inflation-Protected Bond', 'Multisector Bond', 'Nontraditional Bond', 'Short-Term Bond', 'Ultrashort Bond', 'World Bond'])])}
 }
 
+
+def _screen_defaults():
+    return {
+        'offset': 0,
+        'count': 25,
+        'sortField': 'ticker',
+        'sortAsc': False,
+        'userId': "",
+        'userIdType': "guid"
+    }
+
+
+def _validate_screen_limits(count, size):
+    if count is not None and count > 250:
+        raise ValueError("Yahoo limits query count to 250, reduce count.")
+    if size is not None and size > 250:
+        raise ValueError("Yahoo limits query size to 250, reduce size.")
+
+
+def _resolve_predefined_with_offset(query, offset, sortField, sortAsc):
+    """When offset is set on a predefined name, switch to the custom screener API."""
+    if offset is None or not isinstance(query, str):
+        return query, sortField, sortAsc, _screen_defaults()
+    post_query = PREDEFINED_SCREENER_QUERIES[query]
+    resolved_query = post_query['query']
+    if sortField is None:
+        sortField = post_query['sortField']
+    if sortAsc is None:
+        sortAsc = post_query['sortType'].lower() == 'asc'
+    return resolved_query, sortField, sortAsc, {}
+
+
+def _build_screen_params():
+    return {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
+
+
+def _merge_params(params_dict, fields):
+    for key, value in fields.items():
+        if value is not None:
+            params_dict[key] = value
+
+
+def _normalize_predefined_size(fields, size):
+    if size is None:
+        return size
+    warnings.warn(
+        "Screen 'size' argument is deprecated for predefined screens, set 'count' instead.",
+        DeprecationWarning, stacklevel=3)
+    fields['count'] = fields['size']
+    del fields['size']
+    return size
+
+
+def _fetch_predefined_screen(data, query, fields, params_dict, size):
+    size = _normalize_predefined_size(fields, size)
+    params_dict['scrIds'] = query
+    _merge_params(params_dict, fields)
+    resp = data.get(url=_PREDEFINED_URL_, params=params_dict)
+    try:
+        resp.raise_for_status()
+    except HTTPError:
+        if query not in PREDEFINED_SCREENER_QUERIES:
+            print(f"yfinance.screen: '{query}' is probably not a predefined query.")
+        raise
+    return resp.json()["finance"]["result"][0]
+
+
+def _build_custom_post_query(query, fields, defaults):
+    for key in defaults:
+        if key not in fields or fields[key] is None:
+            fields[key] = defaults[key]
+    fields['sortType'] = 'ASC' if fields['sortAsc'] else 'DESC'
+    del fields['sortAsc']
+    post_query = fields
+    post_query['query'] = query
+    return post_query
+
+
+def _assign_quote_type(post_query, query):
+    if isinstance(query, EqyQy):
+        post_query['quoteType'] = 'EQUITY'
+    elif isinstance(query, FndQy):
+        post_query['quoteType'] = 'MUTUALFUND'
+    elif isinstance(query, EtfQy):
+        post_query['quoteType'] = 'ETF'
+    post_query['query'] = post_query['query'].to_dict()
+
+
+def _post_custom_screen(data, post_query, params_dict):
+    payload = dumps(post_query, separators=(",", ":"), ensure_ascii=False)
+    response = data.post(_SCREENER_URL_, data=payload, params=params_dict)
+    response.raise_for_status()
+    return response.json()['finance']['result'][0]
+
+
 @dynamic_docstring({"predefined_screeners": generate_list_table_from_dict_universal(PREDEFINED_SCREENER_QUERIES, bullets=True, title='Predefined queries (Dec-2024)')})
 def screen(query: Union[str, EquityQuery, FundQuery, ETFQuery],
             offset: int = None, 
@@ -121,96 +216,25 @@ def screen(query: Union[str, EquityQuery, FundQuery, ETFQuery],
     {predefined_screeners}
     """
 
-    _data = YfData(session=session)
+    data = YfData(session=session)
+    _validate_screen_limits(count, size)
 
-    # Only use defaults when user NOT give a predefined, because
-    # Yahoo's predefined endpoint auto-applies defaults. Also,
-    # that endpoint might be ignoring these fields.
-    defaults = {
-        'offset': 0,
-        'count': 25,
-        'sortField': 'ticker',
-        'sortAsc': False,
-        'userId': "",
-        'userIdType': "guid"
+    query, sortField, sortAsc, defaults = _resolve_predefined_with_offset(
+        query, offset, sortField, sortAsc)
+
+    fields = {
+        'offset': offset, 'count': count, "size": size,
+        'sortField': sortField, 'sortAsc': sortAsc,
+        'userId': userId, 'userIdType': userIdType,
     }
+    params_dict = _build_screen_params()
 
-    if count is not None and count > 250:
-        raise ValueError("Yahoo limits query count to 250, reduce count.")
-
-    if size is not None and size > 250:
-        raise ValueError("Yahoo limits query size to 250, reduce size.")
-
-    if offset is not None and isinstance(query, str):
-        # offset ignored by predefined API so switch to other API
-        post_query = PREDEFINED_SCREENER_QUERIES[query]
-        query = post_query['query']
-        # use predefined's attributes if user not specified
-        if sortField is None:
-            sortField = post_query['sortField']
-        if sortAsc is None:
-            sortAsc = post_query['sortType'].lower() == 'asc'
-        # and don't use defaults
-        defaults = {}
-
-    fields = {'offset': offset, 'count': count, "size": size, 'sortField': sortField, 'sortAsc': sortAsc, 'userId': userId, 'userIdType': userIdType}
-
-    params_dict = {"corsDomain": "finance.yahoo.com", "formatted": "false", "lang": "en-US", "region": "US"}
-
-    post_query = None
     if isinstance(query, str):
-        # post_query = PREDEFINED_SCREENER_QUERIES[query]
-        # Switch to Yahoo's predefined endpoint
+        return _fetch_predefined_screen(data, query, fields, params_dict, size)
 
-        if size is not None:
-            warnings.warn("Screen 'size' argument is deprecated for predefined screens, set 'count' instead.", DeprecationWarning, stacklevel=2)
-            count = size
-            size = None
-            fields['count'] = fields['size']
-            del fields['size']
+    if isinstance(query, QueryBase):
+        post_query = _build_custom_post_query(query, fields, defaults)
+        _assign_quote_type(post_query, query)
+        return _post_custom_screen(data, post_query, params_dict)
 
-        params_dict['scrIds'] = query
-        for k,v in fields.items():
-            if v is not None:
-                params_dict[k] = v
-        resp = _data.get(url=_PREDEFINED_URL_, params=params_dict)
-        try:
-            resp.raise_for_status()
-        except HTTPError:
-            if query not in PREDEFINED_SCREENER_QUERIES:
-                print(f"yfinance.screen: '{query}' is probably not a predefined query.")
-            raise
-        return resp.json()["finance"]["result"][0]
-
-    elif isinstance(query, QueryBase):
-        # Prepare other fields
-        for k in defaults:
-            if k not in fields or fields[k] is None:
-                fields[k] = defaults[k]
-        fields['sortType'] = 'ASC' if fields['sortAsc'] else 'DESC'
-        del fields['sortAsc']
-
-        post_query = fields
-        post_query['query'] = query
-
-    else:
-        raise ValueError(f'Query must be type str or QueryBase, not "{type(query)}"')
-
-    if query is None:
-        raise ValueError('No query provided')
-
-    if isinstance(post_query['query'], EqyQy):
-        post_query['quoteType'] = 'EQUITY'
-    elif isinstance(post_query['query'], FndQy):
-        post_query['quoteType'] = 'MUTUALFUND'
-    elif isinstance(post_query['query'], EtfQy):
-        post_query['quoteType'] = 'ETF'
-    post_query['query'] = post_query['query'].to_dict()
-    data = dumps(post_query, separators=(",", ":"), ensure_ascii=False)
-
-    # Fetch
-    response = _data.post(_SCREENER_URL_, 
-                            data=data, 
-                            params=params_dict)
-    response.raise_for_status()
-    return response.json()['finance']['result'][0]
+    raise ValueError(f'Query must be type str or QueryBase, not "{type(query)}"')

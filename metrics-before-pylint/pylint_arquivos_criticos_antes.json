@@ -1,0 +1,42 @@
+[
+  {
+    "arquivo": "yfinance/scrapers/history.py",
+    "ocorrencias": 326
+  },
+  {
+    "arquivo": "yfinance/utils.py",
+    "ocorrencias": 140
+  },
+  {
+    "arquivo": "yfinance/scrapers/quote.py",
+    "ocorrencias": 131
+  },
+  {
+    "arquivo": "yfinance/const.py",
+    "ocorrencias": 109
+  },
+  {
+    "arquivo": "yfinance/cache.py",
+    "ocorrencias": 105
+  },
+  {
+    "arquivo": "yfinance/base.py",
+    "ocorrencias": 86
+  },
+  {
+    "arquivo": "yfinance/data.py",
+    "ocorrencias": 72
+  },
+  {
+    "arquivo": "yfinance/ticker.py",
+    "ocorrencias": 59
+  },
+  {
+    "arquivo": "yfinance/screener/screener.py",
+    "ocorrencias": 48
+  },
+  {
+    "arquivo": "yfinance/screener/query.py",
+    "ocorrencias": 40
+  }
+]

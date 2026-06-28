@@ -13,27 +13,19 @@ class Analysis:
     def __init__(self, data: YfData, symbol: str):
         self._data = data
         self._symbol = symbol
-
-        # In quoteSummary the 'earningsTrend' module contains most of the data below.
-        # The format of data is not optimal so each function will process it's part of the data.
-        # This variable works as a cache.
-        self._earnings_trend = None
-
-        self._analyst_price_targets = None
-        self._earnings_estimate = None
-        self._revenue_estimate = None
-        self._earnings_history = None
-        self._eps_trend = None
-        self._eps_revisions = None
-        self._growth_estimates = None
+        self._cache = {k: None for k in (
+            'earnings_trend', 'analyst_price_targets', 'earnings_estimate',
+            'revenue_estimate', 'earnings_history', 'eps_trend', 'eps_revisions',
+            'growth_estimates',
+        )}
 
     def _get_periodic_df(self, key, currency_key=None) -> pd.DataFrame:
-        if self._earnings_trend is None:
+        if self._cache['earnings_trend'] is None:
             self._fetch_earnings_trend()
 
         data = []
         currency = None
-        for item in self._earnings_trend[:4]:
+        for item in self._cache['earnings_trend'][:4]:
             row = {'period': item['period']}
             for k, v in item[key].items():
                 if not isinstance(v, dict) or len(v) == 0:
@@ -51,36 +43,36 @@ class Analysis:
 
     @property
     def earnings_estimate(self) -> pd.DataFrame:
-        if self._earnings_estimate is not None:
-            return self._earnings_estimate
-        self._earnings_estimate = self._get_periodic_df('earningsEstimate', currency_key='earningsCurrency')
-        return self._earnings_estimate
+        if self._cache['earnings_estimate'] is not None:
+            return self._cache['earnings_estimate']
+        self._cache['earnings_estimate'] = self._get_periodic_df('earningsEstimate', currency_key='earningsCurrency')
+        return self._cache['earnings_estimate']
 
     @property
     def revenue_estimate(self) -> pd.DataFrame:
-        if self._revenue_estimate is not None:
-            return self._revenue_estimate
-        self._revenue_estimate = self._get_periodic_df('revenueEstimate', currency_key='revenueCurrency')
-        return self._revenue_estimate
+        if self._cache['revenue_estimate'] is not None:
+            return self._cache['revenue_estimate']
+        self._cache['revenue_estimate'] = self._get_periodic_df('revenueEstimate', currency_key='revenueCurrency')
+        return self._cache['revenue_estimate']
 
     @property
     def eps_trend(self) -> pd.DataFrame:
-        if self._eps_trend is not None:
-            return self._eps_trend
-        self._eps_trend = self._get_periodic_df('epsTrend', currency_key='epsTrendCurrency')
-        return self._eps_trend
+        if self._cache['eps_trend'] is not None:
+            return self._cache['eps_trend']
+        self._cache['eps_trend'] = self._get_periodic_df('epsTrend', currency_key='epsTrendCurrency')
+        return self._cache['eps_trend']
 
     @property
     def eps_revisions(self) -> pd.DataFrame:
-        if self._eps_revisions is not None:
-            return self._eps_revisions
-        self._eps_revisions = self._get_periodic_df('epsRevisions', currency_key='epsRevisionsCurrency')
-        return self._eps_revisions
+        if self._cache['eps_revisions'] is not None:
+            return self._cache['eps_revisions']
+        self._cache['eps_revisions'] = self._get_periodic_df('epsRevisions', currency_key='epsRevisionsCurrency')
+        return self._cache['eps_revisions']
 
     @property
     def analyst_price_targets(self) -> dict:
-        if self._analyst_price_targets is not None:
-            return self._analyst_price_targets
+        if self._cache['analyst_price_targets'] is not None:
+            return self._cache['analyst_price_targets']
 
         try:
             data = self._fetch(['financialData'])
@@ -88,8 +80,8 @@ class Analysis:
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._analyst_price_targets = {}
-            return self._analyst_price_targets
+            self._cache['analyst_price_targets'] = {}
+            return self._cache['analyst_price_targets']
 
         result = {}
         for key, value in data.items():
@@ -99,13 +91,13 @@ class Analysis:
             elif key == 'currentPrice':
                 result['current'] = value
 
-        self._analyst_price_targets = result
-        return self._analyst_price_targets
+        self._cache['analyst_price_targets'] = result
+        return self._cache['analyst_price_targets']
 
     @property
     def earnings_history(self) -> pd.DataFrame:
-        if self._earnings_history is not None:
-            return self._earnings_history
+        if self._cache['earnings_history'] is not None:
+            return self._cache['earnings_history']
 
         try:
             data = self._fetch(['earningsHistory'])
@@ -113,8 +105,8 @@ class Analysis:
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._earnings_history = pd.DataFrame()
-            return self._earnings_history
+            self._cache['earnings_history'] = pd.DataFrame()
+            return self._cache['earnings_history']
 
         rows = []
         for item in data:
@@ -134,15 +126,15 @@ class Analysis:
             df['quarter'] = pd.to_datetime(df['quarter'], format='%Y-%m-%d')
             df.set_index('quarter', inplace=True)
 
-        self._earnings_history = df
-        return self._earnings_history
+        self._cache['earnings_history'] = df
+        return self._cache['earnings_history']
 
     @property
     def growth_estimates(self) -> pd.DataFrame:
-        if self._growth_estimates is not None:
-            return self._growth_estimates
+        if self._cache['growth_estimates'] is not None:
+            return self._cache['growth_estimates']
 
-        if self._earnings_trend is None:
+        if self._cache['earnings_trend'] is None:
             self._fetch_earnings_trend()
 
         try:
@@ -151,11 +143,11 @@ class Analysis:
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._growth_estimates = pd.DataFrame()
-            return self._growth_estimates
+            self._cache['growth_estimates'] = pd.DataFrame()
+            return self._cache['growth_estimates']
 
         data = []
-        for item in self._earnings_trend:
+        for item in self._cache['earnings_trend']:
             period = item['period']
             row = {'period': period, 'stockTrend': item.get('growth', {}).get('raw', None)}
             data.append(row)
@@ -173,8 +165,8 @@ class Analysis:
         if len(data) == 0:
             return pd.DataFrame()
 
-        self._growth_estimates = pd.DataFrame(data).set_index('period').dropna(how='all')
-        return self._growth_estimates
+        self._cache['growth_estimates'] = pd.DataFrame(data).set_index('period').dropna(how='all')
+        return self._cache['growth_estimates']
 
     # modified version from quote.py
     def _fetch(self, modules: list):
@@ -197,8 +189,8 @@ class Analysis:
     def _fetch_earnings_trend(self) -> None:
         try:
             data = self._fetch(['earningsTrend'])
-            self._earnings_trend = data['quoteSummary']['result'][0]['earningsTrend']['trend']
+            self._cache['earnings_trend'] = data['quoteSummary']['result'][0]['earningsTrend']['trend']
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._earnings_trend = []
+            self._cache['earnings_trend'] = []

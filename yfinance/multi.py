@@ -30,6 +30,7 @@ from typing import Union
 import multitasking as _multitasking
 import pandas as _pd
 import numpy as _np
+import pytz as _pytz
 from ._http import new_session
 
 from . import Ticker, utils
@@ -117,90 +118,68 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
     )
 
 
-def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=True,
-                   ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
-                   repair=False, keepna=False, progress=True, period=period_default, interval="1d",
-                   prepost=False, rounding=False, timeout=10, session=None,
-                   multi_level_index=True):
-    logger = utils.get_yf_logger()
-    session = session or new_session()
-
-    YfData(session=session)
-
+def _configure_download_logging(logger, threads, progress):
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
-            # multi-threaded log messages would interleave; serialize.
             logger.debug('Disabling multithreading because DEBUG logging enabled')
             threads = False
         if progress:
             progress = False
+    return threads, progress
 
-    if ignore_tz is None:
-        ignore_tz = interval[-1] not in ('m', 'h')
 
-    tickers = tickers if isinstance(
-        tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
-
-    _tickers_ = []
+def _resolve_download_tickers(ctx, tickers):
+    tickers = tickers if isinstance(tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
+    resolved = []
     for ticker in tickers:
         if utils.is_isin(ticker):
             isin = ticker
             ticker = utils.get_ticker_by_isin(ticker)
             ctx.isins[ticker] = isin
-        _tickers_.append(ticker)
+        resolved.append(ticker)
+    return list(set(t.upper() for t in resolved))
 
-    tickers = list(set([t.upper() for t in _tickers_]))
 
-    if progress:
-        ctx.progress_bar = utils.ProgressBar(len(tickers), 'completed')
+def _run_threaded_downloads(ctx, tickers, threads, progress, download_kwargs):
+    if threads is True:
+        threads = min([len(tickers), _multitasking.cpu_count() * 2])
+    _multitasking.set_max_threads(threads)
+    for i, ticker in enumerate(tickers):
+        _download_one_threaded(ctx, ticker, progress=(progress and i > 0), **download_kwargs)
+    while True:
+        with ctx.lock:
+            if len(ctx.dfs) >= len(tickers):
+                break
+        _time.sleep(0.01)
 
-    if threads:
-        if threads is True:
-            threads = min([len(tickers), _multitasking.cpu_count() * 2])
-        _multitasking.set_max_threads(threads)
-        for i, ticker in enumerate(tickers):
-            _download_one_threaded(ctx, ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust, repair=repair, keepna=keepna,
-                                   progress=(progress and i > 0),
-                                   rounding=rounding, timeout=timeout)
-        while True:
-            with ctx.lock:
-                if len(ctx.dfs) >= len(tickers):
-                    break
-            _time.sleep(0.01)
-    else:
-        for i, ticker in enumerate(tickers):
-            _download_one(ctx, ticker, period=period, interval=interval,
-                          start=start, end=end, prepost=prepost,
-                          actions=actions, auto_adjust=auto_adjust,
-                          back_adjust=back_adjust, repair=repair, keepna=keepna,
-                          rounding=rounding, timeout=timeout)
-            if progress:
-                ctx.progress_bar.animate()
 
-    if progress:
-        ctx.progress_bar.completed()
+def _run_sequential_downloads(ctx, tickers, progress, download_kwargs):
+    for ticker in tickers:
+        _download_one(ctx, ticker, **download_kwargs)
+        if progress:
+            ctx.progress_bar.animate()
 
-    if ctx.errors:
-        logger.error('\n%.f Failed download%s:' % (
-            len(ctx.errors), 's' if len(ctx.errors) > 1 else ''))
 
-        errors = {}
-        for ticker, err in ctx.errors.items():
-            err = err.replace(f'${ticker}: ', '')
-            errors.setdefault(err, []).append(ticker)
-        for err, syms in errors.items():
-            logger.error(f'{syms}: ' + err)
+def _log_download_failures(ctx, logger):
+    if not ctx.errors:
+        return
+    logger.error('\n%.f Failed download%s:' % (
+        len(ctx.errors), 's' if len(ctx.errors) > 1 else ''))
+    errors = {}
+    for ticker, err in ctx.errors.items():
+        err = err.replace(f'${ticker}: ', '')
+        errors.setdefault(err, []).append(ticker)
+    for err, syms in errors.items():
+        logger.error(f'{syms}: ' + err)
+    tbs = {}
+    for ticker, tb in ctx.tracebacks.items():
+        tb = tb.replace(f'${ticker}: ', '')
+        tbs.setdefault(tb, []).append(ticker)
+    for tb, syms in tbs.items():
+        logger.debug(f'{syms}: ' + tb)
 
-        tbs = {}
-        for ticker, tb in ctx.tracebacks.items():
-            tb = tb.replace(f'${ticker}: ', '')
-            tbs.setdefault(tb, []).append(ticker)
-        for tb, syms in tbs.items():
-            logger.debug(f'{syms}: ' + tb)
 
+def _assemble_download_dataframe(ctx, ignore_tz, group_by, multi_level_index, tickers):
     if ignore_tz:
         for tkr, df in ctx.dfs.items():
             if df is not None and df.shape[0] > 0:
@@ -213,15 +192,59 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
         data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
                           keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
     data.rename(columns=ctx.isins, inplace=True)
-
     if group_by == 'column' and isinstance(data.columns, _pd.MultiIndex):
         data.columns = data.columns.swaplevel(0, 1)
         data.sort_index(level=0, axis=1, inplace=True)
-
     if not multi_level_index and len(tickers) == 1:
         data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
-
     return data
+
+
+def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=True,
+                   ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
+                   repair=False, keepna=False, progress=True, period=period_default, interval="1d",
+                   prepost=False, rounding=False, timeout=10, session=None,
+                   multi_level_index=True):
+    logger = utils.get_yf_logger()
+    session = session or new_session()
+    YfData(session=session)
+
+    threads, progress = _configure_download_logging(logger, threads, progress)
+    if ignore_tz is None:
+        ignore_tz = interval[-1] not in ('m', 'h')
+
+    tickers = _resolve_download_tickers(ctx, tickers)
+    if progress:
+        ctx.progress_bar = utils.ProgressBar(len(tickers), 'completed')
+
+    download_kwargs = dict(
+        period=period, interval=interval, start=start, end=end, prepost=prepost,
+        actions=actions, auto_adjust=auto_adjust, back_adjust=back_adjust,
+        repair=repair, keepna=keepna, rounding=rounding, timeout=timeout,
+    )
+
+    if threads:
+        _run_threaded_downloads(ctx, tickers, threads, progress, download_kwargs)
+    else:
+        _run_sequential_downloads(ctx, tickers, progress, download_kwargs)
+
+    if progress:
+        ctx.progress_bar.completed()
+
+    _log_download_failures(ctx, logger)
+    return _assemble_download_dataframe(ctx, ignore_tz, group_by, multi_level_index, tickers)
+
+def _download_tz_key(tz_repr):
+    if tz_repr is None:
+        return None
+    s = str(tz_repr)
+    if 'ZoneInfo' in s:
+        import re
+        m = re.search(r"key='([^']+)'", s)
+        if m:
+            return m.group(1)
+    return s
+
 
 def reindex_dfs(dfs, ignore_tz):
     if ignore_tz:
@@ -235,7 +258,7 @@ def reindex_dfs(dfs, ignore_tz):
         if tzs:
             # Find most common timezone
             unique_tzs, counts = _np.unique(tzs, return_counts=True)
-            tz_mode = unique_tzs[counts.argmax()]
+            tz_mode = _pytz.timezone(_download_tz_key(unique_tzs[counts.argmax()]))
             for tkr in dfs.keys():
                 if (dfs[tkr] is not None) and (not dfs[tkr].empty):
                     dfs[tkr].index = dfs[tkr].index.tz_convert(tz_mode)

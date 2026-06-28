@@ -25,24 +25,11 @@ class FundsData:
         """
         self._data = data
         self._symbol = symbol
-        
-        # quoteType
-        self._quote_type = None
-
-        # summaryProfile
-        self._description = None
-
-        # fundProfile
-        self._fund_overview = None
-        self._fund_operations = None
-
-        # topHoldings
-        self._asset_classes = None
-        self._top_holdings = None
-        self._equity_holdings = None
-        self._bond_holdings = None
-        self._bond_ratings = None
-        self._sector_weightings = None
+        self._cache = {k: None for k in (
+            'quote_type', 'description', 'fund_overview', 'fund_operations',
+            'asset_classes', 'top_holdings', 'equity_holdings', 'bond_holdings',
+            'bond_ratings', 'sector_weightings',
+        )}
 
     def quote_type(self) -> str:
         """
@@ -51,9 +38,9 @@ class FundsData:
         Returns:
             str: The quote type.
         """
-        if self._quote_type is None:
+        if self._cache['quote_type'] is None:
             self._fetch_and_parse()
-        return self._quote_type
+        return self._cache['quote_type']
     
     @property
     def description(self) -> str:
@@ -63,9 +50,9 @@ class FundsData:
         Returns:
             str: The description.
         """
-        if self._description is None:
+        if self._cache['description'] is None:
             self._fetch_and_parse()
-        return self._description
+        return self._cache['description']
     
     @property
     def fund_overview(self) -> Dict[str, Optional[str]]:
@@ -75,9 +62,9 @@ class FundsData:
         Returns:
             Dict[str, Optional[str]]: The fund overview.
         """
-        if self._fund_overview is None:
+        if self._cache['fund_overview'] is None:
             self._fetch_and_parse()
-        return self._fund_overview
+        return self._cache['fund_overview']
 
     @property
     def fund_operations(self) -> pd.DataFrame:
@@ -87,9 +74,9 @@ class FundsData:
         Returns:
             pd.DataFrame: The fund operations.
         """
-        if self._fund_operations is None:
+        if self._cache['fund_operations'] is None:
             self._fetch_and_parse()
-        return self._fund_operations
+        return self._cache['fund_operations']
 
     @property
     def asset_classes(self) -> Dict[str, float]:
@@ -99,9 +86,9 @@ class FundsData:
         Returns:
             Dict[str, float]: The asset classes.
         """
-        if self._asset_classes is None:
+        if self._cache['asset_classes'] is None:
             self._fetch_and_parse()
-        return self._asset_classes
+        return self._cache['asset_classes']
 
     @property
     def top_holdings(self) -> pd.DataFrame:
@@ -111,9 +98,9 @@ class FundsData:
         Returns:
             pd.DataFrame: The top holdings.
         """
-        if self._top_holdings is None:
+        if self._cache['top_holdings'] is None:
             self._fetch_and_parse()
-        return self._top_holdings
+        return self._cache['top_holdings']
 
     @property
     def equity_holdings(self) -> pd.DataFrame:
@@ -123,9 +110,9 @@ class FundsData:
         Returns:
             pd.DataFrame: The equity holdings.
         """
-        if self._equity_holdings is None:
+        if self._cache['equity_holdings'] is None:
             self._fetch_and_parse()
-        return self._equity_holdings
+        return self._cache['equity_holdings']
 
     @property
     def bond_holdings(self) -> pd.DataFrame:
@@ -135,9 +122,9 @@ class FundsData:
         Returns:
             pd.DataFrame: The bond holdings.
         """
-        if self._bond_holdings is None:
+        if self._cache['bond_holdings'] is None:
             self._fetch_and_parse()
-        return self._bond_holdings
+        return self._cache['bond_holdings']
 
     @property
     def bond_ratings(self) -> Dict[str, float]:
@@ -147,9 +134,9 @@ class FundsData:
         Returns:
             Dict[str, float]: The bond ratings.
         """
-        if self._bond_ratings is None:
+        if self._cache['bond_ratings'] is None:
             self._fetch_and_parse()
-        return self._bond_ratings
+        return self._cache['bond_ratings']
 
     @property
     def sector_weightings(self) -> Dict[str,float]:
@@ -159,9 +146,9 @@ class FundsData:
         Returns:
             Dict[str, float]: The sector weightings.
         """
-        if self._sector_weightings is None:
+        if self._cache['sector_weightings'] is None:
             self._fetch_and_parse()
-        return self._sector_weightings
+        return self._cache['sector_weightings']
 
     def _fetch(self):
         """
@@ -183,7 +170,7 @@ class FundsData:
         try:
             data = result["quoteSummary"]["result"][0]
             # check quote type
-            self._quote_type = data["quoteType"]["quoteType"]
+            self._cache['quote_type'] = data["quoteType"]["quoteType"]
             
             # parse "summaryProfile", "topHoldings", "fundProfile"
             self._parse_description(data["summaryProfile"])
@@ -227,7 +214,7 @@ class FundsData:
         Args:
             data: The data to parse.
         """
-        self._description = data.get("longBusinessSummary", "")
+        self._cache['description'] = data.get("longBusinessSummary", "")
 
     def _parse_top_holdings(self, data) -> None:
         """
@@ -237,7 +224,7 @@ class FundsData:
             data: The data to parse.
         """
         # asset classes
-        self._asset_classes = {
+        self._cache['asset_classes'] = {
             "cashPosition": self._parse_raw_values(data.get("cashPosition", None)),
             "stockPosition": self._parse_raw_values(data.get("stockPosition", None)),
             "bondPosition": self._parse_raw_values(data.get("bondPosition", None)),
@@ -255,7 +242,7 @@ class FundsData:
             _name.append(item["holdingName"])
             _holding_percent.append(item["holdingPercent"])
         
-        self._top_holdings = pd.DataFrame({
+        self._cache['top_holdings'] = pd.DataFrame({
             "Symbol": _symbol,
             "Name": _name,
             "Holding Percent": _holding_percent
@@ -263,7 +250,7 @@ class FundsData:
 
         # equity holdings
         _equity_holdings = data.get("equityHoldings", {})
-        self._equity_holdings = pd.DataFrame({
+        self._cache['equity_holdings'] = pd.DataFrame({
             "Average": ["Price/Earnings", "Price/Book", "Price/Sales", "Price/Cashflow", "Median Market Cap", "3 Year Earnings Growth"],
             self._symbol: [
                 self._parse_raw_values(_equity_holdings.get("priceToEarnings", pd.NA)),
@@ -285,7 +272,7 @@ class FundsData:
         
         # bond holdings
         _bond_holdings = data.get("bondHoldings", {})
-        self._bond_holdings = pd.DataFrame({
+        self._cache['bond_holdings'] = pd.DataFrame({
             "Average": ["Duration", "Maturity", "Credit Quality"],
             self._symbol: [
                 self._parse_raw_values(_bond_holdings.get("duration", pd.NA)),
@@ -300,10 +287,10 @@ class FundsData:
         }).set_index("Average")
 
         # bond ratings
-        self._bond_ratings = dict((key, d[key]) for d in data.get("bondRatings", []) for key in d)
+        self._cache['bond_ratings'] = dict((key, d[key]) for d in data.get("bondRatings", []) for key in d)
 
         # sector weightings
-        self._sector_weightings = dict((key, d[key]) for d in data.get("sectorWeightings", []) for key in d)
+        self._cache['sector_weightings'] = dict((key, d[key]) for d in data.get("sectorWeightings", []) for key in d)
         
     def _parse_fund_profile(self, data):
         """
@@ -312,7 +299,7 @@ class FundsData:
         Args:
             data: The data to parse.
         """
-        self._fund_overview = {
+        self._cache['fund_overview'] = {
             "categoryName": data.get("categoryName", None), 
             "family":       data.get("family", None), 
             "legalType":    data.get("legalType", None)
@@ -321,7 +308,7 @@ class FundsData:
         _fund_operations = data.get("feesExpensesInvestment", {})
         _fund_operations_cat = data.get("feesExpensesInvestmentCat", {})
 
-        self._fund_operations = pd.DataFrame({
+        self._cache['fund_operations'] = pd.DataFrame({
             "Attributes": ["Annual Report Expense Ratio", "Annual Holdings Turnover", "Total Net Assets"],
             self._symbol: [
                 self._parse_raw_values(_fund_operations.get("annualReportExpenseRatio", pd.NA)),

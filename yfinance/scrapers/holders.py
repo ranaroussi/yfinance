@@ -9,57 +9,66 @@ from yfinance.exceptions import YFDataException
 
 _QUOTE_SUMMARY_URL_ = f"{_BASE_URL_}/v10/finance/quoteSummary"
 
+
+class _HoldersCache:
+    __slots__ = (
+        'major', 'major_direct_holders', 'institutional', 'mutualfund',
+        'insider_transactions', 'insider_purchases', 'insider_roster',
+    )
+
+    def __init__(self):
+        self.major = None
+        self.major_direct_holders = None
+        self.institutional = None
+        self.mutualfund = None
+        self.insider_transactions = None
+        self.insider_purchases = None
+        self.insider_roster = None
+
+
 class Holders:
     _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
     def __init__(self, data: YfData, symbol: str):
         self._data = data
         self._symbol = symbol
-
-        self._major = None
-        self._major_direct_holders = None
-        self._institutional = None
-        self._mutualfund = None
-
-        self._insider_transactions = None
-        self._insider_purchases = None
-        self._insider_roster = None
+        self._cache = _HoldersCache()
 
     @property
     def major(self) -> pd.DataFrame:
-        if self._major is None:
+        if self._cache.major is None:
             self._fetch_and_parse()
-        return self._major
+        return self._cache.major
 
     @property
     def institutional(self) -> pd.DataFrame:
-        if self._institutional is None:
+        if self._cache.institutional is None:
             self._fetch_and_parse()
-        return self._institutional
+        return self._cache.institutional
 
     @property
     def mutualfund(self) -> pd.DataFrame:
-        if self._mutualfund is None:
+        if self._cache.mutualfund is None:
             self._fetch_and_parse()
-        return self._mutualfund
+        return self._cache.mutualfund
 
     @property
     def insider_transactions(self) -> pd.DataFrame:
-        if self._insider_transactions is None:
+        if self._cache.insider_transactions is None:
             self._fetch_and_parse()
-        return self._insider_transactions
+        return self._cache.insider_transactions
 
     @property
     def insider_purchases(self) -> pd.DataFrame:
-        if self._insider_purchases is None:
+        if self._cache.insider_purchases is None:
             self._fetch_and_parse()
-        return self._insider_purchases
+        return self._cache.insider_purchases
 
     @property
     def insider_roster(self) -> pd.DataFrame:
-        if self._insider_roster is None:
+        if self._cache.insider_roster is None:
             self._fetch_and_parse()
-        return self._insider_roster
+        return self._cache.insider_roster
 
     def _fetch(self):
         modules = ','.join(
@@ -76,13 +85,13 @@ class Holders:
                 raise
             utils.get_yf_logger().error(str(e) + e.response.text)
 
-            self._major = pd.DataFrame()
-            self._major_direct_holders = pd.DataFrame()
-            self._institutional = pd.DataFrame()
-            self._mutualfund = pd.DataFrame()
-            self._insider_transactions = pd.DataFrame()
-            self._insider_purchases = pd.DataFrame()
-            self._insider_roster = pd.DataFrame()
+            self._cache.major = pd.DataFrame()
+            self._cache.major_direct_holders = pd.DataFrame()
+            self._cache.institutional = pd.DataFrame()
+            self._cache.mutualfund = pd.DataFrame()
+            self._cache.insider_transactions = pd.DataFrame()
+            self._cache.insider_purchases = pd.DataFrame()
+            self._cache.insider_roster = pd.DataFrame()
 
             return
 
@@ -117,7 +126,7 @@ class Holders:
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
             df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)  # "pctHeld": "% Out"
-        self._institutional = df
+        self._cache.institutional = df
 
     def _parse_fund_ownership(self, data):
         holders = data.get("ownershipList", {})
@@ -129,7 +138,7 @@ class Holders:
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
             df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)
-        self._mutualfund = df
+        self._cache.mutualfund = df
 
     def _parse_major_direct_holders(self, data):
         holders = data.get("holders", {})
@@ -141,7 +150,7 @@ class Holders:
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
             df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "positionDirect": "Shares", "valueDirect": "Value"}, inplace=True)
-        self._major_direct_holders = df
+        self._cache.major_direct_holders = df
 
     def _parse_major_holders_breakdown(self, data):
         if "maxAge" in data:
@@ -150,7 +159,7 @@ class Holders:
         if not df.empty:
             df.columns.name = "Breakdown"
             df.rename(columns={df.columns[0]: 'Value'}, inplace=True)
-        self._major = df
+        self._cache.major = df
 
     def _parse_insider_transactions(self, data):
         holders = data.get("transactions", {})
@@ -172,7 +181,7 @@ class Holders:
                 "value": "Value",
                 "ownership": "Ownership"  # ownership flag, direct or institutional
             }, inplace=True)
-        self._insider_transactions = df
+        self._cache.insider_transactions = df
 
     def _parse_insider_holders(self, data):
         holders = data.get("holders", {})
@@ -204,7 +213,7 @@ class Holders:
             df["URL"] = df["URL"].astype(str)
             df["Most Recent Transaction"] = df["Most Recent Transaction"].astype(str)
 
-        self._insider_roster = df
+        self._cache.insider_roster = df
 
     def _parse_net_share_purchase_activity(self, data):
         df = pd.DataFrame(
@@ -238,4 +247,4 @@ class Holders:
                 ]
             }
         ).convert_dtypes()
-        self._insider_purchases = df
+        self._cache.insider_purchases = df

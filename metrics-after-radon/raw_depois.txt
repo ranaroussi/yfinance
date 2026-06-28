@@ -1,0 +1,420 @@
+yfinance\base.py
+    LOC: 819
+    LLOC: 486
+    SLOC: 492
+    Comments: 66
+    Single comments: 66
+    Multi: 131
+    Blank: 130
+    - Comment Stats
+        (C % L): 8%
+        (C % S): 13%
+        (C + M % L): 24%
+yfinance\cache.py
+    LOC: 639
+    LLOC: 443
+    SLOC: 453
+    Comments: 44
+    Single comments: 35
+    Multi: 7
+    Blank: 144
+    - Comment Stats
+        (C % L): 7%
+        (C % S): 10%
+        (C + M % L): 8%
+yfinance\calendars.py
+    LOC: 562
+    LLOC: 212
+    SLOC: 368
+    Comments: 11
+    Single comments: 13
+    Multi: 106
+    Blank: 75
+    - Comment Stats
+        (C % L): 2%
+        (C % S): 3%
+        (C + M % L): 21%
+yfinance\config.py
+    LOC: 61
+    LLOC: 44
+    SLOC: 44
+    Comments: 4
+    Single comments: 1
+    Multi: 0
+    Blank: 16
+    - Comment Stats
+        (C % L): 7%
+        (C % S): 9%
+        (C + M % L): 7%
+yfinance\const.py
+    LOC: 1154
+    LLOC: 54
+    SLOC: 1133
+    Comments: 84
+    Single comments: 7
+    Multi: 0
+    Blank: 14
+    - Comment Stats
+        (C % L): 7%
+        (C % S): 7%
+        (C + M % L): 7%
+yfinance\data.py
+    LOC: 618
+    LLOC: 424
+    SLOC: 436
+    Comments: 37
+    Single comments: 39
+    Multi: 53
+    Blank: 90
+    - Comment Stats
+        (C % L): 6%
+        (C % S): 8%
+        (C + M % L): 15%
+yfinance\exceptions.py
+    LOC: 53
+    LLOC: 35
+    SLOC: 36
+    Comments: 1
+    Single comments: 1
+    Multi: 0
+    Blank: 16
+    - Comment Stats
+        (C % L): 2%
+        (C % S): 3%
+        (C + M % L): 2%
+yfinance\live.py
+    LOC: 350
+    LLOC: 250
+    SLOC: 235
+    Comments: 5
+    Single comments: 3
+    Multi: 48
+    Blank: 64
+    - Comment Stats
+        (C % L): 1%
+        (C % S): 2%
+        (C + M % L): 15%
+yfinance\lookup.py
+    LOC: 220
+    LLOC: 109
+    SLOC: 100
+    Comments: 21
+    Single comments: 29
+    Multi: 48
+    Blank: 43
+    - Comment Stats
+        (C % L): 10%
+        (C % S): 21%
+        (C + M % L): 31%
+yfinance\multi.py
+    LOC: 324
+    LLOC: 172
+    SLOC: 208
+    Comments: 25
+    Single comments: 25
+    Multi: 52
+    Blank: 39
+    - Comment Stats
+        (C % L): 8%
+        (C % S): 12%
+        (C + M % L): 24%
+yfinance\pricing_pb2.py
+    LOC: 33
+    LLOC: 16
+    SLOC: 18
+    Comments: 6
+    Single comments: 6
+    Multi: 0
+    Blank: 9
+    - Comment Stats
+        (C % L): 18%
+        (C % S): 33%
+        (C + M % L): 18%
+yfinance\search.py
+    LOC: 163
+    LLOC: 72
+    SLOC: 100
+    Comments: 20
+    Single comments: 28
+    Multi: 17
+    Blank: 18
+    - Comment Stats
+        (C % L): 12%
+        (C % S): 20%
+        (C + M % L): 23%
+yfinance\shared.py
+    LOC: 29
+    LLOC: 7
+    SLOC: 7
+    Comments: 20
+    Single comments: 20
+    Multi: 0
+    Blank: 2
+    - Comment Stats
+        (C % L): 69%
+        (C % S): 286%
+        (C + M % L): 69%
+yfinance\ticker.py
+    LOC: 328
+    LLOC: 212
+    SLOC: 232
+    Comments: 21
+    Single comments: 21
+    Multi: 3
+    Blank: 72
+    - Comment Stats
+        (C % L): 6%
+        (C % S): 9%
+        (C + M % L): 7%
+yfinance\tickers.py
+    LOC: 100
+    LLOC: 34
+    SLOC: 58
+    Comments: 23
+    Single comments: 23
+    Multi: 0
+    Blank: 19
+    - Comment Stats
+        (C % L): 23%
+        (C % S): 40%
+        (C + M % L): 23%
+yfinance\utils.py
+    LOC: 1153
+    LLOC: 804
+    SLOC: 823
+    Comments: 110
+    Single comments: 89
+    Multi: 43
+    Blank: 198
+    - Comment Stats
+        (C % L): 10%
+        (C % S): 13%
+        (C + M % L): 13%
+yfinance\version.py
+    LOC: 1
+    LLOC: 1
+    SLOC: 1
+    Comments: 0
+    Single comments: 0
+    Multi: 0
+    Blank: 0
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 0%
+yfinance\_http.py
+    LOC: 101
+    LLOC: 59
+    SLOC: 65
+    Comments: 0
+    Single comments: 2
+    Multi: 15
+    Blank: 19
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 15%
+yfinance\__init__.py
+    LOC: 61
+    LLOC: 32
+    SLOC: 33
+    Comments: 22
+    Single comments: 22
+    Multi: 0
+    Blank: 6
+    - Comment Stats
+        (C % L): 36%
+        (C % S): 67%
+        (C + M % L): 36%
+yfinance\domain\domain.py
+    LOC: 206
+    LLOC: 98
+    SLOC: 84
+    Comments: 0
+    Single comments: 0
+    Multi: 83
+    Blank: 39
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 40%
+yfinance\domain\industry.py
+    LOC: 156
+    LLOC: 76
+    SLOC: 73
+    Comments: 0
+    Single comments: 0
+    Multi: 53
+    Blank: 30
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 34%
+yfinance\domain\market.py
+    LOC: 143
+    LLOC: 93
+    SLOC: 107
+    Comments: 7
+    Single comments: 6
+    Multi: 5
+    Blank: 25
+    - Comment Stats
+        (C % L): 5%
+        (C % S): 7%
+        (C + M % L): 8%
+yfinance\domain\sector.py
+    LOC: 155
+    LLOC: 72
+    SLOC: 59
+    Comments: 0
+    Single comments: 0
+    Multi: 65
+    Blank: 31
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 42%
+yfinance\domain\__init__.py
+    LOC: 5
+    LLOC: 3
+    SLOC: 3
+    Comments: 1
+    Single comments: 1
+    Multi: 0
+    Blank: 1
+    - Comment Stats
+        (C % L): 20%
+        (C % S): 33%
+        (C + M % L): 20%
+yfinance\scrapers\analysis.py
+    LOC: 196
+    LLOC: 170
+    SLOC: 168
+    Comments: 1
+    Single comments: 1
+    Multi: 0
+    Blank: 27
+    - Comment Stats
+        (C % L): 1%
+        (C % S): 1%
+        (C + M % L): 1%
+yfinance\scrapers\fundamentals.py
+    LOC: 168
+    LLOC: 124
+    SLOC: 122
+    Comments: 13
+    Single comments: 13
+    Multi: 0
+    Blank: 33
+    - Comment Stats
+        (C % L): 8%
+        (C % S): 11%
+        (C + M % L): 8%
+yfinance\scrapers\funds.py
+    LOC: 323
+    LLOC: 141
+    SLOC: 176
+    Comments: 8
+    Single comments: 8
+    Multi: 92
+    Blank: 47
+    - Comment Stats
+        (C % L): 2%
+        (C % S): 5%
+        (C + M % L): 31%
+yfinance\scrapers\history.py
+    LOC: 3968
+    LLOC: 3285
+    SLOC: 3239
+    Comments: 325
+    Single comments: 311
+    Multi: 46
+    Blank: 372
+    - Comment Stats
+        (C % L): 8%
+        (C % S): 10%
+        (C + M % L): 9%
+yfinance\scrapers\holders.py
+    LOC: 250
+    LLOC: 172
+    SLOC: 218
+    Comments: 4
+    Single comments: 2
+    Multi: 0
+    Blank: 30
+    - Comment Stats
+        (C % L): 2%
+        (C % S): 2%
+        (C + M % L): 2%
+yfinance\scrapers\quote.py
+    LOC: 792
+    LLOC: 603
+    SLOC: 602
+    Comments: 82
+    Single comments: 80
+    Multi: 0
+    Blank: 110
+    - Comment Stats
+        (C % L): 10%
+        (C % S): 14%
+        (C + M % L): 10%
+yfinance\scrapers\__init__.py
+    LOC: 0
+    LLOC: 0
+    SLOC: 0
+    Comments: 0
+    Single comments: 0
+    Multi: 0
+    Blank: 0
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 0%
+yfinance\screener\query.py
+    LOC: 259
+    LLOC: 147
+    SLOC: 136
+    Comments: 9
+    Single comments: 9
+    Multi: 67
+    Blank: 47
+    - Comment Stats
+        (C % L): 3%
+        (C % S): 7%
+        (C + M % L): 29%
+yfinance\screener\screener.py
+    LOC: 240
+    LLOC: 101
+    SLOC: 156
+    Comments: 0
+    Single comments: 1
+    Multi: 42
+    Blank: 41
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 18%
+yfinance\screener\__init__.py
+    LOC: 4
+    LLOC: 3
+    SLOC: 3
+    Comments: 0
+    Single comments: 0
+    Multi: 0
+    Blank: 1
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 0%
+** Total **
+    LOC: 13634
+    LLOC: 8554
+    SLOC: 9988
+    Comments: 970
+    Single comments: 862
+    Multi: 976
+    Blank: 1808
+    - Comment Stats
+        (C % L): 7%
+        (C % S): 10%
+        (C + M % L): 14%

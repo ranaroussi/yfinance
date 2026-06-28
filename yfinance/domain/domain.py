@@ -8,6 +8,18 @@ from ..ticker import Ticker
 
 _QUERY_URL_ = f'{_QUERY1_URL_}/v1/finance'
 
+
+class _DomainCache:
+    __slots__ = ('name', 'symbol', 'overview', 'top_companies', 'research_reports')
+
+    def __init__(self):
+        self.name: Optional[str] = None
+        self.symbol: Optional[str] = None
+        self.overview: Optional[Dict] = None
+        self.top_companies: Optional[_pd.DataFrame] = None
+        self.research_reports: Optional[List[Dict[str, str]]] = None
+
+
 class Domain(ABC):
     """
     Abstract base class representing a domain entity in financial data, with key attributes 
@@ -29,12 +41,7 @@ class Domain(ABC):
         self.session = session
         self._region: str = region.strip().upper()
         self._data: YfData = YfData(session=session)
-
-        self._name: Optional[str] = None
-        self._symbol: Optional[str] = None
-        self._overview: Optional[Dict] = None
-        self._top_companies: Optional[_pd.DataFrame] = None
-        self._research_reports: Optional[List[Dict[str, str]]] = None
+        self._cache = _DomainCache()
 
     @property
     def key(self) -> str:
@@ -54,8 +61,8 @@ class Domain(ABC):
         Returns:
             str: The name of the domain entity.
         """
-        self._ensure_fetched(self._name)
-        return self._name
+        self._ensure_fetched(self._cache.name)
+        return self._cache.name
 
     @property
     def symbol(self) -> str:
@@ -65,8 +72,8 @@ class Domain(ABC):
         Returns:
             str: The symbol representing the domain entity.
         """
-        self._ensure_fetched(self._symbol)
-        return self._symbol
+        self._ensure_fetched(self._cache.symbol)
+        return self._cache.symbol
 
     @property
     def ticker(self) -> Ticker:
@@ -76,8 +83,8 @@ class Domain(ABC):
         Returns:
             Ticker: A Ticker object associated with the domain entity.
         """
-        self._ensure_fetched(self._symbol)
-        return Ticker(self._symbol)
+        self._ensure_fetched(self._cache.symbol)
+        return Ticker(self._cache.symbol)
 
     @property
     def overview(self) -> Dict:
@@ -87,8 +94,8 @@ class Domain(ABC):
         Returns:
             Dict: A dictionary containing an overview of the domain entity.
         """
-        self._ensure_fetched(self._overview)
-        return self._overview
+        self._ensure_fetched(self._cache.overview)
+        return self._cache.overview
 
     @property
     def top_companies(self) -> Optional[_pd.DataFrame]:
@@ -98,8 +105,8 @@ class Domain(ABC):
         Returns:
             pandas.DataFrame: A DataFrame containing the top companies in the domain.
         """
-        self._ensure_fetched(self._top_companies)
-        return self._top_companies 
+        self._ensure_fetched(self._cache.top_companies)
+        return self._cache.top_companies
 
     @property
     def research_reports(self) -> List[Dict[str, str]]:
@@ -109,8 +116,8 @@ class Domain(ABC):
         Returns:
             List[Dict[str, str]]: A list of research reports, where each report is a dictionary with metadata.
         """
-        self._ensure_fetched(self._research_reports)
-        return self._research_reports
+        self._ensure_fetched(self._cache.research_reports)
+        return self._cache.research_reports
 
     def _fetch(self, query_url) -> Dict:
         """
@@ -133,11 +140,11 @@ class Domain(ABC):
         Args:
             data (Dict): The raw data received from the API.
         """
-        self._name = data.get('name')
-        self._symbol = data.get('symbol')
-        self._overview = self._parse_overview(data.get('overview', {}))
-        self._top_companies = self._parse_top_companies(data.get('topCompanies', {}))
-        self._research_reports = data.get('researchReports')
+        self._cache.name = data.get('name')
+        self._cache.symbol = data.get('symbol')
+        self._cache.overview = self._parse_overview(data.get('overview', {}))
+        self._cache.top_companies = self._parse_top_companies(data.get('topCompanies', {}))
+        self._cache.research_reports = data.get('researchReports')
 
     def _parse_overview(self, overview) -> Dict:
         """

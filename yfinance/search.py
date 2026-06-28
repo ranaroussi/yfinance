@@ -52,54 +52,55 @@ class Search:
         """
         self.session = session
         self._data = YfData(session=self.session)
-        
-        self.query = query
-        self.max_results = max_results
-        self.enable_fuzzy_query = enable_fuzzy_query
-        self.news_count = news_count
-        self.timeout = timeout
+        self._params = {
+            'query': query,
+            'max_results': max_results,
+            'news_count': news_count,
+            'lists_count': lists_count,
+            'include_cb': include_cb,
+            'nav_links': include_nav_links,
+            'enable_research': include_research,
+            'enable_cultural_assets': include_cultural_assets,
+            'enable_fuzzy_query': enable_fuzzy_query,
+            'recommended': recommended,
+            'timeout': timeout,
+        }
         self.raise_errors = raise_errors
-
-        self.lists_count = lists_count
-        self.include_cb = include_cb
-        self.nav_links = include_nav_links
-        self.enable_research = include_research
-        self.enable_cultural_assets = include_cultural_assets
-        self.recommended = recommended
-
         self._logger = utils.get_yf_logger()
-
-        self._response = {}
-        self._all = {}
-        self._quotes = []
-        self._news = []
-        self._lists = []
-        self._research = []
-        self._nav = []
+        self._results = {
+            'response': {},
+            'quotes': [],
+            'news': [],
+            'lists': [],
+            'research': [],
+            'nav': [],
+            'all': {},
+        }
 
         self.search()
 
     def search(self) -> 'Search':
         """Search using the query parameters defined in the constructor."""
+        p = self._params
         url = f"{_BASE_URL_}/v1/finance/search"
         params = {
-            "q": self.query,
-            "quotesCount": self.max_results,
-            "enableFuzzyQuery": self.enable_fuzzy_query,
-            "newsCount": self.news_count,
+            "q": p['query'],
+            "quotesCount": p['max_results'],
+            "enableFuzzyQuery": p['enable_fuzzy_query'],
+            "newsCount": p['news_count'],
             "quotesQueryId": "tss_match_phrase_query",
             "newsQueryId": "news_cie_vespa",
-            "listsCount": self.lists_count,
-            "enableCb": self.include_cb,
-            "enableNavLinks": self.nav_links,
-            "enableResearchReports": self.enable_research,
-            "enableCulturalAssets": self.enable_cultural_assets,
-            "recommendedCount": self.recommended
+            "listsCount": p['lists_count'],
+            "enableCb": p['include_cb'],
+            "enableNavLinks": p['nav_links'],
+            "enableResearchReports": p['enable_research'],
+            "enableCulturalAssets": p['enable_cultural_assets'],
+            "recommendedCount": p['recommended']
         }
 
-        self._logger.debug(f'{self.query}: Yahoo GET parameters: {str(dict(params))}')
+        self._logger.debug(f"{p['query']}: Yahoo GET parameters: {str(dict(params))}")
 
-        data = self._data.cache_get(url=url, params=params, timeout=self.timeout)
+        data = self._data.cache_get(url=url, params=params, timeout=p['timeout'])
         if data is None or "Will be right back" in data.text:
             raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
         try:
@@ -107,53 +108,56 @@ class Search:
         except _json.JSONDecodeError:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.query}: 'search' fetch received faulty data")
+            self._logger.error(f"{p['query']}: 'search' fetch received faulty data")
             data = {}
 
-        self._response = data
-        # Filter quotes to only include symbols
-        self._quotes = [quote for quote in data.get("quotes", []) if "symbol" in quote]
-        self._news = data.get("news", [])
-        self._lists = data.get("lists", [])
-        self._research = data.get("researchReports", [])
-        self._nav = data.get("nav", [])
-
-        self._all = {"quotes": self._quotes, "news": self._news, "lists": self._lists, "research": self._research,
-                     "nav": self._nav}
+        self._results['response'] = data
+        self._results['quotes'] = [quote for quote in data.get("quotes", []) if "symbol" in quote]
+        self._results['news'] = data.get("news", [])
+        self._results['lists'] = data.get("lists", [])
+        self._results['research'] = data.get("researchReports", [])
+        self._results['nav'] = data.get("nav", [])
+        self._results['all'] = {
+            "quotes": self._results['quotes'],
+            "news": self._results['news'],
+            "lists": self._results['lists'],
+            "research": self._results['research'],
+            "nav": self._results['nav'],
+        }
 
         return self
 
     @property
     def quotes(self) -> 'list':
         """Get the quotes from the search results."""
-        return self._quotes
+        return self._results['quotes']
 
     @property
     def news(self) -> 'list':
         """Get the news from the search results."""
-        return self._news
+        return self._results['news']
 
     @property
     def lists(self) -> 'list':
         """Get the lists from the search results."""
-        return self._lists
+        return self._results['lists']
 
     @property
     def research(self) -> 'list':
         """Get the research reports from the search results."""
-        return self._research
+        return self._results['research']
 
     @property
     def nav(self) -> 'list':
         """Get the navigation links from the search results."""
-        return self._nav
+        return self._results['nav']
 
     @property
     def all(self) -> 'dict[str,list]':
         """Get all the results from the search results: filtered down version of response."""
-        return self._all
+        return self._results['all']
 
     @property
     def response(self) -> 'dict':
         """Get the raw response from the search results."""
-        return self._response
+        return self._results['response']

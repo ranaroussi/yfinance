@@ -9,19 +9,24 @@ from yfinance.config import YfConfig
 from yfinance.data import YfData
 from yfinance.exceptions import YFException, YFNotImplementedError
 
+
+class _FundamentalsCache:
+    __slots__ = ('earnings', 'shares', 'financials_data', 'fin_data_quote', 'basics_already_scraped')
+
+    def __init__(self):
+        self.earnings = None
+        self.shares = None
+        self.financials_data = None
+        self.fin_data_quote = None
+        self.basics_already_scraped = False
+
+
 class Fundamentals:
 
     def __init__(self, data: YfData, symbol: str):
         self._data = data
         self._symbol = symbol
-
-        self._earnings = None
-        self._financials = None
-        self._shares = None
-
-        self._financials_data = None
-        self._fin_data_quote = None
-        self._basics_already_scraped = False
+        self._cache = _FundamentalsCache()
         self._financials = Financials(data, symbol)
 
     @property
@@ -35,9 +40,9 @@ class Fundamentals:
 
     @property
     def shares(self) -> pd.DataFrame:
-        if self._shares is None:
+        if self._cache.shares is None:
             raise YFNotImplementedError('shares')
-        return self._shares
+        return self._cache.shares
 
 
 class Financials:

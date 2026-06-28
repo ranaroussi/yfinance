@@ -166,6 +166,17 @@ PREDEFINED_CALENDARS = {
 }
 
 
+class _CalendarsState:
+    __slots__ = ('start', 'end', 'most_active_qy', 'cache_request_body', 'calendars')
+
+    def __init__(self, start: str, end: str):
+        self.start = start
+        self.end = end
+        self.most_active_qy: CalendarQuery = CalendarQuery("or", [])
+        self.cache_request_body: Dict = {}
+        self.calendars: Dict[str, pd.DataFrame] = {}
+
+
 class Calendars:
     """
     Get economic calendars, for example, Earnings, IPO, Economic Events, Splits
@@ -198,18 +209,22 @@ class Calendars:
 
         _start = self._parse_date_param(start)
         _end = self._parse_date_param(end)
-        self._start = _start or datetime.now().strftime(DATE_STR_FORMAT)
-        self._end = _end or (datetime.strptime(self._start, DATE_STR_FORMAT) + timedelta(days=7)).strftime(DATE_STR_FORMAT)
+        start_str = _start or datetime.now().strftime(DATE_STR_FORMAT)
+        end_str = _end or (datetime.strptime(start_str, DATE_STR_FORMAT) + timedelta(days=7)).strftime(DATE_STR_FORMAT)
+        self._state = _CalendarsState(start_str, end_str)
 
         if not start and end:
-            self._logger.debug(f"Incomplete boundary: did not provide `start`, using today {self._start=} to {self._end=}")
+            self._logger.debug(f"Incomplete boundary: did not provide `start`, using today {self._state.start=} to {self._state.end=}")
         elif start and not end:
-            self._logger.debug(f"Incomplete boundary: did not provide `end`, using {self._start=} to {self._end=}: +7 days from self._start")
+            self._logger.debug(f"Incomplete boundary: did not provide `end`, using {self._state.start=} to {self._state.end=}: +7 days from self._state.start")
 
-        self._most_active_qy: CalendarQuery = CalendarQuery("or", [])
+    @property
+    def calendars(self) -> Dict[str, pd.DataFrame]:
+        return self._state.calendars
 
-        self._cache_request_body = {}
-        self.calendars: Dict[str, pd.DataFrame] = {}
+    @calendars.setter
+    def calendars(self, value: Dict[str, pd.DataFrame]) -> None:
+        self._state.calendars = value
 
     def _parse_date_param(self, _date: Optional[Union[str, datetime, date, int]]) -> str:
         if not _date:
@@ -234,13 +249,13 @@ class Calendars:
             "query": query.to_dict(),
         }
 
-        if self._cache_request_body.get(calendar_type, None) and not force:
-            cache_body = self._cache_request_body[calendar_type]
+        if self._state.cache_request_body.get(calendar_type, None) and not force:
+            cache_body = self._state.cache_request_body[calendar_type]
             if cache_body == body and calendar_type in self.calendars:
                 # Uses cache if force=False and new request has same body as previous
                 self._logger.debug(f"Getting {calendar_type=} from local cache")
                 return self.calendars[calendar_type]
-        self._cache_request_body[calendar_type] = body
+        self._state.cache_request_body[calendar_type] = body
 
         self._logger.debug(f"Fetching {calendar_type=} with {limit=}")
         response: Response = self._data.post(_CALENDAR_URL_, params=params, body=body)
@@ -297,7 +312,7 @@ class Calendars:
     ) -> CalendarQuery:
         """
         Retrieve tickers from YF, converts them into operands accepted by YF.
-        Saves the operands in self._most_active_qy.
+        Saves the operands in self._state.most_active_qy.
         Will not re-query if already populated.
 
         Used for earnings calendar optional filter.
@@ -305,8 +320,8 @@ class Calendars:
         :param force: if True, will re-query even if operands already exist
         :return: list of operands for active traded stocks
         """
-        if not self._most_active_qy.is_empty and not force:
-            return self._most_active_qy
+        if not self._state.most_active_qy.is_empty and not force:
+            return self._state.most_active_qy
 
         self._logger.debug("Fetching 200 most_active for earnings calendar")
 
@@ -314,22 +329,22 @@ class Calendars:
             json_raw: dict = screen(query="MOST_ACTIVES", count=200)
         except exceptions.HTTPError:
             self._logger.error("Failed to retrieve most active stocks.")
-            return self._most_active_qy
+            return self._state.most_active_qy
 
         raw = json_raw.get("quotes", [{}])
 
-        self._most_active_qy = CalendarQuery("or", [])
+        self._state.most_active_qy = CalendarQuery("or", [])
         for stock in raw:
             if type(stock) is not dict:
                 continue
 
             ticker = stock.get("symbol", "")
             t_market_cap = stock.get("marketCap", 0)
-            # We filter market_cap here because we want to keep self._most_active_qy consistent
+            # We filter market_cap here because we want to keep self._state.most_active_qy consistent
             if ticker and (_market_cap is None or t_market_cap >= _market_cap):
-                self._most_active_qy.append(CalendarQuery("eq", ["ticker", ticker]))
+                self._state.most_active_qy.append(CalendarQuery("eq", ["ticker", ticker]))
 
-        return self._most_active_qy
+        return self._state.most_active_qy
 
     def _get_startdatetime_operators(self, start=None, end=None) -> CalendarQuery:
         """
@@ -348,8 +363,8 @@ class Calendars:
         return CalendarQuery(
             "and",
             [
-                CalendarQuery("gte", ["startdatetime", _start or self._start]),
-                CalendarQuery("lte", ["startdatetime", _end or self._end]),
+                CalendarQuery("gte", ["startdatetime", _start or self._state.start]),
+                CalendarQuery("lte", ["startdatetime", _end or self._state.end]),
             ],
         )
 
@@ -401,8 +416,8 @@ class Calendars:
                         CalendarQuery("eq", ["eventtype", "ERA"]),
                     ],
                 ),
-                CalendarQuery("gte", ["startdatetime", _start or self._start]),
-                CalendarQuery("lte", ["startdatetime", _end or self._end]),
+                CalendarQuery("gte", ["startdatetime", _start or self._state.start]),
+                CalendarQuery("lte", ["startdatetime", _end or self._state.end]),
             ],
         )
 
@@ -454,9 +469,9 @@ class Calendars:
         query = CalendarQuery(
             "or",
             [
-                CalendarQuery("gtelt", ["startdatetime", _start or self._start, _end or self._end]),
-                CalendarQuery("gtelt", ["filingdate", _start or self._start, _end or self._end]),
-                CalendarQuery("gtelt", ["amendeddate", _start or self._start, _end or self._end]),
+                CalendarQuery("gtelt", ["startdatetime", _start or self._state.start, _end or self._state.end]),
+                CalendarQuery("gtelt", ["filingdate", _start or self._state.start, _end or self._state.end]),
+                CalendarQuery("gtelt", ["amendeddate", _start or self._state.start, _end or self._state.end]),
             ],
         )
 

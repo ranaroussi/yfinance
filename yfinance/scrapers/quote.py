@@ -29,38 +29,17 @@ class FastInfo:
     # Imitates a dict.
     def __init__(self, tickerBaseObject):
         self._tkr = tickerBaseObject
-
-        self._prices_1y = None
-        self._prices_1wk_1h_prepost = None
-        self._prices_1wk_1h_reg = None
-        self._md = None
-
-        self._currency = None
-        self._quote_type = None
-        self._exchange = None
-        self._timezone = None
-
-        self._shares = None
-        self._mcap = None
-
-        self._open = None
-        self._day_high = None
-        self._day_low = None
-        self._last_price = None
-        self._last_volume = None
-
-        self._prev_close = None
-
-        self._reg_prev_close = None
-
-        self._50d_day_average = None
-        self._200d_day_average = None
-        self._year_high = None
-        self._year_low = None
-        self._year_change = None
-
-        self._10d_avg_vol = None
-        self._3mo_avg_vol = None
+        self._prices = {k: None for k in (
+            'prices_1y', 'prices_1wk_1h_prepost', 'prices_1wk_1h_reg', 'md',
+            'today_open', 'today_close', 'today_midnight',
+        )}
+        self._market = {k: None for k in (
+            'currency', 'quote_type', 'exchange', 'timezone', 'shares', 'mcap',
+            'open', 'day_high', 'day_low', 'last_price', 'last_volume', 'prev_close',
+            'reg_prev_close', 'fifty_day_average', 'two_hundred_day_average',
+            'year_high', 'year_low', 'year_change', 'ten_day_average_volume',
+            'three_month_average_volume',
+        )}
 
         # attrs = utils.attributes(self)
         # self.keys = attrs.keys()
@@ -79,36 +58,36 @@ class FastInfo:
 
         sc_keys = [k for k in _properties if '_' in k]
 
-        self._sc_to_cc_key = {k: utils.snake_case_2_camelCase(k) for k in sc_keys}
-        self._cc_to_sc_key = {v: k for k, v in self._sc_to_cc_key.items()}
-
-        self._public_keys = sorted(base_keys + list(self._sc_to_cc_key.values()))
-        self._keys = sorted(self._public_keys + sc_keys)
+        sc_to_cc = {k: utils.snake_case_2_camelCase(k) for k in sc_keys}
+        cc_to_sc = {v: k for k, v in sc_to_cc.items()}
+        public_keys = sorted(base_keys + list(sc_to_cc.values()))
+        keys = sorted(public_keys + sc_keys)
+        self._keymaps = {'sc_to_cc_key': sc_to_cc, 'cc_to_sc_key': cc_to_sc, 'public_keys': public_keys, 'keys': keys}
 
     # dict imitation:
     def keys(self):
-        return self._public_keys
+        return self._keymaps['public_keys']
 
     def items(self):
-        return [(k, self[k]) for k in self._public_keys]
+        return [(k, self[k]) for k in self._keymaps['public_keys']]
 
     def values(self):
-        return [self[k] for k in self._public_keys]
+        return [self[k] for k in self._keymaps['public_keys']]
 
     def get(self, key, default=None):
         if key in self.keys():
-            if key in self._cc_to_sc_key:
-                key = self._cc_to_sc_key[key]
+            if key in self._keymaps['cc_to_sc_key']:
+                key = self._keymaps['cc_to_sc_key'][key]
             return self[key]
         return default
 
     def __getitem__(self, k):
         if not isinstance(k, str):
             raise KeyError(f"key must be a string not '{type(k)}'")
-        if k not in self._keys:
+        if k not in self._keymaps['keys']:
             raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
-        if k in self._cc_to_sc_key:
-            k = self._cc_to_sc_key[k]
+        if k in self._keymaps['cc_to_sc_key']:
+            k = self._keymaps['cc_to_sc_key'][k]
         return getattr(self, k)
 
     def __contains__(self, k):
@@ -127,22 +106,22 @@ class FastInfo:
         return json.dumps({k: self[k] for k in self.keys()}, indent=indent)
 
     def _get_1y_prices(self, fullDaysOnly=False):
-        if self._prices_1y is None:
-            self._prices_1y = self._tkr.history(period="1y", auto_adjust=False, keepna=True)
-            self._md = self._tkr.get_history_metadata()
+        if self._prices['prices_1y'] is None:
+            self._prices['prices_1y'] = self._tkr.history(period="1y", auto_adjust=False, keepna=True)
+            self._prices['md'] = self._tkr.get_history_metadata()
             try:
-                ctp = self._md["currentTradingPeriod"]
-                self._today_open = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
-                self._today_close = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
-                self._today_midnight = self._today_close.ceil("D")
+                ctp = self._prices['md']["currentTradingPeriod"]
+                self._prices['today_open'] = pd.to_datetime(ctp["regular"]["start"], unit='s', utc=True).tz_convert(self.timezone)
+                self._prices['today_close'] = pd.to_datetime(ctp["regular"]["end"], unit='s', utc=True).tz_convert(self.timezone)
+                self._prices['today_midnight'] = self._prices['today_close'].ceil("D")
             except Exception:
-                self._today_open = None
-                self._today_close = None
-                self._today_midnight = None
+                self._prices['today_open'] = None
+                self._prices['today_close'] = None
+                self._prices['today_midnight'] = None
                 raise
 
-        if self._prices_1y.empty:
-            return self._prices_1y
+        if self._prices['prices_1y'].empty:
+            return self._prices['prices_1y']
 
         dnow = pd.Timestamp.now('UTC').tz_convert(self.timezone).date()
         d1 = dnow
@@ -150,41 +129,41 @@ class FastInfo:
         if fullDaysOnly and self._exchange_open_now():
             # Exclude today
             d1 -= utils._interval_to_timedelta("1d")
-        return self._prices_1y.loc[str(d0):str(d1)]
+        return self._prices['prices_1y'].loc[str(d0):str(d1)]
 
     def _get_1wk_1h_prepost_prices(self):
-        if self._prices_1wk_1h_prepost is None:
-            self._prices_1wk_1h_prepost = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=True)
-        return self._prices_1wk_1h_prepost
+        if self._prices['prices_1wk_1h_prepost'] is None:
+            self._prices['prices_1wk_1h_prepost'] = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=True)
+        return self._prices['prices_1wk_1h_prepost']
 
     def _get_1wk_1h_reg_prices(self):
-        if self._prices_1wk_1h_reg is None:
-            self._prices_1wk_1h_reg = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=False)
-        return self._prices_1wk_1h_reg
+        if self._prices['prices_1wk_1h_reg'] is None:
+            self._prices['prices_1wk_1h_reg'] = self._tkr.history(period="5d", interval="1h", auto_adjust=False, prepost=False)
+        return self._prices['prices_1wk_1h_reg']
 
     def _get_exchange_metadata(self):
-        if self._md is not None:
-            return self._md
+        if self._prices['md'] is not None:
+            return self._prices['md']
 
         self._get_1y_prices()
-        self._md = self._tkr.get_history_metadata()
-        return self._md
+        self._prices['md'] = self._tkr.get_history_metadata()
+        return self._prices['md']
 
     def _exchange_open_now(self):
         t = pd.Timestamp.now('UTC')
         self._get_exchange_metadata()
 
-        # if self._today_open is None and self._today_close is None:
+        # if self._prices['today_open'] is None and self._prices['today_close'] is None:
         #     r = False
         # else:
-        #     r = self._today_open <= t and t < self._today_close
+        #     r = self._prices['today_open'] <= t and t < self._prices['today_close']
 
-        # if self._today_midnight is None:
+        # if self._prices['today_midnight'] is None:
         #     r = False
-        # elif self._today_midnight.date() > t.tz_convert(self.timezone).date():
+        # elif self._prices['today_midnight'].date() > t.tz_convert(self.timezone).date():
         #     r = False
         # else:
-        #     r = t < self._today_midnight
+        #     r = t < self._prices['today_midnight']
 
         last_day_cutoff = self._get_1y_prices().index[-1] + datetime.timedelta(days=1)
         last_day_cutoff += datetime.timedelta(minutes=20)
@@ -195,42 +174,42 @@ class FastInfo:
 
     @property
     def currency(self):
-        if self._currency is not None:
-            return self._currency
+        if self._market['currency'] is not None:
+            return self._market['currency']
 
         md = self._tkr.get_history_metadata()
-        self._currency = md["currency"]
-        return self._currency
+        self._market['currency'] = md["currency"]
+        return self._market['currency']
 
     @property
     def quote_type(self):
-        if self._quote_type is not None:
-            return self._quote_type
+        if self._market['quote_type'] is not None:
+            return self._market['quote_type']
 
         md = self._tkr.get_history_metadata()
-        self._quote_type = md["instrumentType"]
-        return self._quote_type
+        self._market['quote_type'] = md["instrumentType"]
+        return self._market['quote_type']
 
     @property
     def exchange(self):
-        if self._exchange is not None:
-            return self._exchange
+        if self._market['exchange'] is not None:
+            return self._market['exchange']
 
-        self._exchange = self._get_exchange_metadata()["exchangeName"]
-        return self._exchange
+        self._market['exchange'] = self._get_exchange_metadata()["exchangeName"]
+        return self._market['exchange']
 
     @property
     def timezone(self):
-        if self._timezone is not None:
-            return self._timezone
+        if self._market['timezone'] is not None:
+            return self._market['timezone']
 
-        self._timezone = self._get_exchange_metadata()["exchangeTimezoneName"]
-        return self._timezone
+        self._market['timezone'] = self._get_exchange_metadata()["exchangeTimezoneName"]
+        return self._market['timezone']
 
     @property
     def shares(self):
-        if self._shares is not None:
-            return self._shares
+        if self._market['shares'] is not None:
+            return self._market['shares']
 
         shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date()-pd.Timedelta(days=548))
         # if shares is None:
@@ -239,30 +218,30 @@ class FastInfo:
         if shares is not None:
             if isinstance(shares, pd.DataFrame):
                 shares = shares[shares.columns[0]]
-            self._shares = int(shares.iloc[-1])
-        return self._shares
+            self._market['shares'] = int(shares.iloc[-1])
+        return self._market['shares']
 
     @property
     def last_price(self):
-        if self._last_price is not None:
-            return self._last_price
+        if self._market['last_price'] is not None:
+            return self._market['last_price']
         prices = self._get_1y_prices()
         if prices.empty:
             md = self._get_exchange_metadata()
             if "regularMarketPrice" in md:
-                self._last_price = md["regularMarketPrice"]
+                self._market['last_price'] = md["regularMarketPrice"]
         else:
-            self._last_price = float(prices["Close"].iloc[-1])
-            if _np.isnan(self._last_price):
+            self._market['last_price'] = float(prices["Close"].iloc[-1])
+            if _np.isnan(self._market['last_price']):
                 md = self._get_exchange_metadata()
                 if "regularMarketPrice" in md:
-                    self._last_price = md["regularMarketPrice"]
-        return self._last_price
+                    self._market['last_price'] = md["regularMarketPrice"]
+        return self._market['last_price']
 
     @property
     def previous_close(self):
-        if self._prev_close is not None:
-            return self._prev_close
+        if self._market['prev_close'] is not None:
+            return self._market['prev_close']
         prices = self._get_1wk_1h_prepost_prices()
         fail = False
         if prices.empty:
@@ -274,19 +253,19 @@ class FastInfo:
                 # no trading data e.g. 'QCSTIX'.
                 fail = True
             else:
-                self._prev_close = float(prices["Close"].iloc[-2])
+                self._market['prev_close'] = float(prices["Close"].iloc[-2])
         if fail:
             # Fallback to original info[] if available.
             self._tkr.info  # trigger fetch
             k = "previousClose"
-            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
-                self._prev_close = self._tkr._quote._retired_info[k]
-        return self._prev_close
+            if self._tkr._quote._cache['retired_info'] is not None and k in self._tkr._quote._cache['retired_info']:
+                self._market['prev_close'] = self._tkr._quote._cache['retired_info'][k]
+        return self._market['prev_close']
 
     @property
     def regular_market_previous_close(self):
-        if self._reg_prev_close is not None:
-            return self._reg_prev_close
+        if self._market['reg_prev_close'] is not None:
+            return self._market['reg_prev_close']
         prices = self._get_1y_prices()
         if prices.shape[0] == 1:
             # Tiny % of tickers don't return daily history before last trading day,
@@ -299,85 +278,85 @@ class FastInfo:
             # So fallback to original info[] if available.
             self._tkr.info  # trigger fetch
             k = "regularMarketPreviousClose"
-            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
-                self._reg_prev_close = self._tkr._quote._retired_info[k]
+            if self._tkr._quote._cache['retired_info'] is not None and k in self._tkr._quote._cache['retired_info']:
+                self._market['reg_prev_close'] = self._tkr._quote._cache['retired_info'][k]
         else:
-            self._reg_prev_close = float(prices["Close"].iloc[-2])
-        return self._reg_prev_close
+            self._market['reg_prev_close'] = float(prices["Close"].iloc[-2])
+        return self._market['reg_prev_close']
 
     @property
     def open(self):
-        if self._open is not None:
-            return self._open
+        if self._market['open'] is not None:
+            return self._market['open']
         prices = self._get_1y_prices()
         if prices.empty:
-            self._open = None
+            self._market['open'] = None
         else:
-            self._open = float(prices["Open"].iloc[-1])
-            if _np.isnan(self._open):
-                self._open = None
-        return self._open
+            self._market['open'] = float(prices["Open"].iloc[-1])
+            if _np.isnan(self._market['open']):
+                self._market['open'] = None
+        return self._market['open']
 
     @property
     def day_high(self):
-        if self._day_high is not None:
-            return self._day_high
+        if self._market['day_high'] is not None:
+            return self._market['day_high']
         prices = self._get_1y_prices()
         if prices.empty:
-            self._day_high = None
+            self._market['day_high'] = None
         else:
-            self._day_high = float(prices["High"].iloc[-1])
-            if _np.isnan(self._day_high):
-                self._day_high = None
-        return self._day_high
+            self._market['day_high'] = float(prices["High"].iloc[-1])
+            if _np.isnan(self._market['day_high']):
+                self._market['day_high'] = None
+        return self._market['day_high']
 
     @property
     def day_low(self):
-        if self._day_low is not None:
-            return self._day_low
+        if self._market['day_low'] is not None:
+            return self._market['day_low']
         prices = self._get_1y_prices()
         if prices.empty:
-            self._day_low = None
+            self._market['day_low'] = None
         else:
-            self._day_low = float(prices["Low"].iloc[-1])
-            if _np.isnan(self._day_low):
-                self._day_low = None
-        return self._day_low
+            self._market['day_low'] = float(prices["Low"].iloc[-1])
+            if _np.isnan(self._market['day_low']):
+                self._market['day_low'] = None
+        return self._market['day_low']
 
     @property
     def last_volume(self):
-        if self._last_volume is not None:
-            return self._last_volume
+        if self._market['last_volume'] is not None:
+            return self._market['last_volume']
         prices = self._get_1y_prices()
-        self._last_volume = None if prices.empty else int(prices["Volume"].iloc[-1])
-        return self._last_volume
+        self._market['last_volume'] = None if prices.empty else int(prices["Volume"].iloc[-1])
+        return self._market['last_volume']
 
     @property
     def fifty_day_average(self):
-        if self._50d_day_average is not None:
-            return self._50d_day_average
+        if self._market['fifty_day_average'] is not None:
+            return self._market['fifty_day_average']
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
-            self._50d_day_average = None
+            self._market['fifty_day_average'] = None
         else:
             n = prices.shape[0]
             a = n-50
             b = n
             if a < 0:
                 a = 0
-            self._50d_day_average = float(prices["Close"].iloc[a:b].mean())
+            self._market['fifty_day_average'] = float(prices["Close"].iloc[a:b].mean())
 
-        return self._50d_day_average
+        return self._market['fifty_day_average']
 
     @property
     def two_hundred_day_average(self):
-        if self._200d_day_average is not None:
-            return self._200d_day_average
+        if self._market['two_hundred_day_average'] is not None:
+            return self._market['two_hundred_day_average']
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
-            self._200d_day_average = None
+            self._market['two_hundred_day_average'] = None
         else:
             n = prices.shape[0]
             a = n-200
@@ -385,80 +364,80 @@ class FastInfo:
             if a < 0:
                 a = 0
 
-            self._200d_day_average = float(prices["Close"].iloc[a:b].mean())
+            self._market['two_hundred_day_average'] = float(prices["Close"].iloc[a:b].mean())
 
-        return self._200d_day_average
+        return self._market['two_hundred_day_average']
 
     @property
     def ten_day_average_volume(self):
-        if self._10d_avg_vol is not None:
-            return self._10d_avg_vol
+        if self._market['ten_day_average_volume'] is not None:
+            return self._market['ten_day_average_volume']
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
-            self._10d_avg_vol = None
+            self._market['ten_day_average_volume'] = None
         else:
             n = prices.shape[0]
             a = n-10
             b = n
             if a < 0:
                 a = 0
-            self._10d_avg_vol = int(prices["Volume"].iloc[a:b].mean())
+            self._market['ten_day_average_volume'] = int(prices["Volume"].iloc[a:b].mean())
 
-        return self._10d_avg_vol
+        return self._market['ten_day_average_volume']
 
     @property
     def three_month_average_volume(self):
-        if self._3mo_avg_vol is not None:
-            return self._3mo_avg_vol
+        if self._market['three_month_average_volume'] is not None:
+            return self._market['three_month_average_volume']
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
-            self._3mo_avg_vol = None
+            self._market['three_month_average_volume'] = None
         else:
             dt1 = prices.index[-1]
             dt0 = dt1 - utils._interval_to_timedelta("3mo") + utils._interval_to_timedelta("1d")
-            self._3mo_avg_vol = int(prices.loc[dt0:dt1, "Volume"].mean())
+            self._market['three_month_average_volume'] = int(prices.loc[dt0:dt1, "Volume"].mean())
 
-        return self._3mo_avg_vol
+        return self._market['three_month_average_volume']
 
     @property
     def year_high(self):
-        if self._year_high is not None:
-            return self._year_high
+        if self._market['year_high'] is not None:
+            return self._market['year_high']
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
             prices = self._get_1y_prices(fullDaysOnly=False)
-        self._year_high = float(prices["High"].max())
-        return self._year_high
+        self._market['year_high'] = float(prices["High"].max())
+        return self._market['year_high']
 
     @property
     def year_low(self):
-        if self._year_low is not None:
-            return self._year_low
+        if self._market['year_low'] is not None:
+            return self._market['year_low']
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.empty:
             prices = self._get_1y_prices(fullDaysOnly=False)
-        self._year_low = float(prices["Low"].min())
-        return self._year_low
+        self._market['year_low'] = float(prices["Low"].min())
+        return self._market['year_low']
 
     @property
     def year_change(self):
-        if self._year_change is not None:
-            return self._year_change
+        if self._market['year_change'] is not None:
+            return self._market['year_change']
 
         prices = self._get_1y_prices(fullDaysOnly=True)
         if prices.shape[0] >= 2:
-            self._year_change = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
-            self._year_change = float(self._year_change)
-        return self._year_change
+            self._market['year_change'] = (prices["Close"].iloc[-1] - prices["Close"].iloc[0]) / prices["Close"].iloc[0]
+            self._market['year_change'] = float(self._market['year_change'])
+        return self._market['year_change']
 
     @property
     def market_cap(self):
-        if self._mcap is not None:
-            return self._mcap
+        if self._market['mcap'] is not None:
+            return self._market['mcap']
 
         try:
             shares = self.shares
@@ -474,45 +453,37 @@ class FastInfo:
             # So fallback to original info[] if available.
             self._tkr.info
             k = "marketCap"
-            if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
-                self._mcap = self._tkr._quote._retired_info[k]
+            if self._tkr._quote._cache['retired_info'] is not None and k in self._tkr._quote._cache['retired_info']:
+                self._market['mcap'] = self._tkr._quote._cache['retired_info'][k]
         else:
-            self._mcap = float(shares * self.last_price)
-        return self._mcap
+            self._market['mcap'] = float(shares * self.last_price)
+        return self._market['mcap']
 
 
 class Quote:
     def __init__(self, data: YfData, symbol: str):
         self._data = data
         self._symbol = symbol
-
-        self._info = None
-        self._retired_info = None
-        self._sustainability = None
-        self._recommendations = None
-        self._upgrades_downgrades = None
-        self._calendar = None
-        self._sec_filings = None
-        self._valuation_measures = None
-
-        self._already_scraped = False
-        self._already_fetched = False
-        self._already_fetched_complementary = False
+        self._cache = {k: None if k not in ('already_scraped', 'already_fetched', 'already_fetched_complementary') else False for k in (
+            'info', 'retired_info', 'sustainability', 'recommendations',
+            'upgrades_downgrades', 'calendar', 'sec_filings', 'valuation_measures',
+            'already_scraped', 'already_fetched', 'already_fetched_complementary',
+        )}
 
     @property
     def info(self) -> dict:
-        if self._info is None:
+        if self._cache['info'] is None:
             self._fetch_info()
             self._fetch_complementary()
 
-        return self._info
+        return self._cache['info']
 
     @property
     def sustainability(self) -> pd.DataFrame:
-        if self._sustainability is None:
+        if self._cache['sustainability'] is None:
             result = self._fetch(modules=['esgScores'])
             if result is None:
-                self._sustainability = pd.DataFrame()
+                self._cache['sustainability'] = pd.DataFrame()
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]
@@ -520,15 +491,15 @@ class Quote:
                     if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-                self._sustainability = pd.DataFrame(data)
-        return self._sustainability
+                self._cache['sustainability'] = pd.DataFrame(data)
+        return self._cache['sustainability']
 
     @property
     def recommendations(self) -> pd.DataFrame:
-        if self._recommendations is None:
+        if self._cache['recommendations'] is None:
             result = self._fetch(modules=['recommendationTrend'])
             if result is None:
-                self._recommendations = pd.DataFrame()
+                self._cache['recommendations'] = pd.DataFrame()
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]["recommendationTrend"]["trend"]
@@ -536,15 +507,15 @@ class Quote:
                     if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-                self._recommendations = pd.DataFrame(data)
-        return self._recommendations
+                self._cache['recommendations'] = pd.DataFrame(data)
+        return self._cache['recommendations']
 
     @property
     def upgrades_downgrades(self) -> pd.DataFrame:
-        if self._upgrades_downgrades is None:
+        if self._cache['upgrades_downgrades'] is None:
             result = self._fetch(modules=['upgradeDowngradeHistory'])
             if result is None:
-                self._upgrades_downgrades = pd.DataFrame()
+                self._cache['upgrades_downgrades'] = pd.DataFrame()
             else:
                 try:
                     data = result["quoteSummary"]["result"][0]["upgradeDowngradeHistory"]["history"]
@@ -554,31 +525,31 @@ class Quote:
                     df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
                     df.set_index('GradeDate', inplace=True)
                     df.index = pd.to_datetime(df.index, unit='s')
-                    self._upgrades_downgrades = df
+                    self._cache['upgrades_downgrades'] = df
                 except (KeyError, IndexError):
                     if not YfConfig.debug.hide_exceptions:
                         raise
                     raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
-        return self._upgrades_downgrades
+        return self._cache['upgrades_downgrades']
 
     @property
     def calendar(self) -> dict:
-        if self._calendar is None:
+        if self._cache['calendar'] is None:
             self._fetch_calendar()
-        return self._calendar
+        return self._cache['calendar']
 
     @property
     def sec_filings(self) -> dict:
-        if self._sec_filings is None:
+        if self._cache['sec_filings'] is None:
             f = self._fetch_sec_filings()
-            self._sec_filings = {} if f is None else f
-        return self._sec_filings
+            self._cache['sec_filings'] = {} if f is None else f
+        return self._cache['sec_filings']
 
     @property
     def valuation_measures(self) -> pd.DataFrame:
-        if self._valuation_measures is None:
+        if self._cache['valuation_measures'] is None:
             self._fetch_valuation_measures()
-        return self._valuation_measures
+        return self._cache['valuation_measures']
 
     @staticmethod
     def valid_modules():
@@ -613,9 +584,9 @@ class Quote:
         return result
 
     def _fetch_info(self):
-        if self._already_fetched:
+        if self._cache['already_fetched']:
             return
-        self._already_fetched = True
+        self._cache['already_fetched'] = True
         modules = ['financialData', 'quoteType', 'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
         result = self._fetch(modules=modules)
         additional_info = self._fetch_additional_info()
@@ -667,7 +638,7 @@ class Quote:
                 v2 = v
             return v2
 
-        self._info = {k: _format(k, v) for k, v in query1_info.items()}
+        self._cache['info'] = {k: _format(k, v) for k, v in query1_info.items()}
 
     def _fetch_valuation_measures(self):
         url = f"https://finance.yahoo.com/quote/{self._symbol}/key-statistics"
@@ -677,14 +648,14 @@ class Quote:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Failed to fetch key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
+            self._cache['valuation_measures'] = pd.DataFrame()
             return
 
         try:
             soup = BeautifulSoup(response.text, "html.parser")
             table = soup.find("table")
             if table is None:
-                self._valuation_measures = pd.DataFrame()
+                self._cache['valuation_measures'] = pd.DataFrame()
                 return
 
             headers = [th.get_text(strip=True) for th in table.find("tr").find_all(["th", "td"])]
@@ -696,20 +667,20 @@ class Quote:
             df = pd.DataFrame(rows, columns=headers)
             df = df.set_index(df.columns[0])
             df.index.name = None
-            self._valuation_measures = df
+            self._cache['valuation_measures'] = df
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
                 raise
             utils.get_yf_logger().error(f"Failed to parse key-statistics page: {e}")
-            self._valuation_measures = pd.DataFrame()
+            self._cache['valuation_measures'] = pd.DataFrame()
 
     def _fetch_complementary(self):
-        if self._already_fetched_complementary:
+        if self._cache['already_fetched_complementary']:
             return
-        self._already_fetched_complementary = True
+        self._cache['already_fetched_complementary'] = True
 
         self._fetch_info()
-        if self._info is None:
+        if self._cache['info'] is None:
             return
 
         # Complementary key-statistics. For now just want 'trailing PEG ratio'
@@ -731,7 +702,7 @@ class Quote:
             #         else:
             #             # Select most recent (last) raw value in list:
             #             v = key_stats[k][-1]["reportedValue"]["raw"]
-            #         self._info[k] = v
+            #         self._cache['info'][k] = v
             # except Exception:
             #     raise
             #     pass
@@ -755,7 +726,7 @@ class Quote:
             for k in keys:
                 keydict = json_result["result"][0]
                 if k in keydict:
-                    self._info[k] = keydict[k][-1]["reportedValue"]["raw"]
+                    self._cache['info'][k] = keydict[k][-1]["reportedValue"]["raw"]
                 else:
                     self.info[k] = None
 
@@ -763,26 +734,26 @@ class Quote:
         # secFilings return too old data, so not requesting it for now
         result = self._fetch(modules=['calendarEvents'])
         if result is None:
-            self._calendar = {}
+            self._cache['calendar'] = {}
             return
 
         try:
-            self._calendar = dict()
+            self._cache['calendar'] = dict()
             _events = result["quoteSummary"]["result"][0]["calendarEvents"]
             if 'dividendDate' in _events:
-                self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
+                self._cache['calendar']['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
             if 'exDividendDate' in _events:
-                self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
+                self._cache['calendar']['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
             # splits = _events.get('splitDate')  # need to check later, i will add code for this if found data
             earnings = _events.get('earnings')
             if earnings is not None:
-                self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
-                self._calendar['Earnings High'] = earnings.get('earningsHigh', None)
-                self._calendar['Earnings Low'] = earnings.get('earningsLow', None)
-                self._calendar['Earnings Average'] = earnings.get('earningsAverage', None)
-                self._calendar['Revenue High'] = earnings.get('revenueHigh', None)
-                self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
-                self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
+                self._cache['calendar']['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
+                self._cache['calendar']['Earnings High'] = earnings.get('earningsHigh', None)
+                self._cache['calendar']['Earnings Low'] = earnings.get('earningsLow', None)
+                self._cache['calendar']['Earnings Average'] = earnings.get('earningsAverage', None)
+                self._cache['calendar']['Revenue High'] = earnings.get('revenueHigh', None)
+                self._cache['calendar']['Revenue Low'] = earnings.get('revenueLow', None)
+                self._cache['calendar']['Revenue Average'] = earnings.get('revenueAverage', None)
         except (KeyError, IndexError):
             if not YfConfig.debug.hide_exceptions:
                 raise

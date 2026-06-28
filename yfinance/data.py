@@ -397,6 +397,47 @@ class YfData(metaclass=SingletonMeta):
     def post(self, url, body=None, params=None, timeout=30, data=None):
         return self._make_request(url, request_method = self._session.post, body=body, params=params, timeout=timeout, data=data)
 
+    def _build_request_args(self, url, body, params, timeout, data, crumb):
+        if params is None:
+            params = {}
+        if 'crumb' in params:
+            raise YFException("Don't manually add 'crumb' to params dict, let data.py handle it")
+        crumbs = {'crumb': crumb} if crumb is not None else {}
+        request_args = {
+            'url': url,
+            'params': {**params, **crumbs},
+            'timeout': timeout,
+        }
+        if body:
+            request_args['json'] = body
+        if data:
+            request_args['data'] = data
+            request_args['headers'] = {"Content-Type": "application/json"}
+        return request_args
+
+    def _send_with_retries(self, request_method, request_args):
+        for attempt in range(YfConfig.network.retries + 1):
+            try:
+                return request_method(**request_args)
+            except Exception as e:
+                if _is_transient_error(e) and attempt < YfConfig.network.retries:
+                    _time.sleep(2 ** attempt)
+                else:
+                    raise
+
+    def _retry_failed_request(self, response, request_method, request_args, strategy, timeout):
+        if strategy == 'basic':
+            self._set_cookie_strategy('csrf')
+        else:
+            self._set_cookie_strategy('basic')
+        crumb, _ = self._get_cookie_and_crumb(timeout)
+        request_args['params']['crumb'] = crumb
+        response = request_method(**request_args)
+        utils.get_yf_logger().debug(f'response code={response.status_code}')
+        if response.status_code == 429:
+            raise YFRateLimitError()
+        return response
+
     @utils.log_indent_decorator
     def _make_request(self, url, request_method, body=None, params=None, timeout=30, data=None):
         # Important: treat input arguments as immutable.
@@ -410,55 +451,12 @@ class YfData(metaclass=SingletonMeta):
         # sync with config
         self._session.proxies = YfConfig.network.proxy
 
-        if params is None:
-            params = {}
-        if 'crumb' in params:
-            raise YFException("Don't manually add 'crumb' to params dict, let data.py handle it")
-
         crumb, strategy = self._get_cookie_and_crumb()
-        if crumb is not None:
-            crumbs = {'crumb': crumb}
-        else:
-            crumbs = {}
-
-        request_args = {
-            'url': url,
-            'params': {**params, **crumbs},
-            'timeout': timeout
-        }
-
-        if body:
-            request_args['json'] = body
-        
-        if data:
-            request_args['data'] = data
-            request_args['headers'] = {"Content-Type": "application/json"}
-
-        for attempt in range(YfConfig.network.retries + 1):
-            try:
-                response = request_method(**request_args)
-                break
-            except Exception as e:
-                if _is_transient_error(e) and attempt < YfConfig.network.retries:
-                    _time.sleep(2 ** attempt)
-                else:
-                    raise
+        request_args = self._build_request_args(url, body, params, timeout, data, crumb)
+        response = self._send_with_retries(request_method, request_args)
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
-            # Retry with other cookie strategy
-            if strategy == 'basic':
-                self._set_cookie_strategy('csrf')
-            else:
-                self._set_cookie_strategy('basic')
-            crumb, strategy = self._get_cookie_and_crumb(timeout)
-            request_args['params']['crumb'] = crumb
-            response = request_method(**request_args)
-            utils.get_yf_logger().debug(f'response code={response.status_code}')
-
-            # Raise exception if rate limited
-            if response.status_code == 429:
-                raise YFRateLimitError()
-
+            response = self._retry_failed_request(response, request_method, request_args, strategy, timeout)
         return response
 
     @lru_cache_freezeargs

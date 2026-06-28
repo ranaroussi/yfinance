@@ -137,6 +137,29 @@ class AsyncWebSocket(BaseWebSocket):
         if self.verbose:
             print(f"Unsubscribed from symbols: {symbols}")
 
+    async def _dispatch_message(self, decoded_message):
+        if not self._message_handler:
+            print(decoded_message)
+            return
+        try:
+            if asyncio.iscoroutinefunction(self._message_handler):
+                await self._message_handler(decoded_message)
+            else:
+                self._message_handler(decoded_message)
+        except Exception as handler_exception:
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            self.logger.error("Error in message handler: %s", handler_exception, exc_info=True)
+            if self.verbose:
+                print("Error in message handler:", handler_exception)
+
+    async def _consume_messages(self):
+        async for message in self._ws:
+            message_json = json.loads(message)
+            encoded_data = message_json.get("message", "")
+            decoded_message = self._decode_message(encoded_data)
+            await self._dispatch_message(decoded_message)
+
     async def listen(self, message_handler=None):
         """
         Start listening to messages from the WebSocket server.
@@ -151,51 +174,28 @@ class AsyncWebSocket(BaseWebSocket):
         if self.verbose:
             print("Listening for messages...")
 
-        # Start heartbeat subscription task
         if self._heartbeat_task is None:
             self._heartbeat_task = asyncio.create_task(self._periodic_subscribe())
 
         while True:
             try:
-                async for message in self._ws:
-                    message_json = json.loads(message)
-                    encoded_data = message_json.get("message", "")
-                    decoded_message = self._decode_message(encoded_data)
-
-                    if self._message_handler:
-                        try:
-                            if asyncio.iscoroutinefunction(self._message_handler):
-                                await self._message_handler(decoded_message)
-                            else:
-                                self._message_handler(decoded_message)
-                        except Exception as handler_exception:
-                            if not YfConfig.debug.hide_exceptions:
-                                raise
-                            self.logger.error("Error in message handler: %s", handler_exception, exc_info=True)
-                            if self.verbose:
-                                print("Error in message handler:", handler_exception)
-                    else:
-                        print(decoded_message)
-
+                await self._consume_messages()
             except (KeyboardInterrupt, asyncio.CancelledError):
                 self.logger.info("WebSocket listening interrupted. Closing connection...")
                 if self.verbose:
                     print("WebSocket listening interrupted. Closing connection...")
                 await self.close()
                 break
-
             except Exception as e:
                 if not YfConfig.debug.hide_exceptions:
                     raise
                 self.logger.error("Error while listening to messages: %s", e, exc_info=True)
                 if self.verbose:
                     print("Error while listening to messages: %s", e)
-
-                # Attempt to reconnect if connection drops
                 self.logger.info("Attempting to reconnect...")
                 if self.verbose:
                     print("Attempting to reconnect...")
-                await asyncio.sleep(3)  # backoff
+                await asyncio.sleep(3)
                 await self._connect()
 
     async def close(self):
