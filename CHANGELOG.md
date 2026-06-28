@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Version 1.5.0 (b375cd8)
 - Add missing changes for #2860 (818ab63)
 - Fix PD not parsing Adj Close to float (df54d12)
 - Merge pull request #2877 from joaopedroassad/guard-fetch-complementary-empty-result ([#2877]()) (07abc74)
