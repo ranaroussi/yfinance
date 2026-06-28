@@ -82,7 +82,7 @@ fundamentals_keys = {
                       "LoansReceivable", "AccountsReceivable", "AllowanceForDoubtfulAccountsReceivable",
                       "GrossAccountsReceivable", "CashCashEquivalentsAndShortTermInvestments",
                       "OtherShortTermInvestments", "CashAndCashEquivalents", "CashEquivalents", "CashFinancial",
-                      "CashCashEquivalentsAndFederalFundsSold"],
+                      "CashCashEquivalentsAndFederalFundsSold", "FixedMaturityInvestments", "EquityInvestments", "NetLoan", "DeferredAssets"],
     'cash-flow': ["ForeignSales", "DomesticSales", "AdjustedGeographySegmentData", "FreeCashFlow",
                   "RepurchaseOfCapitalStock", "RepaymentOfDebt", "IssuanceOfDebt", "IssuanceOfCapitalStock",
                   "CapitalExpenditure", "InterestPaidSupplementalData", "IncomeTaxPaidSupplementalData",
