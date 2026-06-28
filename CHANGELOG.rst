@@ -1,7 +1,7 @@
 Change Log
 ===========
 
-1.5.0
+1.5.1
 -----
 Minor
 - Fall back to chunked requests when single-URL fundamentals fetch times out #2811
