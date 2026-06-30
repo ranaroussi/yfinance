@@ -907,7 +907,7 @@ class Quote:
                 self._calendar['Revenue High'] = earnings.get('revenueHigh', None)
                 self._calendar['Revenue Low'] = earnings.get('revenueLow', None)
                 self._calendar['Revenue Average'] = earnings.get('revenueAverage', None)
-        except (KeyError, IndexError):
+        except (KeyError, IndexError, TypeError):
             if not YfConfig.debug.hide_exceptions:
                 raise
             raise YFDataException(f"Failed to parse json response from Yahoo Finance: {result}")
@@ -918,7 +918,10 @@ class Quote:
         if result is None:
             return None
 
-        filings = result["quoteSummary"]["result"][0]["secFilings"]["filings"]
+        try:
+            filings = result["quoteSummary"]["result"][0]["secFilings"]["filings"]
+        except (KeyError, IndexError, TypeError):
+            return None
 
         # Improve structure
         for f in filings:
