@@ -572,7 +572,19 @@ class PriceHistory:
                 else:
                     # default
                     repair = False
-            self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
+            # 'tradingPeriods' is optional enrichment fetched via a secondary
+            # intraday request. For some valid (non-delisted) tickers/exchanges
+            # that request returns no prices and raises YFPricesMissingError -
+            # and on the way it overwrites self._history_metadata with {}. Don't
+            # let that discard metadata already populated by a prior history()
+            # call: restore and return what we already have instead of raising.
+            _prev_metadata = self._history_metadata
+            try:
+                self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
+            except YFPricesMissingError:
+                if _prev_metadata is None:
+                    raise
+                self._history_metadata = _prev_metadata
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
