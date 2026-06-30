@@ -1411,6 +1411,61 @@ class TestTickerInfo(unittest.TestCase):
     #                     else:
     #                         raise
 
+    def test_sec_filings_null_result(self):
+        # _fetch_sec_filings must not crash when Yahoo returns a null or empty
+        # 'result' inside quoteSummary; it should degrade gracefully to None.
+        from yfinance.scrapers.quote import Quote
+
+        bad_payloads = [
+            {"quoteSummary": {"result": None}},
+            {"quoteSummary": {"result": []}},
+            {"quoteSummary": {}},
+            {},
+        ]
+        for payload in bad_payloads:
+            data = MagicMock()
+            q = Quote(data, "TEST")
+            with patch.object(Quote, "_fetch", return_value=payload):
+                result = q._fetch_sec_filings()
+            self.assertIsNone(result, f"Expected None for payload: {payload}")
+
+    def test_sec_filings_happy_path(self):
+        # Ensure valid data is still parsed correctly after the null guard.
+        from yfinance.scrapers.quote import Quote
+
+        payload = {
+            "quoteSummary": {
+                "result": [{
+                    "secFilings": {
+                        "filings": [
+                            {"date": "2024-01-15", "type": "10-K", "exhibits": []},
+                        ]
+                    }
+                }]
+            }
+        }
+        data = MagicMock()
+        q = Quote(data, "TEST")
+        with patch.object(Quote, "_fetch", return_value=payload):
+            result = q._fetch_sec_filings()
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["type"], "10-K")
+
+    def test_calendar_null_result(self):
+        # _fetch_calendar must not crash with TypeError when quoteSummary.result
+        # is null; it should raise YFDataException (the existing error path).
+        from yfinance.scrapers.quote import Quote
+        from yfinance.exceptions import YFDataException
+
+        payload = {"quoteSummary": {"result": None}}
+        data = MagicMock()
+        q = Quote(data, "TEST")
+        with patch.object(Quote, "_fetch", return_value=payload):
+            with self.assertRaises(YFDataException):
+                q._fetch_calendar()
+
+
 class TestTickerFundsData(unittest.TestCase):
     session = None
 
