@@ -752,6 +752,54 @@ class TestPriceRepair(unittest.TestCase):
                     raise
 
 
+class TestFixPricesSuddenChangeVolumeNaN(unittest.TestCase):
+    """Network-free regression test for a NaN Volume crashing repair with
+    IntCastingNaNError (Cannot convert non-finite values (NA or inf) to integer).
+
+    Reuses the checked-in '4063.T' bad-stock-split fixture: this ticker/date range
+    is already known (see TestPriceRepairAssumptions.test_repair_bad_stock_splits)
+    to trigger a Volume-correcting repair range in _fix_bad_stock_splits(), so
+    injecting a NaN into one of the affected rows exercises the exact code path
+    that previously raised.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dp = os.path.dirname(__file__)
+        fp_bad = os.path.join(cls.dp, "data", "4063-T-1d-bad-stock-split.csv")
+        fp_fixed = os.path.join(cls.dp, "data", "4063-T-1d-bad-stock-split-fixed.csv")
+        cls.df_bad = _pd.read_csv(fp_bad, index_col="Date")
+        cls.df_bad.index = _pd.to_datetime(cls.df_bad.index, utc=True)
+        cls.df_fixed = _pd.read_csv(fp_fixed, index_col="Date")
+        cls.df_fixed.index = _pd.to_datetime(cls.df_fixed.index, utc=True)
+        # Row known (from the fixture pair) to fall inside a corrected range.
+        cls.target_date = _pd.Timestamp('2023-03-15 15:00:00+0000', tz='UTC')
+
+    def _make_hist(self):
+        # Construct PriceHistory directly (no network): _fix_bad_stock_splits() and
+        # _fix_prices_sudden_change() only operate on the DataFrame passed in.
+        from yfinance.scrapers.history import PriceHistory
+        return PriceHistory(data=None, ticker="4063.T", tz="Asia/Tokyo")
+
+    def test_nan_volume_in_corrected_range_does_not_raise(self):
+        hist = self._make_hist()
+        df_bad_nan = self.df_bad.copy()
+        df_bad_nan.loc[self.target_date, 'Volume'] = _np.nan
+
+        repaired = hist._fix_bad_stock_splits(df_bad_nan, "1d", "Asia/Tokyo")
+
+        # NaN must be preserved, not silently coerced into a wrong integer.
+        self.assertTrue(_pd.isna(repaired.loc[self.target_date, 'Volume']))
+
+    def test_clean_data_repair_unaffected_by_the_fix(self):
+        # Regression guard: rows without NaN must still repair exactly as before,
+        # matching the pre-existing known-good fixture.
+        hist = self._make_hist()
+        repaired = hist._fix_bad_stock_splits(self.df_bad.copy(), "1d", "Asia/Tokyo")
+        repaired = repaired.sort_index()
+        df_fixed = self.df_fixed.sort_index()
+        self.assertTrue(_np.isclose(repaired['Volume'], df_fixed['Volume'], rtol=5e-6).all())
+
 
 if __name__ == '__main__':
     unittest.main()
