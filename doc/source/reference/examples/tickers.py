@@ -7,5 +7,9 @@ tickers.tickers['MSFT'].info
 tickers.tickers['AAPL'].history(period="1mo")
 tickers.tickers['GOOG'].actions
 
+# fetch info for all symbols at once
+all_info = tickers.info
+print(all_info['MSFT'].get('symbol'))
+
 # websocket
 tickers.live()

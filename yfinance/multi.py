@@ -51,6 +51,19 @@ class _DownloadCtx:
         self.progress_bar = None
         self.lock = threading.Lock()
 
+
+class _InfoCtx:
+    """Per-call scratch state for info(). Concurrent calls each get
+    their own instance, so no shared mutation between threads."""
+    __slots__ = ('infos', 'errors', 'tracebacks', 'progress_bar', 'lock')
+
+    def __init__(self):
+        self.infos = {}
+        self.errors = {}
+        self.tracebacks = {}
+        self.progress_bar = None
+        self.lock = threading.Lock()
+
 @utils.log_indent_decorator
 def download(tickers, start=None, end=None, actions=False, threads=True,
              ignore_tz=None, group_by='column', auto_adjust=True, back_adjust=False,
@@ -114,6 +127,26 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         back_adjust=back_adjust, repair=repair, keepna=keepna, progress=progress,
         period=period, interval=interval, prepost=prepost, rounding=rounding,
         timeout=timeout, session=session, multi_level_index=multi_level_index,
+    )
+
+
+@utils.log_indent_decorator
+def info(tickers, threads=True, progress=False, session=None):
+    """Download info for multiple tickers.
+
+    :Parameters:
+        tickers : str, list
+            List of tickers to download info for
+        threads: bool / int
+            How many threads to use for mass downloading. Default is True
+        progress: bool
+            Show progress bar. Default is False
+        session: None or Session
+            Optional. Pass your own session object to be used for all requests
+    """
+    return _info_impl(
+        _InfoCtx(),
+        tickers, threads=threads, progress=progress, session=session,
     )
 
 
@@ -223,6 +256,68 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
 
     return data
 
+
+def _info_impl(ctx, tickers, threads=True, progress=False, session=None):
+    logger = utils.get_yf_logger()
+    session = session or new_session()
+
+    YfData(session=session)
+
+    if logger.isEnabledFor(logging.DEBUG):
+        if threads:
+            # multi-threaded log messages would interleave; serialize.
+            logger.debug('Disabling multithreading because DEBUG logging enabled')
+            threads = False
+        if progress:
+            progress = False
+
+    tickers = tickers if isinstance(
+        tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
+    tickers = list(dict.fromkeys([t.upper() for t in tickers]))
+
+    if progress:
+        ctx.progress_bar = utils.ProgressBar(len(tickers), 'completed')
+
+    if threads:
+        if threads is True:
+            threads = min([len(tickers), _multitasking.cpu_count() * 2])
+        _multitasking.set_max_threads(threads)
+        for i, ticker in enumerate(tickers):
+            _info_one_threaded(ctx, ticker, session=session, progress=(progress and i > 0))
+        while True:
+            with ctx.lock:
+                if len(ctx.infos) >= len(tickers):
+                    break
+            _time.sleep(0.01)
+    else:
+        for ticker in tickers:
+            _info_one(ctx, ticker, session=session)
+            if progress:
+                ctx.progress_bar.animate()
+
+    if progress:
+        ctx.progress_bar.completed()
+
+    if ctx.errors:
+        logger.error('\n%.f Failed info fetch%s:' % (
+            len(ctx.errors), 'es' if len(ctx.errors) > 1 else ''))
+
+        errors = {}
+        for ticker, err in ctx.errors.items():
+            err = err.replace(f'${ticker}: ', '')
+            errors.setdefault(err, []).append(ticker)
+        for err, syms in errors.items():
+            logger.error(f'{syms}: ' + err)
+
+        tbs = {}
+        for ticker, tb in ctx.tracebacks.items():
+            tb = tb.replace(f'${ticker}: ', '')
+            tbs.setdefault(tb, []).append(ticker)
+        for tb, syms in tbs.items():
+            logger.debug(f'{syms}: ' + tb)
+
+    return {ticker: ctx.infos.get(ticker, {}) for ticker in tickers}
+
 def reindex_dfs(dfs, ignore_tz):
     if ignore_tz:
         for tkr in dfs.keys():
@@ -250,6 +345,34 @@ def reindex_dfs(dfs, ignore_tz):
         dfs[key] = df.reindex(idx)
 
     return dfs
+
+
+@_multitasking.task
+def _info_one_threaded(ctx, ticker, session=None, progress=True):
+    _info_one(ctx, ticker, session=session)
+    if progress:
+        ctx.progress_bar.animate()
+
+
+def _info_one(ctx, ticker, session=None):
+    sym = ticker.upper()
+
+    backup = YfConfig.network.hide_exceptions
+    YfConfig.network.hide_exceptions = False
+    try:
+        tkr = Ticker(ticker, session=session)
+        info = tkr.info
+        with ctx.lock:
+            ctx.infos[sym] = info
+    except Exception as e:
+        with ctx.lock:
+            ctx.infos[sym] = {}
+            ctx.errors[sym] = repr(e)
+            ctx.tracebacks[sym] = traceback.format_exc()
+
+    YfConfig.network.hide_exceptions = backup
+
+    return ctx.infos[sym]
 
 @_multitasking.task
 def _download_one_threaded(ctx, ticker, start=None, end=None,

@@ -1318,6 +1318,37 @@ class TestTickerInfo(unittest.TestCase):
     #     fast_info_keys = set()
     #     for ticker in self.tickers:
     #         fast_info_keys.update(set(ticker.fast_info.keys()))
+
+
+class TestTickersInfo(unittest.TestCase):
+
+    def test_get_info_delegates_to_multi(self):
+        tickers = yf.Tickers("aapl msft")
+        expected = {
+            "AAPL": {"symbol": "AAPL"},
+            "MSFT": {"symbol": "MSFT"},
+        }
+
+        with patch("yfinance.tickers.multi.info", return_value=expected) as m_info:
+            result = tickers.get_info(threads=False, progress=True)
+
+        self.assertIs(result, expected)
+        m_info.assert_called_once()
+        args, kwargs = m_info.call_args
+        self.assertEqual(args[0], ["AAPL", "MSFT"])
+        self.assertEqual(kwargs["threads"], False)
+        self.assertEqual(kwargs["progress"], True)
+        self.assertIn("session", kwargs)
+
+    def test_info_property_uses_get_info(self):
+        tickers = yf.Tickers("aapl")
+        expected = {"AAPL": {"symbol": "AAPL"}}
+
+        with patch.object(yf.Tickers, "get_info", return_value=expected) as m_get_info:
+            result = tickers.info
+
+        self.assertIs(result, expected)
+        m_get_info.assert_called_once_with()
     #     fast_info_keys = sorted(list(fast_info_keys))
 
     #     key_rename_map = {}
