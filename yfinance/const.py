@@ -693,6 +693,8 @@ EQUITY_SCREENER_FIELDS = {
         "lastclosepriceearnings.lasttwelvemonths",
         "pegratio_5y"},
     "profitability":{
+        "dividendyield",
+        "dividendpershare.lasttwelvemonths",
         "consecutive_years_of_dividend_growth_count",
         "returnonassets.lasttwelvemonths",
         "returnonequity.lasttwelvemonths",
