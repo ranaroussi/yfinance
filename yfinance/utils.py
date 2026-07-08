@@ -471,6 +471,21 @@ def _parse_user_dt(dt, exchange_tz=_tz.utc):
     return dt
 
 
+def _interval_to_pd_timedelta(interval):
+    """Convert an intraday/day interval string (e.g. ``'90m'``, ``'1h'``, ``'5d'``)
+    to a ``pandas.Timedelta`` using explicit keyword units.
+
+    Passing these strings straight to ``pd.Timedelta`` relies on pandas' single
+    -letter unit aliases (``'d'``, ``'m'`` ...), which emit a ``DeprecationWarning``
+    on pandas>=3.0 / numpy>=2.5 and are slated to raise in a future release
+    (see GH #2882). Building with keyword units avoids that entirely.
+    """
+    for suffix, unit in (("wk", "weeks"), ("m", "minutes"), ("h", "hours"), ("d", "days")):
+        if interval.endswith(suffix):
+            return _pd.Timedelta(**{unit: int(interval[:-len(suffix)])})
+    return _pd.Timedelta(interval)
+
+
 def _interval_to_timedelta(interval):
     if interval[-1] == "d":
         return relativedelta(days=int(interval[:-1]))
@@ -481,7 +496,7 @@ def _interval_to_timedelta(interval):
     elif interval[-1] == "y":
         return relativedelta(years=int(interval[:-1]))
     else:
-        return _pd.Timedelta(interval)
+        return _interval_to_pd_timedelta(interval)
 
 
 def is_valid_period_format(period):
@@ -664,7 +679,7 @@ def _dts_in_same_interval(dt1, dt2, interval):
         quarter_diff = q2 - q1 + 4*year_diff
         last_rows_same_interval = quarter_diff == 0
     else:
-        last_rows_same_interval = (dt2 - dt1) < _pd.Timedelta(interval)
+        last_rows_same_interval = (dt2 - dt1) < _interval_to_pd_timedelta(interval)
     return last_rows_same_interval
 
 

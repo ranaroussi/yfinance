@@ -10,12 +10,19 @@ Specific test class:
 """
 from datetime import datetime
 from unittest import TestSuite
+import warnings
 
 import pandas as pd
 
 import unittest
 
-from yfinance.utils import is_valid_period_format, _dts_in_same_interval, _parse_user_dt
+from yfinance.utils import (
+    is_valid_period_format,
+    _dts_in_same_interval,
+    _parse_user_dt,
+    _interval_to_timedelta,
+    _interval_to_pd_timedelta,
+)
 
 
 class TestPandas(unittest.TestCase):
@@ -179,6 +186,38 @@ class TestDateIntervalCheck(unittest.TestCase):
         
         dt3 = pd.Timestamp("2024-10-15 10:31:00")
         self.assertFalse(_dts_in_same_interval(dt1, dt3, "1min"))
+
+    def test_multi_day_interval(self):
+        # '5d' is a valid interval that falls through to the generic branch.
+        dt1 = pd.Timestamp("2024-10-15 10:00:00")
+        dt2 = pd.Timestamp("2024-10-18 10:00:00")  # 3 days later, same 5d window
+        self.assertTrue(_dts_in_same_interval(dt1, dt2, "5d"))
+
+        dt3 = pd.Timestamp("2024-10-22 10:00:00")  # 7 days later, next window
+        self.assertFalse(_dts_in_same_interval(dt1, dt3, "5d"))
+
+    def test_no_deprecation_warning_for_valid_intervals(self):
+        # Regression for #2882: interval strings were passed straight to
+        # pd.Timedelta, relying on pandas' single-letter unit aliases (e.g. 'd'),
+        # which raise a DeprecationWarning on pandas>=3.0 / numpy>=2.5 and are
+        # slated to error in a later release. '5d' in particular reaches the
+        # generic branch and warned. Assert every valid interval stays clean.
+        intervals = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h",
+                     "1d", "5d", "1wk", "1mo", "3mo"]
+        dt1 = pd.Timestamp("2024-01-02 10:00:00")
+        dt2 = pd.Timestamp("2024-01-05 10:00:00")
+        for interval in intervals:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", DeprecationWarning)
+                warnings.simplefilter("error", FutureWarning)
+                _dts_in_same_interval(dt1, dt2, interval)
+                _interval_to_timedelta(interval)
+
+    def test_interval_to_pd_timedelta_values(self):
+        self.assertEqual(_interval_to_pd_timedelta("90m"), pd.Timedelta(minutes=90))
+        self.assertEqual(_interval_to_pd_timedelta("1h"), pd.Timedelta(hours=1))
+        self.assertEqual(_interval_to_pd_timedelta("5d"), pd.Timedelta(days=5))
+        self.assertEqual(_interval_to_pd_timedelta("1wk"), pd.Timedelta(weeks=1))
 
     def test_parse_user_dt(self):
         exchange_tz = "US/Eastern"
