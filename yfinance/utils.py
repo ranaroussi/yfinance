@@ -480,6 +480,13 @@ def _interval_to_timedelta(interval):
         return relativedelta(months=int(interval[:-2]))
     elif interval[-1] == "y":
         return relativedelta(years=int(interval[:-1]))
+    elif interval[-1] == "m":
+        # Minute intervals e.g. "1m", "30m", "90m". Pass an explicit unit
+        # instead of a bare string so numpy>=2.5 does not emit the
+        # "'generic' unit for NumPy timedelta is deprecated" warning.
+        return _pd.Timedelta(minutes=int(interval[:-1]))
+    elif interval[-1] == "h":
+        return _pd.Timedelta(hours=int(interval[:-1]))
     else:
         return _pd.Timedelta(interval)
 
@@ -664,7 +671,7 @@ def _dts_in_same_interval(dt1, dt2, interval):
         quarter_diff = q2 - q1 + 4*year_diff
         last_rows_same_interval = quarter_diff == 0
     else:
-        last_rows_same_interval = (dt2 - dt1) < _pd.Timedelta(interval)
+        last_rows_same_interval = (dt2 - dt1) < _interval_to_timedelta(interval)
     return last_rows_same_interval
 
 
