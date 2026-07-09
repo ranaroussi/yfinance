@@ -16,6 +16,6 @@ jobs:
         with:
           persist-credentials: false
       # Verify: curl -s "https://api.github.com/repos/astral-sh/ruff-action/commits?sha=v3&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-      - uses: astral-sh/ruff-action@0ce1b0bf8b818ef400413f810f8a11cdbda0034b # v4.0.0
+      - uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
         with:
           args: check --ignore E702 . --exclude yfinance/pricing_pb2.py
