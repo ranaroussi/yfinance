@@ -788,8 +788,12 @@ class TestFixPricesSuddenChangeVolumeNaN(unittest.TestCase):
 
         repaired = hist._fix_bad_stock_splits(df_bad_nan, "1d", "Asia/Tokyo")
 
-        # NaN must be preserved, not silently coerced into a wrong integer.
+        # NaN must be preserved (as NA), not silently coerced into a wrong
+        # integer. Note: the repaired range itself is nullable Int64, but the
+        # final dtype here is Float64 because the NaN-injected *input* column is
+        # necessarily float64 and unrepaired rows keep it.
         self.assertTrue(_pd.isna(repaired.loc[self.target_date, 'Volume']))
+        self.assertEqual(repaired['Volume'].isna().sum(), 1)
 
     def test_clean_data_repair_unaffected_by_the_fix(self):
         # Regression guard: rows without NaN must still repair exactly as before,
@@ -798,7 +802,10 @@ class TestFixPricesSuddenChangeVolumeNaN(unittest.TestCase):
         repaired = hist._fix_bad_stock_splits(self.df_bad.copy(), "1d", "Asia/Tokyo")
         repaired = repaired.sort_index()
         df_fixed = self.df_fixed.sort_index()
-        self.assertTrue(_np.isclose(repaired['Volume'], df_fixed['Volume'], rtol=5e-6).all())
+        volume = repaired['Volume'].astype('float64').to_numpy()
+        self.assertTrue(_np.isclose(volume, df_fixed['Volume'], rtol=5e-6).all())
+        # Volume is migrated to nullable Int64 by the repair (int64 input).
+        self.assertEqual(repaired['Volume'].dtype, 'Int64')
 
 
 if __name__ == '__main__':
