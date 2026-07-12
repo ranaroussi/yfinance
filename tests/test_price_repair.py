@@ -714,6 +714,43 @@ class TestPriceRepair(unittest.TestCase):
                 print(repaired_df[c][f_diff] - correct_df[c][f_diff])
                 raise
 
+    def test_repair_bad_div_adjust_readonly_adjclose(self):
+        # ENV.CR: 'Adj Close' contains -inf & NaN, and finite values hugely
+        # bigger than Close. Reducing the huge values wrote into a read-only
+        # numpy array -> "ValueError: assignment destination is read-only".
+        # https://github.com/ranaroussi/yfinance/issues/2890
+        # Synthetic offline fixture, no fetch needed.
+        tkr = 'ENV.CR'
+        interval = '1d'
+        currency = 'VES'
+        hist = yf.scrapers.history.PriceHistory(None, tkr, 'America/Caracas', session=self.session)
+        hist._history_metadata = {'currency': currency}
+
+        n = 30
+        index = _pd.date_range('2024-01-02', periods=n, freq='B', tz='America/Caracas')
+        close = _np.linspace(100.0, 130.0, n)
+        adjClose = close.copy()
+        adjClose[5:10] = close[5:10] * 1e6  # triggers the huge-value reduction loop
+        adjClose[10] = -_np.inf
+        adjClose[11] = _np.nan
+        df_bad = _pd.DataFrame({
+            'Open': close * 0.99,
+            'High': close * 1.01,
+            'Low': close * 0.98,
+            'Close': close,
+            'Adj Close': adjClose,
+            'Volume': _np.full(n, 1000.0),
+            'Dividends': _np.zeros(n),
+            'Stock Splits': _np.zeros(n)},
+            index=index)
+        df_bad.loc[df_bad.index[15], 'Dividends'] = 1.0
+
+        repaired_df = hist._fix_bad_div_adjust(df_bad, interval, prepost=False, currency=currency)
+
+        c = 'Adj Close'
+        self.assertFalse(_np.isinf(repaired_df[c].to_numpy()).any())
+        self.assertTrue((repaired_df[c].to_numpy() <= df_bad['Close'].to_numpy()*10).all())
+
     def test_repair_capital_gains_double_count(self):
         bad_tkrs = ['DODFX', 'VWILX', 'JENYX']
         for tkr in bad_tkrs:
