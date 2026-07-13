@@ -15,10 +15,12 @@ from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default, _SENTIN
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
 
 class PriceHistory:
-    def __init__(self, data, ticker, tz, session=None):
+    def __init__(self, data, ticker, tz, session=None, tz_getter=None, tz_setter=None):
         self._data = data
         self.ticker = ticker.upper()
         self.tz = tz
+        self._tz_getter = tz_getter
+        self._tz_setter = tz_setter
         self.session = session or new_session()
 
         self._history_cache = {}
@@ -33,6 +35,18 @@ class PriceHistory:
         self._reconstruct_start_interval = None
 
         self._last_error = None
+
+    def _get_tz(self):
+        if self.tz is None and self._tz_getter is not None:
+            self.tz = self._tz_getter(timeout=10)
+        return self.tz
+
+    def _set_tz(self, tz):
+        if not utils.is_valid_timezone(tz):
+            return
+        self.tz = tz
+        if self._tz_setter is not None:
+            self._tz_setter(tz)
 
     @utils.log_indent_decorator
     def history(self, period=period_default, interval="1d",
@@ -102,7 +116,7 @@ class PriceHistory:
                 raise ValueError("Yahoo's interval '5d' is nonsense, not supported with repair")
             if start is None and end is None and period is not None:
                 # Convert period to start -> end
-                tz = self.tz
+                tz = self._get_tz()
                 if tz is None:
                     # Every valid ticker has a timezone. A missing timezone is a problem.
                     _exception = YFTzMissingError(self.ticker)
@@ -127,7 +141,7 @@ class PriceHistory:
         end_user = end
         if start or end or (period and period.lower() == "max"):
             # Check can get TZ. Fail => probably delisted
-            tz = self.tz
+            tz = self._get_tz()
             if tz is None:
                 # Every valid ticker has a timezone. A missing timezone is a problem.
                 _exception = YFTzMissingError(self.ticker)
@@ -246,6 +260,8 @@ class PriceHistory:
 
         self._history_metadata = meta
         self._history_metadata['YF repair?'] = repair
+        if self.tz is None:
+            self._set_tz(meta.get("exchangeTimezoneName"))
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''

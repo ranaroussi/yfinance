@@ -357,37 +357,76 @@ class TestTickerHistory(unittest.TestCase):
                                     else:
                                         self.assertTrue((~((hours >= 7) & (hours <= 19))).any())
 
-    # Hopefully one day we find an equivalent "requests_cache" that works with "curl_cffi"
-    # def test_no_expensive_calls_introduced(self):
-    #     """
-    #     Make sure calling history to get price data has not introduced more calls to yahoo than absolutely necessary.
-    #     As doing other type of scraping calls than "query2.finance.yahoo.com/v8/finance/chart" to yahoo website
-    #     will quickly trigger spam-block when doing bulk download of history data.
-    #     """
-    #     symbol = "GOOGL"
-    #     period = "1y"
-    #     with requests_cache.CachedSession(backend="memory") as session:
-    #         ticker = yf.Ticker(symbol, session=session)
-    #         ticker.history(period=period)
-    #         actual_urls_called = [r.url for r in session.cache.filter()]
+    @staticmethod
+    def _mock_history_response(symbol):
+        payload = {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "currency": "USD",
+                        "symbol": symbol,
+                        "instrumentType": "EQUITY",
+                        "exchangeTimezoneName": "America/New_York",
+                        "regularMarketPrice": 102.0,
+                        "validRanges": ["1d", "5d", "1mo", "1y"],
+                    },
+                    "timestamp": [1710163800, 1710250200],
+                    "indicators": {
+                        "quote": [{
+                            "open": [100.0, 101.0],
+                            "high": [103.0, 104.0],
+                            "low": [99.0, 100.0],
+                            "close": [102.0, 103.0],
+                            "volume": [1000, 1100],
+                        }],
+                        "adjclose": [{"adjclose": [102.0, 103.0]}],
+                    },
+                }],
+                "error": None,
+            }
+        }
+        response = MagicMock()
+        response.text = json.dumps(payload)
+        response.json.return_value = payload
+        return response
 
-    #     # Remove 'crumb' argument
-    #     for i in range(len(actual_urls_called)):
-    #         u = actual_urls_called[i]
-    #         parsed_url = urlparse(u)
-    #         query_params = parse_qs(parsed_url.query)
-    #         query_params.pop('crumb', None)
-    #         query_params.pop('cookie', None)
-    #         u = urlunparse(parsed_url._replace(query=urlencode(query_params, doseq=True)))
-    #         actual_urls_called[i] = u
-    #     actual_urls_called = tuple(actual_urls_called)
+    def test_range_history_makes_single_request(self):
+        """A range request should get the ticker timezone from its chart response."""
+        symbol = "MOCK-RANGE"
+        response = self._mock_history_response(symbol)
+        tz_cache = MagicMock()
 
-    #     expected_urls = [
-    #         f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d",  # ticker's tz
-    #         f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=False&interval=1d&range={period}"
-    #     ]
-    #     for url in actual_urls_called:
-    #         self.assertTrue(url in expected_urls, f"Unexpected URL called: {url}")
+        with patch("yfinance.cache.get_tz_cache", return_value=tz_cache), \
+             patch("yfinance.data.YfData.get", return_value=response) as mock_get, \
+             patch("yfinance.data.YfData.cache_get", return_value=response) as mock_cache_get:
+            ticker = yf.Ticker(symbol)
+            data = ticker.history(period="1y")
+
+        self.assertFalse(data.empty)
+        mock_get.assert_called_once()
+        mock_cache_get.assert_not_called()
+        self.assertEqual(mock_get.call_args.kwargs["params"]["range"], "1y")
+        self.assertEqual(ticker._tz, "America/New_York")
+        tz_cache.store.assert_called_once_with(symbol, "America/New_York")
+
+    def test_date_history_fetches_timezone_before_request(self):
+        """Explicit dates need the exchange timezone before conversion to epochs."""
+        symbol = "MOCK-DATES"
+        response = self._mock_history_response(symbol)
+        tz_cache = MagicMock()
+        tz_cache.lookup.return_value = None
+        ticker = yf.Ticker(symbol)
+
+        with patch("yfinance.cache.get_tz_cache", return_value=tz_cache), \
+             patch.object(ticker, "_fetch_ticker_tz", return_value="America/New_York") as mock_fetch_tz, \
+             patch("yfinance.data.YfData.cache_get", return_value=response) as mock_cache_get:
+            data = ticker.history(start="2024-03-11", end="2024-03-13")
+
+        self.assertFalse(data.empty)
+        mock_fetch_tz.assert_called_once_with(10)
+        mock_cache_get.assert_called_once()
+        tz_cache.lookup.assert_called_once_with(symbol)
+        tz_cache.store.assert_called_once_with(symbol, "America/New_York")
 
     def test_dividends(self):
         data = self.ticker.dividends
