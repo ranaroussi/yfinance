@@ -537,8 +537,8 @@ class TickerBase:
             logger.error(f"{self.ticker}: Yahoo web request for share count failed")
             return None
 
-        shares_data = json_data["timeseries"]["result"]
-        if "shares_out" not in shares_data[0]:
+        shares_data = (json_data.get("timeseries") or {}).get("result") or []
+        if not shares_data or "shares_out" not in shares_data[0]:
             return None
         try:
             df = pd.Series(shares_data[0]["shares_out"], index=pd.to_datetime(shares_data[0]["timestamp"], unit="s"))

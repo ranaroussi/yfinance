@@ -1288,6 +1288,47 @@ class TestTickerInfo(unittest.TestCase):
             q._fetch_complementary()
         self.assertEqual(q._info["trailingPegRatio"], 1.23)
 
+    def test_shares_full_empty_result_timeseries(self):
+        # get_shares_full reads json_data["timeseries"]["result"] and then
+        # shares_data[0] without guarding. Yahoo can return a 200 whose
+        # share-count timeseries envelope has an empty/missing/null 'result'
+        # (common for symbols with no share-count history, and for the
+        # 'finance' error envelope that omits 'timeseries'). The unguarded
+        # access raised IndexError/KeyError/TypeError, which also broke the
+        # 'shares' complementary field feeding .info. It should return None
+        # instead, matching the function's other graceful-degradation exits.
+        ticker = yf.Ticker("TEST", session=self.session)
+        ticker._tz = "America/New_York"  # avoid network tz lookup
+
+        return_none = [
+            # 'result' is an empty list -> would raise IndexError
+            {"timeseries": {"error": None, "result": []}},
+            # 'result' key missing -> would raise KeyError
+            {"timeseries": {"error": None}},
+            # 'result' is null -> would raise TypeError
+            {"timeseries": {"error": None, "result": None}},
+            # 'timeseries' absent (finance error envelope) -> would raise KeyError
+            {"finance": {"result": None, "error": {"code": "Not Found"}}},
+        ]
+        for payload in return_none:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = payload
+            with patch.object(ticker._data, "cache_get", return_value=mock_resp):
+                self.assertIsNone(ticker.get_shares_full(),
+                                  f"Expected None for payload: {payload}")
+
+        # Happy path still returns a populated Series
+        ts = int(pd.Timestamp("2024-01-02", tz="UTC").timestamp())
+        payload = {"timeseries": {"error": None, "result": [
+            {"shares_out": [123456789], "timestamp": [ts]}
+        ]}}
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = payload
+        with patch.object(ticker._data, "cache_get", return_value=mock_resp):
+            data = ticker.get_shares_full()
+        self.assertIsInstance(data, pd.Series)
+        self.assertEqual(data.iloc[0], 123456789)
+
     def test_isin_info(self):
         isin_list = {"ES0137650018": True,
                      "does_not_exist": True,  # Nonexistent but doesn't raise an error
