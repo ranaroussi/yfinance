@@ -1639,8 +1639,10 @@ class PriceHistory:
             # is so bad that it overflows floating-point type into Infinity.
             # So reduce those massive values.
             f_ninf = ~f_inf
-            # copy() because to_numpy() can return a read-only view (Pandas copy-on-write)
-            adjClose = df2['Adj Close'].to_numpy().copy()
+            adjClose = df2['Adj Close'].to_numpy()
+            if not adjClose.flags.writeable:
+                # to_numpy() can return a read-only view (Pandas copy-on-write)
+                adjClose = adjClose.copy()
             close = df2['Close'].to_numpy()
             close10x = close*10
             f_huge = f_ninf & (adjClose > close10x)
