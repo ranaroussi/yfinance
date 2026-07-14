@@ -69,6 +69,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         interval : str
             Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
             Intraday data cannot extend last 60 days
+            Note: 30m data is fetched from Yahoo as 15m then resampled, to work around a Yahoo API bug
         start: str
             Download start date string (YYYY-MM-DD) or _datetime, inclusive.
             Default is 99 years ago
