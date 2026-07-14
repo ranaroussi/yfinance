@@ -496,6 +496,31 @@ class TestPriceHistory(unittest.TestCase):
         self.assertIn("(30m ", msg)
         self.assertNotIn("(15m ", msg)
 
+    def test_prices_missing_error_delisted_prefix(self):
+        # Offline check of YFPricesMissingError message formats: the
+        # 'possibly delisted' speculation must be suppressible when the
+        # real cause of missing data is known.
+        from yfinance.exceptions import YFPricesMissingError
+        e = YFPricesMissingError("AAA", "(1d 2020-01-01 -> 2020-01-02)")
+        self.assertEqual(str(e), "$AAA: possibly delisted; no price data found (1d 2020-01-01 -> 2020-01-02)")
+        e = YFPricesMissingError("AAA", "(1d 2020-01-01 -> 2020-01-02)", possibly_delisted=False)
+        self.assertEqual(str(e), "$AAA: no price data found (1d 2020-01-01 -> 2020-01-02)")
+
+    def test_range_error_does_not_claim_delisting(self):
+        # A request Yahoo rejects with an explicit range error is not
+        # delisting evidence, so the message must not speculate 'possibly
+        # delisted'. When a ticker really is dead, Yahoo's quoted error
+        # text still communicates it.
+        from yfinance.exceptions import YFPricesMissingError
+        dat = yf.Ticker("SPY", session=self.session)
+        start_d = _dt.date.today() - _dt.timedelta(days=120)
+        end_d = start_d + _dt.timedelta(days=7)
+        with self.assertRaises(YFPricesMissingError) as cm:
+            dat.history(start=start_d, end=end_d, interval="30m", raise_errors=True)
+        msg = str(cm.exception)
+        self.assertNotIn("possibly delisted", msg)
+        self.assertIn("no price data found", msg)
+
 
 if __name__ == '__main__':
     unittest.main()

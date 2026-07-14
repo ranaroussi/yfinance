@@ -13,8 +13,15 @@ class YFNotImplementedError(NotImplementedError):
 
 
 class YFTickerMissingError(YFException):
-    def __init__(self, ticker, rationale):
-        super().__init__(f"${ticker}: possibly delisted; {rationale}")
+    """Expected ticker data is missing.
+
+    By default the message speculates the ticker is delisted, because Yahoo
+    rarely explains the absence. Pass possibly_delisted=False when the real
+    cause is known, so the message does not mislead.
+    """
+    def __init__(self, ticker, rationale, possibly_delisted=True):
+        prefix = "possibly delisted; " if possibly_delisted else ""
+        super().__init__(f"${ticker}: {prefix}{rationale}")
         self.rationale = rationale
         self.ticker = ticker
 
@@ -25,12 +32,17 @@ class YFTzMissingError(YFTickerMissingError):
 
 
 class YFPricesMissingError(YFTickerMissingError):
-    def __init__(self, ticker, debug_info):
+    """Yahoo returned no price data for the requested range/interval.
+
+    possibly_delisted=False suppresses the delisting speculation, e.g. when
+    Yahoo's response contains an explicit reason for the missing data.
+    """
+    def __init__(self, ticker, debug_info, possibly_delisted=True):
         self.debug_info = debug_info
         if debug_info != '':
-            super().__init__(ticker, f"no price data found {debug_info}")
+            super().__init__(ticker, f"no price data found {debug_info}", possibly_delisted)
         else:
-            super().__init__(ticker, "no price data found")
+            super().__init__(ticker, "no price data found", possibly_delisted)
 
 
 class YFEarningsDateMissing(YFTickerMissingError):
