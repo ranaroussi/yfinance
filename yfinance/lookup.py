@@ -82,13 +82,13 @@ class Lookup:
         except _json.JSONDecodeError:
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._logger.error(f"{self.ticker}: 'lookup' fetch received faulty data")
+            self._logger.error(f"{self.query}: 'lookup' fetch received faulty data")
             data = {}
 
         # Error returned
         if data.get("finance", {}).get("error", {}):
             error = data.get("finance", {}).get("error", {})
-            raise YFDataException(f"{self.ticker}: 'lookup' fetch returned error: {error}")
+            raise YFDataException(f"{self.query}: 'lookup' fetch returned error: {error}")
 
         self._cache[cache_key] = data
         return data
