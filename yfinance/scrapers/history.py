@@ -49,6 +49,7 @@ class PriceHistory:
             interval : str
               | Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
               | Intraday data cannot extend last 60 days
+              | Note: 30m data is fetched from Yahoo as 15m then resampled, to work around a Yahoo API bug
             start : str
               | Download start date string (YYYY-MM-DD) or _datetime, inclusive.
               | Default: 99 years ago
@@ -250,7 +251,7 @@ class PriceHistory:
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
         if start or period is None or period.lower() == "max":
-            _price_data_debug += f' ({params["interval"]} '
+            _price_data_debug += f' ({interval_user} '
             if start_user is not None:
                 _price_data_debug += f'{start_user}'
             elif not intraday:
@@ -277,6 +278,10 @@ class PriceHistory:
             fail = True
         elif "chart" in data and data["chart"] and data["chart"]["error"]:
             _price_data_debug += ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
+            if params["interval"] != interval_user.lower():
+                # Yahoo's error names the fetched interval, which can differ from
+                # the user's request (e.g. 30m is fetched as 15m).
+                _price_data_debug += f' (note: yfinance fetched {params["interval"]} data to build {interval_user} bars)'
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
         elif "chart" not in data or not data["chart"] or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:

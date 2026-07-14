@@ -483,6 +483,19 @@ class TestPriceHistory(unittest.TestCase):
         with self.assertRaises(YFPricesMissingError):
             dat.history(period="1mo", raise_errors=True)
 
+    def test_30m_interval_error_mentions_requested_interval(self):
+        # Regression for #1029: yfinance fetches 15m data from Yahoo to build
+        # 30m bars, but the internal 15m interval leaked into error messages.
+        from yfinance.exceptions import YFPricesMissingError
+        dat = yf.Ticker("SPY", session=self.session)
+        start_d = _dt.date.today() - _dt.timedelta(days=120)
+        end_d = start_d + _dt.timedelta(days=7)
+        with self.assertRaises(YFPricesMissingError) as cm:
+            dat.history(start=start_d, end=end_d, interval="30m", raise_errors=True)
+        msg = str(cm.exception)
+        self.assertIn("(30m ", msg)
+        self.assertNotIn("(15m ", msg)
+
 
 if __name__ == '__main__':
     unittest.main()
