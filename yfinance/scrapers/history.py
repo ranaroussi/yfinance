@@ -277,13 +277,14 @@ class PriceHistory:
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
             fail = True
         elif "chart" in data and data["chart"] and data["chart"]["error"]:
-            _price_data_debug += ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
+            # Yahoo explained why there's no data, so surface its reason directly
+            # instead of the generic "no price data found" plus request context.
+            yahoo_reason = data["chart"]["error"]["description"]
             if params["interval"] != interval_user.lower():
                 # Yahoo's error names the fetched interval, which can differ from
                 # the user's request (e.g. 30m is fetched as 15m).
-                _price_data_debug += f' ({interval_user} resampled from {params["interval"]})'
-            # Yahoo gave an explicit reason, so don't speculate about delisting.
-            _exception = YFPricesMissingError(self.ticker, _price_data_debug, possibly_delisted=False)
+                yahoo_reason += f' ({interval_user} resampled from {params["interval"]})'
+            _exception = YFPricesMissingError(self.ticker, _price_data_debug, yahoo_reason=yahoo_reason)
             fail = True
         elif "chart" not in data or not data["chart"] or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
