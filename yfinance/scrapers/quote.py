@@ -690,7 +690,7 @@ class Quote:
 
         query1_info = {}
         for quote in ["quoteSummary", "quoteResponse"]:
-            quote_result = result.get(quote, {}).get("result", [])
+            quote_result = result.get(quote, {}).get("result") or []
 
             if len(quote_result) > 0:
                 quote_result[0]["symbol"] = self._symbol
