@@ -751,6 +751,28 @@ class TestPriceRepair(unittest.TestCase):
                     print(repaired_df[f2][c] - correct_df[f2][c])
                     raise
 
+    def test_repair_gbp_not_converted(self):
+        tkr = "XDEV.L"
+        dat = yf.Ticker(tkr, session=self.session)
+
+        df_no_repair = dat.history(period='1mo', interval='1d', auto_adjust=False, repair=False)
+        df_repair = dat.history(period='1mo', interval='1d', auto_adjust=False, repair=True)
+
+        if df_no_repair.empty or df_repair.empty:
+            self.skipTest("No data returned for XDEV.L")
+
+        close_no_repair = df_no_repair['Close'].iloc[:-1]
+        close_repair = df_repair['Close'].iloc[:-1]
+
+        try:
+            self.assertTrue(_np.isclose(close_no_repair, close_repair, rtol=1e-2).all())
+        except AssertionError:
+            print("Mismatch in Close prices for XDEV.L")
+            print("- df_no_repair['Close']:")
+            print(close_no_repair)
+            print("- df_repair['Close']:")
+            print(close_repair)
+            raise
 
 
 if __name__ == '__main__':
