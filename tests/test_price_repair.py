@@ -356,6 +356,43 @@ class TestPriceRepair(unittest.TestCase):
                 self.assertTrue("Repaired?" in df_repaired.columns)
                 self.assertFalse(df_repaired["Repaired?"].isna().any())
 
+    def test_repair_100x_random_1h(self):
+        tkr = 'ASAI.L'
+        interval = '1h'
+
+        yf.config.debug.logging = True
+
+        dat = yf.Ticker(tkr, session=self.session)
+        hist = dat._lazy_load_price_history()
+        hist.history(period='1mo')  # init metadata for currency
+        tz = hist._history_metadata['exchangeTimezoneName']
+
+        fp = os.path.join(self.dp, "data", tkr.replace('.','-') + '-' + interval + "-bad-unit.csv")
+        df = _pd.read_csv(fp, index_col='Datetime')
+        df.index = _pd.to_datetime(df.index, utc=True).tz_convert(tz)
+
+        fp = os.path.join(self.dp, "data", tkr.replace('.','-') + '-' + interval + "-bad-unit-fixed.csv")
+        df_correct = _pd.read_csv(fp, index_col='Datetime')
+        df_correct.index = _pd.to_datetime(df_correct.index, utc=True).tz_convert(tz)
+
+        repaired_df = hist._fix_unit_switch(df, interval, tz)
+
+        for c in ["Open", "Low", "High", "Close"]:
+            try:
+                f_close = _np.isclose(repaired_df[c].to_numpy(), df_correct[c].to_numpy(), rtol=1e-7, equal_nan=True)
+                self.assertTrue(f_close.all())
+            except Exception:
+                f_diff = ~f_close
+                print(f"tkr={tkr} interval={interval} c={c}")
+                print("- repaired_df:")
+                print(repaired_df[c][f_diff])
+                print("- df_correct:")
+                print(df_correct[c][f_diff])
+                print("- diff:")
+                print(repaired_df[c][f_diff] - df_correct[c][f_diff])
+                raise
+
+
     def test_repair_zeroes_daily(self):
         tkr = "BBIL.L"
         dat = yf.Ticker(tkr, session=self.session)

@@ -911,28 +911,29 @@ def is_valid_timezone(tz: str) -> bool:
     return True
 
 
-def format_history_metadata(md, tradingPeriodsOnly=True):
+def format_history_metadata(md):
     if not isinstance(md, dict):
         return md
     if len(md) == 0:
         return md
+    elif 'exchangeTimezoneName' not in md.keys():
+        return md
 
     tz = md["exchangeTimezoneName"]
 
-    if not tradingPeriodsOnly:
-        for k in ["firstTradeDate", "regularMarketTime"]:
-            if k in md and md[k] is not None:
-                if isinstance(md[k], int):
+    for k in ["firstTradeDate", "regularMarketTime"]:
+        if k in md and md[k] is not None:
+            if isinstance(md[k], int):
                     md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
 
-        if "currentTradingPeriod" in md:
-            for m in ["regular", "pre", "post"]:
-                if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
-                    for t in ["start", "end"]:
-                        md["currentTradingPeriod"][m][t] = \
+    if "currentTradingPeriod" in md:
+        for m in ["regular", "pre", "post"]:
+            if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
+                for t in ["start", "end"]:
+                    md["currentTradingPeriod"][m][t] = \
                             _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
-                    del md["currentTradingPeriod"][m]["gmtoffset"]
-                    del md["currentTradingPeriod"][m]["timezone"]
+                del md["currentTradingPeriod"][m]["gmtoffset"]
+                del md["currentTradingPeriod"][m]["timezone"]
 
     if "tradingPeriods" in md:
         tps = md["tradingPeriods"]
