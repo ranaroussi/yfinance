@@ -10,4 +10,4 @@ multi-level column names downloaded with yfinance? <https://stackoverflow.com/qu
 The answer discusses:
 
 - How to correctly read the multi-level columns after saving the dataframe to a csv with `pandas.DataFrame.to_csv`
-- How to download single or multiple tickers into a singledataframe with single level column names and a ticker column
+- How to download single or multiple tickers into a single dataframe with single level column names and a ticker column

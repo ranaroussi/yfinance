@@ -4,7 +4,7 @@ Caching
 Persistent Cache
 ----------------
 
-To reduce Yahoo, yfinance store some data locally: timezones to localize dates, and cookie. Cache location is:
+To reduce requests to Yahoo, yfinance stores some data locally: timezones to localize dates, and cookies. Cache location is:
 
 - Windows = C:/Users/\<USER\>/AppData/Local/py-yfinance
 - Linux = /home/\<USER\>/.cache/py-yfinance
