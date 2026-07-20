@@ -132,8 +132,22 @@ class TickerBase:
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+            # Range-based chart responses include the timezone, so defer
+            # fetching it until PriceHistory knows the request needs it.
+            self._price_history = PriceHistory(
+                self._data,
+                self.ticker,
+                self._tz,
+                tz_getter=self._get_ticker_tz,
+                tz_setter=self._set_ticker_tz,
+            )
         return self._price_history
+
+    def _set_ticker_tz(self, tz):
+        if not utils.is_valid_timezone(tz):
+            return
+        cache.get_tz_cache().store(self.ticker, tz)
+        self._tz = tz
 
     def _get_ticker_tz(self, timeout):
         if self._tz is not None:
@@ -161,7 +175,7 @@ class TickerBase:
                             tz = self.info[k]
                             break
             if utils.is_valid_timezone(tz):
-                c.store(self.ticker, tz)
+                self._set_ticker_tz(tz)
             else:
                 tz = None
 
