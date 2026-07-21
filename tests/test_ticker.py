@@ -16,13 +16,13 @@ from tests.context import yfinance as yf
 from tests.context import session_gbl
 from yfinance.exceptions import YFPricesMissingError, YFInvalidPeriodError, YFNotImplementedError, YFTickerMissingError, YFTzMissingError, YFDataException
 from yfinance.config import YfConfig
+from yfinance.data import YfData
 
 import json
 import unittest
-# import requests_cache
 from unittest.mock import patch, MagicMock
 from typing import Union, Any, get_args, get_origin
-# from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 ticker_attributes = (
     ("major_holders", pd.DataFrame),
@@ -357,37 +357,53 @@ class TestTickerHistory(unittest.TestCase):
                                     else:
                                         self.assertTrue((~((hours >= 7) & (hours <= 19))).any())
 
-    # Hopefully one day we find an equivalent "requests_cache" that works with "curl_cffi"
-    # def test_no_expensive_calls_introduced(self):
-    #     """
-    #     Make sure calling history to get price data has not introduced more calls to yahoo than absolutely necessary.
-    #     As doing other type of scraping calls than "query2.finance.yahoo.com/v8/finance/chart" to yahoo website
-    #     will quickly trigger spam-block when doing bulk download of history data.
-    #     """
-    #     symbol = "GOOGL"
-    #     period = "1y"
-    #     with requests_cache.CachedSession(backend="memory") as session:
-    #         ticker = yf.Ticker(symbol, session=session)
-    #         ticker.history(period=period)
-    #         actual_urls_called = [r.url for r in session.cache.filter()]
+    def test_no_expensive_calls_introduced(self):
+        """
+        Make sure calling history to get price data has not introduced more calls to yahoo than absolutely necessary.
+        As doing other type of scraping calls than "query2.finance.yahoo.com/v8/finance/chart" to yahoo website
+        will quickly trigger spam-block when doing bulk download of history data.
+        """
+        symbol = "GOOGL"
+        period = "1y"
+        # requests_cache doesn't work with curl_cffi, so record URLs by
+        # temporarily wrapping the shared session's get().
+        session = YfData()._session
+        actual_urls_called = []
+        orig_get = session.get
 
-    #     # Remove 'crumb' argument
-    #     for i in range(len(actual_urls_called)):
-    #         u = actual_urls_called[i]
-    #         parsed_url = urlparse(u)
-    #         query_params = parse_qs(parsed_url.query)
-    #         query_params.pop('crumb', None)
-    #         query_params.pop('cookie', None)
-    #         u = urlunparse(parsed_url._replace(query=urlencode(query_params, doseq=True)))
-    #         actual_urls_called[i] = u
-    #     actual_urls_called = tuple(actual_urls_called)
+        def logging_get(*args, **kwargs):
+            response = orig_get(*args, **kwargs)
+            actual_urls_called.append(response.url)
+            return response
 
-    #     expected_urls = [
-    #         f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d",  # ticker's tz
-    #         f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=False&interval=1d&range={period}"
-    #     ]
-    #     for url in actual_urls_called:
-    #         self.assertTrue(url in expected_urls, f"Unexpected URL called: {url}")
+        session.get = logging_get
+        try:
+            ticker = yf.Ticker(symbol)
+            ticker.history(period=period)
+        finally:
+            del session.get
+
+        # Remove 'crumb' argument and sort params so compare is order-insensitive
+        for i in range(len(actual_urls_called)):
+            u = actual_urls_called[i]
+            parsed_url = urlparse(u)
+            query_params = parse_qs(parsed_url.query)
+            query_params.pop('crumb', None)
+            query_params.pop('cookie', None)
+            u = urlunparse(parsed_url._replace(query=urlencode(sorted(query_params.items()), doseq=True)))
+            actual_urls_called[i] = u
+
+        expected_urls = [
+            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d",  # ticker's tz
+            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=false&interval=1d&range={period}"
+        ]
+        # Cookie & crumb fetches are unavoidable session setup, not scraping
+        setup_hosts = ("fc.yahoo.com", "guce.yahoo.com", "consent.yahoo.com")
+        for url in actual_urls_called:
+            parsed_url = urlparse(url)
+            if parsed_url.hostname in setup_hosts or parsed_url.path.endswith('/getcrumb'):
+                continue
+            self.assertIn(url, expected_urls, f"Unexpected URL called: {url}")
 
     def test_dividends(self):
         data = self.ticker.dividends
