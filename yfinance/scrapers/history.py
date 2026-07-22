@@ -3183,6 +3183,13 @@ class PriceHistory:
         if idx_latest_active is not None:
             idx_rev_latest_active = df.shape[0] - 1 - idx_latest_active
             logger.debug(f'idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}', extra=log_extras)
+        if correct_volume:
+            # Migrate Volume to nullable Int64: a NaN Volume can occur within a
+            # repaired range, and the corrections below partially assign scaled
+            # values back into the column - with plain 'int' that raises
+            # IntCastingNaNError, and partial assignment of NA into an 'int'/'float'
+            # column raises TypeError on pandas 3.
+            df2['Volume'] = df2['Volume'].round().astype('Int64')
         if correct_columns_individually:
             f_corrected = np.full(n, False)
             if correct_volume:
@@ -3298,9 +3305,9 @@ class PriceHistory:
                 f_open_and_closed_fixed = f_open_fixed & f_close_fixed
                 f_open_xor_closed_fixed = np.logical_xor(f_open_fixed, f_close_fixed)
                 if f_open_and_closed_fixed.any():
-                    df2.loc[f_open_and_closed_fixed, "Volume"] = (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp).round().astype('int')
+                    df2.loc[f_open_and_closed_fixed, "Volume"] = (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp).round().astype('Int64')
                 if f_open_xor_closed_fixed.any():
-                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype('int')
+                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype('Int64')
 
             sudden_change_repaired[f_corrected] = True
 
@@ -3358,7 +3365,9 @@ class PriceHistory:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc('Dividends')] *= m
                 if correct_volume:
                     col_loc = df2.columns.get_loc("Volume")
-                    df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).round().astype('int')
+                    # '.array' because on pandas 3.0, iloc-assigning an Int64 *Series*
+                    # containing NA raises KeyError (positional lookup on the value's index)
+                    df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).round().astype('Int64').array
                 sudden_change_repaired[r[0]:r[1]] = True
                 if r[0] == r[1] - 1:
                     if interday:
@@ -3398,18 +3407,11 @@ class PriceHistory:
                 if correct_dividend:
                     df2['Dividends'] *= m
                 if correct_volume:
-                    df2['Volume'] = (df2['Volume'] * m_rcp).round().astype('int')
+                    df2['Volume'] = (df2['Volume'] * m_rcp).round().astype('Int64')
                 sudden_change_repaired = ~sudden_change_repaired
 
         if 'Repaired?' not in df2.columns:
             df2['Repaired?'] = False
         df2['Repaired?'] = df2['Repaired?'].to_numpy() | sudden_change_repaired
-
-        if correct_volume:
-            f_na = df2['Volume'].isna()
-            if f_na.any():
-                df2.loc[~f_na,'Volume'] = df2['Volume'][~f_na].round(0).astype('int')
-            else:
-                df2['Volume'] = df2['Volume'].round(0).astype('int')
 
         return df2.sort_index()
