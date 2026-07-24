@@ -7,8 +7,6 @@
 """yfinance - market data downloader"""
 
 from setuptools import setup, find_packages
-# from codecs import open
-import io
 from os import path
 
 # --- get version ---
@@ -22,7 +20,7 @@ with open("yfinance/version.py") as f:
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
-with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
@@ -66,7 +64,6 @@ setup(
                       'beautifulsoup4>=4.11.1', 'curl_cffi>=0.15',
                       'protobuf>=3.19.0', 'websockets>=13.0'],
     extras_require={
-        'nospam': ['requests_cache>=1.0', 'requests_ratelimiter>=0.3.1'],
         'repair': ['scipy>=1.6.3'],
     },
     # Include protobuf files for websocket support
