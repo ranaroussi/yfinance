@@ -75,11 +75,6 @@ setup(
     },
     include_package_data=True,
     # Note: Pandas.read_html() needs html5lib & beautifulsoup4
-    entry_points={
-        'console_scripts': [
-            'sample=sample:main',
-        ],
-    },
 )
 
 print("""
