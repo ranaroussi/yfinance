@@ -251,7 +251,9 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date()-pd.Timedelta(days=548))
+        shares = self._tkr.get_shares_full(
+            start=pd.Timestamp.now('UTC').date() - datetime.timedelta(days=548)
+        )
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()

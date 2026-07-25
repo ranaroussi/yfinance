@@ -309,7 +309,7 @@ class TestTickerHistory(unittest.TestCase):
         self.assertTrue(md['YF repair?'])
 
     def test_download(self):
-        tomorrow = pd.Timestamp.now().date() + pd.Timedelta(days=1)  # helps with caching
+        tomorrow = pd.Timestamp.now().date() + timedelta(days=1)  # helps with caching
         for threads in [False, True]:
             for ignore_tz in [False, True]:
                 for mli in [False, True]:
