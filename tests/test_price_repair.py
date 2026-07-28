@@ -788,6 +788,90 @@ class TestPriceRepair(unittest.TestCase):
                     print(repaired_df[f2][c] - correct_df[f2][c])
                     raise
 
+    def test_repair_100x_partial_block_currency_standardised(self):
+        # A genuine partial 100x block inside a table that _standardise_currency()
+        # already converted to major units. Repair must fix only the block - not
+        # rescale the whole table and invert 'Repaired?'. GH issue 2924.
+        # Second case: the conversion genuinely re-applied (mixed-unit table),
+        # where the whole-table revert is correct and must keep working.
+        # Metadata is set explicitly to simulate the post-_standardise_currency()
+        # state, so this test needs no network.
+        from yfinance.scrapers.history import PriceHistory
+
+        tz_exchange = "Europe/London"
+        data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
+
+        for case in ["partial-100x-block", "reapplied-conversion"]:
+            fp = os.path.join(self.dp, "data", "XDEV-L-1d-" + case + ".csv")
+            df_bad = _pd.read_csv(fp, index_col="Date")
+            df_bad.index = _pd.to_datetime(df_bad.index, utc=True).tz_convert(tz_exchange)
+            df_bad = df_bad.sort_index()
+
+            fp = os.path.join(self.dp, "data", "XDEV-L-1d-" + case + "-fixed.csv")
+            correct_df = _pd.read_csv(fp, index_col="Date")
+            correct_df.index = _pd.to_datetime(correct_df.index, utc=True).tz_convert(tz_exchange)
+            correct_df = correct_df.sort_index()
+
+            hist = PriceHistory(None, "XDEV.L", tz_exchange)
+            hist._history_metadata = {"currency": "GBP",
+                                      "exchangeTimezoneName": tz_exchange,
+                                      "currencyRepaired": True,
+                                      "regularMarketPrice": 50.1993}
+
+            repaired_df = hist._fix_unit_switch(df_bad, "1d", tz_exchange)
+            repaired_df = repaired_df.sort_index()
+
+            for c in data_cols:
+                try:
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-2).all())
+                except AssertionError:
+                    print("- repaired:")
+                    print(repaired_df[c])
+                    print("- correct:")
+                    print(correct_df[c])
+                    print(f"TEST FAIL on column '{c}' (case={case})")
+                    raise
+
+            try:
+                self.assertTrue((repaired_df["Repaired?"].to_numpy() == correct_df["Repaired?"].to_numpy()).all())
+            except AssertionError:
+                print("- repaired 'Repaired?':")
+                print(repaired_df["Repaired?"])
+                print("- correct 'Repaired?':")
+                print(correct_df["Repaired?"])
+                print(f"TEST FAIL on 'Repaired?' (case={case})")
+                raise
+
+    def test_repair_capital_gains_no_dividend(self):
+        # A fund distributing a capital gain with no dividend on the same day
+        # must not crash _repair_capital_gains. Also the edge where the only
+        # capital-gains row is the first row. GH issue 2924.
+        from yfinance.scrapers.history import PriceHistory
+
+        tz = "America/New_York"
+        idx = _pd.date_range("2024-01-02", periods=10, freq="B", tz=tz)
+        df = _pd.DataFrame(index=idx)
+        for c in ["Open", "High", "Low", "Close", "Adj Close"]:
+            df[c] = _np.linspace(10.0, 11.0, 10)
+        df["Volume"] = 1000
+        df["Dividends"] = 0.0
+        df["Stock Splits"] = 0.0
+        df["Capital Gains"] = 0.0
+
+        for gain_row in [5, 0]:
+            df2 = df.copy()
+            df2.iloc[gain_row, df2.columns.get_loc("Capital Gains")] = 0.5
+
+            hist = PriceHistory(None, "FUNDX", tz)
+            hist._history_metadata = {"currency": "USD", "exchangeTimezoneName": tz}
+
+            repaired = hist._repair_capital_gains(df2)
+
+            self.assertEqual(len(repaired), 10)
+            self.assertNotIn("Adj", repaired.columns)
+            for c in ["Open", "Close", "Adj Close"]:
+                self.assertTrue(_np.isclose(repaired[c], df2[c], rtol=1e-9).all())
+
     def test_repair_gbp_not_converted(self):
         tkr = "XDEV.L"
         dat = yf.Ticker(tkr, session=self.session)
