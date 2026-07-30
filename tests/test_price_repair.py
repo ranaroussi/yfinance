@@ -523,14 +523,11 @@ class TestPriceRepair(unittest.TestCase):
                 df_good = df_good.sort_index()
                 repaired_df = repaired_df.sort_index()
                 for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
-                    try:
-                        self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
-                    except Exception:
-                        print(f"tkr={tkr} interval={interval} COLUMN={c}")
-                        df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
-                        f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
-                        print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
-                        raise
+                    _np.testing.assert_array_equal(
+                        repaired_df[c].to_numpy(),
+                        df_good[c].to_numpy(),
+                        err_msg=f"tkr={tkr} interval={interval} COLUMN={c}",
+                    )
 
         bad_tkrs = ['4063.T', 'AV.L', 'CNE.L', 'MOB.ST', 'SPM.MI']
         bad_tkrs.append('LA.V')  # special case - stock split error is 3 years ago! why not fixed?
@@ -590,14 +587,11 @@ class TestPriceRepair(unittest.TestCase):
             df_good = df_good.sort_index()
             repaired_df = repaired_df.sort_index()
             for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
-                try:
-                    self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
-                except AssertionError:
-                    print(f"tkr={tkr} interval={interval} COLUMN={c}")
-                    df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
-                    f_diff = repaired_df[c].to_numpy() != df_good[c].to_numpy()
-                    print(df_dbg[f_diff | _np.roll(f_diff, 1) | _np.roll(f_diff, -1)])
-                    raise
+                _np.testing.assert_array_equal(
+                    repaired_df[c].to_numpy(),
+                    df_good[c].to_numpy(),
+                    err_msg=f"tkr={tkr} interval={interval} COLUMN={c}",
+                )
 
     def test_repair_bad_div_adjusts(self):
         bad_tkrs = []
