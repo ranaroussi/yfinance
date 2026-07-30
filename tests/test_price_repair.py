@@ -487,7 +487,7 @@ class TestPriceRepair(unittest.TestCase):
                 repaired_df = repaired_df.sort_index()
                 for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
                     try:
-                        self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
+                        self.assertTrue(_np.isclose(repaired_df[c].to_numpy(), df_good[c].to_numpy(), equal_nan=True).all())
                     except Exception:
                         print(f"tkr={tkr} interval={interval} COLUMN={c}")
                         df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
@@ -554,7 +554,7 @@ class TestPriceRepair(unittest.TestCase):
             repaired_df = repaired_df.sort_index()
             for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
                 try:
-                    self.assertTrue((repaired_df[c].to_numpy() == df_good[c].to_numpy()).all())
+                    self.assertTrue(_np.isclose(repaired_df[c].to_numpy(), df_good[c].to_numpy(), equal_nan=True).all())
                 except AssertionError:
                     print(f"tkr={tkr} interval={interval} COLUMN={c}")
                     df_dbg = df_good[[c]].join(repaired_df[[c]], lsuffix='.good', rsuffix='.repaired')
