@@ -47,7 +47,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-repair = ["scipy>=1.6.3"]
+repair = [
+    "scipy>=1.6.3",
+    "scikit-learn>=1.0"
+]
 dev = [
     "jinja2==3.1.4",
     "pydata-sphinx-theme==0.15.4",
