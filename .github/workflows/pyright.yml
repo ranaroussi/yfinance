@@ -16,18 +16,24 @@ jobs:
     steps:
     - name: Checkout code
       # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
 
+    - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      with:
+        version: "latest"
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
     - name: Set up Python
-      # Verify: curl -s "https://api.github.com/repos/actions/setup-python/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+      run: uv python install 3.12
+
+    - name: Create virtual environment
+      run: uv venv
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyright
+      run: uv pip install pyright
 
     - name: Run Pyright
-      run: pyright . --level error
+      run: uv run pyright . --level error
