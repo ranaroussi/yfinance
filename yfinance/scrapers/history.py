@@ -587,6 +587,8 @@ class PriceHistory:
                 self._history_metadata['currency'] = original_currency
                 if 'currencyRepaired' in self._history_metadata:
                     del self._history_metadata['currencyRepaired']
+                if 'currencyScaled' in self._history_metadata:
+                    del self._history_metadata['currencyScaled']
 
             df = df.sort_index()
 
@@ -1234,6 +1236,9 @@ class PriceHistory:
             prices_scaled = True
         self._history_metadata["currency"] = currency2
         self._history_metadata["currencyRepaired"] = True
+        # Whether prices were actually divided. _fix_prices_sudden_change()
+        # needs this to orient a genuine unit-switch repair.
+        self._history_metadata["currencyScaled"] = prices_scaled
 
         f_div = df['Dividends']!=0.0
         if f_div.any():
@@ -3561,8 +3566,6 @@ class PriceHistory:
 
             return ranges
 
-        any_m_lt_1 = False
-
         if idx_latest_active is not None:
             idx_rev_latest_active = df.shape[0] - 1 - idx_latest_active
             logger.debug(f'idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}', extra=log_extras)
@@ -3650,7 +3653,6 @@ class PriceHistory:
                         else:
                             m = split_rcp
                             m_rcp = split
-                        any_m_lt_1 = any_m_lt_1 or m < 0.99
                         if interday:
                             msg = f"Corrected {fix_type} on col={c} range=[{df2.index[r[1]-1].date()}:{df2.index[r[0]].date()}] m={m:.4f}"
                         else:
@@ -3822,6 +3824,25 @@ class PriceHistory:
                           # Good
                           pass
 
+            if unit_switch and len(ranges) == 1 and ranges[0][1] == n \
+                    and self._history_metadata.get('currencyRepaired', False) \
+                    and self._history_metadata.get('currencyScaled', True):
+                r = ranges[0]
+                m = split if r[2] == 'split' else split_rcp
+                if m < 0.99:
+                    # A lone range dividing everything from some date back to the
+                    # oldest row, in a table _standardise_currency() has already
+                    # divided, means the switch is genuine and standardisation
+                    # wrongly divided the newest rows: in a unit switch the bigger
+                    # numbers are the minor currency and the smaller the major, so
+                    # the bigger (older) side is already at major scale. Repair the
+                    # newest segment up instead of dragging the correct majority
+                    # down and reverting the whole table afterwards - that revert
+                    # rescaled entire tables by 100x and inverted 'Repaired?' when
+                    # the division had fixed a genuine interior 100x block (#2924).
+                    ranges[0] = (0, r[0], 'split' if r[2] != 'split' else '1.0/split')
+                    logger.debug(f"Division of all rows older than {df2.index[r[0]].date()} after currency standardisation: "
+                                 f"repairing newest {r[0]} rows up instead", extra=log_extras)
             for i in range(len(ranges)):
                 r = ranges[i]
                 if r[2] == 'split':
@@ -3831,7 +3852,6 @@ class PriceHistory:
                     m = split_rcp
                     m_rcp = split
 
-                any_m_lt_1 = any_m_lt_1 or m < 0.99
                 logger.debug(f"range={r} m={m}", extra=log_extras)
                 for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
@@ -3864,45 +3884,6 @@ class PriceHistory:
             else:
                 msg = f"Corrected: {n_corrected}x"
             logger.info(msg, extra=log_extras)
-
-        if unit_switch and any_m_lt_1:
-            # m < 1 means thats the switch was repaired in favour of the major currency
-            # e.g. USD beat cents
-            # But check if _standardise_currency() already did that.
-            if 'currencyRepaired' in self._history_metadata and self._history_metadata['currencyRepaired']:
-                # Maybe this repair did it again - but only if the repairs re-applied
-                # the conversion to the whole table, which leaves every price 'change'x
-                # too small. If instead this pass repaired a genuine partial 100x block
-                # inside an already-converted table, the table is now correct and
-                # reverting would corrupt every row and invert 'Repaired?'.
-                # Distinguish with the same anchor _standardise_currency() uses:
-                # compare the latest active Close against regularMarketPrice.
-                conversion_reapplied = True  # cautious default = old behaviour
-                try:
-                    rmp = self._history_metadata['regularMarketPrice']
-                    f_volume = df2['Volume'] > 0
-                    if rmp and f_volume.any():
-                        last_close = df2['Close'].iloc[np.where(f_volume)[0][-1]]
-                        if last_close > 0:
-                            ratio = rmp / last_close
-                            # Genuine re-application leaves the table ~'change'x below
-                            # the market quote. Split the decision at sqrt(change) so
-                            # ordinary price drift cannot flip it.
-                            conversion_reapplied = ratio > np.sqrt(change)
-                except Exception:
-                    if not YfConfig.debug.hide_exceptions:
-                        raise
-                if conversion_reapplied:
-                    # Revert the second conversion.
-                    m = change
-                    m_rcp = 1.0/change
-                    for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
-                        df2[c] *= m
-                    if correct_dividend:
-                        df2['Dividends'] *= m
-                    if correct_volume:
-                        df2['Volume'] = (df2['Volume'] * m_rcp).round().astype('int')
-                    sudden_change_repaired = ~sudden_change_repaired
 
         if 'Repaired?' not in df2.columns:
             df2['Repaired?'] = False

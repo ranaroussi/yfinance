@@ -772,26 +772,56 @@ class TestPriceRepair(unittest.TestCase):
                     print(repaired_df[f2][c] - correct_df[f2][c])
                     raise
 
-    def test_repair_100x_partial_block_currency_standardised(self):
-        # A genuine partial 100x block inside a table that _standardise_currency()
-        # already converted to major units. Repair must fix only the block - not
-        # rescale the whole table and invert 'Repaired?'. GH issue 2924.
-        # Second case: the conversion genuinely re-applied (mixed-unit table),
-        # where the whole-table revert is correct and must keep working.
-        # Metadata is set explicitly to simulate the post-_standardise_currency()
-        # state, so this test needs no network.
+    def test_repair_100x_unit_switch_currency_standardised(self):
+        # Three tables in the state _standardise_currency() leaves them:
+        # metadata currency GBP, currencyRepaired True, every price divided by
+        # 100. No regularMarketPrice - the repair must decide from the table
+        # alone, because the fetch window may end far from today.
+        # - partial-100x-block: a genuine interior 100x block. Repair must fix
+        #   only the block, not rescale the whole table and invert 'Repaired?'.
+        #   GH issue 2924.
+        # - wrongly-divided-block: an interior block Yahoo quoted in GBP inside
+        #   a GBp table, so the whole-table division left it 100x too small.
+        #   Repair must multiply only the block back up.
+        # - reapplied-conversion: a genuine GBp->GBP quotation switch partway
+        #   through the table, so the whole-table division wrongly divided the
+        #   already-GBP rows. In a unit switch the bigger numbers are the minor
+        #   currency and the smaller the major, so repair must multiply the
+        #   smaller (newest) segment back up, and flag only those rows.
+        # - switch-not-divided: the same quotation switch, but rmp matched the
+        #   newest close so _standardise_currency set currencyRepaired without
+        #   dividing anything (currencyScaled False). Here the older pence
+        #   segment really must be divided down, and flagged.
+        # - mixed-units-no-standardise: the partial-100x-block table read the
+        #   other way - a GBP-labelled table Yahoo served with a leftover pence
+        #   block, which _standardise_currency never touches (GBP is not a
+        #   subunit label), so no currencyRepaired at all. Same golden outcome:
+        #   the interior repair must not depend on that metadata.
+        # This test needs no network.
         from yfinance.scrapers.history import PriceHistory
 
         tz_exchange = "Europe/London"
         data_cols = ["Low", "High", "Open", "Close", "Adj Close"]
 
-        for case in ["partial-100x-block", "reapplied-conversion"]:
-            fp = os.path.join(self.dp, "data", "XDEV-L-1d-" + case + ".csv")
+        # case name -> (fixture prefix, metadata beyond currency+tz)
+        cases = {
+            "partial-100x-block": ("partial-100x-block",
+                                   {"currencyRepaired": True, "currencyScaled": True}),
+            "wrongly-divided-block": ("wrongly-divided-block",
+                                      {"currencyRepaired": True, "currencyScaled": True}),
+            "reapplied-conversion": ("reapplied-conversion",
+                                     {"currencyRepaired": True, "currencyScaled": True}),
+            "switch-not-divided": ("switch-not-divided",
+                                   {"currencyRepaired": True, "currencyScaled": False}),
+            "mixed-units-no-standardise": ("partial-100x-block", {}),
+        }
+        for case, (fixture, meta_extra) in cases.items():
+            fp = os.path.join(self.dp, "data", "XDEV-L-1d-" + fixture + ".csv")
             df_bad = _pd.read_csv(fp, index_col="Date")
             df_bad.index = _pd.to_datetime(df_bad.index, utc=True).tz_convert(tz_exchange)
             df_bad = df_bad.sort_index()
 
-            fp = os.path.join(self.dp, "data", "XDEV-L-1d-" + case + "-fixed.csv")
+            fp = os.path.join(self.dp, "data", "XDEV-L-1d-" + fixture + "-fixed.csv")
             correct_df = _pd.read_csv(fp, index_col="Date")
             correct_df.index = _pd.to_datetime(correct_df.index, utc=True).tz_convert(tz_exchange)
             correct_df = correct_df.sort_index()
@@ -799,8 +829,7 @@ class TestPriceRepair(unittest.TestCase):
             hist = PriceHistory(None, "XDEV.L", tz_exchange)
             hist._history_metadata = {"currency": "GBP",
                                       "exchangeTimezoneName": tz_exchange,
-                                      "currencyRepaired": True,
-                                      "regularMarketPrice": 50.1993}
+                                      **meta_extra}
 
             repaired_df = hist._fix_unit_switch(df_bad, "1d", tz_exchange)
             repaired_df = repaired_df.sort_index()
@@ -825,6 +854,55 @@ class TestPriceRepair(unittest.TestCase):
                 print(correct_df["Repaired?"])
                 print(f"TEST FAIL on 'Repaired?' (case={case})")
                 raise
+
+    def test_standardise_currency_records_scaling(self):
+        # _standardise_currency() sets currencyRepaired in two different states:
+        # after actually dividing a subunit table, and after only relabelling
+        # GBp->GBP because prices were already in major units. The unit-switch
+        # repair needs opposite directions in those two states, so the metadata
+        # must record which one happened. This test needs no network.
+        from yfinance.scrapers.history import PriceHistory
+
+        tz = "Europe/London"
+
+        def make_df(closes, end_today):
+            n = len(closes)
+            if end_today:
+                end = _pd.Timestamp.now(tz=tz).normalize()
+                idx = _pd.date_range(end=end, periods=n, freq="B")
+            else:
+                idx = _pd.date_range("2020-01-02", periods=n, freq="B", tz=tz)
+            df = _pd.DataFrame(index=idx)
+            for c in ["Open", "High", "Low", "Close", "Adj Close"]:
+                df[c] = closes
+            df["Volume"] = 1000
+            df["Dividends"] = 0.0
+            df["Stock Splits"] = 0.0
+            return df
+
+        # Pence table, old window: recency check skipped, prices divided.
+        hist = PriceHistory(None, "XDEV.L", tz)
+        hist._history_metadata = {"currency": "GBp", "exchangeTimezoneName": tz}
+        df = make_df(_np.full(10, 5000.0), end_today=False)
+        df2, currency, _, prices_scaled = hist._standardise_currency(df, "GBp")
+        self.assertEqual(currency, "GBP")
+        self.assertTrue(prices_scaled)
+        self.assertTrue(hist._history_metadata["currencyRepaired"])
+        self.assertTrue(hist._history_metadata["currencyScaled"])
+        self.assertTrue(_np.isclose(df2["Close"].to_numpy(), 50.0).all())
+
+        # Prices already major, recent window with rmp about 100x Close:
+        # relabel only, nothing divided.
+        hist = PriceHistory(None, "XDEV.L", tz)
+        hist._history_metadata = {"currency": "GBp", "exchangeTimezoneName": tz,
+                                  "regularMarketPrice": 4800.0}
+        df = make_df(_np.full(10, 48.0), end_today=True)
+        df2, currency, _, prices_scaled = hist._standardise_currency(df, "GBp")
+        self.assertEqual(currency, "GBP")
+        self.assertFalse(prices_scaled)
+        self.assertTrue(hist._history_metadata["currencyRepaired"])
+        self.assertFalse(hist._history_metadata["currencyScaled"])
+        self.assertTrue(_np.isclose(df2["Close"].to_numpy(), 48.0).all())
 
     def test_repair_capital_gains_no_dividend(self):
         # A fund distributing a capital gain with no dividend on the same day
