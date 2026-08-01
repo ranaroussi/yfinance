@@ -251,7 +251,9 @@ class FastInfo:
         if self._shares is not None:
             return self._shares
 
-        shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date()-pd.Timedelta(days=548))
+        # unit="D" rather than days=... so pandas does not emit the numpy>=2.5
+        # "generic unit" deprecation warning when constructing the Timedelta.
+        shares = self._tkr.get_shares_full(start=pd.Timestamp.now('UTC').date() - pd.Timedelta(548, unit="D"))
         # if shares is None:
         #     # Requesting 18 months failed, so fallback to shares which should include last year
         #     shares = self._tkr.get_shares()
