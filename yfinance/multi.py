@@ -98,6 +98,10 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         ignore_tz: bool
             When combining from different timezones, ignore that part of datetime.
             Default depends on interval. Intraday = False. Day+ = True.
+            Also controls the returned index's timezone: if True, the index is
+            tz-naive. If False (the intraday default), the index is converted
+            to the most common exchange timezone among the requested tickers
+            (before 1.4.0, this case always returned UTC instead; see CHANGELOG).
         rounding: bool
             Optional. Round values to 2 decimal places?
         timeout: None or float
