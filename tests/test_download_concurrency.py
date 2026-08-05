@@ -5,10 +5,48 @@ DataFrame containing exactly the tickers they requested — no contamination,
 no exceptions — and that ``download()`` no longer relies on module-level
 dicts in ``yfinance.shared`` as scratch space.
 """
+import json
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 from tests.context import yfinance as yf
+from yfinance.config import YfConfig
+from yfinance.data import YfData
+
+
+class TestDownloadGlobalConfig(unittest.TestCase):
+    """``download()`` must leave the global config exactly as it found it.
+
+    Runs offline: the fetch is stubbed out so every ticker fails, which is
+    the path that used to override the exception-hiding setting.
+    """
+
+    @staticmethod
+    def _boom(*args, **kwargs):
+        raise RuntimeError("simulated network failure")
+
+    def _download_offline(self):
+        with patch.object(YfData, "get", self._boom), \
+                patch.object(YfData, "cache_get", self._boom):
+            yf.download(["ZZZFAKE"], period="5d", threads=False, progress=False)
+
+    def test_download_leaves_network_config_untouched(self):
+        before = json.loads(repr(YfConfig.network))
+        self._download_offline()
+        self.assertEqual(json.loads(repr(YfConfig.network)), before)
+
+    def test_download_restores_hide_exceptions(self):
+        # Whatever the user set must survive a download, including the
+        # non-default value.
+        backup = YfConfig.debug.hide_exceptions
+        try:
+            for value in (True, False):
+                YfConfig.debug.hide_exceptions = value
+                self._download_offline()
+                self.assertEqual(YfConfig.debug.hide_exceptions, value)
+        finally:
+            YfConfig.debug.hide_exceptions = backup
 
 
 class TestDownloadConcurrency(unittest.TestCase):

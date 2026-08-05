@@ -34,7 +34,6 @@ from ._http import new_session
 
 from . import Ticker, utils
 from .data import YfData
-from .config import YfConfig
 from .const import period_default
 
 
@@ -277,8 +276,6 @@ def _download_one(ctx, ticker, start=None, end=None,
     data = None
     sym = ticker.upper()
 
-    backup = YfConfig.network.hide_exceptions
-    YfConfig.network.hide_exceptions = False
     try:
         tkr = Ticker(ticker)
         data = tkr.history(
@@ -300,7 +297,5 @@ def _download_one(ctx, ticker, start=None, end=None,
             ctx.dfs[sym] = utils.empty_df()
             ctx.errors[sym] = repr(e)
             ctx.tracebacks[sym] = traceback.format_exc()
-
-    YfConfig.network.hide_exceptions = backup
 
     return data
