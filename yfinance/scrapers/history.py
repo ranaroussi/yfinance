@@ -481,7 +481,7 @@ class PriceHistory:
             # Must fix bad 'Adj Close' & dividends before 100x/split errors.
             # First make currency consistent. On some exchanges, dividends often in different currency
             # to prices, e.g. £ vs pence.
-            df, currency, div_scaled, prices_scaled = self._standardise_currency(df, currency)
+            df, currency, prices_scaled = self._standardise_currency(df, currency)
             self._history_metadata['currency'] = currency
 
             f_na = df['Volume'].isna()
@@ -516,8 +516,9 @@ class PriceHistory:
                 m = _CURRENCY_CONVERSIONS[original_currency]
                 for c in _PRICE_COLNAMES_:
                     df[c] /= m
-                if div_scaled:
-                    df['Dividends'] /= m
+                # After running _fix_bad_div_adjust(), the dividends should always be in
+                # same unit as prices
+                df['Dividends'] /= m
                 self._history_metadata['currency'] = original_currency
                 if 'currencyRepaired' in self._history_metadata:
                     del self._history_metadata['currencyRepaired']
@@ -1107,10 +1108,9 @@ class PriceHistory:
         return df_v2
 
     def _standardise_currency(self, df, currency):
-        div_scaled = False
         prices_scaled = False
         if currency not in _CURRENCY_CONVERSIONS:
-            return df, currency, div_scaled, prices_scaled
+            return df, currency, prices_scaled
         m = _CURRENCY_CONVERSIONS[currency]
         currency2 = {'GBp': 'GBP', 'ZAc': 'ZAR', 'ILA': 'ILS'}[currency]
         
@@ -1118,7 +1118,7 @@ class PriceHistory:
         # _fix_unit_switch() will ensure all rows are on same scale.
         f_volume = df['Volume']>0
         if not f_volume.any():
-            return df, currency, div_scaled, prices_scaled
+            return df, currency, prices_scaled
         last_row = df.iloc[np.where(f_volume)[0][-1]]
         prices_in_subunits = True  # usually is true
         if last_row.name > (pd.Timestamp.now('UTC') - _datetime.timedelta(days=30)):
@@ -1153,9 +1153,8 @@ class PriceHistory:
             div_pcts = (divs['Dividends'] / divs['Close']).to_numpy()
             if len(div_pcts) > 0 and np.average(div_pcts) > 1:
                 df['Dividends'] *= m
-                div_scaled = True
 
-        return df, currency2, div_scaled, prices_scaled
+        return df, currency2, prices_scaled
 
     def _dividends_convert_fx(self, dividends, fx, repair=False):
         bad_div_currencies = [c for c in dividends['currency'].unique() if c != fx]
