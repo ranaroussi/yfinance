@@ -900,7 +900,7 @@ class TestPriceRepair(unittest.TestCase):
         hist = PriceHistory(None, "XDEV.L", tz)
         hist._history_metadata = {"currency": "GBp", "exchangeTimezoneName": tz}
         df = make_df(_np.full(10, 5000.0), end_today=False)
-        df2, currency, _, prices_scaled = hist._standardise_currency(df, "GBp")
+        df2, currency, prices_scaled = hist._standardise_currency(df, "GBp")
         self.assertEqual(currency, "GBP")
         self.assertTrue(prices_scaled)
         self.assertTrue(hist._history_metadata["currencyRepaired"])
@@ -913,7 +913,7 @@ class TestPriceRepair(unittest.TestCase):
         hist._history_metadata = {"currency": "GBp", "exchangeTimezoneName": tz,
                                   "regularMarketPrice": 4800.0}
         df = make_df(_np.full(10, 48.0), end_today=True)
-        df2, currency, _, prices_scaled = hist._standardise_currency(df, "GBp")
+        df2, currency, prices_scaled = hist._standardise_currency(df, "GBp")
         self.assertEqual(currency, "GBP")
         self.assertFalse(prices_scaled)
         self.assertTrue(hist._history_metadata["currencyRepaired"])
