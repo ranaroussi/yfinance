@@ -3825,8 +3825,7 @@ class PriceHistory:
                           pass
 
             if unit_switch and len(ranges) == 1 and ranges[0][1] == n \
-                    and self._history_metadata.get('currencyRepaired', False) \
-                    and self._history_metadata.get('currencyScaled', True):
+                    and self._history_metadata.get('currencyScaled', False):
                 r = ranges[0]
                 m = split if r[2] == 'split' else split_rcp
                 if m < 0.99:
