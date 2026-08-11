@@ -59,7 +59,7 @@ To install without `curl_cffi` for requests fallback, see [Advanced ▸ Installa
 
 ---
 
-![Star History Chart](https://api.star-history.com/svg?repos=ranaroussi/yfinance)
+![Star History Chart](https://star-history.dera.page/svg?repos=ranaroussi/yfinance)
 
 ---
 
