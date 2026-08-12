@@ -999,19 +999,22 @@ class PriceHistory:
                     x[labels != largest] = replacement
                 ratios = x
 
-            not1 = ~np.isclose(ratios, 1.0, rtol=0.00001)
-            if np.sum(not1) == len(calib_cols):
-                # Only 1 calibration row in df_new is different to df_block so ignore
-                ratio = 1.0
+            ratio = np.average(ratios, weights=weights)
+            if abs(ratio -1) < 0.1:
+                ratio = 1
             else:
-                ratio = np.average(ratios, weights=weights)
-            if abs(ratio/0.0001 -1) < 0.01:
-                # ratio almost-equal 0.0001, so looks like Yahoo messed up currency unit.
-                # E.g. £ with pence. Can correct it.
-                df_block = df_block.copy()
-                for c in _PRICE_COLNAMES_:
-                    df_v2.loc[df_v2[c]!=tag, c] *= 100
-                ratio *= 100
+                # A 100x mismatch is most likely currency unit mismatch.
+                r = 100
+                r_rcp = 1/r
+                if abs(ratio/r -1) < 0.1:
+                    for c in _PRICE_COLNAMES_:
+                        df_new[c] *= r
+                    ratio = 1
+                elif abs(ratio/r_rcp -1) < 0.1:
+                    for c in _PRICE_COLNAMES_:
+                        df_new[c] *= r_rcp
+                    ratio = 1
+
             logger.debug(f"Price calibration ratio (raw) = {ratio:6f}", extra=log_extras)
             ratio_rcp = round(1.0 / ratio, 1)
             ratio = round(ratio, 1)
@@ -1902,7 +1905,7 @@ class PriceHistory:
                     drop_wo_vol = drop - typical_volatility
                     if drop_wo_vol > 0 and intraday and prepost:
                         # First, check if pre/post silly games
-                        if drop < 0.2*drop_wo_vol:
+                        if (df2['Open'].iloc[div_idx]-df2['Close'].iloc[div_idx]) < 0.2*drop_wo_vol:
                             # Price recovered by end of trading session, 
                             # so class this as false positive
                             drop_wo_vol = 0
@@ -2374,6 +2377,9 @@ class PriceHistory:
                         true_threshold = 1/2
 
                     else:
+                        if self.ticker.endswith('.TA'):
+                            # Currency mixups are common
+                            true_threshold = 0.74
                         fals_threshold = 1/2
 
                     if pct_fail >= true_threshold:
@@ -2390,7 +2396,7 @@ class PriceHistory:
 
                 if c == 'div_too_small':
                     true_threshold = 1.0
-                    fals_threshold = 0.15
+                    fals_threshold = 0.11
                     if 'adj_exceeds_div' not in cluster.columns:
                         # Adjustment confirms dividends => more likely that 'div_too_small' are false positives: NOT too small
                         true_threshold = 6/11
@@ -2579,6 +2585,7 @@ class PriceHistory:
                         target_div_pct = row['%'] * correction
                         target_adj = 1.0 - target_div_pct
                         present_adj = row['present adj']
+                        # Also correct adjustment to match corrected dividend
                         k += ' & div-adjust'
                         adj_correction = target_adj / present_adj
                         df2.loc[    :enddt, 'Adj Close'] *= adj_correction
@@ -2920,6 +2927,7 @@ class PriceHistory:
 
         split = change
         split_rcp = 1.0 / split
+        split_max = max(split, split_rcp)
         interday = interval in ['1d', '1wk', '1mo', '3mo']
         multiday = interval in ['1wk', '1mo', '3mo']
 
@@ -2938,9 +2946,13 @@ class PriceHistory:
         OHLC = ['Open', 'High', 'Low', 'Close']
 
         correct_columns_individually = False
-        if ((df[OHLC].max(axis=1) / df[OHLC].min(axis=1)) > 0.5*change).any():
+        if ( ((df[OHLC].max(axis=1)/df[OHLC].min(axis=1))-1).abs() > 0.5*split_max).any():
             # There are rows that contain huge changes inside
-            correct_columns_individually = True
+            # But 'correct_columns_individually' only makes sense if 
+            # fixing FX unit-switches, as stock-split errors affect entire rows equally.
+            if unit_switch:
+                correct_columns_individually = True
+        logger.debug(f'correct_columns_individually={correct_columns_individually}', extra=log_extras)
 
         # Do not attempt repair of the split is small,
         # could be mistaken for normal price variance
@@ -3048,33 +3060,36 @@ class PriceHistory:
             logger.debug("No Volume data", extra=log_extras)
             return df
         # Must be on denoised Volume
-        W = min(9, len(vol))
-        if (W & 1) == 0:
-            # even
-            W -= 1
-        pad = W // 2
-        vol_denoised = np.array(vol)
-        # For purpose of checking for big volume changes, backward-fill zeroes
-        # (df2 is reverse-sorted)
-        mask = vol_denoised != 0
-        idx = np.where(mask, np.arange(len(vol_denoised)), len(vol_denoised) - 1)
-        idx = np.minimum.accumulate(idx[::-1])[::-1]
-        vol_denoised = vol_denoised[idx]
-        # Finish with forward-fill
-        mask = vol_denoised != 0
-        idx = np.where(mask, np.arange(len(vol_denoised)), 0)
-        idx = np.maximum.accumulate(idx)
-        vol_denoised = vol_denoised[idx]
-        #
-        vol_denoised_padded = np.pad(vol_denoised, pad, mode='edge')
-        vol_denoised = np.median(sliding_window_view(vol_denoised_padded, W), axis=1)
-        _1d_volChg = np.full(n, 1.0)
-        _1d_volChg[1:] = vol_denoised[1:] / vol_denoised[:-1]
+        def denoise_volume(vol):
+            W = min(9, len(vol))
+            if (W & 1) == 0:
+                # even
+                W -= 1
+            pad = W // 2
+            vol_denoised = np.array(vol)
+            # For purpose of checking for big volume changes, backward-fill zeroes
+            # (df2 is reverse-sorted)
+            mask = vol_denoised != 0
+            idx = np.where(mask, np.arange(len(vol_denoised)), len(vol_denoised) - 1)
+            idx = np.minimum.accumulate(idx[::-1])[::-1]
+            vol_denoised = vol_denoised[idx]
+            # Finish with forward-fill
+            mask = vol_denoised != 0
+            idx = np.where(mask, np.arange(len(vol_denoised)), 0)
+            idx = np.maximum.accumulate(idx)
+            vol_denoised = vol_denoised[idx]
+
+            vol_denoised = np.asarray(vol_denoised, dtype=float)
+            vol_denoised_padded = np.pad(vol_denoised, (pad, pad), mode="constant", constant_values=np.nan)
+            vol_denoised = np.nanmedian(
+              sliding_window_view(vol_denoised_padded, W),
+              axis=1
+            )
+            return vol_denoised
 
         f_zero_num_denom = f_zero | np.roll(f_zero, 1, axis=0)
         if f_zero_num_denom.any():
             _1d_change_x[f_zero_num_denom] = 1.0
-            _1d_volChg[f_zero_num_denom] = 1.0
         if interday and interval != '1d':
             # average change
             _1d_change_denoised = np.average(_1d_change_x, axis=1)
@@ -3091,7 +3106,6 @@ class PriceHistory:
             _1d_change_denoised[f_na] = 1.0
 
         # If all 1D changes are closer to 1.0 than split, exit
-        split_max = max(split, split_rcp)
         if np.max(_1d_change_denoised) < (split_max - 1) * 0.5 + 1 and np.min(_1d_change_denoised) > 1.0 / ((split_max - 1) * 0.5 + 1):
             logger.debug(f'No {fix_type}s detected', extra=log_extras)
             return df
@@ -3125,8 +3139,7 @@ class PriceHistory:
         r = _1d_change_denoised / split_rcp
         split_max = max(split, split_rcp)
         logger.debug(f"split_max={split_max:.3f} largest_change_pct={largest_change_pct:.4f}", extra=log_extras)
-        # Update 2025: increase threshold to 66.7%, to better handle rows with mix of jumps
-        threshold = (split_max + 1.0 + largest_change_pct) * 0.667
+        threshold = 1+ (split_max-1 + largest_change_pct) * 0.6
         logger.debug(f"threshold={threshold:.3f}, threshold_rcp={1.0/threshold:.3f}", extra=log_extras)
 
         sudden_change_repaired = np.full(len(df2), False)
@@ -3141,74 +3154,76 @@ class PriceHistory:
         else:
             _1d_change_x = _1d_change_denoised
 
+        r = _1d_change_x / split_rcp
+        f_down = _1d_change_x < (1.0 / threshold)
+        f_up = _1d_change_x > threshold
+        f = f_down | f_up
+
         if correct_columns_individually:
             for j in range(len(price_data_cols)):
                 c = price_data_cols[j]
                 df_workings[c+' 1D %'] = _1d_change_x[:, j]
                 df_workings[c+' 1D %'] = df_workings[c+' 1D %'].round(3)
-
-            df_workings['vol 1D %'] = _1d_volChg
-            df_workings['vol 1D %'] = df_workings['vol 1D %'].round(3)
         else:
             df_workings['1D %'] = _1d_change_denoised
             # df_workings['1D %'] = df_workings['1D %'].round(2).astype('str')
             df_workings['1D %'] = df_workings['1D %'].round(3)
 
-            df_workings['vol 1D %'] = _1d_volChg
-            df_workings['vol 1D %'] = df_workings['vol 1D %'].round(3)
+        indices = np.where(f_up|f_down)[0]
+        if not correct_columns_individually and len(indices) > 0:
+            # If Volume also has a huge shift with prices, then problem must be 
+            # stock split, not FX unit switch.
+            # And inverse is true: for a FX unit switch, no big volume changes.
+            # Difference = FX unit-switch repair doesn't modify Volume.
 
-        r = _1d_change_x / split_rcp
-        f_down = _1d_change_x < (1.0 / threshold)
-        # if f_down.any():
-        #     # Discard where triggered by negative Adj Close after dividend
-        #     f_neg = _1d_change_x < 0.0
-        #     f_div = (df2['Dividends']>0).to_numpy()
-        #     f_div_before = np.roll(f_div, 1)
-        #     if f_down.ndim == 2:
-        #         f_div_before = f_div_before[:, np.newaxis].repeat(f_down.shape[1], axis=1)
-        #     f_down = f_down & ~(f_neg + f_div_before)
-        f_up = _1d_change_x > threshold
-
-        # If Volume also has a huge shift with prices, then problem must be 
-        # stock split, not FX unit switch.
-        # And inverse is true: for a FX unit switch, no big volume changes.
-        q1, q3 = np.percentile(_1d_volChg, [25, 75])
-        iqr = q3 - q1
-        lower_bound = q1 - 1.5 * iqr
-        upper_bound = q3 + 1.5 * iqr
-        f = (_1d_volChg >= lower_bound) & (_1d_volChg <= upper_bound)
-        avg = np.mean(_1d_volChg[f])
-        sd = np.std(_1d_volChg[f])
-        # Now can calculate SD as % of mean
-        sd_pct = sd / avg
-        logger.debug(f"Estimation of true 1D volChg stats: mean = {avg:.2f}, StdDev = {sd:.4f} ({sd_pct*100.0:.1f}% of mean)", extra=log_extras)
-        # Only proceed if split adjustment far exceeds normal 1D changes
-        largest_volChg_pct = 5 * sd_pct
-        if interday and interval != '1d':
-            largest_volChg_pct *= 3
-            if interval in ['1mo', '3mo']:
-                largest_volChg_pct *= 2
-        threshold_volUnitChg = (100 + 1.0 + largest_volChg_pct) * 0.5
-        f_downVol = _1d_volChg < 1.0 / threshold_volUnitChg
-        f_upVol = _1d_volChg > threshold_volUnitChg
-        if unit_switch:
-            if f_up.ndim == 1:
-                f_down = f_down & (~f_upVol)
-                f_up   = f_up   & (~f_downVol)
+            # But first, need to "denoise" the volume.
+            # Denoise in chunks, marked by price spikes/drops
+            idx1 = indices[0]
+            vol_denoised = np.full(n, 0)
+            vol_denoised[:idx1] = denoise_volume(vol[:idx1])
+            for i in range(len(indices)):
+                if i == len(indices)-1:
+                    idx0 = indices[i]
+                    idx1 = n
+                else:
+                    idx0 = indices[i]
+                    idx1 = indices[i+1]
+                vol_denoised[idx0:idx1] = denoise_volume(vol[idx0:idx1])
+            _1d_volChg = np.full(n, 1.0)
+            f_zero = vol_denoised[:-1] == 0
+            if not f_zero.any():
+                _1d_volChg[1:] = vol_denoised[1:] / vol_denoised[:-1]
             else:
-                f_down = f_down & (~f_upVol[:, None])
-                f_up   = f_up   & (~f_downVol[:, None])
-        else:
-            # invert
-            if f_up.ndim == 1:
-                f_down = f_down & f_upVol
-                f_up   = f_up   & f_downVol
-            else:
-                f_down = f_down & f_upVol[:, None]
-                f_up   = f_up   & f_downVol[:, None]
+                _1d_volChg[1:][f_zero] = 1
+                _1d_volChg[1:][~f_zero] = vol_denoised[1:][~f_zero] / vol_denoised[:-1][~f_zero]
 
-        df_workings['downVol'] = f_downVol
-        df_workings['upVol'] = f_upVol
+            if correct_columns_individually:
+                df_workings['vol 1D %'] = _1d_volChg
+                df_workings['vol 1D %'] = df_workings['vol 1D %'].round(3)
+            else:
+                df_workings['vol 1D %'] = _1d_volChg
+                df_workings['vol 1D %'] = df_workings['vol 1D %'].round(3)
+
+            # Carefully calculate largest normal volume change %.
+            q1, q3 = np.percentile(_1d_volChg, [25, 75])
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            f = (_1d_volChg >= lower_bound) & (_1d_volChg <= upper_bound)
+            avg = np.mean(_1d_volChg[f])
+            sd = np.std(_1d_volChg[f])
+            # Now can calculate SD as % of mean
+            sd_pct = sd / avg
+            logger.debug(f"Estimation of true 1D volChg stats: mean = {avg:.2f}, StdDev = {sd:.4f} ({sd_pct*100.0:.1f}% of mean)", extra=log_extras)
+            # Only proceed if split adjustment far exceeds normal 1D changes
+            largest_volChg_pct = 5 * sd_pct
+            if interday and interval != '1d':
+                largest_volChg_pct *= 3
+                if interval in ['1mo', '3mo']:
+                    largest_volChg_pct *= 2
+            # volChg_pct is a windowed median, so threshold can (and needs to be) more relaxed
+            threshold_volUnitChg = 1+ (split_max-1 + largest_volChg_pct) * 0.333
+            logger.debug(f"largest_volChg_pct = {largest_volChg_pct:.4f}, threshold_volUnitChg = {threshold_volUnitChg:.2f}", extra=log_extras)
 
         f_up_ndims = len(f_up.shape)
         f_up_shifts = f_up if f_up_ndims==1 else f_up.any(axis=1)
@@ -3229,27 +3244,6 @@ class PriceHistory:
                     next_v = df2['Volume'].iloc[i+1]
                     if next_v > 0:
                         vol_change_pct = max(vol_change_pct, df2['Volume'].iloc[i] / next_v)
-
-                # if vol_change_pct > 5:
-                #     # big volume change +500%
-                #     # Could be false-positive, but need some more checks
-                #     lookback = max(0, i-10)
-                #     lookahead = min(len(df2), i+10)
-                #     if (df2['Stock Splits'].iloc[lookback:lookahead]!=0.0).any():
-                #         # There's a stock split near the volume spike, so 
-                #         # assume false positive
-                #         continue
-                #     avg_vol_after = df2['Volume'].iloc[lookback:i-1].mean()
-                #     if not np.isnan(avg_vol_after) and avg_vol_after > 0 and v/avg_vol_after < 2.0:
-                #         # volume spike is actually a step-change, so 
-                #         # probably missing stock split
-                #         continue
-                #     if f_up_ndims == 1:
-                #         f_up[idx] = False
-                #     else:
-                #         f_up[idx,:] = False
-
-                # New method: look for a volume spike
 
                 # Select 20 rows after i (earlier in time)
                 # are not triggers (big price moves).
@@ -3367,7 +3361,7 @@ class PriceHistory:
                     largest_change_pct *= 3
                     if interval in ['1mo', '3mo']:
                         largest_change_pct *= 2
-                threshold = (split_max + 1.0 + largest_change_pct) * 0.5
+                threshold = 1+(split_max-1 + largest_change_pct) * 0.5
                 if correct_columns_individually:
                     big_change = df_workings[c+' 1D %'].iloc[idx]
                 else:
@@ -3432,7 +3426,7 @@ class PriceHistory:
             else:
                 f_change = df_workings['down'] | df_workings['up']
             f_change = f_change | np.roll(f_change, -1) | np.roll(f_change, 1) | np.roll(f_change, -2) | np.roll(f_change, 2)
-            with pd.option_context('display.max_rows', None, 'display.max_columns', 10, 'display.width', 1000):  # more options can be specified also
+            with pd.option_context('display.max_rows', None, 'display.max_columns', 12, 'display.width', 1200):
                 logger.debug("price-repair-split: my workings:" + '\n' + str(df_workings[f_change]))
 
         def map_signals_to_ranges(f, f_up, f_down):
@@ -3655,13 +3649,47 @@ class PriceHistory:
                     if df2.index[r[0]].date() < start_min:
                         logger.debug(f'Pruning range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.', extra=log_extras)
                         del ranges[i]
-            for r in ranges:
+            for i in range(len(ranges)):
+                r = ranges[i]
                 if r[2] == 'split':
                     m = split
                     m_rcp = split_rcp
                 else:
                     m = split_rcp
                     m_rcp = split
+
+                # Before correcting, cross-check against Volume.
+                # If repairing stock-split, then should see big change in Volume.
+                if r[0] > 0:
+                    volBefore_denoised = denoise_volume(vol[:r[0]])
+                    volDuring_denoised = denoise_volume(vol[r[0]:r[1]])
+                    volBefore_denoised = volBefore_denoised[volBefore_denoised>0]
+                    volDuring_denoised = volDuring_denoised[volDuring_denoised>0]
+                    if len(volDuring_denoised) > 0:
+                        boundary_vol_change = volDuring_denoised[0] / volBefore_denoised[-1]
+                        if not unit_switch:
+                            # Stock-split - expect to see big volume changes
+                            if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                                # Good
+                                pass
+                            elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                                # Good
+                                pass
+                            else:
+                                # Volume not confirming
+                                continue
+                        else:
+                            # Unit switch - expect normal volume
+                            if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                                # Volume not confirming
+                                continue
+                            elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                                # Volume not confirming
+                                continue
+                            else:
+                                # Good
+                                pass
+
                 any_m_lt_1 = any_m_lt_1 or m < 0.99
                 logger.debug(f"range={r} m={m}", extra=log_extras)
                 for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
