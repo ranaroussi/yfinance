@@ -1,6 +1,7 @@
 from yfinance._http import new_session
 from math import isclose
 import bisect
+from collections.abc import Mapping
 import datetime as _datetime
 import dateutil as _dateutil
 import logging
@@ -17,6 +18,68 @@ from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesM
 
 _CURRENCY_CONVERSIONS = {'GBp': 0.01, 'ZAc': 0.01, 'ILA': 0.01}  # GBp = pence, ZAc = South African cents, ILA = Israeli agorot
 
+class HistoryMetadata(Mapping):
+    """
+    Dict-like lazy wrapper for PriceHistory metadata.
+
+    Yahoo only returns ``tradingPeriods`` for intraday chart requests.  Most
+    metadata is available from the normal/base history fetch, so defer the
+    intraday metadata fetch until callers actually request ``tradingPeriods``.
+    """
+    _LAZY_KEYS = ("tradingPeriods",)
+    _LAZY_VALUE = "<lazy-loaded>"
+
+    def __init__(self, price_history):
+        self._price_history = price_history
+
+    def _metadata(self):
+        return self._price_history._history_metadata or {}
+
+    def _keys(self):
+        keys = list(self._metadata().keys())
+        for k in self._LAZY_KEYS:
+            if k not in keys:
+                keys.append(k)
+        return keys
+
+    def _display_dict(self):
+        d = dict(self._metadata())
+        for k in self._LAZY_KEYS:
+            if k not in d:
+                d[k] = self._LAZY_VALUE
+        return d
+
+    def __getitem__(self, key):
+        if key in self._LAZY_KEYS and key not in self._metadata():
+            self._price_history._load_history_metadata_trading_periods()
+        return self._metadata()[key]
+
+    def __iter__(self):
+        return iter(self._keys())
+
+    def __len__(self):
+        return len(self._keys())
+
+    def __contains__(self, key):
+        return key in self._keys()
+
+    def keys(self):
+        return self._keys()
+
+    def items(self):
+        return [(k, self[k]) for k in self._keys()]
+
+    def values(self):
+        return [self[k] for k in self._keys()]
+
+    def __repr__(self):
+        from pprint import pformat
+        return pformat(self._display_dict())
+
+    def __str__(self):
+        return self.__repr__()
+
+
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None):
         self._data = data
@@ -27,6 +90,7 @@ class PriceHistory:
         self._history_cache = {}
         self._history_metadata = None
         self._history_metadata_formatted = False
+        self._history_metadata_lazy = None
 
         self._dividends = None
         self._splits = None
@@ -250,6 +314,7 @@ class PriceHistory:
 
         self._history_metadata = meta
         self._history_metadata_formatted = False
+        self._history_metadata_lazy = None
         self._history_metadata['YF repair?'] = repair
 
         intraday = params["interval"][-1] in ("m", 'h')
@@ -586,42 +651,70 @@ class PriceHistory:
                                                 'capital gains': self._capital_gains}
         return self._history_cache[cache_key]
 
+    def _resolve_metadata_repair(self, repair):
+        if repair == _SENTINEL_:
+            if self._history_metadata is not None:
+                repair = self._history_metadata.get('YF repair?', False)
+            else:
+                # default
+                repair = False
+        return repair
+
+    def _load_history_metadata_trading_periods(self):
+        if self._history_metadata is not None and 'tradingPeriods' in self._history_metadata:
+            return
+        if self._history_metadata is None:
+            self.get_history_metadata()
+        if not self._history_metadata:
+            return
+
+        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
+        params = {
+            "range": "5d", "interval": "1h", "includePrePost": True,
+            # "events": "div,splits,capitalGains",
+        }
+        data = None
+        try:
+            data = self._data.get(url=url, params=params).json()
+            meta = data["chart"]["result"][0]["meta"]
+            trading_periods = meta["tradingPeriods"]
+        except Exception:
+            return
+
+        tz = self._history_metadata.get("exchangeTimezoneName")
+        if tz is None:
+            tz = meta.get("exchangeTimezoneName")
+        if tz is None:
+            return
+        md = {"exchangeTimezoneName": tz,
+              "tradingPeriods": trading_periods}
+        md = utils.format_history_metadata(md)
+        self._history_metadata["tradingPeriods"] = md["tradingPeriods"]
+
     def get_history_metadata(self, repair=_SENTINEL_) -> dict:
         """
         repair default value depends on whether user requested price repair
         with previous history() call. If user did not set repair here, then
         it is set to match previous history() call.
         """
-        
-        # - repair affects currency, particularly GBp -> GBP
-        if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
-            # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            if repair == _SENTINEL_:
-                if self._history_metadata is not None:
-                    repair = self._history_metadata['YF repair?']
-                else:
-                    # default
-                    repair = False
-            md_original = dict(self._history_metadata) if self._history_metadata else None
+        repair = self._resolve_metadata_repair(repair)
+
+        if self._history_metadata is None:
+            # Fetch base metadata only. Do not request intraday data here,
+            # because intraday is only needed for the lazy 'tradingPeriods' key.
             try:
-                self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
+                self._get_history_cache(period="5d", interval="1d", repair=repair)['prices']
             except Exception:
-                # discard
-                self._history_metadata = md_original
-            else:
-                if md_original:
-                    # Copy over the fields only present in intraday metadata, instead of
-                    # overwriting original metadata
-                    for k in ['lastTrade', 'tradingPeriods']:
-                        if k in self._history_metadata:
-                            md_original[k] = self._history_metadata[k]
-                    self._history_metadata = md_original
+                pass
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
             self._history_metadata_formatted = True
 
-        return self._history_metadata
+        if self._history_metadata_lazy is None:
+            self._history_metadata_lazy = HistoryMetadata(self)
+
+        return self._history_metadata_lazy
 
     def get_dividends(self, period="max", repair=False) -> pd.Series:
         return self._get_history_cache(interval='1d', period=period, repair=repair)['dividends']
