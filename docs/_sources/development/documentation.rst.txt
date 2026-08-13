@@ -17,12 +17,11 @@ To build the documentation locally, follow these steps:
 
 1. **Install Required Dependencies**:
 
-   * Make sure ``Sphinx`` and any other dependencies are installed. If a ``requirements.txt`` file is available, you can install dependencies by running:
+   * Install the package along with all development dependencies (includes Sphinx and related tools):
 
    .. code-block:: bash
 
-      pip install -r requirements.txt
-      pip install Sphinx==8.0.2 pydata-sphinx-theme==0.15.4 Jinja2==3.1.4 sphinx-copybutton==0.5.2
+      pip install -e ".[dev]"
   
 
 2. **Build with Sphinx**:

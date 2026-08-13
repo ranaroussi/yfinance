@@ -415,10 +415,9 @@ document.write(`
 <ol class="arabic">
 <li><p><strong>Install Required Dependencies</strong>:</p>
 <ul class="simple">
-<li><p>Make sure <code class="docutils literal notranslate"><span class="pre">Sphinx</span></code> and any other dependencies are installed. If a <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code> file is available, you can install dependencies by running:</p></li>
+<li><p>Install the package along with all development dependencies (includes Sphinx and related tools):</p></li>
 </ul>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
-pip<span class="w"> </span>install<span class="w"> </span><span class="nv">Sphinx</span><span class="o">==</span><span class="m">8</span>.0.2<span class="w"> </span>pydata-sphinx-theme<span class="o">==</span><span class="m">0</span>.15.4<span class="w"> </span><span class="nv">Jinja2</span><span class="o">==</span><span class="m">3</span>.1.4<span class="w"> </span>sphinx-copybutton<span class="o">==</span><span class="m">0</span>.5.2
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev]&quot;</span>
 </pre></div>
 </div>
 </li>
