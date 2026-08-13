@@ -14,12 +14,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v6&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v7&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - name: Run zizmor
-        # Verify: curl -s "https://api.github.com/repos/zizmorcore/zizmor-action/commits?sha=v0.5.2&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-        uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
+        # Verify: curl -s "https://api.github.com/repos/zizmorcore/zizmor-action/commits?sha=v0.6.2&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+        uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
