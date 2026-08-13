@@ -483,6 +483,23 @@ class TestPriceHistory(unittest.TestCase):
         with self.assertRaises(YFPricesMissingError):
             dat.history(period="1mo", raise_errors=True)
 
+    def test_prices_missing_delisted_hint(self):
+        # Regression for #2902: when Yahoo explains the real cause,
+        # the "possibly delisted" speculation must be suppressed.
+        from yfinance.exceptions import YFPricesMissingError
+
+        msg_with_hint = str(YFPricesMissingError("SPY", ""))
+        self.assertTrue(msg_with_hint.startswith("$SPY: possibly delisted;"))
+
+        debug = ' (30m 2026-03-16 -> 2026-03-23) (Yahoo error = "The requested range must be within the last 60 days.")'
+        msg_no_hint = str(YFPricesMissingError("SPY", debug, delisted_hint=False))
+        self.assertTrue(msg_no_hint.startswith("$SPY: no price data found"))
+        self.assertNotIn("possibly delisted", msg_no_hint)
+        self.assertIn("The requested range must be within the last 60 days.", msg_no_hint)
+
+        # Default keeps the hint (backwards compatible)
+        self.assertIn("possibly delisted", str(YFPricesMissingError("SPY", debug)))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -13,8 +13,11 @@ class YFNotImplementedError(NotImplementedError):
 
 
 class YFTickerMissingError(YFException):
-    def __init__(self, ticker, rationale):
-        super().__init__(f"${ticker}: possibly delisted; {rationale}")
+    def __init__(self, ticker, rationale, delisted_hint=True):
+        if delisted_hint:
+            super().__init__(f"${ticker}: possibly delisted; {rationale}")
+        else:
+            super().__init__(f"${ticker}: {rationale}")
         self.rationale = rationale
         self.ticker = ticker
 
@@ -25,12 +28,12 @@ class YFTzMissingError(YFTickerMissingError):
 
 
 class YFPricesMissingError(YFTickerMissingError):
-    def __init__(self, ticker, debug_info):
+    def __init__(self, ticker, debug_info, delisted_hint=True):
         self.debug_info = debug_info
         if debug_info != '':
-            super().__init__(ticker, f"no price data found {debug_info}")
+            super().__init__(ticker, f"no price data found {debug_info}", delisted_hint)
         else:
-            super().__init__(ticker, "no price data found")
+            super().__init__(ticker, "no price data found", delisted_hint)
 
 
 class YFEarningsDateMissing(YFTickerMissingError):

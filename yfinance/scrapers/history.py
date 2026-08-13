@@ -277,7 +277,7 @@ class PriceHistory:
             fail = True
         elif "chart" in data and data["chart"] and data["chart"]["error"]:
             _price_data_debug += ' (Yahoo error = "' + data["chart"]["error"]["description"] + '")'
-            _exception = YFPricesMissingError(self.ticker, _price_data_debug)
+            _exception = YFPricesMissingError(self.ticker, _price_data_debug, delisted_hint=False)
             fail = True
         elif "chart" not in data or not data["chart"] or data["chart"]["result"] is None or not data["chart"]["result"] or not data["chart"]["result"][0]["indicators"]["quote"][0]:
             _exception = YFPricesMissingError(self.ticker, _price_data_debug)
