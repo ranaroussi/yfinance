@@ -2,7 +2,9 @@
 import unittest
 from functools import lru_cache
 
+from yfinance._http import new_session
 from yfinance.data import SingletonMeta, YfData, _normalize_proxy, lru_cache_freezeargs
+from yfinance.exceptions import YFDataException
 from yfinance.utils import frozendict
 
 
@@ -139,6 +141,32 @@ class TestCookieStrategyLoginPreservation(unittest.TestCase):
         self.data._set_cookie_strategy('basic')
         self.assertEqual(self.data._session.cookies.get("T"), "T-opt")
         self.assertEqual(self.data._session.cookies.get("Y"), "Y-opt")
+
+
+class TestSetSessionCacheDetection(unittest.TestCase):
+    """A session is caching only when a cache is active, not when `.cache` merely exists.
+
+    curl_cffi >= 0.16 Sessions always expose `.cache` (None when disabled).
+    """
+
+    def setUp(self):
+        SingletonMeta._instances.pop(YfData, None)
+        self.data = YfData()
+
+    def tearDown(self):
+        SingletonMeta._instances.pop(YfData, None)
+
+    def test_session_with_disabled_cache_is_accepted(self):
+        session = new_session()
+        session.cache = None
+        self.data._set_session(session)
+        self.assertIs(self.data._session, session)
+
+    def test_session_with_active_cache_is_rejected(self):
+        session = new_session()
+        session.cache = object()
+        with self.assertRaises(YFDataException):
+            self.data._set_session(session)
 
 
 if __name__ == "__main__":

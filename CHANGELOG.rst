@@ -1,7 +1,40 @@
 Change Log
 ===========
 
-1.5.0
+1.6.0
+-----
+Features / improvements
+- Add missing balance sheet keys: FixedMaturityInvestments, EquityInves… #2879 @foley40
+- Fix: Screener: add dividendyield and dividendpershare.lasttwelvemonths #2888 @shanehull
+- Don't claim 'possibly delisted' when Yahoo explains the missing data #2903 @vignesh-nagarajan-vn
+- Fix error messages showing internal 15m interval for 30m requests #2900 @vignesh-nagarajan-vn
+Fixes:
+- Fix generic-unit timedelta DeprecationWarning for sub-day intervals (#2882) #2891 @DogInfantry
+- fix: read-only 'Adj Close' array crash in dividend-adjust repair #2897 @Kaif10
+- Fix AttributeError in Lookup error handling (self.ticker -> self.query) #2896 @nyxst4ck
+- Fix: handle null result from Yahoo API in _fetch_info #2906 @foley40
+- Fix multi-day interval TypeError and actually silence the numpy>=2.5 Timedelta warning #2915 @DMZ22
+Price repair:
+- Price repair fixes & improvements #2908
+- Fix: repair=True should not permanently convert GBp/ZAc/ILA prices to main currency #2907 @foley40
+- Price repair improvements #2943
+Docs / maintenance
+- Fix pandas 3 timezone assertion in test_download_multi_small_interval #2901 @vignesh-nagarajan-vn
+- docs: fix grammar and formatting in advanced documentation #2909 @Aaritp
+- Re-enable test_no_expensive_calls_introduced without requests_cache #2911 @dokson
+- Pin ruff ruleset for deterministic CI #2919 @dokson
+- Migrate packaging to pyproject.toml #2920 @dokson
+- Fix: NaN equality comparison  #2933 @foley40
+- Migrate to pyproject.toml #2849 @etbala
+- docs: state download()'s actual returned index timezone contract #2936 @aleks-drozy
+
+
+1.5.2
+-----
+Patches
+- Fix yfinance breaking with curl_cffi>=0.16
+
+1.5.1
 -----
 Minor
 - Fall back to chunked requests when single-URL fundamentals fetch times out #2811

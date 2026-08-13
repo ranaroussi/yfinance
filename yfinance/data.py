@@ -137,18 +137,9 @@ class YfData(metaclass=SingletonMeta):
         if session is None:
             return
 
-        try:
-            session.cache
-        except AttributeError:
-            # Not caching
-            self._session_is_caching = False
-        else:
-            # Is caching. This is annoying.
-            # Can't simply use a non-caching session to fetch cookie & crumb,
-            # because then the caching-session won't have cookie.
-            self._session_is_caching = True
-            # requests_cache wraps the stdlib Session; it doesn't work with
-            # curl_cffi and tends to miss anyway because the Yahoo crumb rotates.
+        # Test for an active cache, not the attribute's presence: curl_cffi >= 0.16
+        # Sessions always expose `.cache` (None when disabled).
+        if getattr(session, "cache", None) is not None:
             raise YFDataException("Caching sessions (e.g. requests_cache) are not supported. Solution: stop setting session, let yfinance handle.")
 
         if not is_supported_session(session):
@@ -269,11 +260,7 @@ class YfData(metaclass=SingletonMeta):
             'timeout': timeout,
             'allow_redirects': True
         }
-        if self._session_is_caching:
-            get_args['expire_after'] = self._expire_after
-            crumb_response = self._session.get(**get_args)
-        else:
-            crumb_response = self._session.get(**get_args)
+        crumb_response = self._session.get(**get_args)
         self._crumb = crumb_response.text
         if crumb_response.status_code == 429 or "Too Many Requests" in self._crumb:
             utils.get_yf_logger().debug(f"Didn't receive crumb {self._crumb}")
@@ -308,11 +295,7 @@ class YfData(metaclass=SingletonMeta):
 
         get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
         try:
-            if self._session_is_caching:
-                get_args['expire_after'] = self._expire_after
-                response = self._session.get(**get_args)
-            else:
-                response = self._session.get(**get_args)
+            response = self._session.get(**get_args)
         except requests.exceptions.ChunkedEncodingError:
             # No idea why happens, but handle nicely so can switch to other cookie method.
             utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
@@ -346,14 +329,8 @@ class YfData(metaclass=SingletonMeta):
             'url': f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
             'data': data}
         try:
-            if self._session_is_caching:
-                post_args['expire_after'] = self._expire_after
-                get_args['expire_after'] = self._expire_after
-                self._session.post(**post_args)
-                self._session.get(**get_args)
-            else:
-                self._session.post(**post_args)
-                self._session.get(**get_args)
+            self._session.post(**post_args)
+            self._session.get(**get_args)
         except requests.exceptions.ChunkedEncodingError:
             # No idea why happens, but handle nicely so can switch to other cookie method.
             utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
@@ -376,11 +353,7 @@ class YfData(metaclass=SingletonMeta):
         get_args = {
             'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
             'timeout': timeout}
-        if self._session_is_caching:
-            get_args['expire_after'] = self._expire_after
-            r = self._session.get(**get_args)
-        else:
-            r = self._session.get(**get_args)
+        r = self._session.get(**get_args)
         self._crumb = r.text
 
         if r.status_code == 429 or "Too Many Requests" in self._crumb:
