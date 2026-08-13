@@ -48,7 +48,8 @@ class TestPriceHistory(unittest.TestCase):
     def test_download_multi_small_interval(self):
         use_tkrs = ["AAPL", "0Q3.DE", "ATVI"]
         df = yf.download(use_tkrs, period="1d", interval="5m", auto_adjust=True)
-        self.assertEqual(df.index.tz, _tz.timezone("America/New_York"))
+        # Compare tz keys not objects: pandas 3 returns zoneinfo, pandas <3 pytz
+        self.assertEqual(str(df.index.tz), "America/New_York")
 
     def test_download_with_invalid_ticker(self):
         #Checks if using an invalid symbol gives the same output as not using an invalid symbol in combination with a valid symbol (AAPL)
@@ -482,6 +483,47 @@ class TestPriceHistory(unittest.TestCase):
         dat = yf.Ticker("TICKER_DOES_NOT_EXIST_XYZ", session=self.session)
         with self.assertRaises(YFPricesMissingError):
             dat.history(period="1mo", raise_errors=True)
+
+    def test_30m_interval_error_mentions_requested_interval(self):
+        # Regression for #1029: yfinance fetches 15m data from Yahoo to build
+        # 30m bars, but the internal 15m interval leaked into error messages.
+        from yfinance.exceptions import YFPricesMissingError
+        dat = yf.Ticker("SPY", session=self.session)
+        start_d = _dt.date.today() - _dt.timedelta(days=120)
+        end_d = start_d + _dt.timedelta(days=7)
+        with self.assertRaises(YFPricesMissingError) as cm:
+            dat.history(start=start_d, end=end_d, interval="30m", raise_errors=True)
+        msg = str(cm.exception)
+        self.assertIn("(30m ", msg)
+        self.assertNotIn("(15m ", msg)
+
+    def test_prices_missing_error_message_formats(self):
+        # Offline check of YFPricesMissingError message formats. Without a
+        # Yahoo reason, the message speculates about delisting and reports
+        # the request context. With one, Yahoo's reason is the whole message.
+        from yfinance.exceptions import YFPricesMissingError
+        e = YFPricesMissingError("AAA", "(1d 2020-01-01 -> 2020-01-02)")
+        self.assertEqual(str(e), "$AAA: possibly delisted; no price data found (1d 2020-01-01 -> 2020-01-02)")
+        e = YFPricesMissingError("AAA", "(1d 2020-01-01 -> 2020-01-02)", yahoo_reason="No data found, symbol may be delisted")
+        self.assertEqual(str(e), "$AAA: No data found, symbol may be delisted")
+
+    def test_range_error_surfaces_yahoo_reason(self):
+        # A request Yahoo rejects with an explicit reason is not delisting
+        # evidence, so the message must not speculate 'possibly delisted' or
+        # bury Yahoo's reason under generic 'no price data found' text. The
+        # #2900 resample note must still append so 30m failures do not read
+        # as a 15m request.
+        from yfinance.exceptions import YFPricesMissingError
+        dat = yf.Ticker("SPY", session=self.session)
+        start_d = _dt.date.today() - _dt.timedelta(days=120)
+        end_d = start_d + _dt.timedelta(days=7)
+        with self.assertRaises(YFPricesMissingError) as cm:
+            dat.history(start=start_d, end=end_d, interval="30m", raise_errors=True)
+        msg = str(cm.exception)
+        self.assertNotIn("possibly delisted", msg)
+        self.assertNotIn("no price data found", msg)
+        self.assertIn("data not available", msg)
+        self.assertIn("(30m resampled from 15m)", msg)
 
 
 if __name__ == '__main__':

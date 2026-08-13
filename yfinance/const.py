@@ -82,7 +82,7 @@ fundamentals_keys = {
                       "LoansReceivable", "AccountsReceivable", "AllowanceForDoubtfulAccountsReceivable",
                       "GrossAccountsReceivable", "CashCashEquivalentsAndShortTermInvestments",
                       "OtherShortTermInvestments", "CashAndCashEquivalents", "CashEquivalents", "CashFinancial",
-                      "CashCashEquivalentsAndFederalFundsSold"],
+                      "CashCashEquivalentsAndFederalFundsSold", "FixedMaturityInvestments", "EquityInvestments", "NetLoan", "DeferredAssets"],
     'cash-flow': ["ForeignSales", "DomesticSales", "AdjustedGeographySegmentData", "FreeCashFlow",
                   "RepurchaseOfCapitalStock", "RepaymentOfDebt", "IssuanceOfDebt", "IssuanceOfCapitalStock",
                   "CapitalExpenditure", "InterestPaidSupplementalData", "IncomeTaxPaidSupplementalData",
@@ -693,6 +693,8 @@ EQUITY_SCREENER_FIELDS = {
         "lastclosepriceearnings.lasttwelvemonths",
         "pegratio_5y"},
     "profitability":{
+        "dividendyield",
+        "dividendpershare.lasttwelvemonths",
         "consecutive_years_of_dividend_growth_count",
         "returnonassets.lasttwelvemonths",
         "returnonequity.lasttwelvemonths",

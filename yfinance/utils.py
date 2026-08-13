@@ -480,6 +480,15 @@ def _interval_to_timedelta(interval):
         return relativedelta(months=int(interval[:-2]))
     elif interval[-1] == "y":
         return relativedelta(years=int(interval[:-1]))
+    elif interval[-1] == "m":
+        # Minute intervals e.g. "1m", "30m", "90m". Pass the value and an
+        # explicit unit rather than a keyword like minutes=, because on
+        # pandas 2.x + numpy>=2.5 even the keyword form emits the
+        # "'generic' unit for NumPy timedelta is deprecated" warning; only
+        # the (value, unit=...) form is silent.
+        return _pd.Timedelta(int(interval[:-1]), unit="m")
+    elif interval[-1] == "h":
+        return _pd.Timedelta(int(interval[:-1]), unit="h")
     else:
         return _pd.Timedelta(interval)
 
@@ -663,8 +672,15 @@ def _dts_in_same_interval(dt1, dt2, interval):
         year_diff = dt2.year - dt1.year
         quarter_diff = q2 - q1 + 4*year_diff
         last_rows_same_interval = quarter_diff == 0
+    elif interval[-1] == "d":
+        # Multi-day intervals e.g. "5d". _interval_to_timedelta() returns a
+        # relativedelta for day intervals, which cannot be compared with the
+        # Timedelta (dt2 - dt1) and raises TypeError, so build a Timedelta
+        # directly. unit="D" rather than days=... keeps the numpy>=2.5
+        # "generic unit" deprecation warning silent.
+        last_rows_same_interval = (dt2 - dt1) < _pd.Timedelta(int(interval[:-1]), unit="D")
     else:
-        last_rows_same_interval = (dt2 - dt1) < _pd.Timedelta(interval)
+        last_rows_same_interval = (dt2 - dt1) < _interval_to_timedelta(interval)
     return last_rows_same_interval
 
 
@@ -904,28 +920,29 @@ def is_valid_timezone(tz: str) -> bool:
     return True
 
 
-def format_history_metadata(md, tradingPeriodsOnly=True):
+def format_history_metadata(md):
     if not isinstance(md, dict):
         return md
     if len(md) == 0:
         return md
+    elif 'exchangeTimezoneName' not in md.keys():
+        return md
 
     tz = md["exchangeTimezoneName"]
 
-    if not tradingPeriodsOnly:
-        for k in ["firstTradeDate", "regularMarketTime"]:
-            if k in md and md[k] is not None:
-                if isinstance(md[k], int):
+    for k in ["firstTradeDate", "regularMarketTime"]:
+        if k in md and md[k] is not None:
+            if isinstance(md[k], int):
                     md[k] = _pd.to_datetime(md[k], unit='s', utc=True).tz_convert(tz)
 
-        if "currentTradingPeriod" in md:
-            for m in ["regular", "pre", "post"]:
-                if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
-                    for t in ["start", "end"]:
-                        md["currentTradingPeriod"][m][t] = \
+    if "currentTradingPeriod" in md:
+        for m in ["regular", "pre", "post"]:
+            if m in md["currentTradingPeriod"] and isinstance(md["currentTradingPeriod"][m]["start"], int):
+                for t in ["start", "end"]:
+                    md["currentTradingPeriod"][m][t] = \
                             _pd.to_datetime(md["currentTradingPeriod"][m][t], unit='s', utc=True).tz_convert(tz)
-                    del md["currentTradingPeriod"][m]["gmtoffset"]
-                    del md["currentTradingPeriod"][m]["timezone"]
+                del md["currentTradingPeriod"][m]["gmtoffset"]
+                del md["currentTradingPeriod"][m]["timezone"]
 
     if "tradingPeriods" in md:
         tps = md["tradingPeriods"]

@@ -11,11 +11,18 @@ Specific test class:
 from datetime import datetime
 from unittest import TestSuite
 
+import warnings
+
 import pandas as pd
 
 import unittest
 
-from yfinance.utils import is_valid_period_format, _dts_in_same_interval, _parse_user_dt
+from yfinance.utils import (
+    is_valid_period_format,
+    _dts_in_same_interval,
+    _parse_user_dt,
+    _interval_to_timedelta,
+)
 
 
 class TestPandas(unittest.TestCase):
@@ -180,6 +187,27 @@ class TestDateIntervalCheck(unittest.TestCase):
         dt3 = pd.Timestamp("2024-10-15 10:31:00")
         self.assertFalse(_dts_in_same_interval(dt1, dt3, "1min"))
 
+    def test_no_generic_timedelta_deprecation_warning(self):
+        # Regression for #2882: sub-day intervals must not trigger numpy's
+        # "'generic' unit for NumPy timedelta is deprecated" DeprecationWarning.
+        intervals = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h"]
+        for interval in intervals:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                _interval_to_timedelta(interval)
+            generic = [w for w in caught
+                       if issubclass(w.category, DeprecationWarning)
+                       and "generic" in str(w.message)]
+            self.assertEqual(generic, [], f"generic-unit warning for {interval!r}")
+
+    def test_interval_to_timedelta_values(self):
+        # Lock the sub-day interval parsing behaviour.
+        self.assertEqual(_interval_to_timedelta("1m"), pd.Timedelta(minutes=1))
+        self.assertEqual(_interval_to_timedelta("30m"), pd.Timedelta(minutes=30))
+        self.assertEqual(_interval_to_timedelta("90m"), pd.Timedelta(minutes=90))
+        self.assertEqual(_interval_to_timedelta("1h"), pd.Timedelta(hours=1))
+        self.assertEqual(_interval_to_timedelta("4h"), pd.Timedelta(hours=4))
+
     def test_parse_user_dt(self):
         exchange_tz = "US/Eastern"
         dtstr = "2024-01-04"
@@ -192,6 +220,32 @@ class TestDateIntervalCheck(unittest.TestCase):
         self.assertEqual(_parse_user_dt(datetime(year=2024, month=1, day=4), exchange_tz), expected)
         with self.assertRaises(ValueError):
             self.assertEqual(_parse_user_dt(float(epoch), exchange_tz), expected)
+
+
+class TestMultiDayInterval(unittest.TestCase):
+    def test_multiday_interval_does_not_raise(self):
+        # _interval_to_timedelta returns a relativedelta for day intervals,
+        # which cannot be compared against the Timedelta (dt2 - dt1), so a
+        # multi-day interval used to raise TypeError here.
+        dt1 = pd.Timestamp("2024-01-01")
+        dt2 = pd.Timestamp("2024-01-08")
+        self.assertTrue(_dts_in_same_interval(dt1, dt2, "10d"))
+        self.assertFalse(_dts_in_same_interval(dt1, dt2, "5d"))
+
+    def test_multiday_interval_does_not_warn(self):
+        # Building the comparison Timedelta must not trigger numpy's
+        # "generic unit" DeprecationWarning on pandas 2.x + numpy>=2.5.
+        dt1 = pd.Timestamp("2024-01-01")
+        dt2 = pd.Timestamp("2024-01-04")
+        for interval in ("3d", "5d", "10d"):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                _dts_in_same_interval(dt1, dt2, interval)
+            generic = [w for w in caught
+                       if issubclass(w.category, DeprecationWarning)
+                       and "generic" in str(w.message)]
+            self.assertEqual(generic, [], f"generic-unit warning for {interval!r}")
+
 
 if __name__ == "__main__":
     unittest.main()
