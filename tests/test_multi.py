@@ -10,6 +10,33 @@ from tests.context import yfinance as yf
 
 class TestDownloadThreadSafety(unittest.TestCase):
 
+    def test_download_preserves_datetime_index_with_empty_ticker(self):
+        idx = pd.DatetimeIndex(['2024-01-02 09:30', '2024-01-02 09:31'], tz='America/New_York')
+        good_df = pd.DataFrame(
+            {'Open': [185.0, 186.0], 'Close': [185.5, 186.5]},
+            index=idx,
+        )
+
+        def mock_download_one(ctx, ticker, *args, **kwargs):
+            sym = ticker.upper()
+            with ctx.lock:
+                ctx.dfs[sym] = good_df if sym == 'GOOD' else yf.utils.empty_df()
+            return ctx.dfs[sym]
+
+        with patch('yfinance.multi._download_one', side_effect=mock_download_one), \
+             patch('yfinance.multi.YfData'):
+            data = yf.download(
+                ['GOOD', 'EMPTY'],
+                interval='1m',
+                ignore_tz=False,
+                threads=False,
+                progress=False,
+            )
+
+        self.assertIsInstance(data.index, pd.DatetimeIndex)
+        self.assertEqual(data.index.tolist(), idx.tolist())
+        self.assertEqual(data['Close']['GOOD'].tolist(), [185.5, 186.5])
+
     def test_concurrent_downloads_return_only_own_tickers(self):
         """Concurrent download() calls must not mix results via shared state."""
         idx = pd.DatetimeIndex(['2024-01-02', '2024-01-03'], tz='America/New_York')
