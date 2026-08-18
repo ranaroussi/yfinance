@@ -1045,6 +1045,89 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.calendar
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_custom_period_start_uses_exchange_tz(self):
+        # Regression: _custom_period_start() must compute the window start as a
+        # date in the *exchange* timezone, independent of the machine's local
+        # timezone. The old code used datetime.date.fromtimestamp(ts) (local tz),
+        # which could shift the start by a day on non-UTC machines.
+        import datetime as _dt
+        import yfinance.scrapers.history as hist
+        from yfinance import utils
+
+        # Pick a timestamp where the exchange (NY, UTC-5) date differs from the
+        # UTC date, so the test still fails on a UTC CI runner if the code ever
+        # reverts to using local/UTC time.
+        end_ts = 1704074400  # 2024-01-01 02:00:00 UTC == 2023-12-31 21:00 NY
+        expected = (pd.Timestamp(end_ts, unit='s', tz='UTC')
+                     .tz_convert('America/New_York').date()
+                     - utils._interval_to_timedelta('10d')
+                     - _dt.timedelta(days=4))
+
+        got = hist._custom_period_start(end_ts, '10d', 'America/New_York')
+        self.assertEqual(got, expected)
+
+    def test_custom_period_binds_events_to_window(self):
+        # Regression: for a custom (non-standard) period, the returned
+        # dividends must be trimmed to the requested window start (exchange
+        # timezone) instead of to the first price row. The old code only used
+        # ``start`` as a non-None sentinel and trimmed from quotes.index[0],
+        # so an event between the first price row and the true window start was
+        # incorrectly kept.
+        import time as _time_mod
+        from unittest.mock import patch
+
+        end_ts = 1704110400  # 2024-01-01 12:00:00 UTC
+        tz_name = 'America/New_York'
+        day = 86400
+        n = 20
+        timestamps = [end_ts - (n - 1 - i) * day for i in range(n)]
+        closes = [float(100 + i) for i in range(n)]
+        indicators = {"quote": [{
+            "open": closes, "high": closes, "low": closes,
+            "close": closes, "volume": [1000] * n,
+        }]}
+        # Window start ~= end_ts - 14d (10d period + 4d buffer).
+        # div_between: after the first price row but before the window start ->
+        #   old code keeps it, fixed code drops it.
+        # div_inside: inside the window -> both keep it.
+        div_between = end_ts - 17 * day
+        div_inside = end_ts - 5 * day
+        events = {"dividends": {
+            str(div_between): {"date": div_between, "amount": 0.5},
+            str(div_inside): {"date": div_inside, "amount": 0.7},
+        }}
+        payload = {"chart": {"result": [{
+            "meta": {
+                "exchangeTimezoneName": tz_name,
+                "priceHint": 2,
+                "currency": "USD",
+                "instrumentType": "EQUITY",
+                "validRanges": ["1d", "5d", "1mo", "3mo", "1y", "max"],
+            },
+            "timestamp": timestamps,
+            "indicators": indicators,
+            "events": events,
+        }], "error": None}}
+
+        class _Resp:
+            text = "{}"
+
+            def json(self):
+                return payload
+
+        with patch("time.time", return_value=end_ts):
+            with patch("yfinance.data.YfData.get", return_value=_Resp()):
+                df = self.ticker.history(period="10d", interval="1d",
+                                         repair=False, actions=True,
+                                         auto_adjust=False)
+        # The returned frame's Dividends column reflects the (trimmed) events.
+        # div_inside is inside the window -> must be present (amount 0.7).
+        # div_between is between the first price row and the true window start
+        # -> the old code kept it, the fix drops it (amount 0.5).
+        divs = df['Dividends']
+        self.assertTrue((divs == 0.7).any(), "in-window dividend was dropped")
+        self.assertFalse((divs == 0.5).any(), "out-of-window dividend was kept")
+
     # # sustainability stopped working
     # def test_sustainability(self):
     #     data = self.ticker.sustainability

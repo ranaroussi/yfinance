@@ -18,6 +18,20 @@ from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesM
 
 _CURRENCY_CONVERSIONS = {'GBp': 0.01, 'ZAc': 0.01, 'ILA': 0.01}  # GBp = pence, ZAc = South African cents, ILA = Israeli agorot
 
+
+def _custom_period_start(end_ts, period, tz_name):
+    # Window start for a custom (non-standard) period, as a ``date`` in the
+    # exchange timezone. Convert the UTC epoch explicitly so the result is
+    # independent of the machine's local timezone -- the previous code used
+    # ``datetime.date.fromtimestamp()`` which is local-timezone dependent.
+    # Mirrors the convention used by the normal-period branch ("Convert period
+    # to start -> end").
+    start = pd.Timestamp(end_ts, unit='s', tz='UTC').tz_convert(tz_name).date()
+    start -= utils._interval_to_timedelta(period)
+    start -= _datetime.timedelta(days=4)
+    return start
+
+
 class HistoryMetadata(Mapping):
     """
     Dict-like lazy wrapper for PriceHistory metadata.
@@ -384,9 +398,10 @@ class PriceHistory:
         if period and period not in self._history_metadata.get("validRanges", []):
             end = int(_time.time())
             end_dt = pd.Timestamp(end, unit='s').tz_localize("UTC")
-            start = _datetime.date.fromtimestamp(end)
-            start -= utils._interval_to_timedelta(period)
-            start -= _datetime.timedelta(days=4)
+            # Window start in the exchange timezone (see _custom_period_start).
+            # Previously this used date.fromtimestamp(end) which is local-timezone
+            # dependent and could shift the start by a day on non-UTC machines.
+            start = _custom_period_start(end, period, tz_exchange)
 
         # parse quotes
         quotes = utils.parse_quotes(data["chart"]["result"][0])
@@ -472,7 +487,14 @@ class PriceHistory:
             self._capital_gains = pd.Series()
         if start is not None:
             if not quotes.empty:
-                start_d = quotes.index[0].floor('D')
+                if isinstance(start, _datetime.date):
+                    # Custom-period request: ``start`` is the window start as a date
+                    # in the exchange timezone (computed above). Bound the returned
+                    # events to it instead of to the first price row, so events
+                    # outside the requested window are dropped.
+                    start_d = pd.Timestamp(start, tz=tz_exchange)
+                else:
+                    start_d = quotes.index[0].floor('D')
                 if dividends is not None:
                     dividends = dividends.loc[start_d:]
                 if capital_gains is not None:
