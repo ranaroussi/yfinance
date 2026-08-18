@@ -896,13 +896,13 @@ class Quote:
             self._calendar = dict()
             _events = result["quoteSummary"]["result"][0]["calendarEvents"]
             if 'dividendDate' in _events:
-                self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate']).date()
+                self._calendar['Dividend Date'] = datetime.datetime.fromtimestamp(_events['dividendDate'], tz=datetime.timezone.utc).date()
             if 'exDividendDate' in _events:
-                self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate']).date()
+                self._calendar['Ex-Dividend Date'] = datetime.datetime.fromtimestamp(_events['exDividendDate'], tz=datetime.timezone.utc).date()
             # splits = _events.get('splitDate')  # need to check later, i will add code for this if found data
             earnings = _events.get('earnings')
             if earnings is not None:
-                self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d).date() for d in earnings.get('earningsDate', [])]
+                self._calendar['Earnings Date'] = [datetime.datetime.fromtimestamp(d, tz=datetime.timezone.utc).date() for d in earnings.get('earningsDate', [])]
                 self._calendar['Earnings High'] = earnings.get('earningsHigh', None)
                 self._calendar['Earnings Low'] = earnings.get('earningsLow', None)
                 self._calendar['Earnings Average'] = earnings.get('earningsAverage', None)

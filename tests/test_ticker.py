@@ -1045,6 +1045,48 @@ class TestTickerMiscFinancials(unittest.TestCase):
         data_cached = self.ticker.calendar
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_calendar_dates_use_utc_not_local(self):
+        # Regression: _fetch_calendar must interpret Yahoo's calendar-event
+        # epoch (always UTC) as a UTC calendar date, not a local-timezone date.
+        # On a non-UTC machine the buggy code returned a date off by one day.
+        # We simulate a local timezone of UTC+13 (by swapping the datetime
+        # class for a wrapper) so the test fails even on UTC CI runners if the
+        # bug ever returns.
+        import datetime as _dt
+        from datetime import timezone, timedelta
+        from unittest.mock import patch
+
+        # 2024-01-01 12:00:00 UTC -> with a UTC+13 local tz the buggy code
+        # would render 2024-01-02.
+        ts = 1704110400
+        real_dt = _dt.datetime
+        expected = real_dt.fromtimestamp(ts, tz=timezone.utc).date()
+
+        fake_events = {
+            "quoteSummary": {"result": [{"calendarEvents": {
+                "dividendDate": ts,
+                "exDividendDate": ts,
+                "earnings": {"earningsDate": [ts]},
+            }}]}
+        }
+
+        class _LocalTzDatetime(real_dt):
+            @staticmethod
+            def fromtimestamp(ts_, tz=None):
+                if tz is not None:
+                    return real_dt.fromtimestamp(ts_, tz=tz)
+                # simulate a machine running in UTC+13
+                return real_dt.fromtimestamp(ts_, tz=timezone.utc) + timedelta(hours=13)
+
+        quote = self.ticker._quote
+        with patch.object(quote, "_fetch", return_value=fake_events):
+            with patch.object(_dt, "datetime", _LocalTzDatetime):
+                quote._fetch_calendar()
+
+        self.assertEqual(quote._calendar.get("Dividend Date"), expected)
+        self.assertEqual(quote._calendar.get("Ex-Dividend Date"), expected)
+        self.assertEqual(quote._calendar.get("Earnings Date"), [expected])
+
     # # sustainability stopped working
     # def test_sustainability(self):
     #     data = self.ticker.sustainability
