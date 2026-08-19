@@ -1,0 +1,26 @@
+__pycache__/*
+yfinance/__pycache__/*
+dist
+yfinance.egg-info
+*.pyc
+.coverage
+.idea/
+.vscode/
+build/
+*.html
+*.css
+test.ipynb
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Documentation
+/doc/build/
+/doc/_build/
+/doc/source/reference/api
+!yfinance.css
+!/doc/source/development/assets/branches.png

@@ -1,0 +1,45 @@
+name: Auto-close issues using default template
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  check-template:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Check if issue uses custom template
+        # Verify: curl -s "https://api.github.com/repos/actions/github-script/commits?sha=v9&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const title = issue.title || '';
+            const textToCheck = (title + ' ' + body).toLowerCase();
+            
+            // Check for specific fields from your custom form
+            const hasCustomFields = body.includes('### Describe bug') || 
+                                   body.includes('### Simple code that reproduces');
+            
+            // Check for bug-related keywords
+            const bugKeywords = ['bug', 'problem', 'broken'];
+            const looksBugReport = bugKeywords.some(keyword => textToCheck.includes(keyword));
+            
+            // Only close if it looks like a bug report but doesn't use the template
+            if (!hasCustomFields && looksBugReport) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: 'This issue appears to be a bug report but doesn\'t use our bug report template. Resubmit with our custom bug report form..'
+              });
+              
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              });
+            }

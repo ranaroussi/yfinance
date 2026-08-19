@@ -1,0 +1,689 @@
+import functools
+from functools import lru_cache
+import socket
+import time as _time
+
+from ._http import requests, new_session, is_supported_session, cookie_jar
+from urllib.parse import urlsplit, urljoin
+from bs4 import BeautifulSoup
+import datetime
+
+from . import utils, cache
+from .utils import frozendict
+from .config import YfConfig
+import threading
+
+from .exceptions import YFException, YFDataException, YFRateLimitError
+
+
+def _is_transient_error(exception):
+    """Check if error is transient (network/timeout) and should be retried."""
+    if isinstance(exception, (TimeoutError, socket.error, OSError)):
+        return True
+    error_type_name = type(exception).__name__
+    transient_error_types = {
+        'Timeout', 'TimeoutError', 'ConnectionError', 'ConnectTimeout',
+        'ReadTimeout', 'ChunkedEncodingError', 'RemoteDisconnected',
+    }
+    return error_type_name in transient_error_types
+
+cache_maxsize = 64
+
+
+def _normalize_proxy(proxy):
+    if isinstance(proxy, str):
+        return {"http": proxy, "https": proxy}
+    return proxy
+
+
+def lru_cache_freezeargs(func):
+    """
+    Decorator transforms mutable dictionary and list arguments into immutable types
+    Needed so lru_cache can cache method calls what has dict or list arguments.
+    """
+
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        args = tuple([frozendict(arg) if isinstance(arg, dict) else arg for arg in args])
+        kwargs = {k: frozendict(v) if isinstance(v, dict) else v for k, v in kwargs.items()}
+        args = tuple([tuple(arg) if isinstance(arg, list) else arg for arg in args])
+        kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
+        return func(*args, **kwargs)
+
+    # copy over the lru_cache extra methods to this wrapper to be able to access them
+    # after this decorator has been applied
+    wrapped.cache_info = func.cache_info
+    wrapped.cache_clear = func.cache_clear
+    return wrapped
+
+
+class SingletonMeta(type):
+    """
+    Metaclass that creates a Singleton instance.
+    """
+    _instances = {}
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls not in cls._instances:
+                instance = super().__call__(*args, **kwargs)
+                cls._instances[cls] = instance
+            else:
+                # Update the existing instance
+                if 'session' in kwargs or (args and len(args) > 0):
+                    session = kwargs.get('session') if 'session' in kwargs else args[0]
+                    cls._instances[cls]._set_session(session)
+            return cls._instances[cls]
+
+
+class YfData(metaclass=SingletonMeta):
+    """
+    Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations.
+    Singleton means one session one cookie shared by all threads.
+    """
+
+    def __init__(self, session=None):
+        self._crumb = None
+        self._cookie = None
+        # Whether the user has supplied login cookies (see set_login_cookies).
+        # When logged in, the cookie-strategy toggle must not wipe the jar, or
+        # it would silently log the user out. Auth corrects this flag to reflect
+        # the real login state once it has been verified.
+        self._logged_in = False
+
+        # Default to using 'basic' strategy
+        self._cookie_strategy = 'basic'
+        # If it fails, then fallback method is 'csrf'
+        # self._cookie_strategy = 'csrf'
+
+        self._cookie_lock = threading.Lock()
+
+        # Set to True after a single-URL fundamentals-timeseries fetch has
+        # failed (typically a silent drop on WSL2 NAT or restrictive corporate
+        # proxy). Sticky so a loop over tickers doesn't pay one timeout per
+        # ticker; reverted if the chunked fallback also fails.
+        self.fundamentals_use_chunked: bool = False
+
+        self._session = None
+        self._set_session(session or new_session())
+
+    def set_login_cookies(self, cookie_t, cookie_y):
+        with self._cookie_lock:
+            self._session.cookies.update({
+                "T": cookie_t,
+                "Y": cookie_y
+            })
+            self._cookie = True
+            # Optimistically mark as logged in so a transient 4xx during the
+            # initial login verification can't wipe these cookies. Auth.check_login
+            # corrects this to the real state right after.
+            self._logged_in = True
+            # Drop any cached crumb: it may have been minted under a different
+            # (e.g. anonymous, or another account's) login state. Forcing a
+            # re-mint on the next request keeps the crumb matched to these
+            # cookies, so the login takes effect cleanly mid-process.
+            self._crumb = None
+
+    def _set_logged_in(self, value):
+        """Thread-safe update of the login flag (also read under this lock in
+        _set_cookie_strategy). Auth calls this after verifying the real login
+        state, possibly from another thread, so the write must be serialized to
+        avoid a stale value clobbering a concurrent fresh login."""
+        with self._cookie_lock:
+            self._logged_in = value
+
+    def _set_session(self, session):
+        if session is None:
+            return
+
+        # Test for an active cache, not the attribute's presence: curl_cffi >= 0.16
+        # Sessions always expose `.cache` (None when disabled).
+        if getattr(session, "cache", None) is not None:
+            raise YFDataException("Caching sessions (e.g. requests_cache) are not supported. Solution: stop setting session, let yfinance handle.")
+
+        if not is_supported_session(session):
+            raise YFDataException(f"Unsupported session type {type(session)}; expected curl_cffi or requests Session. Solution: stop setting session, let yfinance handle.")
+
+        with self._cookie_lock:
+            self._session = session
+            if YfConfig.network.proxy is not None:
+                self._session.proxies = _normalize_proxy(YfConfig.network.proxy)
+
+    def _set_cookie_strategy(self, strategy, have_lock=False):
+        if strategy == self._cookie_strategy:
+            return
+        if not have_lock:
+            self._cookie_lock.acquire()
+
+        try:
+            if self._cookie_strategy == 'csrf':
+                utils.get_yf_logger().debug(f'toggling cookie strategy {self._cookie_strategy} -> basic')
+                # Don't clear the jar while logged in: that would drop the
+                # user-set login cookies (T/Y) and silently log them out. The
+                # toggle still resets the anonymous cookie/crumb below, so the
+                # anonymous refresh path is unaffected.
+                if not self._logged_in:
+                    self._session.cookies.clear()
+                self._cookie_strategy = 'basic'
+            else:
+                utils.get_yf_logger().debug(f'toggling cookie strategy {self._cookie_strategy} -> csrf')
+                self._cookie_strategy = 'csrf'
+            self._cookie = None
+            self._crumb = None
+        except Exception:
+            self._cookie_lock.release()
+            raise
+
+        if not have_lock:
+            self._cookie_lock.release()
+
+    @utils.log_indent_decorator
+    def _save_cookie_curlCffi(self):
+        if self._session is None:
+            return False
+        cookies = cookie_jar(self._session)._cookies
+        if len(cookies) == 0:
+            return False
+        yh_domains = [k for k in cookies.keys() if 'yahoo' in k]
+        if len(yh_domains) > 1:
+            # Possible when cookie fetched with CSRF method. Discard consent cookie.
+            yh_domains = [k for k in yh_domains if 'consent' not in k]
+        if len(yh_domains) > 1:
+            utils.get_yf_logger().debug(f'Multiple Yahoo cookies, not sure which to cache: {yh_domains}')
+            return False
+        if len(yh_domains) == 0:
+            return False
+        yh_domain = yh_domains[0]
+        yh_cookie = {yh_domain: cookies[yh_domain]}
+        cache.get_cookie_cache().store('curlCffi', yh_cookie)
+        return True
+
+    @utils.log_indent_decorator
+    def _load_cookie_curlCffi(self):
+        if self._session is None:
+            return False
+        cookie_dict = cache.get_cookie_cache().lookup('curlCffi')
+        if cookie_dict is None or len(cookie_dict) == 0:
+            return False
+        cookies = cookie_dict['cookie']
+        domain = list(cookies.keys())[0]
+        cookie = cookies[domain]['/']['A3']
+        expiry_ts = cookie.expires
+        if expiry_ts > 2e9:
+            # convert ms to s
+            expiry_ts //= 1e3
+        expiry_dt = datetime.datetime.fromtimestamp(expiry_ts, tz=datetime.timezone.utc)
+        expired = expiry_dt < datetime.datetime.now(datetime.timezone.utc)
+        if expired:
+            utils.get_yf_logger().debug('cached cookie expired')
+            return False
+        cookie_jar(self._session)._cookies.update(cookies)
+        self._cookie = cookie
+        return True
+
+    @utils.log_indent_decorator
+    def _get_cookie_basic(self, timeout=30):
+        if self._cookie is not None:
+            utils.get_yf_logger().debug('reusing cookie')
+            return True
+        elif self._load_cookie_curlCffi():
+            utils.get_yf_logger().debug('reusing persistent cookie')
+            return True
+
+        # To avoid infinite recursion, do NOT use self.get()
+        # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
+        try:
+            self._session.get(
+                url='https://fc.yahoo.com',
+                timeout=timeout,
+                allow_redirects=True)
+        except requests.exceptions.DNSError as e:
+            # Possible because url on some privacy/ad blocklists.
+            # Can ignore because have second strategy.
+            utils.get_yf_logger().debug("Handling DNS error on cookie fetch: " + str(e))
+            return False
+        self._save_cookie_curlCffi()
+        return True
+
+    @utils.log_indent_decorator
+    def _get_crumb_basic(self, timeout=30):
+        if self._crumb is not None:
+            utils.get_yf_logger().debug('reusing crumb')
+            return self._crumb
+
+        if not self._get_cookie_basic():
+            return None
+        # - 'allow_redirects' copied from @psychoz971 solution - does it help USA?
+        get_args = {
+            'url': "https://query1.finance.yahoo.com/v1/test/getcrumb",
+            'timeout': timeout,
+            'allow_redirects': True
+        }
+        crumb_response = self._session.get(**get_args)
+        self._crumb = crumb_response.text
+        if crumb_response.status_code == 429 or "Too Many Requests" in self._crumb:
+            utils.get_yf_logger().debug(f"Didn't receive crumb {self._crumb}")
+            raise YFRateLimitError()
+
+        if self._crumb is None or '<html>' in self._crumb:
+            utils.get_yf_logger().debug("Didn't receive crumb")
+            return None
+
+        utils.get_yf_logger().debug(f"crumb = '{self._crumb}'")
+        return self._crumb
+
+    @utils.log_indent_decorator
+    def _get_cookie_and_crumb_basic(self, timeout):
+        if not self._get_cookie_basic(timeout):
+            return None
+        return self._get_crumb_basic(timeout)
+
+    @utils.log_indent_decorator
+    def _get_cookie_csrf(self, timeout):
+        if self._cookie is not None:
+            utils.get_yf_logger().debug('reusing cookie')
+            return True
+
+        elif self._load_cookie_curlCffi():
+            utils.get_yf_logger().debug('reusing persistent cookie')
+            self._cookie = True
+            return True
+
+        base_args = {
+            'timeout': timeout}
+
+        get_args = {**base_args, 'url': 'https://guce.yahoo.com/consent'}
+        try:
+            response = self._session.get(**get_args)
+        except requests.exceptions.ChunkedEncodingError:
+            # No idea why happens, but handle nicely so can switch to other cookie method.
+            utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
+            return False
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        csrfTokenInput = soup.find('input', attrs={'name': 'csrfToken'})
+        if csrfTokenInput is None:
+            utils.get_yf_logger().debug('Failed to find "csrfToken" in response')
+            return False
+        csrfToken = csrfTokenInput['value']
+        utils.get_yf_logger().debug(f'csrfToken = {csrfToken}')
+        sessionIdInput = soup.find('input', attrs={'name': 'sessionId'})
+        sessionId = sessionIdInput['value']
+        utils.get_yf_logger().debug(f"sessionId='{sessionId}")
+
+        originalDoneUrl = 'https://finance.yahoo.com/'
+        namespace = 'yahoo'
+        data = {
+            'agree': ['agree', 'agree'],
+            'consentUUID': 'default',
+            'sessionId': sessionId,
+            'csrfToken': csrfToken,
+            'originalDoneUrl': originalDoneUrl,
+            'namespace': namespace,
+        }
+        post_args = {**base_args,
+            'url': f'https://consent.yahoo.com/v2/collectConsent?sessionId={sessionId}',
+            'data': data}
+        get_args = {**base_args,
+            'url': f'https://guce.yahoo.com/copyConsent?sessionId={sessionId}',
+            'data': data}
+        try:
+            self._session.post(**post_args)
+            self._session.get(**get_args)
+        except requests.exceptions.ChunkedEncodingError:
+            # No idea why happens, but handle nicely so can switch to other cookie method.
+            utils.get_yf_logger().debug('_get_cookie_csrf() encountering requests.exceptions.ChunkedEncodingError, aborting')
+        self._cookie = True
+        self._save_cookie_curlCffi()
+        return True
+
+    @utils.log_indent_decorator
+    def _get_crumb_csrf(self, timeout=30):
+        # Credit goes to @bot-unit #1729
+
+        if self._crumb is not None:
+            utils.get_yf_logger().debug('reusing crumb')
+            return self._crumb
+
+        if not self._get_cookie_csrf(timeout):
+            # This cookie stored in session
+            return None
+
+        get_args = {
+            'url': 'https://query2.finance.yahoo.com/v1/test/getcrumb',
+            'timeout': timeout}
+        r = self._session.get(**get_args)
+        self._crumb = r.text
+
+        if r.status_code == 429 or "Too Many Requests" in self._crumb:
+            utils.get_yf_logger().debug(f"Didn't receive crumb {self._crumb}")
+            raise YFRateLimitError()
+
+        if self._crumb is None or '<html>' in self._crumb or self._crumb == '':
+            utils.get_yf_logger().debug("Didn't receive crumb")
+            return None
+
+        utils.get_yf_logger().debug(f"crumb = '{self._crumb}'")
+        return self._crumb
+
+    @utils.log_indent_decorator
+    def _get_cookie_and_crumb(self, timeout=30):
+        crumb, strategy = None, None
+
+        utils.get_yf_logger().debug(f"cookie_mode = '{self._cookie_strategy}'")
+
+        with self._cookie_lock:
+            if self._cookie_strategy == 'csrf':
+                crumb = self._get_crumb_csrf()
+                if crumb is None:
+                    # Fail
+                    self._set_cookie_strategy('basic', have_lock=True)
+                    crumb = self._get_cookie_and_crumb_basic(timeout)
+            else:
+                # Fallback strategy
+                crumb = self._get_cookie_and_crumb_basic(timeout)
+                if crumb is None:
+                    # Fail
+                    self._set_cookie_strategy('csrf', have_lock=True)
+                    crumb = self._get_crumb_csrf()
+            strategy = self._cookie_strategy
+        return crumb, strategy
+
+    @utils.log_indent_decorator
+    def get(self, url, params=None, timeout=30):
+        response = self._make_request(url, request_method = self._session.get, params=params, timeout=timeout)
+
+        # Accept cookie-consent if redirected to consent page
+        if not self._is_this_consent_url(response.url):
+            # "Consent Page not detected"
+            pass
+        else:
+            # "Consent Page detected"
+            response = self._accept_consent_form(response, timeout)
+
+        return response
+
+    @utils.log_indent_decorator
+    def post(self, url, body=None, params=None, timeout=30, data=None):
+        return self._make_request(url, request_method = self._session.post, body=body, params=params, timeout=timeout, data=data)
+
+    @utils.log_indent_decorator
+    def _make_request(self, url, request_method, body=None, params=None, timeout=30, data=None):
+        # Important: treat input arguments as immutable.
+
+        if len(url) > 200:
+            utils.get_yf_logger().debug(f'url={url[:200]}...')
+        else:
+            utils.get_yf_logger().debug(f'url={url}')
+        utils.get_yf_logger().debug(f'params={params}')
+
+        # sync with config
+        self._session.proxies = _normalize_proxy(YfConfig.network.proxy)
+
+        if params is None:
+            params = {}
+        if 'crumb' in params:
+            raise YFException("Don't manually add 'crumb' to params dict, let data.py handle it")
+
+        crumb, strategy = self._get_cookie_and_crumb()
+        if crumb is not None:
+            crumbs = {'crumb': crumb}
+        else:
+            crumbs = {}
+
+        request_args = {
+            'url': url,
+            'params': {**params, **crumbs},
+            'timeout': timeout
+        }
+
+        if body:
+            request_args['json'] = body
+        
+        if data:
+            request_args['data'] = data
+            request_args['headers'] = {"Content-Type": "application/json"}
+
+        for attempt in range(YfConfig.network.retries + 1):
+            try:
+                response = request_method(**request_args)
+                break
+            except Exception as e:
+                if _is_transient_error(e) and attempt < YfConfig.network.retries:
+                    _time.sleep(2 ** attempt)
+                else:
+                    raise
+        utils.get_yf_logger().debug(f'response code={response.status_code}')
+        if response.status_code >= 400:
+            # Retry with other cookie strategy
+            if strategy == 'basic':
+                self._set_cookie_strategy('csrf')
+            else:
+                self._set_cookie_strategy('basic')
+            crumb, strategy = self._get_cookie_and_crumb(timeout)
+            request_args['params']['crumb'] = crumb
+            response = request_method(**request_args)
+            utils.get_yf_logger().debug(f'response code={response.status_code}')
+
+            # Raise exception if rate limited
+            if response.status_code == 429:
+                raise YFRateLimitError()
+
+        return response
+
+    @lru_cache_freezeargs
+    @lru_cache(maxsize=cache_maxsize)
+    def cache_get(self, url, params=None, timeout=30):
+        return self.get(url, params, timeout)
+
+    def get_raw_json(self, url, params=None, timeout=30):
+        utils.get_yf_logger().debug(f'get_raw_json(): {url}')
+        response = self.get(url, params=params, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+
+    def _is_this_consent_url(self, response_url: str) -> bool:
+        """
+        Check if given response_url is consent page
+
+        Args:
+            response_url (str) : response.url
+    
+        Returns:
+            True : This is cookie-consent page
+            False : This is not cookie-consent page
+        """
+        try:
+            return urlsplit(response_url).hostname and urlsplit(
+                response_url
+            ).hostname.endswith("consent.yahoo.com")
+        except Exception:
+            return False
+
+    def _accept_consent_form(
+        self, consent_resp: requests.Response, timeout: int
+    ) -> requests.Response:
+        """
+        Click 'Accept all' to cookie-consent form and return response object.
+
+        Args:
+            consent_resp (requests.Response) : Response instance of cookie-consent page
+            timeout (int) : Raise TimeoutError if post doesn't respond
+    
+        Returns:
+            response (requests.Response) : Response instance received from the server after accepting cookie-consent post.
+        """
+        soup = BeautifulSoup(consent_resp.text, "html.parser")
+    
+        # Heuristic: pick the first form; Yahoo's CMP tends to have a single form for consent
+        form = soup.find("form")
+        if not form:
+            return consent_resp
+    
+        # action : URL to send "Accept Cookies"
+        action = form.get("action") or consent_resp.url
+        action = urljoin(consent_resp.url, action)
+    
+        # Collect inputs (hidden tokens, etc.)
+        """
+        <input name="csrfToken" type="hidden" value="..."/>
+        <input name="sessionId" type="hidden" value="..."/>
+        <input name="originalDoneUrl" type="hidden" value="..."/>
+        <input name="namespace" type="hidden" value="yahoo"/>
+        """
+        data = {}
+        for inp in form.find_all("input"):
+            name = inp.get("name")
+            if not name:
+                continue
+            typ = (inp.get("type") or "text").lower()
+            val = inp.get("value") or ""
+    
+            if typ in ("checkbox", "radio"):
+                # If it's clearly an "agree"/"accept" field or already checked, include it
+                if (
+                    "agree" in name.lower()
+                    or "accept" in name.lower()
+                    or inp.has_attr("checked")
+                ):
+                    data[name] = val if val != "" else "1"
+            else:
+                data[name] = val
+    
+        # If no explicit agree/accept in inputs, add a best-effort flag
+        lowered = {k.lower() for k in data.keys()}
+        if not any(("agree" in k or "accept" in k) for k in lowered):
+            data["agree"] = "1"
+    
+        # Submit the form with "Referer". Some servers check this header as a simple CSRF protection measure.
+        headers = {"Referer": consent_resp.url}
+        response = self._session.post(
+            action, data=data, headers=headers, timeout=timeout, allow_redirects=True
+        )
+        return response
+
+_SUBSCRIPTIONS_URL = "https://query1.finance.yahoo.com/ws/obi-integration/v1/subscriptions"
+
+# Yahoo Finance subscription tier ids. The subscriptions response reports the
+# account's tier as an integer in subscriptionView[].tier; tierRanking is
+# [3, 4, 5, 6] (there is no tier 1/2, and tier 4 is unmarketed). Reading the id
+# is more stable than inferring from granted features, which Yahoo reshuffles
+# between tiers for marketing reasons.
+_TIER_NAMES = {6: "gold", 5: "silver", 3: "bronze"}
+
+
+class Auth:
+    def __init__(self, session=None):
+        self._session = session
+        self._data = YfData(session)
+
+    def set_login_cookies(self, cookie_t: str, cookie_y: str) -> bool:
+        """
+        Set the login cookies and verify they are valid.
+
+        How to Obtain the Cookies:
+            1. Open your browser (e.g., Chrome, Firefox).
+            2. Log in to Yahoo Finance (https://finance.yahoo.com).
+            3. Open the browser's Developer Tools:
+               Press `F12` or `Ctrl + Shift + I` (Windows/Linux) or `Cmd + Option + I` (Mac).
+            4. Go to the "Application" tab (Chrome) or "Storage" tab (Firefox).
+            5. In the "Cookies" section, select `https://finance.yahoo.com`.
+            6. Look for the cookies named `T` and `Y`.
+            7. Copy the values of these cookies and pass them to this function.
+
+        Args:
+            cookie_t (str): The value for the 'T' cookie.
+            cookie_y (str): The value for the 'Y' cookie.
+
+        Returns:
+            bool: ``True`` if the cookies are valid (the account is logged in),
+            ``False`` otherwise (also emitted as a warning). The cookies are
+            stored regardless. ``False`` can also mean Yahoo was transiently
+            unreachable, so it is not treated as a hard error.
+        """
+        self._data.set_login_cookies(cookie_t, cookie_y)
+        logged_in = self.check_login()
+        if not logged_in:
+            utils.get_yf_logger().warning(
+                "set_login_cookies: the provided cookies are not logged in "
+                "(or Yahoo is unreachable)."
+            )
+        return logged_in
+
+    def _fetch_entitlement(self) -> dict | None:
+        """Fetch the account's subscription entitlement (live, not cached).
+
+        A single lightweight JSON call to the OBI subscriptions endpoint
+        determines both login state and subscription tier, avoiding any
+        consumer-web-page scraping. The result is intentionally not cached:
+        the endpoint is cheap and Yahoo does not rate-limit it at any realistic
+        volume, so a fresh call each time keeps the answer from going stale
+        (e.g. if the login session expires part-way through a long-running
+        process).
+
+        Returns:
+            dict | None: The entitlement ``result`` object when logged in, or
+            ``None`` when not logged in (anonymous sessions return HTTP 401).
+        """
+        try:
+            response = self._data.get(_SUBSCRIPTIONS_URL)
+            if response.status_code == 200:
+                result = (response.json() or {}).get("result")
+                if isinstance(result, dict) and result.get("guid"):
+                    # Confirmed logged in: keep the login cookies protected.
+                    self._data._set_logged_in(True)
+                    return result
+            # A definitive non-logged-in answer (e.g. 401/403, or 200 without a
+            # guid): let the cookie-strategy toggle clear the stale jar again.
+            self._data._set_logged_in(False)
+            return None
+        except Exception as e:
+            # Transient/network error can't confirm login state either way, so
+            # leave _logged_in unchanged rather than flipping a valid login off.
+            if not YfConfig.debug.hide_exceptions:
+                raise
+            utils.get_yf_logger().error(f"Error confirming login: {e}")
+            return None
+
+    def check_login(self) -> bool:
+        """Check whether the user is logged in to Yahoo Finance.
+
+        Note: ``False`` during a transient error (e.g. Yahoo briefly
+        unreachable) means "could not confirm" rather than "logged out" — the
+        stored login cookies are kept and remain protected in that case.
+        """
+        return self._fetch_entitlement() is not None
+
+    def subscription_tier(self) -> str | None:
+        """Return the Yahoo Finance subscription tier of the logged-in account.
+
+        Read directly from the account's tier id in ``subscriptionView`` (the
+        value the account is billed against) rather than inferring it from the
+        granted feature set, which Yahoo reshuffles between tiers.
+
+        Returns:
+            str | None: ``'gold'``, ``'silver'`` or ``'bronze'`` for a named
+            subscription (``'premium'`` for a subscribed tier with no marketed
+            name), ``'free'`` when logged in without a subscription, or ``None``
+            when not logged in.
+        """
+        entitlement = self._fetch_entitlement()
+        if entitlement is None:
+            return None
+        active = [s for s in (entitlement.get("subscriptionView") or [])
+                  if s.get("action") == "ACTIVE"]
+        if not active:
+            return "free"
+        return _TIER_NAMES.get(active[0].get("tier"), "premium")
+
+    @property
+    def user(self) -> dict | None:
+        """
+        Get the logged-in user's details.
+
+        Returns:
+            dict | None: ``{'guid': ...}`` if logged in, or ``None`` if not.
+        """
+        entitlement = self._fetch_entitlement()
+        return {"guid": entitlement["guid"]} if entitlement else None

@@ -1,0 +1,40 @@
+name: Pyright
+
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+      - dev
+
+jobs:
+  pyright:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v7&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    # Verify: curl -s "https://api.github.com/repos/astral-sh/setup-uv/commits?sha=v9.0.0&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+    - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      with:
+        version: "latest"
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Create virtual environment
+      run: uv venv
+
+    - name: Install dependencies
+      run: uv pip install pyright
+
+    - name: Run Pyright
+      run: uv run pyright . --level error

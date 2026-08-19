@@ -1,0 +1,55 @@
+=============
+API Reference
+=============
+
+Overview
+--------
+
+The `yfinance` package provides easy access to Yahoo! Finance's API to retrieve market data. It includes classes and functions for downloading historical market data, accessing ticker information, managing cache, and more.
+
+
+Public API
+==========
+
+The following are the publicly available classes, and functions exposed by the `yfinance` package:
+
+- :attr:`Ticker <yfinance.Ticker>`: Class for accessing single ticker data.
+- :attr:`Tickers <yfinance.Tickers>`: Class for handling multiple tickers.
+- :doc:`Market <yfinance.market>`: Class for accessing market summary.
+- :attr:`Calendars <yfinance.Calendars>`: Class for accessing calendar events data.
+- :attr:`download <yfinance.download>`: Function to download market data for multiple tickers.
+- :attr:`Search <yfinance.Search>`: Class for accessing search results.
+- :attr:`Lookup <yfinance.Lookup>`: Class for looking up tickers.
+- :class:`WebSocket <yfinance.WebSocket>`: Class for synchronously streaming live market data.
+- :class:`AsyncWebSocket <yfinance.AsyncWebSocket>`: Class for asynchronously streaming live market data.
+- :attr:`Sector <yfinance.Sector>`: Domain class for accessing sector information.
+- :attr:`Industry <yfinance.Industry>`: Domain class for accessing industry information.
+- :attr:`EquityQuery <yfinance.EquityQuery>`: Class to build equity query filters.
+- :attr:`FundQuery <yfinance.FundQuery>`: Class to build fund query filters.
+- :attr:`ETFQuery <yfinance.ETFQuery>`: Class to build ETF query filters.
+- :attr:`screen <yfinance.screen>`: Run equity/fund queries.
+- :attr:`Auth <yfinance.Auth>`: Class for handling Yahoo Finance authentication.
+- :attr:`config.debug.logging <yfinance.config>`: Enable verbose debug logging (``yf.config.debug.logging = True``).
+- :attr:`set_tz_cache_location <yfinance.set_tz_cache_location>`: Function to set the timezone cache location.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+
+   yfinance.ticker_tickers
+   yfinance.stock
+   yfinance.market
+   yfinance.calendars
+   yfinance.financials
+   yfinance.analysis
+   yfinance.search
+   yfinance.lookup
+   yfinance.websocket
+   yfinance.sector_industry
+   yfinance.screener
+   yfinance.auth
+   yfinance.functions
+
+   yfinance.funds_data
+   yfinance.price_history

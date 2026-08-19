@@ -1,0 +1,103 @@
+name: Bug report
+description: Report a bug in our project
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # !!! IMPORTANT !!! FOLLOW THESE INSTRUCTIONS CAREFULLY !!!
+
+        ### Are you up-to-date?
+
+        Upgrade to the latest version: `$ pip install yfinance --upgrade --no-cache-dir`
+
+        Confirm latest version by running: `import yfinance as yf ; print(yf.__version__)` and comparing against [PyPI](https://pypi.org/project/yfinance/#history).
+
+        ### Does Yahoo actually have the data?
+
+        Are you spelling symbol *exactly* same as Yahoo?
+
+        Then visit `finance.yahoo.com` and confirm they have the data you want. Maybe your symbol was delisted.
+
+        ### Data is wrong
+
+        **yfinance is not affiliated with Yahoo**. If Yahoo Finance website data is bad, tell Yahoo: https://help.yahoo.com/kb/finance-for-web/report-problems-feedback-ideas-yahoo-finance-sln28397.html.
+
+        But if yfinance is creating error during processing, then finish this form.
+
+        For price errors, try price repair: https://ranaroussi.github.io/yfinance/advanced/price_repair.html
+
+        ### Are you spamming Yahoo?
+
+        Yahoo Finance free service has rate-limiting https://github.com/ranaroussi/yfinance/discussions/1513. Once limit hit, Yahoo can delay, block, or return bad data -> not a `yfinance` bug.
+        
+        ### Does issue already exist?
+
+        Use the search tool. Don't duplicate existing issues.
+        
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## Still think it's a bug?
+
+        Provide the following as best you can:
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Describe bug"
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: "Simple code that reproduces your problem"
+      description: "Provide a snippet of code that we can copy-paste-run. Wrap code in Python Markdown code blocks for proper formatting (```` ```python ... ``` ````)."
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug-log
+    attributes:
+      label: "Debug log with debug logging enabled"
+      description: |
+        Enable debug logging, reproduce the issue, then paste the full output:
+
+            import yfinance as yf
+            yf.config.debug.logging = True
+
+        Context: https://ranaroussi.github.io/yfinance/advanced/logging.html
+    validations:
+      required: true
+
+  - type: textarea
+    id: bad-data-proof
+    attributes:
+      label: "Bad data proof"
+      description: "If yfinance returning bad data, show proof of good data on Yahoo Finance website here."
+    validations:
+      required: false
+
+  - type: input
+    id: version-yfinance
+    attributes:
+      label: "`yfinance` version"
+    validations:
+      required: true
+
+  - type: input
+    id: version-python
+    attributes:
+      label: "Python version"
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: "Operating system"
+    validations:
+      required: false

@@ -1,0 +1,22 @@
+name: Ruff
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+      - dev
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v7&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # Verify: curl -s "https://api.github.com/repos/astral-sh/ruff-action/commits?sha=v4.1.0&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      - uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          args: check .

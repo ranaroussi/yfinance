@@ -1,0 +1,49 @@
+name: Build and Deploy Sphinx Docs
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out the repository
+      # Verify: curl -s "https://api.github.com/repos/actions/checkout/commits?sha=v7&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        persist-credentials: false
+
+    - name: Set up Python
+      # Verify: curl -s "https://api.github.com/repos/actions/setup-python/commits?sha=v7&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Build Sphinx documentation
+      run: |
+        sphinx-build -b html doc/source doc/_build/html -v
+
+    - name: List generated HTML files
+      run: |
+        ls -l -R doc/_build/html
+
+    - name: Deploy to GitHub Pages
+      # Verify: curl -s "https://api.github.com/repos/peaceiris/actions-gh-pages/commits?sha=v4&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
+      uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: documentation
+        publish_dir: doc/_build/html
+        destination_dir: docs
+        enable_jekyll: false
