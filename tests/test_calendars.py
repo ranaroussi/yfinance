@@ -51,5 +51,49 @@ class TestCalendars(unittest.TestCase):
         self.assertEqual(len(result), 5)
 
 
+class TestCalendarsResponseHandling(unittest.TestCase):
+    """Offline tests for parsing of malformed or empty calendar responses."""
+
+    def setUp(self):
+        self.calendars = yf.Calendars(session=session_gbl)
+
+    def test_create_df_undecodable_response(self):
+        # _get_data falls back to {} when response.json() raises, so parsing
+        # that payload has to degrade to an empty frame rather than KeyError.
+        df = self.calendars._create_df({})
+
+        self.assertIsInstance(df, pd.DataFrame)
+        self.assertTrue(df.empty)
+
+    def test_create_df_no_results(self):
+        for payload in (
+            {"finance": {"result": []}},
+            {"finance": {"result": [{"documents": []}]}},
+            {"finance": None},
+        ):
+            with self.subTest(payload=payload):
+                df = self.calendars._create_df(payload)
+
+                self.assertIsInstance(df, pd.DataFrame)
+                self.assertTrue(df.empty)
+
+    def test_create_df_parses_document(self):
+        payload = {"finance": {"result": [{"documents": [{
+            "columns": [
+                {"label": "Symbol", "type": "STRING"},
+                {"label": "Event Start Date", "type": "DATE"},
+                {"label": "Event Start Date", "type": "STRING"},
+            ],
+            "rows": [["AAPL", "2026-10-29", "After Market Close"]],
+        }]}]}}
+
+        df = self.calendars._create_df(payload)
+
+        # The second "Event Start Date" column is renamed to "Timing".
+        self.assertEqual(list(df.columns), ["Symbol", "Event Start Date", "Timing"])
+        self.assertEqual(df.iloc[0]["Symbol"], "AAPL")
+        self.assertEqual(df.iloc[0]["Timing"], "After Market Close")
+
+
 if __name__ == "__main__":
     unittest.main()

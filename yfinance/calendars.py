@@ -259,15 +259,23 @@ class Calendars:
         return self._cleanup_df(calendar_type)
 
     def _create_df(self, json_data: dict) -> pd.DataFrame:
+        try:
+            document = json_data["finance"]["result"][0]["documents"][0]
+        except (KeyError, IndexError, TypeError):
+            # Reached when the response could not be decoded, or when Yahoo
+            # returns a well-formed envelope with no matching documents.
+            self._logger.debug("Calendar response contained no result document.")
+            return pd.DataFrame()
+
         columns = []
-        for col in json_data["finance"]["result"][0]["documents"][0]["columns"]:
+        for col in document.get("columns", []):
             columns.append(col["label"])
 
             if col["label"] == "Event Start Date" and col["type"] == "STRING":
                 # Rename duplicate columns Event Start Date
                 columns[-1] = "Timing"
 
-        rows = json_data["finance"]["result"][0]["documents"][0]["rows"]
+        rows = document.get("rows", [])
         return pd.DataFrame(rows, columns=columns)
 
     def _cleanup_df(self, calendar_type: str) -> pd.DataFrame:
