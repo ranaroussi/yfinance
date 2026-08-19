@@ -490,6 +490,19 @@ def _interval_to_timedelta(interval):
     elif interval[-1] == "h":
         return _pd.Timedelta(int(interval[:-1]), unit="h")
     else:
+        # Unrecognised interval. Parse value + unit and build with an
+        # explicit unit so it stays silent under numpy>=2.5 + pandas 2.x
+        # (the generic-unit Timedelta DeprecationWarning). Keep the fallback
+        # narrow: if we do not recognise the suffix, defer to pandas rather
+        # than silently changing semantics.
+        m = re.fullmatch(r"(\d+)\s*([A-Za-z]+)", interval)
+        if m:
+            value = int(m.group(1))
+            unit = m.group(2).lower()
+            if unit in ("min", "m"):
+                return _pd.Timedelta(value, unit="m")
+            if unit in ("h", "s", "ms", "us", "ns"):
+                return _pd.Timedelta(value, unit=unit)
         return _pd.Timedelta(interval)
 
 

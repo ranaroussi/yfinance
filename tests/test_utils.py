@@ -188,9 +188,12 @@ class TestDateIntervalCheck(unittest.TestCase):
         self.assertFalse(_dts_in_same_interval(dt1, dt3, "1min"))
 
     def test_no_generic_timedelta_deprecation_warning(self):
-        # Regression for #2882: sub-day intervals must not trigger numpy's
+        # Regression for #2914: interval parsing must not trigger numpy>=2.5's
         # "'generic' unit for NumPy timedelta is deprecated" DeprecationWarning.
-        intervals = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h"]
+        # Covers both the explicit-unit branches (1m/1h) and the unrecognised
+        # interval fallback (1min/30s), which previously built Timedelta from a
+        # bare string and emitted the warning.
+        intervals = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1min", "30s"]
         for interval in intervals:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
@@ -201,12 +204,21 @@ class TestDateIntervalCheck(unittest.TestCase):
             self.assertEqual(generic, [], f"generic-unit warning for {interval!r}")
 
     def test_interval_to_timedelta_values(self):
-        # Lock the sub-day interval parsing behaviour.
-        self.assertEqual(_interval_to_timedelta("1m"), pd.Timedelta(minutes=1))
-        self.assertEqual(_interval_to_timedelta("30m"), pd.Timedelta(minutes=30))
-        self.assertEqual(_interval_to_timedelta("90m"), pd.Timedelta(minutes=90))
-        self.assertEqual(_interval_to_timedelta("1h"), pd.Timedelta(hours=1))
-        self.assertEqual(_interval_to_timedelta("4h"), pd.Timedelta(hours=4))
+        # Lock the sub-day interval parsing behaviour. Use explicit (value,
+        # unit=) Timedelta forms so the assertions themselves don't emit the
+        # numpy>=2.5 "generic unit" DeprecationWarning.
+        self.assertEqual(_interval_to_timedelta("1m"), pd.Timedelta(1, unit="m"))
+        self.assertEqual(_interval_to_timedelta("30m"), pd.Timedelta(30, unit="m"))
+        self.assertEqual(_interval_to_timedelta("90m"), pd.Timedelta(90, unit="m"))
+        self.assertEqual(_interval_to_timedelta("1h"), pd.Timedelta(1, unit="h"))
+        self.assertEqual(_interval_to_timedelta("4h"), pd.Timedelta(4, unit="h"))
+        # Unrecognised interval string falls back to an explicit unit too.
+        self.assertEqual(_interval_to_timedelta("1min"), pd.Timedelta(1, unit="m"))
+        self.assertEqual(_interval_to_timedelta("30s"), pd.Timedelta(30, unit="s"))
+
+    def test_interval_to_timedelta_invalid_input_still_raises(self):
+        with self.assertRaises(ValueError):
+            _interval_to_timedelta("nonsense")
 
     def test_parse_user_dt(self):
         exchange_tz = "US/Eastern"
