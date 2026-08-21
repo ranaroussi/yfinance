@@ -1,5 +1,6 @@
 from tests.context import yfinance as yf
 from tests.context import session_gbl
+from yfinance.scrapers.history import PriceHistory
 
 import unittest
 import socket
@@ -169,6 +170,70 @@ class TestPriceHistory(unittest.TestCase):
 
         yf.utils.safe_merge_dfs(df, divs, interval)
         # No exception = test pass
+
+    def test_missing_ohlc_row_with_volume_is_dropped(self):
+        timestamps = [
+            int(_pd.Timestamp("2026-07-22", tz="UTC").timestamp()),
+            int(_pd.Timestamp("2026-07-23", tz="UTC").timestamp()),
+        ]
+        payload = {"chart": {"result": [{
+            "meta": {
+                "currency": "USD",
+                "symbol": "TEST",
+                "exchangeName": "NMS",
+                "fullExchangeName": "NASDAQ",
+                "instrumentType": "EQUITY",
+                "exchangeTimezoneName": "America/New_York",
+                "validRanges": ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"],
+            },
+            "timestamp": timestamps,
+            "indicators": {
+                "quote": [{
+                    "open": [100.0, None],
+                    "high": [101.0, None],
+                    "low": [99.0, None],
+                    "close": [100.5, None],
+                    "volume": [1000, 40626435],
+                }],
+                "adjclose": [{"adjclose": [100.5, None]}],
+            },
+            "events": {
+                "dividends": {
+                    "1": {
+                        "date": int(_pd.Timestamp("2026-07-24", tz="UTC").timestamp()),
+                        "amount": 1.0,
+                    },
+                },
+            },
+        }], "error": None}}
+
+        class FakeResponse:
+            text = ""
+
+            def json(self):
+                return payload
+
+        class FakeData:
+            def get(self, **kwargs):
+                return FakeResponse()
+
+            def cache_get(self, **kwargs):
+                return FakeResponse()
+
+        def get_history(**kwargs):
+            return PriceHistory(FakeData(), "TEST", "America/New_York").history(
+                period="1mo", interval="1d", auto_adjust=False, **kwargs)
+
+        df = get_history()
+        self.assertEqual(len(df), 2)
+        self.assertEqual(df["Dividends"].iloc[-1], 1.0)
+        self.assertTrue(_pd.isna(df["Open"].iloc[-1]))
+        self.assertEqual(df["Volume"].iloc[0], 1000)
+
+        df_keepna = get_history(keepna=True)
+        self.assertEqual(len(df_keepna), 3)
+        self.assertTrue(_pd.isna(df_keepna["Open"].iloc[1]))
+        self.assertEqual(df_keepna["Volume"].iloc[1], 40626435)
 
     def test_intraDayWithEvents(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]

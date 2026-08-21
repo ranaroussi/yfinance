@@ -622,6 +622,14 @@ class PriceHistory:
             data_colnames = _PRICE_COLNAMES_ + ['Volume'] + ['Dividends', 'Stock Splits', 'Capital Gains']
             data_colnames = [c for c in data_colnames if c in df.columns]
             mask_nan_or_zero = (df[data_colnames].isna() | (df[data_colnames] == 0)).all(axis=1)
+            # Out-of-range event rows intentionally have NaN OHLC values, so
+            # only drop price-less rows that do not contain an event.
+            price_cols = [c for c in _PRICE_COLNAMES_ if c in df.columns]
+            event_cols = [c for c in ['Dividends', 'Stock Splits', 'Capital Gains'] if c in df.columns]
+            mask_nan_prices = df[price_cols].isna().all(axis=1)
+            if event_cols:
+                mask_nan_prices &= ~df[event_cols].fillna(0).ne(0).any(axis=1)
+            mask_nan_or_zero |= mask_nan_prices
             df = df.drop(mask_nan_or_zero.index[mask_nan_or_zero])
 
         if interval != interval_user:
