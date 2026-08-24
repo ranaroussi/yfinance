@@ -243,6 +243,15 @@ class YfData(metaclass=SingletonMeta):
             # Can ignore because have second strategy.
             utils.get_yf_logger().debug("Handling DNS error on cookie fetch: " + str(e))
             return False
+        except Exception as e:
+            if _is_transient_error(e):
+                # fc.yahoo.com is non-critical: chart API works without its
+                # cookie. Degrade instead of aborting the data request
+                # (common behind SOCKS5 proxies where fc.yahoo.com times out).
+                utils.get_yf_logger().warning(
+                    f"Cookie fetch from fc.yahoo.com failed ({type(e).__name__}), continuing without it")
+                return False
+            raise
         self._save_cookie_curlCffi()
         return True
 
@@ -418,15 +427,31 @@ class YfData(metaclass=SingletonMeta):
             utils.get_yf_logger().debug(f'url={url}')
         utils.get_yf_logger().debug(f'params={params}')
 
-        # sync with config
-        self._session.proxies = _normalize_proxy(YfConfig.network.proxy)
+        # sync with config, but never wipe proxies set directly on a
+        # user-supplied session (e.g. SOCKS5 via curl_cffi)
+        if YfConfig.network.proxy is not None:
+            self._session.proxies = _normalize_proxy(YfConfig.network.proxy)
 
         if params is None:
             params = {}
         if 'crumb' in params:
             raise YFException("Don't manually add 'crumb' to params dict, let data.py handle it")
 
-        crumb, strategy = self._get_cookie_and_crumb()
+        try:
+            crumb, strategy = self._get_cookie_and_crumb()
+        except YFRateLimitError:
+            # getcrumb is rate-limited but the target endpoint may not need
+            # a crumb (e.g. chart API). Let the actual request decide.
+            utils.get_yf_logger().warning(
+                "Crumb fetch rate-limited (HTTP 429), continuing without crumb")
+            crumb, strategy = None, self._cookie_strategy
+        except Exception as e:
+            if _is_transient_error(e):
+                utils.get_yf_logger().warning(
+                    f"Cookie/crumb fetch failed ({type(e).__name__}), continuing without crumb")
+                crumb, strategy = None, self._cookie_strategy
+            else:
+                raise
         if crumb is not None:
             crumbs = {'crumb': crumb}
         else:
@@ -457,12 +482,22 @@ class YfData(metaclass=SingletonMeta):
         utils.get_yf_logger().debug(f'response code={response.status_code}')
         if response.status_code >= 400:
             # Retry with other cookie strategy
-            if strategy == 'basic':
-                self._set_cookie_strategy('csrf')
-            else:
-                self._set_cookie_strategy('basic')
-            crumb, strategy = self._get_cookie_and_crumb(timeout)
-            request_args['params']['crumb'] = crumb
+            try:
+                if strategy == 'basic':
+                    self._set_cookie_strategy('csrf')
+                else:
+                    self._set_cookie_strategy('basic')
+                crumb, strategy = self._get_cookie_and_crumb(timeout)
+            except YFRateLimitError:
+                crumb = None
+            except Exception as e:
+                if not _is_transient_error(e):
+                    raise
+                crumb = None
+            if 'crumb' in request_args['params']:
+                del request_args['params']['crumb']
+            if crumb is not None:
+                request_args['params']['crumb'] = crumb
             response = request_method(**request_args)
             utils.get_yf_logger().debug(f'response code={response.status_code}')
 
