@@ -540,10 +540,10 @@ document.write(`
 <p>The <cite>Ticker</cite> module, allows you to access ticker data in a Pythonic way.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 
-<span class="n">dat</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">&quot;MSFT&quot;</span><span class="p">)</span>
+<span class="n">dat</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">"MSFT"</span><span class="p">)</span>
 
 <span class="c1"># get historical market data</span>
-<span class="n">dat</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s1">&#39;1mo&#39;</span><span class="p">)</span>
+<span class="n">dat</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s1">'1mo'</span><span class="p">)</span>
 
 <span class="c1"># options</span>
 <span class="n">dat</span><span class="o">.</span><span class="n">option_chain</span><span class="p">(</span><span class="n">dat</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">calls</span>
@@ -568,12 +568,12 @@ document.write(`
 <p>To initialize multiple <cite>Ticker</cite> objects, use</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 
-<span class="n">tickers</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Tickers</span><span class="p">(</span><span class="s1">&#39;msft aapl goog&#39;</span><span class="p">)</span>
+<span class="n">tickers</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Tickers</span><span class="p">(</span><span class="s1">'msft aapl goog'</span><span class="p">)</span>
 
 <span class="c1"># access each ticker using (example)</span>
-<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;MSFT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
-<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;AAPL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">&quot;1mo&quot;</span><span class="p">)</span>
-<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;GOOG&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'MSFT'</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'AAPL'</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">"1mo"</span><span class="p">)</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'GOOG'</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
 
 <span class="c1"># websocket</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">live</span><span class="p">()</span>
@@ -582,7 +582,7 @@ document.write(`
 <p>For tickers that are ETFs/Mutual Funds, <cite>Ticker.funds_data</cite> provides access to fund related data.</p>
 <p>Funds’ Top Holdings and other data with category average is returned as <cite>pd.DataFrame</cite>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
-<span class="n">spy</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s1">&#39;SPY&#39;</span><span class="p">)</span>
+<span class="n">spy</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s1">'SPY'</span><span class="p">)</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">spy</span><span class="o">.</span><span class="n">funds_data</span>
 
 <span class="c1"># show fund description</span>
@@ -604,28 +604,28 @@ document.write(`
 <p>If you want to use a proxy server for downloading data, use:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 
-<span class="n">msft</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">&quot;MSFT&quot;</span><span class="p">)</span>
+<span class="n">msft</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s2">"MSFT"</span><span class="p">)</span>
 
-<span class="n">msft</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">get_actions</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">get_dividends</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">get_splits</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">get_capital_gains</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">get_balance_sheet</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">get_cashflow</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
-<span class="n">msft</span><span class="o">.</span><span class="n">option_chain</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;PROXY_SERVER&quot;</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">get_actions</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">get_dividends</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">get_splits</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">get_capital_gains</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">get_balance_sheet</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">get_cashflow</span><span class="p">(</span><span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
+<span class="n">msft</span><span class="o">.</span><span class="n">option_chain</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">proxy</span><span class="o">=</span><span class="s2">"PROXY_SERVER"</span><span class="p">)</span>
 <span class="o">...</span>
 </pre></div>
 </div>
 <p>To initialize multiple <cite>Ticker</cite> objects, use <cite>Tickers</cite> module</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 
-<span class="n">tickers</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Tickers</span><span class="p">(</span><span class="s1">&#39;msft aapl goog&#39;</span><span class="p">)</span>
+<span class="n">tickers</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Tickers</span><span class="p">(</span><span class="s1">'msft aapl goog'</span><span class="p">)</span>
 
 <span class="c1"># access each ticker using (example)</span>
-<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;MSFT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
-<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;AAPL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">&quot;1mo&quot;</span><span class="p">)</span>
-<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">&#39;GOOG&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'MSFT'</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'AAPL'</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">"1mo"</span><span class="p">)</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'GOOG'</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
 
 <span class="c1"># websocket</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">live</span><span class="p">()</span>

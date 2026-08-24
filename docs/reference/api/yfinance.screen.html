@@ -557,22 +557,22 @@ Use size instead for custom queries.</p>
 </dl>
 <dl>
 <dt>Example: predefined query</dt><dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">screen</span><span class="p">(</span><span class="s2">&quot;aggressive_small_caps&quot;</span><span class="p">)</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">screen</span><span class="p">(</span><span class="s2">"aggressive_small_caps"</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd>
 <dt>Example: custom query</dt><dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">EquityQuery</span>
-<span class="n">q</span> <span class="o">=</span> <span class="n">EquityQuery</span><span class="p">(</span><span class="s1">&#39;and&#39;</span><span class="p">,</span> <span class="p">[</span>
-       <span class="n">EquityQuery</span><span class="p">(</span><span class="s1">&#39;gt&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;percentchange&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
-       <span class="n">EquityQuery</span><span class="p">(</span><span class="s1">&#39;eq&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;region&#39;</span><span class="p">,</span> <span class="s1">&#39;us&#39;</span><span class="p">])</span>
+<span class="n">q</span> <span class="o">=</span> <span class="n">EquityQuery</span><span class="p">(</span><span class="s1">'and'</span><span class="p">,</span> <span class="p">[</span>
+       <span class="n">EquityQuery</span><span class="p">(</span><span class="s1">'gt'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'percentchange'</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
+       <span class="n">EquityQuery</span><span class="p">(</span><span class="s1">'eq'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'region'</span><span class="p">,</span> <span class="s1">'us'</span><span class="p">])</span>
 <span class="p">])</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">screen</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">sortField</span> <span class="o">=</span> <span class="s1">&#39;percentchange&#39;</span><span class="p">,</span> <span class="n">sortAsc</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">screen</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">sortField</span> <span class="o">=</span> <span class="s1">'percentchange'</span><span class="p">,</span> <span class="n">sortAsc</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd>
 <dt>To access predefineds query code</dt><dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
-<span class="n">query</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">PREDEFINED_SCREENER_QUERIES</span><span class="p">[</span><span class="s1">&#39;aggressive_small_caps&#39;</span><span class="p">]</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">PREDEFINED_SCREENER_QUERIES</span><span class="p">[</span><span class="s1">'aggressive_small_caps'</span><span class="p">]</span>
 </pre></div>
 </div>
 </dd>

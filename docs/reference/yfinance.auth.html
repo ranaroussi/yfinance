@@ -549,10 +549,10 @@ read the account’s subscription tier.</p>
 
 <span class="c1"># Set login cookies obtained from your browser. The call stores them, validates</span>
 <span class="c1"># them with a live login check, and returns whether the account is logged in.</span>
-<span class="k">if</span> <span class="n">auth</span><span class="o">.</span><span class="n">set_login_cookies</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;COOKIE_T&quot;</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;COOKIE_Y&quot;</span><span class="p">)):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Logged in&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">auth</span><span class="o">.</span><span class="n">set_login_cookies</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"COOKIE_T"</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"COOKIE_Y"</span><span class="p">)):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Logged in"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Invalid or expired cookies&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Invalid or expired cookies"</span><span class="p">)</span>
 
 <span class="c1"># Every subsequent request sent to Yahoo Finance is now under the logged-in user.</span>
 
@@ -560,10 +560,10 @@ read the account’s subscription tier.</p>
 <span class="n">auth</span><span class="o">.</span><span class="n">check_login</span><span class="p">()</span>        <span class="c1"># -&gt; True / False</span>
 
 <span class="c1"># Yahoo Finance subscription tier of the logged-in account.</span>
-<span class="n">auth</span><span class="o">.</span><span class="n">subscription_tier</span><span class="p">()</span>  <span class="c1"># -&gt; &#39;gold&#39; / &#39;silver&#39; / &#39;bronze&#39; / &#39;free&#39; / None</span>
+<span class="n">auth</span><span class="o">.</span><span class="n">subscription_tier</span><span class="p">()</span>  <span class="c1"># -&gt; 'gold' / 'silver' / 'bronze' / 'free' / None</span>
 
 <span class="c1"># Access user information.</span>
-<span class="n">auth</span><span class="o">.</span><span class="n">user</span>                 <span class="c1"># -&gt; {&#39;guid&#39;: ...} or None</span>
+<span class="n">auth</span><span class="o">.</span><span class="n">user</span>                 <span class="c1"># -&gt; {'guid': ...} or None</span>
 </pre></div>
 </div>
 </section>

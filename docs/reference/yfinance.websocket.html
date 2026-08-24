@@ -543,20 +543,20 @@ document.write(`
 
 <span class="c1"># define your message callback</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">message_handler</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Received message:&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Received message:"</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
 
 <span class="c1"># =======================</span>
 <span class="c1"># With Context Manager</span>
 <span class="c1"># =======================</span>
 <span class="k">with</span> <span class="n">yf</span><span class="o">.</span><span class="n">WebSocket</span><span class="p">()</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
-    <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+    <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="s2">"BTC-USD"</span><span class="p">])</span>
     <span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">message_handler</span><span class="p">)</span>
 
 <span class="c1"># =======================</span>
 <span class="c1"># Without Context Manager</span>
 <span class="c1"># =======================</span>
 <span class="n">ws</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">WebSocket</span><span class="p">()</span>
-<span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+<span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="s2">"BTC-USD"</span><span class="p">])</span>
 <span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">message_handler</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -570,21 +570,21 @@ document.write(`
 
 <span class="c1"># define your message callback</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">message_handler</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Received message:&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Received message:"</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="c1"># =======================</span>
     <span class="c1"># With Context Manager</span>
     <span class="c1"># =======================</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">yf</span><span class="o">.</span><span class="n">AsyncWebSocket</span><span class="p">()</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="s2">"BTC-USD"</span><span class="p">])</span>
         <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">()</span>
 
     <span class="c1"># =======================</span>
     <span class="c1"># Without Context Manager</span>
     <span class="c1"># =======================</span>
     <span class="n">ws</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">AsyncWebSocket</span><span class="p">()</span>
-    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;BTC-USD&quot;</span><span class="p">])</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">subscribe</span><span class="p">([</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="s2">"BTC-USD"</span><span class="p">])</span>
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">listen</span><span class="p">()</span>
 
 <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>

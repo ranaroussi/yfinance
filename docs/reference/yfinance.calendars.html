@@ -540,7 +540,7 @@ document.write(`
 <span class="c1"># Default init (today + 7 days)</span>
 <span class="n">calendar</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Calendars</span><span class="p">()</span>
 
-<span class="c1"># Today&#39;s events: calendar of 1 day</span>
+<span class="c1"># Today's events: calendar of 1 day</span>
 <span class="n">tomorrow</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">calendar</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Calendars</span><span class="p">(</span><span class="n">end</span><span class="o">=</span><span class="n">tomorrow</span><span class="p">)</span>
 
@@ -559,7 +559,7 @@ document.write(`
 <span class="c1"># Earnings calendar custom filters</span>
 <span class="n">calendar</span><span class="o">.</span><span class="n">get_earnings_calendar</span><span class="p">(</span>
     <span class="n">market_cap</span><span class="o">=</span><span class="mi">100_000_000</span><span class="p">,</span>  <span class="c1"># filter out small-cap </span>
-    <span class="n">filter_most_active</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># show only actively traded. Uses: `screen(query=&quot;MOST_ACTIVES&quot;)`</span>
+    <span class="n">filter_most_active</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># show only actively traded. Uses: `screen(query="MOST_ACTIVES")`</span>
 <span class="p">)</span>
 
 <span class="c1"># Example of real use case:</span>
@@ -571,7 +571,7 @@ document.write(`
 <span class="n">calendar</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Calendars</span><span class="p">(</span><span class="n">today</span><span class="p">,</span> <span class="n">day_after_tomorrow</span><span class="p">)</span>
 <span class="n">df</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">get_earnings_calendar</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 
-<span class="n">unreported_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;Reported EPS&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()]</span>
+<span class="n">unreported_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"Reported EPS"</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()]</span>
 </pre></div>
 </div>
 </section>

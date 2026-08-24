@@ -547,8 +547,8 @@ document.write(`
 <p>To initialize, use the relevant sector or industry key as below.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 
-<span class="n">tech</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s1">&#39;technology&#39;</span><span class="p">)</span>
-<span class="n">software</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Industry</span><span class="p">(</span><span class="s1">&#39;software-infrastructure&#39;</span><span class="p">)</span>
+<span class="n">tech</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s1">'technology'</span><span class="p">)</span>
+<span class="n">software</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Industry</span><span class="p">(</span><span class="s1">'software-infrastructure'</span><span class="p">)</span>
 
 <span class="c1"># Common information</span>
 <span class="n">tech</span><span class="o">.</span><span class="n">key</span>
@@ -575,9 +575,9 @@ document.write(`
 <p>The modules can be chained with Ticker as below.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">yf</span>
 <span class="c1"># Ticker to Sector and Industry</span>
-<span class="n">msft</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s1">&#39;MSFT&#39;</span><span class="p">)</span>
-<span class="n">tech</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="n">msft</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sectorKey&#39;</span><span class="p">))</span>
-<span class="n">software</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Industry</span><span class="p">(</span><span class="n">msft</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;industryKey&#39;</span><span class="p">))</span>
+<span class="n">msft</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Ticker</span><span class="p">(</span><span class="s1">'MSFT'</span><span class="p">)</span>
+<span class="n">tech</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="n">msft</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'sectorKey'</span><span class="p">))</span>
+<span class="n">software</span> <span class="o">=</span> <span class="n">yf</span><span class="o">.</span><span class="n">Industry</span><span class="p">(</span><span class="n">msft</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'industryKey'</span><span class="p">))</span>
 
 <span class="c1"># Sector and Industry to Ticker</span>
 <span class="n">tech_ticker</span> <span class="o">=</span> <span class="n">tech</span><span class="o">.</span><span class="n">ticker</span>
@@ -592,9 +592,9 @@ document.write(`
 <p>By default <code class="docutils literal notranslate"><span class="pre">Sector</span></code> and <code class="docutils literal notranslate"><span class="pre">Industry</span></code> return U.S. data. Pass a Yahoo region
 (ISO 3166-1 alpha-2 country code, case-insensitive) to scope <code class="docutils literal notranslate"><span class="pre">top_companies</span></code>,
 <code class="docutils literal notranslate"><span class="pre">top_etfs</span></code>, <code class="docutils literal notranslate"><span class="pre">top_mutual_funds</span></code> and the industry top performing/growth lists:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s2">&quot;technology&quot;</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">&quot;GB&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">top_companies</span>     <span class="c1"># UK</span>
-<span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s2">&quot;technology&quot;</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">&quot;DE&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">top_companies</span>     <span class="c1"># Germany</span>
-<span class="n">yf</span><span class="o">.</span><span class="n">Industry</span><span class="p">(</span><span class="s2">&quot;software-infrastructure&quot;</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">&quot;JP&quot;</span><span class="p">)</span>    <span class="c1"># Japan</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s2">"technology"</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">"GB"</span><span class="p">)</span><span class="o">.</span><span class="n">top_companies</span>     <span class="c1"># UK</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">Sector</span><span class="p">(</span><span class="s2">"technology"</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">"DE"</span><span class="p">)</span><span class="o">.</span><span class="n">top_companies</span>     <span class="c1"># Germany</span>
+<span class="n">yf</span><span class="o">.</span><span class="n">Industry</span><span class="p">(</span><span class="s2">"software-infrastructure"</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="s2">"JP"</span><span class="p">)</span>    <span class="c1"># Japan</span>
 </pre></div>
 </div>
 </section>

@@ -533,12 +533,12 @@ document.write(`
 <p>Predefined Yahoo query <cite>solid_large_growth_funds</cite>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">yfinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundQuery</span>
 
-<span class="n">FundQuery</span><span class="p">(</span><span class="s1">&#39;and&#39;</span><span class="p">,</span> <span class="p">[</span>
-    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">&#39;eq&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;categoryname&#39;</span><span class="p">,</span> <span class="s1">&#39;Large Growth&#39;</span><span class="p">]),</span>
-    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">&#39;is-in&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;performanceratingoverall&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span>
-    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">&#39;lt&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;initialinvestment&#39;</span><span class="p">,</span> <span class="mi">100001</span><span class="p">]),</span>
-    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">&#39;lt&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;annualreturnnavy1categoryrank&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">]),</span>
-    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">&#39;eq&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;exchange&#39;</span><span class="p">,</span> <span class="s1">&#39;NAS&#39;</span><span class="p">])</span>
+<span class="n">FundQuery</span><span class="p">(</span><span class="s1">'and'</span><span class="p">,</span> <span class="p">[</span>
+    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">'eq'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'categoryname'</span><span class="p">,</span> <span class="s1">'Large Growth'</span><span class="p">]),</span>
+    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">'is-in'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'performanceratingoverall'</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span>
+    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">'lt'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'initialinvestment'</span><span class="p">,</span> <span class="mi">100001</span><span class="p">]),</span>
+    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">'lt'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'annualreturnnavy1categoryrank'</span><span class="p">,</span> <span class="mi">50</span><span class="p">]),</span>
+    <span class="n">FundQuery</span><span class="p">(</span><span class="s1">'eq'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'exchange'</span><span class="p">,</span> <span class="s1">'NAS'</span><span class="p">])</span>
 <span class="p">])</span>
 </pre></div>
 </div>
