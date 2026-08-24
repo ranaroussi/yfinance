@@ -3742,6 +3742,7 @@ class PriceHistory:
                     if df2.index[r[0]].date() < start_min:
                         logger.debug(f'Pruning range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.', extra=log_extras)
                         del ranges[i]
+
             for i in range(len(ranges)):
                 r = ranges[i]
                 if r[2] == 'split':
@@ -3751,37 +3752,78 @@ class PriceHistory:
                     m = split_rcp
                     m_rcp = split
 
-                # Before correcting, cross-check against Volume.
-                # If repairing stock-split, then should see big change in Volume.
-                if r[0] > 0:
-                    volBefore_denoised = denoise_volume(vol[:r[0]])
-                    volDuring_denoised = denoise_volume(vol[r[0]:r[1]])
-                    volBefore_denoised = volBefore_denoised[volBefore_denoised>0]
-                    volDuring_denoised = volDuring_denoised[volDuring_denoised>0]
-                    if len(volDuring_denoised) > 0:
-                        boundary_vol_change = volDuring_denoised[0] / volBefore_denoised[-1]
-                        if not unit_switch:
-                            # Stock-split - expect to see big volume changes
-                            if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
-                                # Good
-                                pass
-                            elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
-                                # Good
-                                pass
-                            else:
-                                # Volume not confirming
-                                continue
-                        else:
-                            # Unit switch - expect normal volume
-                            if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
-                                # Volume not confirming
-                                continue
-                            elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
-                                # Volume not confirming
-                                continue
-                            else:
-                                # Good
-                                pass
+                # For very short ranges, add on adjacent ranges so that 
+                # the 2x volume arrays have good lengths.
+                vol_during = vol[r[0]:r[1]]
+                vol_outside = []
+                if i==0 and r[0] > 0:
+                    vol_outside = vol[max(0,r[0]-10) : r[0]]
+                elif i==len(ranges)-1 and r[1] < len(vol):
+                    vol_outside = vol[r[1] : min(r[1]+10, len(vol))]
+                for step in range(1, (len(ranges)+1)//2):
+                    if len(vol_outside) > 10 and len(vol_during) > 10:
+                        # Have enough to compare
+                        break
+                    i2 = i-step
+                    i2n = i2+1
+                    i3 = i+step
+                    i3b = i3-1
+                    if i2 >= 0:
+                        r2 = ranges[i2]
+                        if len(vol_during) < 10:
+                            vol_during = np.append(vol[r2[0]:r2[1]], vol_during)
+                        if len(vol_outside) < 10:
+                            if i2n < len(ranges):
+                                r2n = ranges[i2n]
+                                vol_outside = np.append(vol[r2[1]:r2n[0]], vol_outside)
+                    if i3 < len(ranges):
+                        r3 = ranges[i3]
+                        if len(vol_during) < 10:
+                            vol_during = np.append(vol[r3[0]:r3[1]], vol_during)
+                        if len(vol_outside) < 10:
+                            if i3b >= 0:
+                                r3b = ranges[i3b]
+                                vol_outside = np.append(vol[r3b[1]:r3[0]], vol_outside)
+                volOutside_denoised = denoise_volume(vol_outside)
+                volDuring_denoised = denoise_volume(vol_during)
+                volOutside_denoised = volOutside_denoised[volOutside_denoised>0]
+                volDuring_denoised = volDuring_denoised[volDuring_denoised>0]
+                if len(volDuring_denoised) == 0 or len(volOutside_denoised) == 0:
+                    # No volume to check, but this should be incredibly rare.
+                    pass
+                else:
+                  boundary_vol_change = np.mean(volDuring_denoised) / np.mean(volOutside_denoised)
+                  if not unit_switch:
+                      # Stock-split - expect to see big volume changes
+                      if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                          # Good
+                          pass
+                      elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                          # Good
+                          pass
+                      else:
+                          # Bad
+                          continue
+                  else:
+                      # Unit switch - expect normal volume
+                      if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                          # Bad
+                          continue
+                      elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                          # Bad
+                          continue
+                      else:
+                          # Good
+                          pass
+
+            for i in range(len(ranges)):
+                r = ranges[i]
+                if r[2] == 'split':
+                    m = split
+                    m_rcp = split_rcp
+                else:
+                    m = split_rcp
+                    m_rcp = split
 
                 any_m_lt_1 = any_m_lt_1 or m < 0.99
                 logger.debug(f"range={r} m={m}", extra=log_extras)
