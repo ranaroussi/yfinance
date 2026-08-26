@@ -361,7 +361,8 @@ class TestPriceRepair(unittest.TestCase):
 
         correct_df = dat.history(period='1mo', auto_adjust=False)
 
-        dt_bad = correct_df.index[len(correct_df)//2]
+        correct_df_active = correct_df[correct_df['Volume']>0]
+        dt_bad = correct_df_active.index[len(correct_df_active)//2]
         df_bad = correct_df.copy()
         for c in df_bad.columns:
             df_bad.loc[dt_bad, c] = _np.nan
