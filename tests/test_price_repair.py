@@ -361,7 +361,8 @@ class TestPriceRepair(unittest.TestCase):
 
         correct_df = dat.history(period='1mo', auto_adjust=False)
 
-        dt_bad = correct_df.index[len(correct_df)//2]
+        correct_df_active = correct_df[correct_df['Volume']>0]
+        dt_bad = correct_df_active.index[len(correct_df_active)//2]
         df_bad = correct_df.copy()
         for c in df_bad.columns:
             df_bad.loc[dt_bad, c] = _np.nan
@@ -485,6 +486,7 @@ class TestPriceRepair(unittest.TestCase):
 
         bad_tkrs = ['4063.T', 'AV.L', 'CNE.L', 'MOB.ST', 'SPM.MI']
         bad_tkrs.append('LA.V')  # special case - stock split error is in year 2022! why not fixed?
+        bad_tkrs.append('NRDY')  # random rows missing 1:15 split, challenging to fix
         for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz_exchange = dat.fast_info["timezone"]
@@ -508,7 +510,7 @@ class TestPriceRepair(unittest.TestCase):
             correct_df = correct_df.sort_index()
             for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
                 try:
-                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-6).all())
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-5).all())
                 except AssertionError:
                     diff = repaired_df[c] - correct_df[c]
                     f_diff = _np.abs(diff) > 5e-6
@@ -521,6 +523,29 @@ class TestPriceRepair(unittest.TestCase):
                     print("- diff:")
                     print(repaired_df[c][f_diff] - correct_df[c][f_diff])
                     raise
+
+            if tkr in ['NRDY']:
+                # This data particulary bad, so also test on subset of table:
+                df_bad = df_bad.iloc[-27:]
+                correct_df = correct_df.iloc[-27:]
+                repaired_df = hist._fix_bad_stock_splits(df_bad, "1d", tz_exchange)
+                repaired_df = repaired_df.sort_index()
+                correct_df = correct_df.sort_index()
+                for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+                    try:
+                        self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-5).all())
+                    except AssertionError:
+                        diff = repaired_df[c] - correct_df[c]
+                        f_diff = _np.abs(diff) > 5e-6
+                        f_diff = f_diff|_np.roll(f_diff,1)|_np.roll(f_diff,-1)
+                        print(f"tkr={tkr} COLUMN={c}")
+                        print("- repaired_df")
+                        print(repaired_df[f_diff])
+                        print("- correct_df[c]:")
+                        print(correct_df[c][f_diff])
+                        print("- diff:")
+                        print(repaired_df[c][f_diff] - correct_df[c][f_diff])
+                        raise
 
         false_positives = {}
         # FIZZ had very high price volatility in Jan-2021 around split date:

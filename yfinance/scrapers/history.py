@@ -1,6 +1,7 @@
 from yfinance._http import new_session
 from math import isclose
 import bisect
+from collections.abc import Mapping
 import datetime as _datetime
 import dateutil as _dateutil
 import logging
@@ -17,6 +18,68 @@ from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesM
 
 _CURRENCY_CONVERSIONS = {'GBp': 0.01, 'ZAc': 0.01, 'ILA': 0.01}  # GBp = pence, ZAc = South African cents, ILA = Israeli agorot
 
+class HistoryMetadata(Mapping):
+    """
+    Dict-like lazy wrapper for PriceHistory metadata.
+
+    Yahoo only returns ``tradingPeriods`` for intraday chart requests.  Most
+    metadata is available from the normal/base history fetch, so defer the
+    intraday metadata fetch until callers actually request ``tradingPeriods``.
+    """
+    _LAZY_KEYS = ("tradingPeriods",)
+    _LAZY_VALUE = "<lazy-loaded>"
+
+    def __init__(self, price_history):
+        self._price_history = price_history
+
+    def _metadata(self):
+        return self._price_history._history_metadata or {}
+
+    def _keys(self):
+        keys = list(self._metadata().keys())
+        for k in self._LAZY_KEYS:
+            if k not in keys:
+                keys.append(k)
+        return keys
+
+    def _display_dict(self):
+        d = dict(self._metadata())
+        for k in self._LAZY_KEYS:
+            if k not in d:
+                d[k] = self._LAZY_VALUE
+        return d
+
+    def __getitem__(self, key):
+        if key in self._LAZY_KEYS and key not in self._metadata():
+            self._price_history._load_history_metadata_trading_periods()
+        return self._metadata()[key]
+
+    def __iter__(self):
+        return iter(self._keys())
+
+    def __len__(self):
+        return len(self._keys())
+
+    def __contains__(self, key):
+        return key in self._keys()
+
+    def keys(self):
+        return self._keys()
+
+    def items(self):
+        return [(k, self[k]) for k in self._keys()]
+
+    def values(self):
+        return [self[k] for k in self._keys()]
+
+    def __repr__(self):
+        from pprint import pformat
+        return pformat(self._display_dict())
+
+    def __str__(self):
+        return self.__repr__()
+
+
 class PriceHistory:
     def __init__(self, data, ticker, tz, session=None):
         self._data = data
@@ -27,6 +90,7 @@ class PriceHistory:
         self._history_cache = {}
         self._history_metadata = None
         self._history_metadata_formatted = False
+        self._history_metadata_lazy = None
 
         self._dividends = None
         self._splits = None
@@ -250,6 +314,7 @@ class PriceHistory:
 
         self._history_metadata = meta
         self._history_metadata_formatted = False
+        self._history_metadata_lazy = None
         self._history_metadata['YF repair?'] = repair
 
         intraday = params["interval"][-1] in ("m", 'h')
@@ -586,42 +651,70 @@ class PriceHistory:
                                                 'capital gains': self._capital_gains}
         return self._history_cache[cache_key]
 
+    def _resolve_metadata_repair(self, repair):
+        if repair == _SENTINEL_:
+            if self._history_metadata is not None:
+                repair = self._history_metadata.get('YF repair?', False)
+            else:
+                # default
+                repair = False
+        return repair
+
+    def _load_history_metadata_trading_periods(self):
+        if self._history_metadata is not None and 'tradingPeriods' in self._history_metadata:
+            return
+        if self._history_metadata is None:
+            self.get_history_metadata()
+        if not self._history_metadata:
+            return
+
+        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
+        params = {
+            "range": "5d", "interval": "1h", "includePrePost": True,
+            # "events": "div,splits,capitalGains",
+        }
+        data = None
+        try:
+            data = self._data.get(url=url, params=params).json()
+            meta = data["chart"]["result"][0]["meta"]
+            trading_periods = meta["tradingPeriods"]
+        except Exception:
+            return
+
+        tz = self._history_metadata.get("exchangeTimezoneName")
+        if tz is None:
+            tz = meta.get("exchangeTimezoneName")
+        if tz is None:
+            return
+        md = {"exchangeTimezoneName": tz,
+              "tradingPeriods": trading_periods}
+        md = utils.format_history_metadata(md)
+        self._history_metadata["tradingPeriods"] = md["tradingPeriods"]
+
     def get_history_metadata(self, repair=_SENTINEL_) -> dict:
         """
         repair default value depends on whether user requested price repair
         with previous history() call. If user did not set repair here, then
         it is set to match previous history() call.
         """
-        
-        # - repair affects currency, particularly GBp -> GBP
-        if self._history_metadata is None or 'tradingPeriods' not in self._history_metadata:
-            # Request intraday data, because then Yahoo returns exchange schedule (tradingPeriods).
-            if repair == _SENTINEL_:
-                if self._history_metadata is not None:
-                    repair = self._history_metadata['YF repair?']
-                else:
-                    # default
-                    repair = False
-            md_original = dict(self._history_metadata) if self._history_metadata else None
+        repair = self._resolve_metadata_repair(repair)
+
+        if self._history_metadata is None:
+            # Fetch base metadata only. Do not request intraday data here,
+            # because intraday is only needed for the lazy 'tradingPeriods' key.
             try:
-                self._get_history_cache(period="5d", interval="1h", repair=repair)['prices']
+                self._get_history_cache(period="5d", interval="1d", repair=repair)['prices']
             except Exception:
-                # discard
-                self._history_metadata = md_original
-            else:
-                if md_original:
-                    # Copy over the fields only present in intraday metadata, instead of
-                    # overwriting original metadata
-                    for k in ['lastTrade', 'tradingPeriods']:
-                        if k in self._history_metadata:
-                            md_original[k] = self._history_metadata[k]
-                    self._history_metadata = md_original
+                pass
 
         if self._history_metadata_formatted is False:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)
             self._history_metadata_formatted = True
 
-        return self._history_metadata
+        if self._history_metadata_lazy is None:
+            self._history_metadata_lazy = HistoryMetadata(self)
+
+        return self._history_metadata_lazy
 
     def get_dividends(self, period="max", repair=False) -> pd.Series:
         return self._get_history_cache(interval='1d', period=period, repair=repair)['dividends']
@@ -3078,6 +3171,8 @@ class PriceHistory:
             idx = np.where(mask, np.arange(len(vol_denoised)), 0)
             idx = np.maximum.accumulate(idx)
             vol_denoised = vol_denoised[idx]
+            if len(vol_denoised) == 0:
+                return np.array([])
 
             vol_denoised = np.asarray(vol_denoised, dtype=float)
             vol_denoised_padded = np.pad(vol_denoised, (pad, pad), mode="constant", constant_values=np.nan)
@@ -3222,7 +3317,7 @@ class PriceHistory:
                 if interval in ['1mo', '3mo']:
                     largest_volChg_pct *= 2
             # volChg_pct is a windowed median, so threshold can (and needs to be) more relaxed
-            threshold_volUnitChg = 1+ (split_max-1 + largest_volChg_pct) * 0.333
+            threshold_volUnitChg = 1+ (split_max-1 + largest_volChg_pct) * 0.2
             logger.debug(f"largest_volChg_pct = {largest_volChg_pct:.4f}, threshold_volUnitChg = {threshold_volUnitChg:.2f}", extra=log_extras)
 
         f_up_ndims = len(f_up.shape)
@@ -3649,6 +3744,7 @@ class PriceHistory:
                     if df2.index[r[0]].date() < start_min:
                         logger.debug(f'Pruning range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.', extra=log_extras)
                         del ranges[i]
+
             for i in range(len(ranges)):
                 r = ranges[i]
                 if r[2] == 'split':
@@ -3658,37 +3754,78 @@ class PriceHistory:
                     m = split_rcp
                     m_rcp = split
 
-                # Before correcting, cross-check against Volume.
-                # If repairing stock-split, then should see big change in Volume.
-                if r[0] > 0:
-                    volBefore_denoised = denoise_volume(vol[:r[0]])
-                    volDuring_denoised = denoise_volume(vol[r[0]:r[1]])
-                    volBefore_denoised = volBefore_denoised[volBefore_denoised>0]
-                    volDuring_denoised = volDuring_denoised[volDuring_denoised>0]
-                    if len(volDuring_denoised) > 0:
-                        boundary_vol_change = volDuring_denoised[0] / volBefore_denoised[-1]
-                        if not unit_switch:
-                            # Stock-split - expect to see big volume changes
-                            if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
-                                # Good
-                                pass
-                            elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
-                                # Good
-                                pass
-                            else:
-                                # Volume not confirming
-                                continue
+                # For very short ranges, add on adjacent ranges so that 
+                # the 2x volume arrays have good lengths.
+                vol_during = vol[r[0]:r[1]]
+                vol_outside = np.array([])
+                if i==0 and r[0] > 0:
+                    vol_outside = vol[max(0,r[0]-10) : r[0]]
+                elif i==len(ranges)-1 and r[1] < len(vol):
+                    vol_outside = vol[r[1] : min(r[1]+10, len(vol))]
+                for step in range(1, len(ranges)):
+                    if np.sum(vol_outside>0) > 10 and np.sum(vol_during>0) > 10:
+                        # Have enough to compare
+                        break
+                    i2 = i-step
+                    i2n = i2+1
+                    i3 = i+step
+                    i3b = i3-1
+                    if i2 >= 0:
+                        r2 = ranges[i2]
+                        if np.sum(vol_during>0) < 10:
+                            vol_during = np.append(vol[r2[0]:r2[1]], vol_during)
+                        if np.sum(vol_outside>0) < 10:
+                            if i2n < len(ranges):
+                                r2n = ranges[i2n]
+                                vol_outside = np.append(vol[r2[1]:r2n[0]], vol_outside)
+                    if i3 < len(ranges):
+                        r3 = ranges[i3]
+                        if np.sum(vol_during>0) < 10:
+                            vol_during = np.append(vol[r3[0]:r3[1]], vol_during)
+                        if np.sum(vol_outside>0) < 10:
+                            if i3b >= 0:
+                                r3b = ranges[i3b]
+                                vol_outside = np.append(vol[r3b[1]:r3[0]], vol_outside)
+                vol_outside = vol_outside[vol_outside>0]
+                vol_during = vol_during[vol_during>0]
+                volOutside_denoised = denoise_volume(vol_outside)
+                volDuring_denoised = denoise_volume(vol_during)
+                if len(volDuring_denoised) == 0 or len(volOutside_denoised) == 0:
+                    # No volume to check, but this should be incredibly rare.
+                    pass
+                else:
+                    boundary_vol_change = np.mean(volDuring_denoised) / np.mean(volOutside_denoised)
+                    if not unit_switch:
+                        # Stock-split - expect to see big volume changes
+                        if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                            # Good
+                            pass
+                        elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                            # Good
+                            pass
                         else:
-                            # Unit switch - expect normal volume
-                            if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
-                                # Volume not confirming
-                                continue
-                            elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
-                                # Volume not confirming
-                                continue
-                            else:
-                                # Good
-                                pass
+                            # Bad
+                            continue
+                    else:
+                        # Unit switch - expect normal volume
+                        if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                            # Bad
+                            continue
+                        elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                            # Bad
+                            continue
+                        else:
+                            # Good
+                            pass
+
+            for i in range(len(ranges)):
+                r = ranges[i]
+                if r[2] == 'split':
+                    m = split
+                    m_rcp = split_rcp
+                else:
+                    m = split_rcp
+                    m_rcp = split
 
                 any_m_lt_1 = any_m_lt_1 or m < 0.99
                 logger.debug(f"range={r} m={m}", extra=log_extras)
