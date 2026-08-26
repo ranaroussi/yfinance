@@ -3171,6 +3171,8 @@ class PriceHistory:
             idx = np.where(mask, np.arange(len(vol_denoised)), 0)
             idx = np.maximum.accumulate(idx)
             vol_denoised = vol_denoised[idx]
+            if len(vol_denoised) == 0:
+                return np.array([])
 
             vol_denoised = np.asarray(vol_denoised, dtype=float)
             vol_denoised_padded = np.pad(vol_denoised, (pad, pad), mode="constant", constant_values=np.nan)
@@ -3315,7 +3317,7 @@ class PriceHistory:
                 if interval in ['1mo', '3mo']:
                     largest_volChg_pct *= 2
             # volChg_pct is a windowed median, so threshold can (and needs to be) more relaxed
-            threshold_volUnitChg = 1+ (split_max-1 + largest_volChg_pct) * 0.333
+            threshold_volUnitChg = 1+ (split_max-1 + largest_volChg_pct) * 0.2
             logger.debug(f"largest_volChg_pct = {largest_volChg_pct:.4f}, threshold_volUnitChg = {threshold_volUnitChg:.2f}", extra=log_extras)
 
         f_up_ndims = len(f_up.shape)
@@ -3755,13 +3757,13 @@ class PriceHistory:
                 # For very short ranges, add on adjacent ranges so that 
                 # the 2x volume arrays have good lengths.
                 vol_during = vol[r[0]:r[1]]
-                vol_outside = []
+                vol_outside = np.array([])
                 if i==0 and r[0] > 0:
                     vol_outside = vol[max(0,r[0]-10) : r[0]]
                 elif i==len(ranges)-1 and r[1] < len(vol):
                     vol_outside = vol[r[1] : min(r[1]+10, len(vol))]
-                for step in range(1, (len(ranges)+1)//2):
-                    if len(vol_outside) > 10 and len(vol_during) > 10:
+                for step in range(1, len(ranges)):
+                    if np.sum(vol_outside>0) > 10 and np.sum(vol_during>0) > 10:
                         # Have enough to compare
                         break
                     i2 = i-step
@@ -3770,51 +3772,51 @@ class PriceHistory:
                     i3b = i3-1
                     if i2 >= 0:
                         r2 = ranges[i2]
-                        if len(vol_during) < 10:
+                        if np.sum(vol_during>0) < 10:
                             vol_during = np.append(vol[r2[0]:r2[1]], vol_during)
-                        if len(vol_outside) < 10:
+                        if np.sum(vol_outside>0) < 10:
                             if i2n < len(ranges):
                                 r2n = ranges[i2n]
                                 vol_outside = np.append(vol[r2[1]:r2n[0]], vol_outside)
                     if i3 < len(ranges):
                         r3 = ranges[i3]
-                        if len(vol_during) < 10:
+                        if np.sum(vol_during>0) < 10:
                             vol_during = np.append(vol[r3[0]:r3[1]], vol_during)
-                        if len(vol_outside) < 10:
+                        if np.sum(vol_outside>0) < 10:
                             if i3b >= 0:
                                 r3b = ranges[i3b]
                                 vol_outside = np.append(vol[r3b[1]:r3[0]], vol_outside)
+                vol_outside = vol_outside[vol_outside>0]
+                vol_during = vol_during[vol_during>0]
                 volOutside_denoised = denoise_volume(vol_outside)
                 volDuring_denoised = denoise_volume(vol_during)
-                volOutside_denoised = volOutside_denoised[volOutside_denoised>0]
-                volDuring_denoised = volDuring_denoised[volDuring_denoised>0]
                 if len(volDuring_denoised) == 0 or len(volOutside_denoised) == 0:
                     # No volume to check, but this should be incredibly rare.
                     pass
                 else:
-                  boundary_vol_change = np.mean(volDuring_denoised) / np.mean(volOutside_denoised)
-                  if not unit_switch:
-                      # Stock-split - expect to see big volume changes
-                      if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
-                          # Good
-                          pass
-                      elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
-                          # Good
-                          pass
-                      else:
-                          # Bad
-                          continue
-                  else:
-                      # Unit switch - expect normal volume
-                      if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
-                          # Bad
-                          continue
-                      elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
-                          # Bad
-                          continue
-                      else:
-                          # Good
-                          pass
+                    boundary_vol_change = np.mean(volDuring_denoised) / np.mean(volOutside_denoised)
+                    if not unit_switch:
+                        # Stock-split - expect to see big volume changes
+                        if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                            # Good
+                            pass
+                        elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                            # Good
+                            pass
+                        else:
+                            # Bad
+                            continue
+                    else:
+                        # Unit switch - expect normal volume
+                        if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
+                            # Bad
+                            continue
+                        elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
+                            # Bad
+                            continue
+                        else:
+                            # Good
+                            pass
 
             for i in range(len(ranges)):
                 r = ranges[i]
