@@ -1,6 +1,15 @@
 Change Log
 ===========
 
+1.7.0
+-----
+Features / improvements:
+- Make history_metadata lazy-load 'tradingPeriods' #2922
+Fixes
+- Improve robustness of YfData when behind a SOCKS5 proxy #2953
+Price repair:
+- Fix bug in volume-validation of stock-split-repair #2958
+
 1.6.0
 -----
 Features / improvements
