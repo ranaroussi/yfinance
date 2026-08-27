@@ -587,6 +587,8 @@ class PriceHistory:
                 self._history_metadata['currency'] = original_currency
                 if 'currencyRepaired' in self._history_metadata:
                     del self._history_metadata['currencyRepaired']
+                if 'currencyScaled' in self._history_metadata:
+                    del self._history_metadata['currencyScaled']
 
             df = df.sort_index()
 
@@ -1234,6 +1236,9 @@ class PriceHistory:
             prices_scaled = True
         self._history_metadata["currency"] = currency2
         self._history_metadata["currencyRepaired"] = True
+        # Whether prices were actually divided. _fix_prices_sudden_change()
+        # needs this to orient a genuine unit-switch repair.
+        self._history_metadata["currencyScaled"] = prices_scaled
 
         f_div = df['Dividends']!=0.0
         if f_div.any():
@@ -1710,6 +1715,12 @@ class PriceHistory:
                     print(f"- diff_div = {diff_div:.4f}")
                     print(f"- diff_total = {diff_total:.4f}")
                     print(f"- cg_is_double_counted = {cg_is_double_counted}")
+
+        if not dcs:
+            # No candidate distribution had both a prior row and dividend >= capital gain,
+            # e.g. a fund distributing capital gains without dividends. Nothing to classify.
+            df = df.drop('Adj', axis=1)
+            return df
 
         pct_double_counted = sum(dcs.values()) / len(dcs)
         if debug:
@@ -3557,8 +3568,6 @@ class PriceHistory:
 
             return ranges
 
-        any_m_lt_1 = False
-
         if idx_latest_active is not None:
             idx_rev_latest_active = df.shape[0] - 1 - idx_latest_active
             logger.debug(f'idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}', extra=log_extras)
@@ -3646,7 +3655,6 @@ class PriceHistory:
                         else:
                             m = split_rcp
                             m_rcp = split
-                        any_m_lt_1 = any_m_lt_1 or m < 0.99
                         if interday:
                             msg = f"Corrected {fix_type} on col={c} range=[{df2.index[r[1]-1].date()}:{df2.index[r[0]].date()}] m={m:.4f}"
                         else:
@@ -3818,6 +3826,24 @@ class PriceHistory:
                             # Good
                             pass
 
+            if unit_switch and len(ranges) == 1 and ranges[0][1] == n \
+                    and self._history_metadata.get('currencyScaled', False):
+                r = ranges[0]
+                m = split if r[2] == 'split' else split_rcp
+                if m < 0.99:
+                    # A lone range dividing everything from some date back to the
+                    # oldest row, in a table _standardise_currency() has already
+                    # divided, means the switch is genuine and standardisation
+                    # wrongly divided the newest rows: in a unit switch the bigger
+                    # numbers are the minor currency and the smaller the major, so
+                    # the bigger (older) side is already at major scale. Repair the
+                    # newest segment up instead of dragging the correct majority
+                    # down and reverting the whole table afterwards - that revert
+                    # rescaled entire tables by 100x and inverted 'Repaired?' when
+                    # the division had fixed a genuine interior 100x block (#2924).
+                    ranges[0] = (0, r[0], 'split' if r[2] != 'split' else '1.0/split')
+                    logger.debug(f"Division of all rows older than {df2.index[r[0]].date()} after currency standardisation: "
+                                 f"repairing newest {r[0]} rows up instead", extra=log_extras)
             for i in range(len(ranges)):
                 r = ranges[i]
                 if r[2] == 'split':
@@ -3827,7 +3853,6 @@ class PriceHistory:
                     m = split_rcp
                     m_rcp = split
 
-                any_m_lt_1 = any_m_lt_1 or m < 0.99
                 logger.debug(f"range={r} m={m}", extra=log_extras)
                 for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc(c)] *= m
@@ -3860,23 +3885,6 @@ class PriceHistory:
             else:
                 msg = f"Corrected: {n_corrected}x"
             logger.info(msg, extra=log_extras)
-
-        if unit_switch and any_m_lt_1:
-            # m < 1 means thats the switch was repaired in favour of the major currency
-            # e.g. USD beat cents
-            # But check if _standardise_currency() already did that.
-            if 'currencyRepaired' in self._history_metadata and self._history_metadata['currencyRepaired']:
-                # Yes it did, which means this repair did it again.
-                # Revert the second.
-                m = change
-                m_rcp = 1.0/change
-                for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
-                    df2[c] *= m
-                if correct_dividend:
-                    df2['Dividends'] *= m
-                if correct_volume:
-                    df2['Volume'] = (df2['Volume'] * m_rcp).round().astype('int')
-                sudden_change_repaired = ~sudden_change_repaired
 
         if 'Repaired?' not in df2.columns:
             df2['Repaired?'] = False
