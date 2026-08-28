@@ -635,6 +635,16 @@ class PriceHistory:
             msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
+        # Set freq on daily data so downstream libraries (e.g. sktime) can
+        # rely on a meaningful frequency instead of None.
+        if interval_user == "1d" and not df.empty:
+            try:
+                df.index.freq = pd.offsets.BDay()
+            except ValueError:
+                # Index contains gaps (e.g. long trading halts, delisting) so
+                # a regular business-day frequency cannot be set.
+                pass
+
         # Don't care that Pandas hid this. If they do it to improve performance, we do it.
         df = df._consolidate()
 

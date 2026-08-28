@@ -32,6 +32,20 @@ class TestPriceHistory(unittest.TestCase):
                 f = df.index.time == _dt.time(0)
                 self.assertTrue(f.all())
 
+    def test_daily_freq(self):
+        # Daily data should expose a business-day frequency so that
+        # downstream libraries (e.g. sktime) can rely on it (issue #1083).
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+        for tkr in tkrs:
+            dat = yf.Ticker(tkr, session=self.session)
+            df = dat.history(period="1mo", interval="1d")
+            if df.empty:
+                continue
+            self.assertIsNotNone(df.index.freq,
+                                 f"daily freq missing for {tkr}")
+            self.assertEqual(df.index.freq, _pd.offsets.BDay(),
+                             f"daily freq wrong for {tkr}: {df.index.freq}")
+
     def test_download_multi_large_interval(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         intervals = ["1d", "1wk", "1mo"]
