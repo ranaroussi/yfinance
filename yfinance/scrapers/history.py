@@ -635,6 +635,24 @@ class PriceHistory:
             msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
+        # Set freq on regular-interval data so downstream libraries (e.g.
+        # sktime) can rely on a meaningful frequency instead of None.
+        # Intraday / hourly intervals are skipped because market hours are
+        # not a regular 24/7 grid, so a fixed offset cannot describe them.
+        _INTERVAL_FREQ = {
+            "1d": pd.offsets.BDay(),
+            "1wk": pd.offsets.Week(weekday=4),
+            "1mo": pd.offsets.MonthEnd(),
+            "3mo": pd.offsets.QuarterEnd(),
+        }
+        if interval_user in _INTERVAL_FREQ and not df.empty:
+            try:
+                df.index.freq = _INTERVAL_FREQ[interval_user]
+            except ValueError:
+                # Index contains gaps (e.g. long trading halts, delisting,
+                # holiday-shortened weeks) so a regular frequency cannot be set.
+                pass
+
         # Don't care that Pandas hid this. If they do it to improve performance, we do it.
         df = df._consolidate()
 
