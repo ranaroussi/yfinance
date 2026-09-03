@@ -37,6 +37,12 @@ class TestPriceHistory(unittest.TestCase):
         # downstream libraries (e.g. sktime) can rely on it (issue #1083).
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         expected_freq = {
+            "1m": _pd.offsets.Minute(1),
+            "5m": _pd.offsets.Minute(5),
+            "15m": _pd.offsets.Minute(15),
+            "30m": _pd.offsets.Minute(30),
+            "60m": _pd.offsets.Minute(60),
+            "1h": _pd.offsets.Hour(1),
             "1d": _pd.offsets.BDay(),
             "1wk": _pd.offsets.Week(weekday=4),
             "1mo": _pd.offsets.MonthEnd(),
