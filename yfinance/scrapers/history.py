@@ -149,6 +149,20 @@ class PriceHistory:
             raise_errors : bool
                 If True, then raise errors as Exceptions instead of logging.
         """
+
+        def _stamp(frame, applied=False):
+            """Record whether price adjustment was actually applied.
+
+            A caller cannot otherwise tell: on success 'Close' holds the
+            adjusted value, and when adjustment is requested but raises, the
+            exception is swallowed by default (config.debug.hide_exceptions)
+            and 'Close' holds the raw value under the same column name.
+            Stamped on every return path so the key is always present.
+            """
+            frame.attrs['adjustment_requested'] = bool(auto_adjust or back_adjust)
+            frame.attrs['auto_adjust'] = bool(auto_adjust) and applied
+            frame.attrs['back_adjust'] = bool(back_adjust) and applied
+            return frame
         logger = utils.get_yf_logger()
 
         if raise_errors:
@@ -180,7 +194,7 @@ class PriceHistory:
                         raise _exception
                     else:
                         logger.error(err_msg)
-                    return utils.empty_df()
+                    return _stamp(utils.empty_df())
                 if period == 'ytd':
                     start = _datetime.date(pd.Timestamp.now('UTC').tz_convert(tz).year, 1, 1)
                 else:
@@ -205,7 +219,7 @@ class PriceHistory:
                     raise _exception
                 else:
                     logger.error(err_msg)
-                return utils.empty_df()
+                return _stamp(utils.empty_df())
 
         if start:
             start_dt = utils._parse_user_dt(start, tz)
@@ -372,7 +386,7 @@ class PriceHistory:
                 logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
-            return utils.empty_df()
+            return _stamp(utils.empty_df())
 
         # Select useful info from metadata
         quote_type = self._history_metadata["instrumentType"]
@@ -591,11 +605,14 @@ class PriceHistory:
             df = df.sort_index()
 
         # Auto/back adjust
+        adjustment_applied = False
         try:
             if auto_adjust:
                 df = utils.auto_adjust(df)
+                adjustment_applied = True
             elif back_adjust:
                 df = utils.back_adjust(df)
+                adjustment_applied = True
         except Exception as e:
             if raise_errors or (not YfConfig.debug.hide_exceptions):
                 raise
@@ -640,7 +657,9 @@ class PriceHistory:
 
         if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
             self._reconstruct_start_interval = None
-        return df
+
+        # Stamped last so no later reshaping can drop it.
+        return _stamp(df, adjustment_applied)
 
     def _get_history_cache(self, period="max", interval="1d", repair=False) -> pd.DataFrame:
         cache_key = (interval, period, repair)
