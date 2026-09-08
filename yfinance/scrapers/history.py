@@ -1195,7 +1195,7 @@ class PriceHistory:
                 elif "Adj Close" in bad_fields:
                     df_v2.loc[dt, "Adj Close"] = df_new_row["Adj Close"]
                 if "Volume" in bad_fields:
-                    df_v2.loc[dt, "Volume"] = df_new_row["Volume"].round().astype('int')
+                    df_v2.loc[dt, "Volume"] = int(round(np.nan_to_num(df_new_row["Volume"], nan=0.0, posinf=0.0, neginf=0.0)))
                 df_v2.loc[dt, "Repaired?"] = True
                 n_fixed += 1
 
@@ -3095,11 +3095,11 @@ class PriceHistory:
         if fna.any():
             df_workings['VolStr'] = ''
             df_workings.loc[fna, 'VolStr'] = 'NaN'
-            df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).astype('int').astype('str') + 'm'
+            df_workings.loc[~fna, 'VolStr'] = (df_workings['Vol'][~fna]/1e6).replace([np.inf, -np.inf, np.nan], 0).astype('int').astype('str') + 'm'
             df_workings['Vol'] = df_workings['VolStr']
             df_workings.drop('VolStr', axis=1)
         else:
-            df_workings['Vol'] = (df_workings['Vol']/1e6).astype('int').astype('str') + 'm'
+            df_workings['Vol'] = (df_workings['Vol']/1e6).replace([np.inf, -np.inf, np.nan], 0).astype('int').astype('str') + 'm'
         debug_cols = ['Close']
         df_workings = df_workings.drop([c for c in OHLC if c not in debug_cols], axis=1, errors='ignore')
 
@@ -3138,7 +3138,7 @@ class PriceHistory:
             if OHLC[j] in df_workings.columns:
                 df_workings[price_data_cols[j]] *= adj
         if df_dtype == np.int64:
-            price_data = price_data.astype('int')
+            price_data = np.nan_to_num(price_data, nan=0.0, posinf=0.0, neginf=0.0).astype('int')
 
         _1d_change_x[1:] = price_data[1:, ] / price_data[:-1, ]
 
@@ -3699,9 +3699,9 @@ class PriceHistory:
                 f_open_and_closed_fixed = f_open_fixed & f_close_fixed
                 f_open_xor_closed_fixed = np.logical_xor(f_open_fixed, f_close_fixed)
                 if f_open_and_closed_fixed.any():
-                    df2.loc[f_open_and_closed_fixed, "Volume"] = (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp).round().astype('int')
+                    df2.loc[f_open_and_closed_fixed, "Volume"] = (df2.loc[f_open_and_closed_fixed, "Volume"] * m_rcp).replace([np.inf, -np.inf, np.nan], 0).round().astype('int')
                 if f_open_xor_closed_fixed.any():
-                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).round().astype('int')
+                    df2.loc[f_open_xor_closed_fixed, "Volume"] = (df2.loc[f_open_xor_closed_fixed, "Volume"] * 0.5 * m_rcp).replace([np.inf, -np.inf, np.nan], 0).round().astype('int')
 
             sudden_change_repaired[f_corrected] = True
 
@@ -3835,7 +3835,7 @@ class PriceHistory:
                     df2.iloc[r[0]:r[1], df2.columns.get_loc('Dividends')] *= m
                 if correct_volume:
                     col_loc = df2.columns.get_loc("Volume")
-                    df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).round().astype('int')
+                    df2.iloc[r[0]:r[1], col_loc] = (df2.iloc[r[0]:r[1], col_loc] * m_rcp).replace([np.inf, -np.inf, np.nan], 0).round().astype('int')
                 sudden_change_repaired[r[0]:r[1]] = True
                 if r[0] == r[1] - 1:
                     if interday:
@@ -3875,7 +3875,7 @@ class PriceHistory:
                 if correct_dividend:
                     df2['Dividends'] *= m
                 if correct_volume:
-                    df2['Volume'] = (df2['Volume'] * m_rcp).round().astype('int')
+                    df2['Volume'] = (df2['Volume'] * m_rcp).replace([np.inf, -np.inf, np.nan], 0).round().astype('int')
                 sudden_change_repaired = ~sudden_change_repaired
 
         if 'Repaired?' not in df2.columns:
@@ -3885,9 +3885,9 @@ class PriceHistory:
         if correct_volume:
             f_na = df2['Volume'].isna()
             if f_na.any():
-                df2.loc[~f_na,'Volume'] = df2['Volume'][~f_na].round(0).astype('int')
+                df2.loc[~f_na,'Volume'] = df2['Volume'][~f_na].replace([np.inf, -np.inf, np.nan], 0).round().astype('int')
             else:
-                df2['Volume'] = df2['Volume'].round(0).astype('int')
+                df2['Volume'] = df2['Volume'].replace([np.inf, -np.inf, np.nan], 0).round().astype('int')
 
         if len(df2_nan) > 0:
             df2 = pd.concat([df2, df2_nan])
