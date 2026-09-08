@@ -91,9 +91,12 @@ class Ticker(TickerBase):
             if not self._expirations:
                 self._download_options()
             if date not in self._expirations:
-                raise ValueError(
-                    f"Expiration `{date}` cannot be found. "
-                    f"Available expirations are: [{', '.join(self._expirations)}]")
+                # Issue #469: Yahoo API occasionally desyncs. Force one retry.
+                self._download_options()
+                if date not in self._expirations:
+                    raise ValueError(
+                        f"Expiration `{date}` cannot be found. "
+                        f"Available expirations are: [{', '.join(self._expirations)}]")
             date = self._expirations[date]
             options = self._download_options(date)
 
