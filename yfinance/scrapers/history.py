@@ -635,6 +635,33 @@ class PriceHistory:
             msg = f'{self.ticker}: yfinance returning OHLC: {df.index[0]} -> {df.index[-1]}'
         logger.debug(msg)
 
+        # Set freq on regular-interval data so downstream libraries (e.g.
+        # sktime) can rely on a meaningful frequency instead of None.
+        # Intraday intervals map to fixed minute/hour offsets; market-hour
+        # grids (and holiday/weekend gaps) that are not perfectly regular
+        # are handled by the ValueError fallback below.
+        _INTERVAL_FREQ = {
+            "1m": pd.offsets.Minute(1),
+            "2m": pd.offsets.Minute(2),
+            "5m": pd.offsets.Minute(5),
+            "15m": pd.offsets.Minute(15),
+            "30m": pd.offsets.Minute(30),
+            "60m": pd.offsets.Minute(60),
+            "90m": pd.offsets.Minute(90),
+            "1h": pd.offsets.Hour(1),
+            "1d": pd.offsets.BDay(),
+            "1wk": pd.offsets.Week(weekday=4),
+            "1mo": pd.offsets.MonthEnd(),
+            "3mo": pd.offsets.QuarterEnd(),
+        }
+        if interval_user in _INTERVAL_FREQ and not df.empty:
+            try:
+                df.index.freq = _INTERVAL_FREQ[interval_user]
+            except ValueError:
+                # Index contains gaps (e.g. long trading halts, delisting,
+                # holiday-shortened weeks) so a regular frequency cannot be set.
+                pass
+
         # Don't care that Pandas hid this. If they do it to improve performance, we do it.
         df = df._consolidate()
 

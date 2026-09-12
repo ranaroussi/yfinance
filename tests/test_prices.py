@@ -32,6 +32,39 @@ class TestPriceHistory(unittest.TestCase):
                 f = df.index.time == _dt.time(0)
                 self.assertTrue(f.all())
 
+    def test_regular_interval_freq(self):
+        # Regular-interval data should expose a meaningful frequency so that
+        # downstream libraries (e.g. sktime) can rely on it (issue #1083).
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+        expected_freq = {
+            "1m": _pd.offsets.Minute(1),
+            "5m": _pd.offsets.Minute(5),
+            "15m": _pd.offsets.Minute(15),
+            "30m": _pd.offsets.Minute(30),
+            "60m": _pd.offsets.Minute(60),
+            "1h": _pd.offsets.Hour(1),
+            "1d": _pd.offsets.BDay(),
+            "1wk": _pd.offsets.Week(weekday=4),
+            "1mo": _pd.offsets.MonthEnd(),
+            "3mo": _pd.offsets.QuarterEnd(),
+        }
+        for interval, freq in expected_freq.items():
+            with self.subTest(interval=interval):
+                for tkr in tkrs:
+                    dat = yf.Ticker(tkr, session=self.session)
+                    df = dat.history(period="1y", interval=interval)
+                    if df.empty:
+                        continue
+                    self.assertIsNotNone(
+                        df.index.freq,
+                        f"{interval} freq missing for {tkr}",
+                    )
+                    self.assertEqual(
+                        df.index.freq,
+                        freq,
+                        f"{interval} freq wrong for {tkr}: {df.index.freq}",
+                    )
+
     def test_download_multi_large_interval(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         intervals = ["1d", "1wk", "1mo"]
