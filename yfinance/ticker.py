@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+from typing import Optional, Union, Dict, List, Any
 from collections import namedtuple as _namedtuple
 
 import pandas as _pd
@@ -28,6 +29,9 @@ import pandas as _pd
 from .base import TickerBase
 from .const import _BASE_URL_
 from .scrapers.funds import FundsData
+
+
+OptionsTuple = _namedtuple('Options', ['calls', 'puts', 'underlying'])
 
 
 class Ticker(TickerBase):
@@ -39,7 +43,7 @@ class Ticker(TickerBase):
     def __repr__(self):
         return f'yfinance.Ticker object <{self.ticker}>'
 
-    def _download_options(self, date=None):
+    def _download_options(self, date: Optional[str] = None) -> Dict[str, Any]:
         if date is None:
             url = f"{_BASE_URL_}/v7/finance/options/{self.ticker}"
         else:
@@ -57,7 +61,7 @@ class Ticker(TickerBase):
             return dict(**opt[0],underlying=self._underlying) if len(opt) > 0 else {}
         return {}
 
-    def _options2df(self, opt, tz=None):
+    def _options2df(self, opt: List[Dict[str, Any]], tz: Union[str, Any, None] = None) -> _pd.DataFrame:
         data = _pd.DataFrame(opt).reindex(columns=[
             'contractSymbol',
             'lastTradeDate',
@@ -80,7 +84,7 @@ class Ticker(TickerBase):
             data['lastTradeDate'] = data['lastTradeDate'].dt.tz_convert(tz)
         return data
 
-    def option_chain(self, date=None, tz=None):
+    def option_chain(self, date: Optional[str] = None, tz: Union[str, Any, None] = None) -> OptionsTuple:
         if date is None:
             options = self._download_options()
         else:
@@ -94,11 +98,11 @@ class Ticker(TickerBase):
             options = self._download_options(date)
 
         if not options:
-            return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
+            return OptionsTuple(**{
                 "calls": None, "puts": None, "underlying": None
             })
 
-        return _namedtuple('Options', ['calls', 'puts', 'underlying'])(**{
+        return OptionsTuple(**{
             "calls": self._options2df(options['calls'], tz=tz),
             "puts": self._options2df(options['puts'], tz=tz),
             "underlying": options['underlying']
