@@ -79,6 +79,9 @@ yfinance = ["pricing.proto", "pricing_pb2.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "network: requires live Yahoo Finance network access",
+]
 
 [tool.setuptools]
 include-package-data = true

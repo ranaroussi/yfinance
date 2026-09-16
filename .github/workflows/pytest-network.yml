@@ -1,16 +1,20 @@
-name: Pytest
+name: Pytest (live)
 
 on:
-  pull_request:
-    branches:
-      - master
-      - main
-      - dev
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  network:
+    # Live tests against Yahoo. Flaky by nature, so scheduled-only (off PRs).
     runs-on: ubuntu-latest
     strategy:
+      # One flaky version must not cancel the others.
+      fail-fast: false
       matrix:
         python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 
@@ -36,7 +40,22 @@ jobs:
       run: uv venv
 
     - name: Install dependencies
-      run: uv pip install -e ".[dev]"
+      # repair extra: some live tests exercise the scipy/sklearn repair path.
+      run: uv pip install -e ".[dev,repair]"
 
-    - name: Run tests
-      run: uv run pytest tests/ -x -q --tb=short --ignore=tests/test_price_repair.py
+    - name: Run non-cache tests
+      # Cache tests need their own process: they mutate global cache state.
+      run: >
+        uv run pytest -m network
+        --ignore tests/test_cache.py
+        --ignore tests/test_cache_noperms.py
+        --ignore tests/test_price_repair.py
+
+    - name: Run cache tests
+      run: |
+        uv run pytest -m network tests/test_cache.py
+        uv run pytest -m network tests/test_cache_noperms.py
+
+    - name: Run price repair tests
+      # Kept separate: the noisiest live tests, so they don't mask the rest.
+      run: uv run pytest -m network tests/test_price_repair.py
