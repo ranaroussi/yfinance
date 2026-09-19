@@ -28,6 +28,9 @@ To initialize multiple `Ticker` objects, use
 .. literalinclude:: examples/tickers.py
    :language: python
 
+To fetch company info for all symbols in one call, use `Tickers.info`
+or `Tickers.get_info()` which returns a dictionary keyed by ticker symbol.
+
 For tickers that are ETFs/Mutual Funds, `Ticker.funds_data` provides access to fund related data. 
 
 Funds' Top Holdings and other data with category average is returned as `pd.DataFrame`.
