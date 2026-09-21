@@ -394,7 +394,6 @@ class TestTickerHistory(unittest.TestCase):
             actual_urls_called[i] = u
 
         expected_urls = [
-            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d",  # ticker's tz
             f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?events=div%2Csplits%2CcapitalGains&includePrePost=false&interval=1d&range={period}"
         ]
         # Cookie & crumb fetches are unavoidable session setup, not scraping
@@ -404,6 +403,81 @@ class TestTickerHistory(unittest.TestCase):
             if parsed_url.hostname in setup_hosts or parsed_url.path.endswith('/getcrumb'):
                 continue
             self.assertIn(url, expected_urls, f"Unexpected URL called: {url}")
+
+    @staticmethod
+    def _mock_chart_response(symbol, tz="America/New_York"):
+        payload = {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "currency": "USD",
+                        "symbol": symbol,
+                        "instrumentType": "EQUITY",
+                        "exchangeTimezoneName": tz,
+                        "regularMarketPrice": 102.0,
+                        "validRanges": ["1d", "5d", "1mo", "1y"],
+                    },
+                    "timestamp": [1710163800, 1710250200],
+                    "indicators": {
+                        "quote": [{
+                            "open": [100.0, 101.0],
+                            "high": [103.0, 104.0],
+                            "low": [99.0, 100.0],
+                            "close": [102.0, 103.0],
+                            "volume": [1000, 1100],
+                        }],
+                        "adjclose": [{"adjclose": [102.0, 103.0]}],
+                    },
+                }],
+                "error": None,
+            }
+        }
+        response = MagicMock()
+        response.text = json.dumps(payload)
+        response.json.return_value = payload
+        return response
+
+    def test_range_history_makes_single_chart_request(self):
+        """A cold-cache range request must not make a separate request just to learn the timezone."""
+        symbol = "MOCK-RANGE"
+        response = self._mock_chart_response(symbol)
+        tz_cache = MagicMock()
+        tz_cache.lookup.return_value = None
+
+        with patch("yfinance.cache.get_tz_cache", return_value=tz_cache), \
+             patch("yfinance.data.YfData.get", return_value=response) as mock_get, \
+             patch("yfinance.data.YfData.cache_get", return_value=response) as mock_cache_get:
+            ticker = yf.Ticker(symbol)
+            data = ticker.history(period="1y")
+
+        self.assertFalse(data.empty)
+        mock_get.assert_called_once()
+        mock_cache_get.assert_not_called()
+        self.assertEqual(mock_get.call_args.kwargs["params"]["range"], "1y")
+        self.assertEqual(ticker._price_history.tz, "America/New_York")
+        tz_cache.store.assert_called_once_with(symbol, "America/New_York")
+
+    def test_date_range_history_fetches_timezone_before_request(self):
+        """Explicit dates need the exchange timezone before converting dates to epochs."""
+        symbol = "MOCK-DATES"
+        response = self._mock_chart_response(symbol)
+        tz_cache = MagicMock()
+        tz_cache.lookup.return_value = None
+
+        with patch("yfinance.cache.get_tz_cache", return_value=tz_cache), \
+             patch("yfinance.utils._fetch_ticker_tz", return_value="America/New_York") as mock_fetch_tz, \
+             patch("yfinance.data.YfData.cache_get", return_value=response) as mock_cache_get:
+            ticker = yf.Ticker(symbol)
+            data = ticker.history(start="2024-03-11", end="2024-03-13")
+
+        self.assertFalse(data.empty)
+        mock_fetch_tz.assert_called_once()
+        self.assertEqual(mock_fetch_tz.call_args.args[2], 10)
+        mock_cache_get.assert_called_once()
+        self.assertIn("period1", mock_cache_get.call_args.kwargs["params"])
+        self.assertIn("period2", mock_cache_get.call_args.kwargs["params"])
+        tz_cache.lookup.assert_called_once_with(symbol)
+        tz_cache.store.assert_called_once_with(symbol, "America/New_York")
 
     def test_dividends(self):
         data = self.ticker.dividends

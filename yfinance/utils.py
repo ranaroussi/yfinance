@@ -41,7 +41,7 @@ from dateutil.relativedelta import relativedelta
 from pytz import UnknownTimeZoneError
 
 from yfinance import const
-from yfinance.exceptions import YFException
+from yfinance.exceptions import YFException, YFRateLimitError
 from yfinance.config import YfConfig
 
 # Use the third-party ``frozendict`` package if installed; otherwise fall
@@ -918,6 +918,69 @@ def is_valid_timezone(tz: str) -> bool:
     except UnknownTimeZoneError:
         return False
     return True
+
+
+def _fetch_ticker_tz(data, ticker, timeout):
+    # Query Yahoo for fast price data just to get returned timezone
+    logger = get_yf_logger()
+
+    params = {"range": "1d", "interval": "1d"}
+
+    # Getting data from json
+    url = f"{const._BASE_URL_}/v8/finance/chart/{ticker}"
+
+    try:
+        data = data.cache_get(url=url, params=params, timeout=timeout)
+        data = data.json()
+    except YFRateLimitError:
+        # Must propagate this
+        raise
+    except Exception as e:
+        if not YfConfig.debug.hide_exceptions:
+            raise
+        logger.error(f"Failed to get ticker '{ticker}' reason: {e}")
+        return None
+    else:
+        error = data.get('chart', {}).get('error', None)
+        if error:
+            # explicit error from yahoo API
+            logger.debug(f"Got error from yahoo api for ticker {ticker}, Error: {error}")
+        else:
+            try:
+                return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
+            except Exception as err:
+                if not YfConfig.debug.hide_exceptions:
+                    raise
+                logger.error(f"Could not get exchangeTimezoneName for ticker '{ticker}' reason: {err}")
+                logger.debug("Got response: ")
+                logger.debug("-------------")
+                logger.debug(f" {data}")
+                logger.debug("-------------")
+    return None
+
+
+def _get_ticker_tz(data, ticker, tz, timeout):
+    """Resolve ticker's timezone from the known value, the tz cache, or a chart request."""
+    from yfinance import cache
+
+    if tz is not None:
+        return tz
+    c = cache.get_tz_cache()
+    tz = c.lookup(ticker)
+
+    if tz and not is_valid_timezone(tz):
+        # Clear from cache and force re-fetch
+        c.store(ticker, None)
+        tz = None
+
+    if tz is None:
+        tz = _fetch_ticker_tz(data, ticker, timeout)
+        if is_valid_timezone(tz):
+            c.store(ticker, tz)
+        else:
+            tz = None
+
+    return tz
 
 
 def format_history_metadata(md):

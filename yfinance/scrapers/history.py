@@ -11,7 +11,7 @@ import pandas as pd
 import time as _time
 import warnings
 
-from yfinance import utils
+from yfinance import cache, utils
 from yfinance.config import YfConfig
 from yfinance.const import _BASE_URL_, _PRICE_COLNAMES_, period_default, _SENTINEL_
 from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesMissingError, YFRateLimitError, YFTzMissingError
@@ -101,6 +101,11 @@ class PriceHistory:
 
         self._last_error = None
 
+    def _get_tz(self, timeout):
+        if self.tz is None:
+            self.tz = utils._get_ticker_tz(self._data, self.ticker, None, timeout)
+        return self.tz
+
     @utils.log_indent_decorator
     def history(self, period=period_default, interval="1d",
                 start=None, end=None, prepost=False, actions=True,
@@ -170,7 +175,7 @@ class PriceHistory:
                 raise ValueError("Yahoo's interval '5d' is nonsense, not supported with repair")
             if start is None and end is None and period is not None:
                 # Convert period to start -> end
-                tz = self.tz
+                tz = self._get_tz(10)
                 if tz is None:
                     # Every valid ticker has a timezone. A missing timezone is a problem.
                     _exception = YFTzMissingError(self.ticker)
@@ -195,7 +200,7 @@ class PriceHistory:
         end_user = end
         if start or end or (period and period.lower() == "max"):
             # Check can get TZ. Fail => probably delisted
-            tz = self.tz
+            tz = self._get_tz(10)
             if tz is None:
                 # Every valid ticker has a timezone. A missing timezone is a problem.
                 _exception = YFTzMissingError(self.ticker)
@@ -316,6 +321,15 @@ class PriceHistory:
         self._history_metadata_formatted = False
         self._history_metadata_lazy = None
         self._history_metadata['YF repair?'] = repair
+
+        # The chart response includes the exchange timezone. Learn it now if
+        # the request did not need it earlier, so later requests skip the
+        # separate timezone lookup.
+        if self.tz is None:
+            tz_exchange = meta.get("exchangeTimezoneName")
+            if tz_exchange and utils.is_valid_timezone(tz_exchange):
+                self.tz = tz_exchange
+                cache.get_tz_cache().store(self.ticker, tz_exchange)
 
         intraday = params["interval"][-1] in ("m", 'h')
         _price_data_debug = ''
