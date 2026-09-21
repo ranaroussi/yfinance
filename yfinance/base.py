@@ -34,7 +34,7 @@ from . import utils, cache
 from .const import _MIC_TO_YAHOO_SUFFIX, _SENTINEL_
 from .data import YfData
 from .config import YfConfig
-from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
+from .exceptions import YFDataException, YFEarningsDateMissing
 from .live import WebSocket
 from .scrapers.analysis import Analysis
 from .scrapers.fundamentals import Fundamentals
@@ -43,7 +43,7 @@ from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
-from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
+from .const import _ROOT_URL_, _QUERY1_URL_
 
 from io import StringIO
 from bs4 import BeautifulSoup
@@ -132,80 +132,34 @@ class TickerBase:
 
     def _lazy_load_price_history(self):
         if self._price_history is None:
-            self._price_history = PriceHistory(self._data, self.ticker, self._get_ticker_tz(timeout=10))
+            self._price_history = PriceHistory(self._data, self.ticker, self._tz)
         return self._price_history
 
     def _get_ticker_tz(self, timeout):
         if self._tz is not None:
             return self._tz
-        c = cache.get_tz_cache()
-        tz = c.lookup(self.ticker)
-
-        if tz and not utils.is_valid_timezone(tz):
-            # Clear from cache and force re-fetch
-            c.store(self.ticker, None)
-            tz = None
-
-        if tz is None:
-            tz = self._fetch_ticker_tz(timeout)
-            if tz is None:
-                # _fetch_ticker_tz works in 99.999% of cases.
-                # For rare fail get from info.
-                global _tz_info_fetch_ctr
-                if _tz_info_fetch_ctr < 2:
-                    # ... but limit. If _fetch_ticker_tz() always
-                    # failing then bigger problem.
-                    _tz_info_fetch_ctr += 1
-                    for k in ['exchangeTimezoneName', 'timeZoneFullName']:
-                        if k in self.info:
-                            tz = self.info[k]
-                            break
-            if utils.is_valid_timezone(tz):
-                c.store(self.ticker, tz)
+        self._tz = utils._get_ticker_tz(self._data, self.ticker, None, timeout)
+        if self._tz is None:
+            # _fetch_ticker_tz works in 99.999% of cases.
+            # For rare fail get from info.
+            global _tz_info_fetch_ctr
+            if _tz_info_fetch_ctr < 2:
+                # ... but limit. If _fetch_ticker_tz() always
+                # failing then bigger problem.
+                _tz_info_fetch_ctr += 1
+                for k in ['exchangeTimezoneName', 'timeZoneFullName']:
+                    if k in self.info:
+                        self._tz = self.info[k]
+                        break
+            if utils.is_valid_timezone(self._tz):
+                cache.get_tz_cache().store(self.ticker, self._tz)
             else:
-                tz = None
-
-        self._tz = tz
-        return tz
+                self._tz = None
+        return self._tz
 
     @utils.log_indent_decorator
     def _fetch_ticker_tz(self, timeout):
-        # Query Yahoo for fast price data just to get returned timezone
-        logger = utils.get_yf_logger()
-
-        params = {"range": "1d", "interval": "1d"}
-
-        # Getting data from json
-        url = f"{_BASE_URL_}/v8/finance/chart/{self.ticker}"
-
-        try:
-            data = self._data.cache_get(url=url, params=params, timeout=timeout)
-            data = data.json()
-        except YFRateLimitError:
-            # Must propagate this
-            raise
-        except Exception as e:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            logger.error(f"Failed to get ticker '{self.ticker}' reason: {e}")
-            return None
-        else:
-            error = data.get('chart', {}).get('error', None)
-            if error:
-                # explicit error from yahoo API
-                logger.debug(f"Got error from yahoo api for ticker {self.ticker}, Error: {error}")
-            else:
-                try:
-                    return data["chart"]["result"][0]["meta"]["exchangeTimezoneName"]
-                except Exception as err:
-                    if not YfConfig.debug.hide_exceptions:
-                        raise
-                    logger.error(f"Could not get exchangeTimezoneName for ticker '{self.ticker}' reason: {err}")
-                    logger.debug("Got response: ")
-                    logger.debug("-------------")
-                    logger.debug(f" {data}")
-                    logger.debug("-------------")
-        return None
+        return utils._fetch_ticker_tz(self._data, self.ticker, timeout)
 
     def get_recommendations(self, as_dict=False):
         """
