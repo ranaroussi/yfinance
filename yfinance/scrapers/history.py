@@ -372,6 +372,16 @@ class PriceHistory:
                 logger.error(err_msg)
             if self._reconstruct_start_interval is not None and self._reconstruct_start_interval == interval:
                 self._reconstruct_start_interval = None
+            # Ensure actions default to empty Series instead of staying None,
+            # so callers of .dividends/.splits/.capital_gains always get a
+            # pd.Series (per type hint) even when the price fetch itself failed
+            # (e.g. delisted/invalid ticker).
+            if self._dividends is None:
+                self._dividends = pd.Series()
+            if self._splits is None:
+                self._splits = pd.Series()
+            if self._capital_gains is None:
+                self._capital_gains = pd.Series()
             return utils.empty_df()
 
         # Select useful info from metadata
