@@ -22,6 +22,7 @@ from yfinance.utils import (
     _dts_in_same_interval,
     _parse_user_dt,
     _interval_to_timedelta,
+    fix_Yahoo_returning_live_separate,
 )
 
 
@@ -245,6 +246,31 @@ class TestMultiDayInterval(unittest.TestCase):
                        if issubclass(w.category, DeprecationWarning)
                        and "generic" in str(w.message)]
             self.assertEqual(generic, [], f"generic-unit warning for {interval!r}")
+
+
+class TestFixYahooReturningLiveSeparate(unittest.TestCase):
+    def test_repair_unit_mixup_uses_currency_divide(self):
+        # Yahoo can return the live row in the sub-unit (100x, or 1000x for
+        # Kuwaiti fils). The older row must be rescaled by the same factor
+        # that detected the mixup, else the merged bar is still off.
+        tz = "Asia/Kuwait"
+        idx = pd.DatetimeIndex([pd.Timestamp("2024-06-03", tz=tz),
+                                pd.Timestamp("2024-06-05 10:15", tz=tz)])
+        for currency, m in [("GBp", 100), ("KWF", 1000)]:
+            for f in (m, 1.0/m):
+                with self.subTest(currency=currency, live_row_factor=f):
+                    df = pd.DataFrame({
+                        "Open": [1.0, f*1.0], "High": [1.01, f*1.01],
+                        "Low": [0.99, f*0.99], "Close": [1.0, f*1.0],
+                        "Adj Close": [1.0, f*1.0], "Volume": [100, 50],
+                        "Dividends": [0.0, 0.0], "Stock Splits": [0.0, 0.0]}, index=idx)
+                    df, _ = fix_Yahoo_returning_live_separate(df, "1wk", tz, prepost=False, repair=True, currency=currency)
+                    self.assertEqual(len(df), 1)
+                    row = df.iloc[0]
+                    self.assertAlmostEqual(row["Open"], f*1.0)
+                    self.assertAlmostEqual(row["High"], f*1.01)
+                    self.assertAlmostEqual(row["Low"], f*0.99)
+                    self.assertAlmostEqual(row["Close"], f*1.0)
 
 
 if __name__ == "__main__":

@@ -738,13 +738,13 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
                     if abs(ss/currency_divide-1) > 0.25:
                         ratio = quotes.loc[idx1, const._PRICE_COLNAMES_] / quotes.loc[idx2, const._PRICE_COLNAMES_]
                         if ((ratio/currency_divide-1).abs() < 0.05).all():
-                            # newer prices are 100x
+                            # newer prices are 100x (1000x for KWF)
                             for c in const._PRICE_COLNAMES_:
-                                quotes.loc[idx2, c] *= 100
+                                quotes.loc[idx2, c] *= currency_divide
                         elif((ratio*currency_divide-1).abs() < 0.05).all():
-                            # newer prices are 0.01x
+                            # newer prices are 0.01x (0.001x for KWF)
                             for c in const._PRICE_COLNAMES_:
-                                quotes.loc[idx2, c] *= 0.01
+                                quotes.loc[idx2, c] /= currency_divide
 
                 if _np.isnan(quotes.loc[idx2, "Open"]):
                     quotes.loc[idx2, "Open"] = quotes["Open"].iloc[-1]
