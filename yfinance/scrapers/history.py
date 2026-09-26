@@ -1290,7 +1290,7 @@ class PriceHistory:
                 reverse = False
             elif fx == 'USD':
                 # Use same USD FX but reversed
-                fx_tkr = f'{fx}=X'
+                fx_tkr = f'{c}=X'
                 reverse = True
             elif c in major_currencies and fx in major_currencies:
                 # Simple convert
