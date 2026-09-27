@@ -780,7 +780,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     data_col = data_cols[0]
 
     df_main = df_main.sort_index()
-    intraday = interval.endswith('m') or interval.endswith('s')
+    intraday = interval.endswith(('m', 'h', 's'))
 
     td = _interval_to_timedelta(interval)
     if intraday:

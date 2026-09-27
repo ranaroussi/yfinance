@@ -203,6 +203,22 @@ class TestPriceHistory(unittest.TestCase):
         yf.utils.safe_merge_dfs(df, divs, interval)
         # No exception = test pass
 
+    def test_pricesEventsMerge_hourly(self):
+        # '1h' must merge events exactly like '60m'. An event stamped before
+        # the open belongs to that day's first bar, not the previous day's
+        # last bar, and must not be dropped if before the first bar.
+        tz = "America/New_York"
+        df_index = [_pd.Timestamp(_dt.datetime(2024, 1, d, h, 30)).tz_localize(tz) for d in (2, 3) for h in range(9, 16)]
+        df = _pd.DataFrame(data={"Close": 1.0}, index=_pd.DatetimeIndex(df_index))
+
+        for div_dt, expected_dt in [(_dt.datetime(2024, 1, 3), _dt.datetime(2024, 1, 3, 9, 30)),
+                                    (_dt.datetime(2024, 1, 2), _dt.datetime(2024, 1, 2, 9, 30))]:
+            divs = _pd.DataFrame(data={"Dividends": [0.5]}, index=[_pd.Timestamp(div_dt).tz_localize(tz)])
+            expected = [_pd.Timestamp(expected_dt).tz_localize(tz)]
+            for interval in ["60m", "1h"]:
+                df_merged = yf.utils.safe_merge_dfs(df.copy(), divs.copy(), interval)
+                self.assertEqual(df_merged.index[df_merged["Dividends"].notna()].tolist(), expected, interval)
+
     def test_intraDayWithEvents(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         test_run = False
