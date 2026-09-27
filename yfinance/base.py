@@ -634,11 +634,11 @@ class TickerBase:
         if limit > 100:
             raise ValueError("Yahoo caps limit at 100")
 
-        if self._earnings_dates and limit in self._earnings_dates:
-            return self._earnings_dates[limit]
+        if (limit, offset) in self._earnings_dates:
+            return self._earnings_dates[(limit, offset)]
 
         df = self._get_earnings_dates_using_scrape(limit, offset)
-        self._earnings_dates[limit] = df
+        self._earnings_dates[(limit, offset)] = df
         return df
 
     @utils.log_indent_decorator
