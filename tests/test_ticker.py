@@ -1060,6 +1060,31 @@ class TestTickerMiscFinancials(unittest.TestCase):
     #     self.assertFalse(data.empty, "data is empty")
 
 
+class TestTickerEarningsDatesOffset(unittest.TestCase):
+    @staticmethod
+    def _earnings_page(dates):
+        rows = "".join(f"<tr><td>IBM</td><td>IBM Corp</td><td>{d}</td><td>1.0</td><td>1.1</td><td>10.0</td></tr>" for d in dates)
+        return ("<html><body><table><thead><tr><th>Symbol</th><th>Company</th><th>Earnings Date</th>"
+                "<th>EPS Estimate</th><th>Reported EPS</th><th>Surprise (%)</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table></body></html>")
+
+    def test_earnings_dates_cache_respects_offset(self):
+        pages = {"0": self._earnings_page(["October 20, 2025 at 4 PM EDT", "July 23, 2025 at 4 PM EDT"]),
+                 "2": self._earnings_page(["April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])}
+
+        def fake_cache_get(url, *args, **kwargs):
+            offset = parse_qs(urlparse(url).query)["offset"][0]
+            return MagicMock(text=pages[offset])
+
+        dat = yf.Ticker("IBM")
+        with patch("yfinance.data.YfData.cache_get", side_effect=fake_cache_get):
+            first = dat.get_earnings_dates(limit=12, offset=0)
+            older = dat.get_earnings_dates(limit=12, offset=2)
+            first_again = dat.get_earnings_dates(limit=12, offset=0)
+        self.assertEqual([str(d.date()) for d in first.index], ["2025-10-20", "2025-07-23"])
+        self.assertEqual([str(d.date()) for d in older.index], ["2025-04-24", "2025-01-29"])
+        self.assertIs(first, first_again, "data not cached")
+
 class TestTickerAnalysts(unittest.TestCase):
     session = None
 
