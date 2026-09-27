@@ -2,6 +2,7 @@ from tests.context import yfinance as yf
 from tests.context import session_gbl
 
 import unittest
+from unittest import mock
 
 import os
 import datetime as _dt
@@ -795,6 +796,31 @@ class TestPriceRepair(unittest.TestCase):
             print("- df_repair['Close']:")
             print(close_repair)
             raise
+
+
+class TestDividendsConvertFx(unittest.TestCase):
+    def test_dividends_convert_fx_to_usd(self):
+        # Yahoo FX ticker "XXX=X" = units of XXX per 1 USD.
+        # A EUR dividend on a USD-priced stock must use EUR=X, reversed.
+        rates = {"EUR=X": 0.8, "GBP=X": 0.5, "USD=X": 1.0}
+        requested = []
+
+        def fake_history(ph, *args, **kwargs):
+            requested.append(ph.ticker)
+            return _pd.DataFrame({"Close": [rates[ph.ticker]]})
+
+        idx = _pd.DatetimeIndex([_pd.Timestamp("2025-01-10", tz="America/New_York")])
+        ph = yf.scrapers.history.PriceHistory(None, "TEST", "America/New_York", session=object())
+        for div_ccy, price_ccy, expected_tkr, expected_div in [("EUR", "USD", "EUR=X", 1.25),
+                                                               ("USD", "GBP", "GBP=X", 0.5)]:
+            with self.subTest(div_ccy=div_ccy, price_ccy=price_ccy):
+                requested.clear()
+                divs = _pd.DataFrame({"Dividends": [1.0], "currency": [div_ccy]}, index=idx)
+                with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
+                    divs = ph._dividends_convert_fx(divs, price_ccy)
+                self.assertEqual(requested, [expected_tkr])
+                self.assertAlmostEqual(divs["Dividends"].iloc[0], expected_div)
+                self.assertEqual(divs["currency"].iloc[0], price_ccy)
 
 
 if __name__ == '__main__':
