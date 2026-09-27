@@ -2,6 +2,7 @@ from tests.context import yfinance as yf
 from tests.context import session_gbl
 
 import unittest
+from unittest import mock
 import socket
 
 import datetime as _dt
@@ -44,9 +45,9 @@ class TestPriceHistory(unittest.TestCase):
             "60m": _pd.offsets.Minute(60),
             "1h": _pd.offsets.Hour(1),
             "1d": _pd.offsets.BDay(),
-            "1wk": _pd.offsets.Week(weekday=4),
-            "1mo": _pd.offsets.MonthEnd(),
-            "3mo": _pd.offsets.QuarterEnd(),
+            "1wk": _pd.offsets.Week(weekday=0),
+            "1mo": _pd.offsets.MonthBegin(),
+            "3mo": _pd.offsets.QuarterBegin(),
         }
         for interval, freq in expected_freq.items():
             with self.subTest(interval=interval):
@@ -55,6 +56,8 @@ class TestPriceHistory(unittest.TestCase):
                     df = dat.history(period="1y", interval=interval)
                     if df.empty:
                         continue
+                    if interval == "3mo":
+                        freq = _pd.offsets.QuarterBegin(startingMonth=df.index[0].month)
                     self.assertIsNotNone(
                         df.index.freq,
                         f"{interval} freq missing for {tkr}",
@@ -574,6 +577,36 @@ class TestPriceHistory(unittest.TestCase):
         self.assertIn("data not available", msg)
         self.assertIn("(30m resampled from 15m)", msg)
 
+
+class TestPriceHistoryFreqOffline(unittest.TestCase):
+    @staticmethod
+    def _chart(dates, tz):
+        ts = [int(_pd.Timestamp(d, tz=tz).timestamp()) for d in dates]
+        n = len(ts)
+        quote = {"open": [100.0]*n, "high": [101.0]*n, "low": [99.0]*n, "close": [100.5]*n, "volume": [1000]*n}
+        meta = {"currency": "USD", "instrumentType": "EQUITY", "exchangeTimezoneName": tz, "priceHint": 2,
+                "validRanges": ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]}
+        return {"chart": {"result": [{"meta": meta, "timestamp": ts,
+                                      "indicators": {"quote": [quote], "adjclose": [{"adjclose": [100.5]*n}]}}],
+                          "error": None}}
+
+    def test_multiday_interval_freq_set(self):
+        # Yahoo labels weekly bars on Monday and monthly/quarterly bars on
+        # the 1st of the month, so the freq set on the index must match that.
+        tz = "America/New_York"
+        cases = {
+            "1wk": (_pd.date_range("2025-01-06", periods=8, freq="W-MON"), _pd.offsets.Week(weekday=0)),
+            "1mo": (_pd.date_range("2025-01-01", periods=8, freq="MS"), _pd.offsets.MonthBegin()),
+            "3mo": (_pd.date_range("2024-11-01", periods=4, freq="QS-NOV"), _pd.offsets.QuarterBegin(startingMonth=11)),
+        }
+        for interval, (dates, freq) in cases.items():
+            with self.subTest(interval=interval):
+                resp = mock.Mock(text="", json=mock.Mock(return_value=self._chart(dates, tz)))
+                data = mock.Mock(get=mock.Mock(return_value=resp), cache_get=mock.Mock(return_value=resp))
+                ph = yf.scrapers.history.PriceHistory(data, "TEST", tz, session=None)
+                df = ph.history(period="1y", interval=interval)
+                self.assertEqual(len(df), len(dates))
+                self.assertEqual(df.index.freq, freq)
 
 if __name__ == '__main__':
     unittest.main()
