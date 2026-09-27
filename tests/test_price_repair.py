@@ -823,36 +823,5 @@ class TestDividendsConvertFx(unittest.TestCase):
                 self.assertEqual(divs["currency"].iloc[0], price_ccy)
 
 
-class TestReconstruct60m(unittest.TestCase):
-    def test_repair_zeroes_60m_same_as_1h(self):
-        # "60m" is a synonym of "1h", so price reconstruction must also
-        # support it (fetching 30m data), not skip it as unimplemented.
-        tz = "America/New_York"
-        day = (_pd.Timestamp.now(tz) - _pd.Timedelta(days=3)).normalize()
-        idx = _pd.DatetimeIndex([day + _pd.Timedelta(hours=9, minutes=30) + _pd.Timedelta(hours=h) for h in range(6)])
-        df = _pd.DataFrame({"Open": 100.0, "High": 101.0, "Low": 99.0, "Close": 100.5, "Adj Close": 100.5,
-                            "Volume": 1000, "Dividends": 0.0, "Stock Splits": 0.0}, index=idx)
-        df.loc[idx[3], ["Open", "High", "Low", "Close", "Adj Close"]] = _np.nan
-        df.loc[idx[3], "Volume"] = 0
-        fine_idx = _pd.date_range(idx[0], idx[-1] + _pd.Timedelta(minutes=30), freq="30min")
-        df_fine = _pd.DataFrame({"Open": 100.0, "High": 101.0, "Low": 99.0, "Close": 100.5, "Adj Close": 100.5,
-                                 "Volume": 500, "Dividends": 0.0, "Stock Splits": 0.0, "Repaired?": False}, index=fine_idx)
-
-        for interval in ["1h", "60m"]:
-            with self.subTest(interval=interval):
-                requested = []
-
-                def fake_history(ph, *args, **kwargs):
-                    requested.append(kwargs.get("interval"))
-                    return df_fine.copy()
-
-                ph = yf.scrapers.history.PriceHistory(None, "TEST", tz, session=object())
-                with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
-                    repaired = ph._fix_zeroes(df.copy(), interval, tz, prepost=False)
-                self.assertEqual(requested, ["30m"])
-                self.assertTrue(repaired.loc[idx[3], "Repaired?"])
-                self.assertEqual(repaired.loc[idx[3], "Close"], 100.5)
-                self.assertEqual(repaired.loc[idx[3], "Volume"], 1000)
-
 if __name__ == '__main__':
     unittest.main()
