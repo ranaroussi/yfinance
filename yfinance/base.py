@@ -726,7 +726,7 @@ class TickerBase:
             dts = dt_parts[0]
             tzs = dt_parts[1]
             df['Earnings Date'] = pd.to_datetime(dts, format='%B %d, %Y at %I %p')
-            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)])
+            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)], index=df.index)
             df = df.set_index("Earnings Date")
 
         else:
