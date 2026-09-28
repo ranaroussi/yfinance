@@ -902,5 +902,84 @@ class TestPriceRepairLevelShift(unittest.TestCase):
             self.assertFalse(repaired_df['Repaired?'].any())
 
 
+class TestRepairMultidayResample(unittest.TestCase):
+    # Offline: repair of multi-day intervals fetches 1d then resamples.
+    tz = "America/New_York"
+
+    def _make_price_history(self, first_day="2020-01-06"):
+        # 40 weekdays from a Monday, bars at 09:30 New York.
+        days = _pd.bdate_range(first_day, periods=40)
+        ts = [int(_pd.Timestamp(d).tz_localize(self.tz).replace(hour=9, minute=30).timestamp()) for d in days]
+        close = [100.0 + 0.5 * i for i in range(len(days))]
+        chart = {"chart": {"error": None, "result": [{
+            "meta": {"currency": "USD", "instrumentType": "EQUITY",
+                     "exchangeTimezoneName": self.tz, "priceHint": 2,
+                     "validRanges": ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]},
+            "timestamp": ts,
+            "indicators": {
+                "quote": [{"open": [c - 0.2 for c in close], "high": [c + 1.0 for c in close],
+                           "low": [c - 1.0 for c in close], "close": close,
+                           "volume": [1_000_000 + 1000 * i for i in range(len(days))]}],
+                "adjclose": [{"adjclose": close}]}}]}}
+
+        requests = []
+
+        class FakeResponse:
+            text = ""
+
+            def json(self):
+                return chart
+
+        class FakeData:
+            def get(self, url, params=None, timeout=None):
+                requests.append(dict(params))
+                return FakeResponse()
+            cache_get = get
+
+        ph = yf.scrapers.history.PriceHistory(FakeData(), "TEST", self.tz, session=object())
+        return ph, requests, days, close
+
+    def _check_resampled(self, df, interval, days, close):
+        self.assertFalse(df.empty)
+        self.assertEqual(df["Volume"].sum(), sum(1_000_000 + 1000 * i for i in range(len(days))))
+        self.assertEqual(df["Close"].iloc[-1], close[-1])
+        if interval == "1wk":
+            self.assertEqual(len(df), 8)
+            self.assertTrue((df.index.weekday == 0).all())
+            self.assertEqual(df["Open"].iloc[0], close[0] - 0.2)
+            self.assertEqual(df["Close"].iloc[0], close[4])
+        elif interval == "1mo":
+            self.assertEqual(list(df.index.strftime("%Y-%m-%d")), ["2020-01-01", "2020-02-01"])
+            self.assertEqual(df["Close"].iloc[0], close[19])
+
+    def test_daily_control(self):
+        ph, requests, days, _ = self._make_price_history()
+        df = ph.history(period="max", interval="1d", repair=True, auto_adjust=False)
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(len(df), len(days))
+
+    def test_period_max(self):
+        for interval in ["1wk", "1mo", "3mo"]:
+            with self.subTest(interval=interval):
+                ph, requests, days, close = self._make_price_history()
+                df = ph.history(period="max", interval=interval, repair=True, auto_adjust=False)
+
+                # One 1d request covering the whole history, as for period="max" without repair.
+                self.assertEqual(len(requests), 1)
+                self.assertEqual(requests[0]["interval"], "1d")
+                self.assertLess(requests[0]["period1"], _pd.Timestamp("1990-01-01", tz=self.tz).timestamp())
+                self._check_resampled(df, interval, days, close)
+
+    def test_period_max_3mo_anchored_on_first_month(self):
+        # Yahoo's 3mo bars for period="max" start on the first month of data,
+        # not on the current month. Two start months so the check does not
+        # depend on the month the test runs in.
+        for first_day, label in [("2020-01-06", "2020-01-01"), ("2020-02-03", "2020-02-01")]:
+            with self.subTest(first_day=first_day):
+                ph, _, _, _ = self._make_price_history(first_day)
+                df = ph.history(period="max", interval="3mo", repair=True, auto_adjust=False)
+                self.assertEqual(list(df.index.strftime("%Y-%m-%d")), [label])
+
+
 if __name__ == '__main__':
     unittest.main()
