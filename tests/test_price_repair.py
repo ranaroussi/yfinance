@@ -901,6 +901,20 @@ class TestRepairMultidayResample(unittest.TestCase):
                 df = ph.history(period="max", interval="3mo", repair=True, auto_adjust=False)
                 self.assertEqual(list(df.index.strftime("%Y-%m-%d")), [label])
 
+    def test_actions_false(self):
+        # yf.download() defaults to actions=False, so the event columns are
+        # dropped before resampling.
+        for interval in ["1wk", "1mo", "3mo"]:
+            with self.subTest(interval=interval):
+                ph, requests, days, close = self._make_price_history()
+                df = ph.history(start="2020-01-01", end="2020-03-01", interval=interval,
+                                repair=True, actions=False, auto_adjust=False)
+                self.assertEqual(len(requests), 1)
+                self.assertEqual(requests[0]["interval"], "1d")
+                self.assertNotIn("Dividends", df.columns)
+                self.assertNotIn("Stock Splits", df.columns)
+                self._check_resampled(df, interval, days, close)
+
 
 if __name__ == '__main__':
     unittest.main()

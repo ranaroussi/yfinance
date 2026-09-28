@@ -822,12 +822,16 @@ class PriceHistory:
             resample_map['Adj Close'] = resample_map['Close']
         if 'Capital Gains' in df.columns:
             resample_map['Capital Gains'] = 'sum'
-        df.loc[df['Stock Splits']==0.0, 'Stock Splits'] = 1.0
+        # Event columns are absent if history() called with actions=False
+        resample_map = {k: v for k, v in resample_map.items() if k in df.columns}
+        if 'Stock Splits' in df.columns:
+            df.loc[df['Stock Splits']==0.0, 'Stock Splits'] = 1.0
         if origin != 'epoch':
             df2 = df.resample(resample_period, label='left', closed='left', origin=origin).agg(resample_map)
         else:
             df2 = df.resample(resample_period, label='left', closed='left', offset=offset).agg(resample_map)
-        df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
+        if 'Stock Splits' in df2.columns:
+            df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
 
         # Handle NaNs from very long holidays.
         prev_close = df2['Close'].shift(1).ffill()
