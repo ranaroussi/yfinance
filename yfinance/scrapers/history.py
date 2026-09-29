@@ -554,6 +554,8 @@ class PriceHistory:
                 # Because converting to Int, need to handle NaNs
                 df.loc[f_na, 'Volume'] = 0
 
+            if '=' not in self.ticker:
+                df = self._fix_unexplained_level_shifts(df, interval, tz_exchange)
             df = self._fix_bad_div_adjust(df, interval, prepost, currency)
 
             # Need the latest/last row to be repaired before 100x/split repair:
@@ -2975,6 +2977,139 @@ class PriceHistory:
             df2 = pd.concat([df2, df2_nan]).sort_index()
 
         return df2
+
+    @utils.log_indent_decorator
+    def _fix_unexplained_level_shifts(self, df, interval, tz_exchange):
+        # Sometimes Yahoo applies a split-like adjustment to all daily data
+        # before a date, but no split exists near that date: prices are Nx too
+        # big and Volume Nx too small. N need not match any split ratio,
+        # e.g. SOXS before 2026-05-26 is 15x, but its splits are 1:20 and 1:10.
+        # So split-repair can't fix this, and N can't be accurately estimated
+        # from 1d data because the real price change is unknown.
+        # But Yahoo's intraday data is not affected, so use it to measure N.
+        # A genuine crash appears in intraday data too, so is not repaired.
+        if df.empty or interval != '1d':
+            return df
+
+        logger = utils.get_yf_logger()
+        log_extras = {'yf_cat': 'price-repair-level-shift', 'yf_interval': interval, 'yf_symbol': self.ticker}
+
+        OHLC = ['Open', 'High', 'Low', 'Close']
+        min_change = 2.0  # ignore smaller price changes
+        n_side = 5  # rows each side of the shift to analyse
+        min_side = 3  # shift must persist for this many rows
+
+        df = df.sort_index()
+        f_active = (df[OHLC] > 0).all(axis=1).to_numpy() & (df['Volume'] > 0).to_numpy()
+        df2 = df[f_active]
+        if len(df2) < 2 * min_side:
+            return df
+        prices = df2[OHLC].to_numpy(dtype=float, copy=True)
+        vol = df2['Volume'].to_numpy(dtype=float, copy=True)
+        change = np.full(len(df2), 1.0)
+        change[1:] = np.median(prices[1:] / prices[:-1], axis=1)
+        idx_shifts = np.where((change > min_change) | (change < 1.0 / min_change))[0]
+        if len(idx_shifts) == 0:
+            return df
+        # Split rows can be inactive (e.g. NaN prices), so locate by date
+        idx_splits = df2.index.searchsorted(df.index[df['Stock Splits'].to_numpy() != 0])
+        # Yahoo only returns 1h data for last 730 days
+        min_dt = pd.Timestamp.now('UTC') - _datetime.timedelta(days=729)
+
+        for b in idx_shifts[::-1]:
+            dt_shift = df2.index[b]
+            if b < min_side or len(df2) - b < min_side:
+                continue
+            if (np.abs(idx_splits - b) <= n_side).any():
+                # Near a split, so leave to _fix_bad_stock_splits()
+                continue
+            i0 = max(0, b - n_side)
+            i1 = min(len(df2), b + n_side)
+
+            # Must be a persistent shift, not a spike, and Volume must move
+            # inversely i.e. no big change in traded value.
+            price_shift = np.median(prices[b:i1, 3]) / np.median(prices[i0:b, 3])
+            vol_shift = np.median(vol[b:i1]) / np.median(vol[i0:b])
+            if 1.0 / min_change < price_shift < min_change:
+                continue
+            if abs(np.log(price_shift * vol_shift)) > 0.5 * abs(np.log(price_shift)):
+                continue
+            if df2.index[i0] < min_dt:
+                logger.debug(f"Possible level shift on {dt_shift.date()} but too old to check with 1h data", extra=log_extras)
+                continue
+
+            # Calibrate against 1h data. Restore state after, because
+            # history() overwrites it.
+            state = (self._history_metadata, self._history_metadata_formatted, self._history_metadata_lazy,
+                     self._dividends, self._splits, self._capital_gains)
+            log_level = logger.level if hasattr(logger, 'level') else None
+            if log_level is not None:
+                logger.setLevel(logging.CRITICAL)
+            # First and last day returned by Yahoo can be slightly wrong, so add buffer
+            fetch_start = df2.index[i0].date() - _datetime.timedelta(days=1)
+            fetch_end = df2.index[i1-1].date() + _datetime.timedelta(days=2)
+            try:
+                df_fine = self.history(start=fetch_start, end=fetch_end, interval='1h',
+                                       prepost=False, auto_adjust=False, actions=False, repair=False)
+            except YFRateLimitError:
+                raise
+            except Exception:
+                df_fine = None
+            finally:
+                if log_level is not None:
+                    logger.setLevel(log_level)
+                (self._history_metadata, self._history_metadata_formatted, self._history_metadata_lazy,
+                 self._dividends, self._splits, self._capital_gains) = state
+            if df_fine is None or df_fine.empty:
+                logger.debug(f"Possible level shift on {dt_shift.date()} but no 1h data to check", extra=log_extras)
+                continue
+            df_fine = df_fine[(df_fine[OHLC] > 0).all(axis=1)]
+            df_fine_1d = df_fine.groupby(df_fine.index.tz_convert(tz_exchange).date).agg(
+                Open=('Open', 'first'), High=('High', 'max'), Low=('Low', 'min'), Close=('Close', 'last'))
+            ratios = np.full(i1 - i0, np.nan)
+            for i in range(i0, i1):
+                d = df2.index[i].date()
+                if d in df_fine_1d.index:
+                    ratios[i - i0] = np.median(prices[i] / df_fine_1d.loc[d, OHLC].to_numpy(dtype=float))
+            ratios_before = ratios[:b - i0][~np.isnan(ratios[:b - i0])]
+            ratios_after = ratios[b - i0:][~np.isnan(ratios[b - i0:])]
+            if len(ratios_before) < 2 or len(ratios_after) < 2:
+                logger.debug(f"Possible level shift on {dt_shift.date()} but not enough 1h data to check", extra=log_extras)
+                continue
+            r_before = np.median(ratios_before)
+            r_after = np.median(ratios_after)
+            tol = np.log(1.05)
+            if (np.abs(np.log(ratios_before / r_before)) > tol).any() or (np.abs(np.log(ratios_after / r_after)) > tol).any():
+                logger.debug(f"Possible level shift on {dt_shift.date()} but 1d/1h ratios inconsistent: {ratios.round(3)}", extra=log_extras)
+                continue
+            m = r_before / r_after
+            if 0.8 < m < 1.25:
+                logger.debug(f"Price change on {dt_shift.date()} also in 1h data, so is genuine", extra=log_extras)
+                continue
+            # Expect a clean split-like ratio
+            m_int = round(m) if m > 1 else 1.0 / round(1.0 / m)
+            if abs(m / m_int - 1) > 0.03:
+                logger.debug(f"Possible level shift on {dt_shift.date()} but ratio {m:.3f} not clean", extra=log_extras)
+                continue
+
+            # Dividends not touched. Yahoo's were correct for SOXS, and
+            # _fix_bad_div_adjust() then corrects the div-adjustment.
+            f = df.index < dt_shift
+            for c in OHLC + ['Adj Close']:
+                df.loc[f, c] /= m_int
+            vol_repaired = (df['Volume'] * np.where(f, m_int, 1.0)).round()
+            if not vol_repaired.isna().any():
+                vol_repaired = vol_repaired.astype(df['Volume'].dtype)
+            df['Volume'] = vol_repaired
+            if 'Repaired?' not in df.columns:
+                df['Repaired?'] = False
+            df.loc[f, 'Repaired?'] = True
+            prices[:b] /= m_int
+            vol[:b] *= m_int
+            msg = f"{round(m_int)}x too high" if m_int > 1 else f"{round(1.0 / m_int)}x too low"
+            logger.info(f"Corrected unexplained level shift on {dt_shift.date()}: prices before were {msg}", extra=log_extras)
+
+        return df
 
     @utils.log_indent_decorator
     def _fix_bad_stock_splits(self, df, interval, tz_exchange):
