@@ -168,8 +168,9 @@ class PriceHistory:
             # Have to fetch 1d, adjust, then resample.
             if interval == '5d':
                 raise ValueError("Yahoo's interval '5d' is nonsense, not supported with repair")
-            if start is None and end is None and period is not None:
-                # Convert period to start -> end
+            if start is None and end is None and period is not None and period.lower() != 'max':
+                # Convert period to start -> end. 'max' is not a duration,
+                # it is handled below like for any other interval.
                 tz = self.tz
                 if tz is None:
                     # Every valid ticker has a timezone. A missing timezone is a problem.
@@ -800,6 +801,9 @@ class PriceHistory:
         elif target_interval == '3mo':
             if period == 'ytd':
                 align_month = 'JAN'
+            elif period == 'max' and not df.empty:
+                # Yahoo anchors 'max' quarters on the first month of data
+                align_month = df.index[0].strftime('%b').upper()
             else:
                 align_month = _datetime.datetime.now().strftime('%b').upper()
             resample_period = f"QS-{align_month}"
@@ -818,12 +822,16 @@ class PriceHistory:
             resample_map['Adj Close'] = resample_map['Close']
         if 'Capital Gains' in df.columns:
             resample_map['Capital Gains'] = 'sum'
-        df.loc[df['Stock Splits']==0.0, 'Stock Splits'] = 1.0
+        # Event columns are absent if history() called with actions=False
+        resample_map = {k: v for k, v in resample_map.items() if k in df.columns}
+        if 'Stock Splits' in df.columns:
+            df.loc[df['Stock Splits']==0.0, 'Stock Splits'] = 1.0
         if origin != 'epoch':
             df2 = df.resample(resample_period, label='left', closed='left', origin=origin).agg(resample_map)
         else:
             df2 = df.resample(resample_period, label='left', closed='left', offset=offset).agg(resample_map)
-        df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
+        if 'Stock Splits' in df2.columns:
+            df2.loc[df2['Stock Splits']==1.0, 'Stock Splits'] = 0.0
 
         # Handle NaNs from very long holidays.
         prev_close = df2['Close'].shift(1).ffill()
