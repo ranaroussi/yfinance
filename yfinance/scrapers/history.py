@@ -3594,7 +3594,7 @@ class PriceHistory:
         any_m_lt_1 = False
 
         if idx_latest_active is not None:
-            idx_rev_latest_active = df.shape[0] - 1 - idx_latest_active
+            idx_rev_latest_active = df2.shape[0] - 1 - idx_latest_active
             logger.debug(f'idx_latest_active={idx_latest_active}, idx_rev_latest_active={idx_rev_latest_active}', extra=log_extras)
         if correct_columns_individually:
             f_corrected = np.full(n, False)
@@ -3779,7 +3779,7 @@ class PriceHistory:
                         logger.debug(f'Pruning range {df2.index[r[0]]}->{df2.index[r[1]-1]} because too old.', extra=log_extras)
                         del ranges[i]
 
-            for i in range(len(ranges)):
+            for i in range(len(ranges)-1, -1, -1):
                 r = ranges[i]
                 if r[2] == 'split':
                     m = split
@@ -3832,24 +3832,24 @@ class PriceHistory:
                     if not unit_switch:
                         # Stock-split - expect to see big volume changes
                         if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
-                            # Good
+                            # Volume confirms
                             pass
                         elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
-                            # Good
+                            # Volume confirms
                             pass
                         else:
                             # Bad
-                            continue
+                            del ranges[i]
                     else:
                         # Unit switch - expect normal volume
                         if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
                             # Bad
-                            continue
+                            del ranges[i]
                         elif boundary_vol_change > threshold_volUnitChg and f_down[r[0]]:
                             # Bad
-                            continue
+                            del ranges[i]
                         else:
-                            # Good
+                            # Volume confirms
                             pass
 
             for i in range(len(ranges)):

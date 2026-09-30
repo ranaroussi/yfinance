@@ -488,6 +488,7 @@ class TestPriceRepair(unittest.TestCase):
         bad_tkrs = ['4063.T', 'AV.L', 'CNE.L', 'MOB.ST', 'SPM.MI']
         bad_tkrs.append('LA.V')  # special case - stock split error is in year 2022! why not fixed?
         bad_tkrs.append('NRDY')  # random rows missing 1:15 split, challenging to fix
+        bad_tkrs.append('NFE')  # Volume genuinely spiked for few days after stock-split which confused repair
         for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz_exchange = dat.fast_info["timezone"]
@@ -511,7 +512,7 @@ class TestPriceRepair(unittest.TestCase):
             correct_df = correct_df.sort_index()
             for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
                 try:
-                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-5).all())
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-5, equal_nan=True).all())
                 except AssertionError:
                     diff = repaired_df[c] - correct_df[c]
                     f_diff = _np.abs(diff) > 5e-6
