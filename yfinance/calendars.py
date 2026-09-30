@@ -207,6 +207,7 @@ class Calendars:
             self._logger.debug(f"Incomplete boundary: did not provide `end`, using {self._start=} to {self._end=}: +7 days from self._start")
 
         self._most_active_qy: CalendarQuery = CalendarQuery("or", [])
+        self._most_active_market_cap = None
 
         self._cache_request_body = {}
         self.calendars: Dict[str, pd.DataFrame] = {}
@@ -240,8 +241,6 @@ class Calendars:
                 # Uses cache if force=False and new request has same body as previous
                 self._logger.debug(f"Getting {calendar_type=} from local cache")
                 return self.calendars[calendar_type]
-        self._cache_request_body[calendar_type] = body
-
         self._logger.debug(f"Fetching {calendar_type=} with {limit=}")
         response: Response = self._data.post(_CALENDAR_URL_, params=params, body=body)
 
@@ -255,8 +254,10 @@ class Calendars:
         if json_data.get("finance", {}).get("error", {}):
             raise YFException(json_data.get("finance", {}).get("error", {}))
 
-        self.calendars[calendar_type] = self._create_df(json_data)
-        return self._cleanup_df(calendar_type)
+        result = self._cleanup_df(calendar_type, self._create_df(json_data))
+        self.calendars[calendar_type] = result
+        self._cache_request_body[calendar_type] = body
+        return result
 
     def _create_df(self, json_data: dict) -> pd.DataFrame:
         columns = []
@@ -270,9 +271,8 @@ class Calendars:
         rows = json_data["finance"]["result"][0]["documents"][0]["rows"]
         return pd.DataFrame(rows, columns=columns)
 
-    def _cleanup_df(self, calendar_type: str) -> pd.DataFrame:
+    def _cleanup_df(self, calendar_type: str, df: pd.DataFrame) -> pd.DataFrame:
         predef_cal: dict = PREDEFINED_CALENDARS[calendar_type]
-        df: pd.DataFrame = self.calendars[calendar_type]
         if df.empty:
             return df
 
@@ -305,7 +305,7 @@ class Calendars:
         :param force: if True, will re-query even if operands already exist
         :return: list of operands for active traded stocks
         """
-        if not self._most_active_qy.is_empty and not force:
+        if not self._most_active_qy.is_empty and self._most_active_market_cap == _market_cap and not force:
             return self._most_active_qy
 
         self._logger.debug("Fetching 200 most_active for earnings calendar")
@@ -319,6 +319,7 @@ class Calendars:
         raw = json_raw.get("quotes", [{}])
 
         self._most_active_qy = CalendarQuery("or", [])
+        self._most_active_market_cap = _market_cap
         for stock in raw:
             if type(stock) is not dict:
                 continue
@@ -416,7 +417,7 @@ class Calendars:
             query.append(CalendarQuery("gte", ["intradaymarketcap", market_cap]))
         if filter_most_active and not offset:
             # YF does not like filter most active while offsetting
-            query.append(self._get_most_active_operands(market_cap))
+            query.append(self._get_most_active_operands(market_cap, force=force))
 
         return self._get_data(
             calendar_type="sp_earnings",
