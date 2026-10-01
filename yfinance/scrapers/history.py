@@ -2985,8 +2985,10 @@ class PriceHistory:
         # big and Volume Nx too small. N need not match any split ratio,
         # e.g. SOXS before 2026-05-26 is 15x, but its splits are 1:20 and 1:10.
         # So split-repair can't fix this, and N can't be accurately estimated
-        # from 1d data because the real price change is unknown.
-        # But Yahoo's intraday data is not affected, so use it to measure N.
+        # from 1d data because the real price change is unknown: for SOXS the
+        # 1d gap was ~17x, because SOXS also fell 18.6% across it.
+        # But Yahoo's intraday data is not affected, so use it to measure N,
+        # then repair with _fix_prices_sudden_change().
         # A genuine crash appears in intraday data too, so is not repaired.
         if df.empty or interval != '1d':
             return df
@@ -3092,20 +3094,19 @@ class PriceHistory:
                 logger.debug(f"Possible level shift on {dt_shift.date()} but ratio {m:.3f} not clean", extra=log_extras)
                 continue
 
-            # Dividends not touched. Yahoo's were correct for SOXS, and
-            # _fix_bad_div_adjust() then corrects the div-adjustment.
-            f = df.index < dt_shift
-            for c in OHLC + ['Adj Close']:
-                df.loc[f, c] /= m_int
-            vol_repaired = (df['Volume'] * np.where(f, m_int, 1.0)).round()
-            if not vol_repaired.isna().any():
-                vol_repaired = vol_repaired.astype(df['Volume'].dtype)
-            df['Volume'] = vol_repaired
-            if 'Repaired?' not in df.columns:
-                df['Repaired?'] = False
-            df.loc[f, 'Repaired?'] = True
-            prices[:b] /= m_int
-            vol[:b] *= m_int
+            # Repair with the same logic as a bad split, which also confirms
+            # the change with Volume. Dividends are not touched: Yahoo's were
+            # correct for SOXS, and _fix_bad_div_adjust() then corrects the
+            # div-adjustment.
+            f_before = df.index < dt_shift
+            n_repaired = df['Repaired?'][f_before].sum() if 'Repaired?' in df.columns else 0
+            df_repaired = self._fix_prices_sudden_change(df, interval, tz_exchange, m_int, correct_volume=True)
+            if df_repaired['Repaired?'][df_repaired.index < dt_shift].sum() <= n_repaired:
+                logger.debug(f"Possible level shift on {dt_shift.date()} but repair did not confirm it", extra=log_extras)
+                continue
+            df = df_repaired
+            prices = df.loc[df2.index, OHLC].to_numpy(dtype=float, copy=True)
+            vol = df.loc[df2.index, 'Volume'].to_numpy(dtype=float, copy=True)
             msg = f"{round(m_int)}x too high" if m_int > 1 else f"{round(1.0 / m_int)}x too low"
             logger.info(f"Corrected unexplained level shift on {dt_shift.date()}: prices before were {msg}", extra=log_extras)
 
@@ -3193,9 +3194,13 @@ class PriceHistory:
         else:
             fix_type = 'bad split'
             log_extras['yf_cat'] = 'price-repair-split'
-            # start_min = 1 year before oldest split
+            # start_min = 1 year before oldest split. The frame can have no
+            # split when called by _fix_unexplained_level_shifts().
             f = df['Stock Splits'].to_numpy() != 0.0
-            start_min = (df.index[f].min() - _dateutil.relativedelta.relativedelta(years=1)).date()
+            if f.any():
+                start_min = (df.index[f].min() - _dateutil.relativedelta.relativedelta(years=1)).date()
+            else:
+                start_min = None
         logger.debug(f'start_min={start_min} change={change:.4f} (rcp={1.0/change:.4f})', extra=log_extras)
 
         OHLC = ['Open', 'High', 'Low', 'Close']

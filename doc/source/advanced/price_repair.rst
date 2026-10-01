@@ -49,7 +49,8 @@ Unexplained split-like adjustment
 ---------------------------------
 
 Sometimes Yahoo multiplies all prices before a date by a split-like ratio, and divides Volume by it, but no split happened near that date.
-The ratio need not match any split, so it is measured against ``1h`` data, which does not have the error.
+The ratio need not match any split, and can't be measured from ``1d`` data because the real price change across that date is unknown.
+So it is measured against ``1h`` data, which does not have the error, then repaired like a bad stock split.
 So only repaired within the last 2 years. A genuine crash is also in ``1h`` data, so is not repaired.
 
 .. code-block:: text
