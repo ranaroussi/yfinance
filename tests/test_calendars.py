@@ -70,6 +70,9 @@ class TestCalendarsZeroValues(unittest.TestCase):
         with patch("yfinance.data.YfData.post", return_value=self._response(columns, rows)):
             df = yf.Calendars(start="2026-09-19", end="2026-10-03").get_economic_events_calendar(limit=3)
 
+        # Yahoo sends these as strings: nan_cols is what turns them into floats
+        for col in ("Actual", "Expected", "Last", "Revised"):
+            self.assertEqual(df[col].dtype, "float64")
         self.assertEqual(df.loc["SNB Policy Rate", "Actual"], 0.0)
         self.assertEqual(df.loc["SNB Policy Rate", "Last"], 0.0)
         self.assertEqual(df.loc["IGAE Econ Activity MM", "Revised"], 0.0)
