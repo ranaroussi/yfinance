@@ -137,6 +137,8 @@ PREDEFINED_CALENDARS = {
             "originally_reported_actual",
         ],
         "nan_cols": ["Actual", "Market Expectation", "Prior to This", "Revised from"],
+        # Missing values arrive as null, and 0 is a real reading (e.g. SNB Policy Rate)
+        "keep_zeros": True,
         "datetime_cols": ["Event Time"],
         "df_index": "Event",
         "renames": {
@@ -279,7 +281,9 @@ class Calendars:
         # Convert types
         nan_cols: list = predef_cal["nan_cols"]
         if nan_cols:
-            df[nan_cols] = df[nan_cols].astype("float64").replace(0.0, np.nan)
+            df[nan_cols] = df[nan_cols].astype("float64")
+            if not predef_cal.get("keep_zeros", False):
+                df[nan_cols] = df[nan_cols].replace(0.0, np.nan)
 
         # Format the dataframe
         df.set_index(predef_cal["df_index"], inplace=True)
