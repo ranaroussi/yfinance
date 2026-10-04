@@ -3828,7 +3828,21 @@ class PriceHistory:
                     # No volume to check, but this should be incredibly rare.
                     pass
                 else:
-                    boundary_vol_change = np.mean(volDuring_denoised) / np.mean(volOutside_denoised)
+                    volDuringMean = np.mean(volDuring_denoised)
+                    volOutsideMean = np.mean(volOutside_denoised)
+                    boundary_vol_change = volDuringMean / volOutsideMean
+
+                    # Note: while there should be a clear difference in volume statistics
+                    # that indicates a stock split error, in rare cases the multiple
+                    # is very different from stock-split ratio.
+                    # Backup method: use basic statistics = multiple of stdev
+                    volChg_StdDevMultiple = 1.0
+                    if len(volDuring_denoised) >= 4 and len(volOutside_denoised) >= 4:
+                        volDuringStdev = np.std(volDuring_denoised)
+                        volOutsideStdev = np.std(volOutside_denoised)
+                        volDiff = abs(volDuringMean-volOutsideMean)
+                        volChg_StdDevMultiple = max(volDiff/volDuringStdev, volDiff/volOutsideStdev)
+
                     if not unit_switch:
                         # Stock-split - expect to see big volume changes
                         if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
@@ -3838,8 +3852,12 @@ class PriceHistory:
                             # Volume confirms
                             pass
                         else:
-                            # Bad
-                            del ranges[i]
+                            # Volume doesn't confirm perfectly, but maybe statistics can confirm
+                            if volChg_StdDevMultiple > 15:
+                                # Good enough
+                                pass
+                            else:
+                                del ranges[i]
                     else:
                         # Unit switch - expect normal volume
                         if boundary_vol_change < 1.0/threshold_volUnitChg and f_up[r[0]]:
