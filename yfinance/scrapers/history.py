@@ -657,13 +657,17 @@ class PriceHistory:
             "90m": pd.offsets.Minute(90),
             "1h": pd.offsets.Hour(1),
             "1d": pd.offsets.BDay(),
-            "1wk": pd.offsets.Week(weekday=4),
-            "1mo": pd.offsets.MonthEnd(),
-            "3mo": pd.offsets.QuarterEnd(),
+            "1wk": pd.offsets.Week(weekday=0),
+            "1mo": pd.offsets.MonthBegin(),
+            "3mo": pd.offsets.QuarterBegin(),
         }
         if interval_user in _INTERVAL_FREQ and not df.empty:
+            freq = _INTERVAL_FREQ[interval_user]
+            if interval_user == "3mo":
+                # Yahoo anchors quarters on the first row's month
+                freq = pd.offsets.QuarterBegin(startingMonth=df.index[0].month)
             try:
-                df.index.freq = _INTERVAL_FREQ[interval_user]
+                df.index.freq = freq
             except ValueError:
                 # Index contains gaps (e.g. long trading halts, delisting,
                 # holiday-shortened weeks) so a regular frequency cannot be set.
@@ -868,6 +872,9 @@ class PriceHistory:
         intervals = ["1wk", "1d", "1h", "30m", "15m", "5m", "2m", "1m"]
         itds = {i: utils._interval_to_timedelta(interval) for i in intervals}
         nexts = {intervals[i]: intervals[i + 1] for i in range(len(intervals) - 1)}
+        # "60m" is a synonym of "1h"
+        itds["60m"] = itds["1h"]
+        nexts["60m"] = nexts["1h"]
         min_lookbacks = {"1wk": None, "1d": None, "1h": _datetime.timedelta(days=730)}
         for i in ["30m", "15m", "5m", "2m"]:
             min_lookbacks[i] = _datetime.timedelta(days=60)

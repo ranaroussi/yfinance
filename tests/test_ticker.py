@@ -484,6 +484,24 @@ class TestTickerEarnings(unittest.TestCase):
     #     self.assertIs(data, data_cached, "data not cached")
 
 
+class TestTickerEarningsDatesParsing(unittest.TestCase):
+    @staticmethod
+    def _earnings_page(dates):
+        rows = "".join(f"<tr><td>IBM</td><td>IBM Corp</td><td>{d}</td><td>1.0</td><td>1.1</td><td>10.0</td></tr>" for d in dates)
+        return ("<html><body><table><thead><tr><th>Symbol</th><th>Company</th><th>Earnings Date</th>"
+                "<th>EPS Estimate</th><th>Reported EPS</th><th>Surprise (%)</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table></body></html>")
+
+    def test_earnings_dates_aligned_after_dropping_missing_date(self):
+        # A row with no date ('-') is dropped. The parsed dates of the
+        # remaining rows must stay on their own rows, not shift up one.
+        html = self._earnings_page(["October 20, 2025 at 4 PM EDT", "-",
+                                    "April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])
+        with patch("yfinance.data.YfData.cache_get", return_value=MagicMock(text=html)):
+            df = yf.Ticker("IBM").get_earnings_dates()
+        self.assertFalse(df.index.isna().any())
+        self.assertEqual([str(d.date()) for d in df.index], ["2025-10-20", "2025-04-24", "2025-01-29"])
+
 class TestTickerHolders(unittest.TestCase):
     session = None
 

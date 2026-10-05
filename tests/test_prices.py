@@ -44,9 +44,9 @@ class TestPriceHistory(unittest.TestCase):
             "60m": _pd.offsets.Minute(60),
             "1h": _pd.offsets.Hour(1),
             "1d": _pd.offsets.BDay(),
-            "1wk": _pd.offsets.Week(weekday=4),
-            "1mo": _pd.offsets.MonthEnd(),
-            "3mo": _pd.offsets.QuarterEnd(),
+            "1wk": _pd.offsets.Week(weekday=0),
+            "1mo": _pd.offsets.MonthBegin(),
+            "3mo": _pd.offsets.QuarterBegin(),
         }
         for interval, freq in expected_freq.items():
             with self.subTest(interval=interval):
@@ -55,6 +55,8 @@ class TestPriceHistory(unittest.TestCase):
                     df = dat.history(period="1y", interval=interval)
                     if df.empty:
                         continue
+                    if interval == "3mo":
+                        freq = _pd.offsets.QuarterBegin(startingMonth=df.index[0].month)
                     self.assertIsNotNone(
                         df.index.freq,
                         f"{interval} freq missing for {tkr}",
