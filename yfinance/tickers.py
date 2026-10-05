@@ -89,6 +89,19 @@ class Tickers:
 
         return data
 
+    @property
+    def info(self):
+        return self.get_info()
+
+    def get_info(self, threads=True, progress=False):
+        """Return info payloads keyed by ticker symbol.
+
+        Best-effort semantics: when one symbol fails, its value is an empty
+        dictionary and other symbols are still returned.
+        """
+        session = getattr(self._data, '_session', None)
+        return multi.info(self.symbols, threads=threads, progress=progress, session=session)
+
     def news(self):
         return {ticker: [item for item in Ticker(ticker).news] for ticker in self.symbols}
 
