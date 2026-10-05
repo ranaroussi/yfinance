@@ -80,8 +80,8 @@ class TestPriceShiftDetection(unittest.TestCase):
         frame.iloc[20:, :5] *= 100
         frame['Volume'] = np.arange(len(frame)) + 1000
         names = ['_detect_price_shifts', '_estimate_volume_shift_threshold',
-                 '_filter_price_shifts_volume',
-                 '_filter_price_shifts_that_match_local_stdev', '_verify_price_shifts_volume']
+                 '_filter_price_shifts_on_volume_spikes',
+                 '_filter_price_shifts_that_match_local_stdev', '_reconcile_price_shifts_with_volume']
         manager = mock.Mock()
         with ExitStack() as stack:
             for name in names:
@@ -105,7 +105,7 @@ class TestPriceShiftDetection(unittest.TestCase):
         self.assertIsNotNone(detection)
         with mock.patch.object(self.history, '_estimate_volume_shift_threshold') as estimate, \
                 mock.patch.object(self.history, '_denoise_volume') as denoise:
-            self.assertIsNone(self.history._filter_price_shifts_volume(frame, '1d', detection))
+            self.assertIsNone(self.history._filter_price_shifts_on_volume_spikes(frame, '1d', detection))
         estimate.assert_not_called()
         denoise.assert_not_called()
         self.assertTrue(detection.up[20])  # Screening must not mutate candidates.
@@ -121,7 +121,7 @@ class TestPriceShiftDetection(unittest.TestCase):
         expected[20, :2] = True
         np.testing.assert_array_equal(detection.up, expected)
         self.assertFalse(detection.down.any())
-        verified = self.history._filter_price_shifts_volume(frame, '1d', detection)
+        verified = self.history._filter_price_shifts_on_volume_spikes(frame, '1d', detection)
         self.assertFalse(hasattr(verified, 'volume_threshold'))
         self.assertEqual(self.history._estimate_volume_shift_threshold(
             frame, '1d', 100, detection), (None, None))
@@ -136,7 +136,7 @@ class TestPriceShiftDetection(unittest.TestCase):
         frame['Volume'] = 0
         detection = self.history._detect_price_shifts(frame, '1d', 100)
         self.assertIsNotNone(detection)
-        self.assertIsNone(self.history._filter_price_shifts_volume(frame, '1d', detection))
+        self.assertIsNone(self.history._filter_price_shifts_on_volume_spikes(frame, '1d', detection))
         self.assertEqual(self.history._estimate_volume_shift_threshold(
             frame, '1d', 100, detection), (None, None))
 
@@ -178,7 +178,7 @@ class TestPriceShiftDetection(unittest.TestCase):
             vol[20:] *= multiplier
             for unit_switch in [False, True]:
                 with self.subTest(multiplier=multiplier, unit_switch=unit_switch):
-                    confirmed = self.history._verify_price_shifts_volume(
+                    confirmed = self.history._reconcile_price_shifts_with_volume(
                         vol, ranges, up, down, 3.8, unit_switch=unit_switch)
                     expected = multiplier == 1 if unit_switch else multiplier == 15
                     self.assertEqual(confirmed, original if expected else [])
@@ -192,7 +192,7 @@ class TestPriceShiftDetection(unittest.TestCase):
         down[20] = True
         ranges = [(20, 40, 'split')]
         # Ratio misses the 15x-derived threshold, but separation in SDs passes.
-        self.assertEqual(self.history._verify_price_shifts_volume(
+        self.assertEqual(self.history._reconcile_price_shifts_with_volume(
             vol, ranges, up, down, 3.8), ranges)
 
     def test_volume_verification_allows_unavailable_range_samples(self):
@@ -201,7 +201,7 @@ class TestPriceShiftDetection(unittest.TestCase):
         down[20] = True
         ranges = [(20, 40, 'split')]
         vol = np.zeros(40)
-        self.assertEqual(self.history._verify_price_shifts_volume(
+        self.assertEqual(self.history._reconcile_price_shifts_with_volume(
             vol, ranges, up, down, 3.8), ranges)
 
     def test_adjusted_prices_avoid_dividend_false_positive(self):
