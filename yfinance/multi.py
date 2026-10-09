@@ -84,7 +84,12 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Include Pre and Post market data in results?
             Default is False
         auto_adjust: bool
-            Adjust all OHLC automatically? Default is True
+            Scale Open, High and Low by Adj Close / Close, and use Adj Close as Close.
+            Takes precedence over back_adjust when both are True. Default is True
+        back_adjust: bool
+            Scale Open, High and Low by Adj Close / Close, preserving Close.
+            Removes Adj Close; does not reverse Yahoo's split adjustment.
+            To use this option, set auto_adjust=False. Default is False
         repair: bool
             Detect currency unit 100x mixups and attempt repair
             Default is False

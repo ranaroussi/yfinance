@@ -129,10 +129,14 @@ class PriceHistory:
               | Include Pre and Post market data in results?
               | Default: False
             auto_adjust : bool
-              | Adjust all OHLC automatically?
+              | Scale Open, High and Low by Adj Close / Close, and use Adj Close as Close.
+              | Takes precedence over back_adjust when both are True.
               | Default: True
             back_adjust : bool
-              | Back-adjusted data to mimic true historical prices
+              | Scale Open, High and Low by Adj Close / Close, preserving Close.
+              | Removes Adj Close; does not reverse Yahoo's split adjustment.
+              | To use this option, set auto_adjust=False.
+              | Default: False
             repair : bool
               | Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
               | Default: False

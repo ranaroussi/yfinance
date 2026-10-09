@@ -504,6 +504,7 @@ def is_valid_period_format(period):
 
 
 def auto_adjust(data):
+    """Scale Open, High and Low by Adj Close / Close, and use Adj Close as Close."""
     col_order = data.columns
     df = data.copy()
     ratio = (df["Adj Close"] / df["Close"]).to_numpy()
@@ -524,7 +525,11 @@ def auto_adjust(data):
 
 
 def back_adjust(data):
-    """ back-adjusted data to mimic true historical prices """
+    """Scale Open, High and Low by Adj Close / Close, preserving Close.
+
+    This does not reverse Yahoo's split adjustment or restore pre-split prices.
+    The Adj Close column is removed from the result.
+    """
 
     col_order = data.columns
     df = data.copy()
