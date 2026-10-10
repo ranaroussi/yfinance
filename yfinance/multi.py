@@ -89,7 +89,9 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         back_adjust: bool
             Scale Open, High and Low by Adj Close / Close, preserving Close.
             Removes Adj Close; does not reverse Yahoo's split adjustment.
-            To use this option, set auto_adjust=False. Default is False
+            Close stays unadjusted for dividends, so on adjusted rows it can
+            lie outside High/Low. To use this option, set auto_adjust=False.
+            Default is False
         repair: bool
             Detect currency unit 100x mixups and attempt repair
             Default is False

@@ -135,6 +135,8 @@ class PriceHistory:
             back_adjust : bool
               | Scale Open, High and Low by Adj Close / Close, preserving Close.
               | Removes Adj Close; does not reverse Yahoo's split adjustment.
+              | Close stays unadjusted for dividends, so on adjusted rows it
+              | can lie outside High/Low.
               | To use this option, set auto_adjust=False.
               | Default: False
             repair : bool

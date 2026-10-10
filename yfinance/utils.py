@@ -529,6 +529,8 @@ def back_adjust(data):
 
     This does not reverse Yahoo's split adjustment or restore pre-split prices.
     The Adj Close column is removed from the result.
+    Close stays unadjusted for dividends, so on adjusted rows it can lie
+    outside High/Low.
     """
 
     col_order = data.columns
