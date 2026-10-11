@@ -1,5 +1,5 @@
 import functools
-from functools import lru_cache
+from collections import OrderedDict
 import socket
 import time as _time
 
@@ -34,6 +34,13 @@ def _normalize_proxy(proxy):
     if isinstance(proxy, str):
         return {"http": proxy, "https": proxy}
     return proxy
+
+
+def _freeze_params(params):
+    """Hashable form of a request params dict, for use as a cache key."""
+    if params is None:
+        return None
+    return frozendict({k: tuple(v) if isinstance(v, list) else v for k, v in params.items()})
 
 
 def lru_cache_freezeargs(func):
@@ -105,6 +112,10 @@ class YfData(metaclass=SingletonMeta):
         # ticker; reverted if the chunked fallback also fails.
         self.fundamentals_use_chunked: bool = False
 
+        # cache_get() responses: key -> (monotonic time stored, response)
+        self._response_cache = OrderedDict()
+        self._response_cache_lock = threading.Lock()
+
         self._session = None
         self._set_session(session or new_session())
 
@@ -146,6 +157,11 @@ class YfData(metaclass=SingletonMeta):
             raise YFDataException(f"Unsupported session type {type(session)}; expected curl_cffi or requests Session. Solution: stop setting session, let yfinance handle.")
 
         with self._cookie_lock:
+            if self._session is not None and session is not self._session:
+                # The cookie and crumb belong to the old session's cookie jar;
+                # sending the old crumb with the new session's jar fails auth.
+                self._cookie = None
+                self._crumb = None
             self._session = session
             if YfConfig.network.proxy is not None:
                 self._session.proxies = _normalize_proxy(YfConfig.network.proxy)
@@ -252,6 +268,9 @@ class YfData(metaclass=SingletonMeta):
                     f"Cookie fetch from fc.yahoo.com failed ({type(e).__name__}), continuing without it")
                 return False
             raise
+        # Mark the cookie as fetched (as _get_cookie_csrf does), else every
+        # request re-fetches fc.yahoo.com when the persistent cache is unusable.
+        self._cookie = True
         self._save_cookie_curlCffi()
         return True
 
@@ -480,7 +499,10 @@ class YfData(metaclass=SingletonMeta):
                 else:
                     raise
         utils.get_yf_logger().debug(f'response code={response.status_code}')
-        if response.status_code >= 400:
+        # 404 means the resource doesn't exist (e.g. delisted or mistyped
+        # ticker), not an auth failure: switching cookie strategy can't help,
+        # and would wipe the cookie/crumb shared by every thread.
+        if response.status_code >= 400 and response.status_code != 404:
             # Retry with other cookie strategy
             try:
                 if strategy == 'basic':
@@ -507,10 +529,44 @@ class YfData(metaclass=SingletonMeta):
 
         return response
 
-    @lru_cache_freezeargs
-    @lru_cache(maxsize=cache_maxsize)
     def cache_get(self, url, params=None, timeout=30):
-        return self.get(url, params, timeout)
+        """GET through a small in-memory cache.
+
+        Entries expire after ``yf.config.network.cache_ttl`` seconds so
+        long-running processes don't serve stale data forever (0 disables
+        caching, None never expires). Error responses are not cached.
+        """
+        ttl = YfConfig.network.cache_ttl
+        if ttl == 0:
+            return self.get(url, params, timeout)
+        try:
+            key = (url, _freeze_params(params), timeout)
+            hash(key)
+        except TypeError:
+            return self.get(url, params, timeout)
+
+        with self._response_cache_lock:
+            hit = self._response_cache.get(key)
+            if hit is not None:
+                stored_at, response = hit
+                if ttl is None or _time.monotonic() - stored_at < ttl:
+                    self._response_cache.move_to_end(key)
+                    return response
+                del self._response_cache[key]
+
+        response = self.get(url, params, timeout)
+        if response.status_code < 400:
+            with self._response_cache_lock:
+                self._response_cache[key] = (_time.monotonic(), response)
+                self._response_cache.move_to_end(key)
+                while len(self._response_cache) > cache_maxsize:
+                    self._response_cache.popitem(last=False)
+        return response
+
+    def cache_clear(self):
+        """Drop all responses cached by cache_get()."""
+        with self._response_cache_lock:
+            self._response_cache.clear()
 
     def get_raw_json(self, url, params=None, timeout=30):
         utils.get_yf_logger().debug(f'get_raw_json(): {url}')
