@@ -157,7 +157,10 @@ class PriceHistory:
         logger = utils.get_yf_logger()
 
         if raise_errors:
-            warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
+            warnings.warn("yfinance: 'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
+
+        if back_adjust:
+            warnings.warn("yfinance: We plan to deprecate 'back_adjust'. If you need it, please come to our Github and tell us.", DeprecationWarning, stacklevel=5)
 
         interval_user = interval
         if period == period_default:
