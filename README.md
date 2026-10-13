@@ -45,6 +45,9 @@
 - `Sector` and `Industry`: sector and industry information
 - `EquityQuery` and `Screener`: build query to screen market
 
+> [!NOTE]
+> `Ticker.history()` and `yf.download()` adjust prices for splits and dividends by default (`auto_adjust=True`). See [Advanced ▸ Price adjustment](https://ranaroussi.github.io/yfinance/advanced/price_adjustment.html) for details.
+
 ## Installation
 
 Install `yfinance` from PYPI using `pip`:
