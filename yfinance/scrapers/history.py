@@ -146,8 +146,9 @@ class PriceHistory:
               | Keep NaN rows returned by Yahoo?
               | Default: False
             rounding : bool
-              | Optional: Round values to 2 decimal places?
-              | Default: False = use precision suggested by Yahoo!
+              | Optional: Round prices to the precision suggested by Yahoo?
+              | Dividends, stock splits and capital gains are not rounded.
+              | Default: False
             timeout : None or float
               | Optional: timeout fetches after N seconds
               | Default: 10 seconds
@@ -614,7 +615,9 @@ class PriceHistory:
             logger.error('%s: %s' % (self.ticker, err_msg))
 
         if rounding:
-            df = np.round(df, data["chart"]["result"][0]["meta"]["priceHint"])
+            # Round prices only: split ratios, dividends and capital gains need full precision
+            price_cols = [c for c in _PRICE_COLNAMES_ if c in df.columns]
+            df[price_cols] = np.round(df[price_cols], data["chart"]["result"][0]["meta"]["priceHint"])
         df['Volume'] = df['Volume'].fillna(0).astype(np.int64)
 
         if intraday:
