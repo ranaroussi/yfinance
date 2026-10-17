@@ -222,6 +222,11 @@ class TestDateIntervalCheck(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.assertEqual(_parse_user_dt(float(epoch), exchange_tz), expected)
 
+    def test_parse_user_dt_midnight_in_dst_gap(self):
+        # Brazil's clocks jumped 00:00 -> 01:00 on 2018-11-04, so midnight did not exist.
+        self.assertEqual(_parse_user_dt("2018-11-04", "America/Sao_Paulo"),
+                         pd.Timestamp("2018-11-04 01:00", tz="America/Sao_Paulo"))
+
 
 class TestMultiDayInterval(unittest.TestCase):
     def test_multiday_interval_does_not_raise(self):

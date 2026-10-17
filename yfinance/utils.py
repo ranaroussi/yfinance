@@ -463,7 +463,7 @@ def _parse_user_dt(dt, exchange_tz=_tz.utc):
         if isinstance(dt, _datetime.datetime):
             if dt.tzinfo is None:
                 # Assume user is referring to exchange's timezone
-                dt = _pd.Timestamp(dt).tz_localize(exchange_tz)
+                dt = _pd.Timestamp(dt).tz_localize(exchange_tz, nonexistent='shift_forward')
             else:
                 dt = _pd.Timestamp(dt).tz_convert(exchange_tz)
         else: # if we reached here, then it hasn't been any known type
