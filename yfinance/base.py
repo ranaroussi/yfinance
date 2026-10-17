@@ -85,7 +85,7 @@ class TickerBase:
         self._tz = None
 
         self._isin = None
-        self._news = []
+        self._news = {}
         self._shares = None
 
         self._earnings_dates = {}
@@ -614,9 +614,6 @@ class TickerBase:
 
     def get_news(self, count=10, tab="news") -> list:
         """Allowed options for tab: "news", "all", "press releases"""
-        if self._news:
-            return self._news
-
         logger = utils.get_yf_logger()
 
 
@@ -629,6 +626,11 @@ class TickerBase:
         query_ref = tab_queryrefs.get(tab.lower())
         if not query_ref:
             raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
+
+        # Cache per request: a different count or tab is a different result
+        cache_key = (count, query_ref)
+        if self._news.get(cache_key):
+            return self._news[cache_key]
 
         url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
         payload = {
@@ -651,8 +653,8 @@ class TickerBase:
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
 
-        self._news = [article for article in news if not article.get('ad', [])]
-        return self._news
+        self._news[cache_key] = [article for article in news if not article.get('ad', [])]
+        return self._news[cache_key]
 
     def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
         if limit > 100:

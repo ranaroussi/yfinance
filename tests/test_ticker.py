@@ -502,6 +502,32 @@ class TestTickerEarningsDatesParsing(unittest.TestCase):
         self.assertFalse(df.index.isna().any())
         self.assertEqual([str(d.date()) for d in df.index], ["2025-10-20", "2025-04-24", "2025-01-29"])
 
+class TestTickerNews(unittest.TestCase):
+    @staticmethod
+    def _fake_post(url, body=None, **kwargs):
+        query_ref = url.split("queryRef=")[1].split("&")[0]
+        count = body["serviceConfig"]["snippetCount"]
+        stream = [{"id": f"{query_ref}-{i}"} for i in range(count)]
+        return MagicMock(text="", json=lambda: {"data": {"tickerStream": {"stream": stream}}})
+
+    def test_news_cached_per_count_and_tab(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post):
+            ticker = yf.Ticker("MSFT")
+            news = ticker.get_news(count=2, tab="news")
+            press = ticker.get_news(count=5, tab="press releases")
+            news_again = ticker.get_news(count=2, tab="news")
+
+        self.assertEqual([a["id"] for a in news], ["latestNews-0", "latestNews-1"])
+        self.assertEqual([a["id"] for a in press], [f"pressRelease-{i}" for i in range(5)])
+        self.assertIs(news_again, news, "data not cached")
+
+    def test_news_invalid_tab_raises_after_cached_call(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post):
+            ticker = yf.Ticker("MSFT")
+            ticker.get_news()
+            with self.assertRaises(ValueError):
+                ticker.get_news(tab="bogus")
+
 class TestTickerHolders(unittest.TestCase):
     session = None
 
