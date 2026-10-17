@@ -1218,6 +1218,59 @@ class TestTickerAnalysts(unittest.TestCase):
             except Exception as e:
                 self.fail(f"Exception raised for attribute '{attribute}': {e}")
 
+    def test_eps_methodology(self):
+        getters = [
+            self.ticker.get_earnings_estimate,
+            self.ticker.get_earnings_history,
+            self.ticker.get_eps_trend,
+            self.ticker.get_eps_revisions,
+        ]
+        for getter in getters:
+            for methodology in ('gaap', 'normalized'):
+                data = getter(methodology=methodology)
+                self.assertIsInstance(data, pd.DataFrame, f"{getter.__name__}({methodology}): data has wrong type")
+                self.assertFalse(data.empty, f"{getter.__name__}({methodology}): data is empty")
+                self.assertTrue((data['methodology'] == methodology).all(), f"{getter.__name__}({methodology}): wrong 'methodology' column")
+
+                data_cached = getter(methodology=methodology.upper())
+                self.assertIs(data, data_cached, f"{getter.__name__}({methodology}): data not cached")
+
+            with self.assertRaises(ValueError):
+                getter(methodology='ifrs')
+
+    def test_eps_methodology_modules(self):
+        # Each methodology must query its own quoteSummary module, and be cached separately
+        ticker = yf.Ticker("GOOGL", session=self.session)
+        requested = []
+
+        def fake_fetch(modules):
+            module = modules[0]
+            requested.append(module)
+            # Yahoo labels every variant with the ticker's default methodology
+            if module.startswith('earningsTrend'):
+                eps = {'raw': {'earningsTrend': 1.0, 'earningsTrendGaap': 2.0, 'earningsTrendNonGaap': 3.0}[module]}
+                body = {'trend': [{'period': '0q', 'earningsEstimate': {'avg': eps}}], 'defaultMethodology': 'nongaap'}
+            else:
+                body = {'history': [{'quarter': {'fmt': '2026-06-30'}, 'epsActual': {'raw': 1.0}}], 'defaultMethodology': 'nongaap'}
+            return {'quoteSummary': {'result': [{module: body}]}}
+
+        with patch.object(ticker._analysis, '_fetch', side_effect=fake_fetch):
+            df_default = ticker.get_earnings_estimate()
+            df_gaap = ticker.get_earnings_estimate(methodology='gaap')
+            df_normalized = ticker.get_earnings_estimate(methodology='normalized')
+            ticker.get_earnings_estimate(methodology='normalized')
+            df_history = ticker.get_earnings_history()
+
+        self.assertEqual(requested, ['earningsTrend', 'earningsTrendGaap', 'earningsTrendNonGaap', 'earningsHistory'])
+        self.assertEqual(df_default['avg'].iloc[0], 1.0)
+        self.assertEqual(df_gaap['avg'].iloc[0], 2.0)
+        self.assertEqual(df_normalized['avg'].iloc[0], 3.0)
+        # Requested methodology wins, else Yahoo's default ('nongaap' reported as 'normalized')
+        self.assertEqual(df_default['methodology'].iloc[0], 'normalized')
+        self.assertEqual(df_gaap['methodology'].iloc[0], 'gaap')
+        self.assertEqual(df_normalized['methodology'].iloc[0], 'normalized')
+        self.assertEqual(df_history['methodology'].iloc[0], 'normalized')
+
 
 
 class TestTickerInfo(unittest.TestCase):

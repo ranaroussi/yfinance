@@ -153,7 +153,11 @@ quote_summary_valid_modules = (
     "netSharePurchaseActivity",  # net share purchase activity, such as the number of shares bought and sold by company executives
     "earnings",  # earnings history
     "earningsHistory",
+    "earningsHistoryGaap",
+    "earningsHistoryNonGaap",
     "earningsTrend",  # earnings trend
+    "earningsTrendGaap",
+    "earningsTrendNonGaap",
     "industryTrend",
     "indexTrend",
     "sectorTrend",

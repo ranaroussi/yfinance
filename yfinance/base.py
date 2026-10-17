@@ -321,12 +321,18 @@ class TickerBase:
         data = self._analysis.analyst_price_targets
         return data
 
-    def get_earnings_estimate(self, as_dict=False):
+    def get_earnings_estimate(self, as_dict=False, methodology=None):
         """
         Index:      0q  +1q  0y  +1y
-        Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth
+        Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth  currency  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
-        data = self._analysis.earnings_estimate
+        data = self._analysis.get_earnings_estimate(methodology)
         return data.to_dict() if as_dict else data
 
     def get_revenue_estimate(self, as_dict=False):
@@ -337,30 +343,48 @@ class TickerBase:
         data = self._analysis.revenue_estimate
         return data.to_dict() if as_dict else data
 
-    def get_earnings_history(self, as_dict=False):
+    def get_earnings_history(self, as_dict=False, methodology=None):
         """
         Index:      pd.DatetimeIndex
-        Columns:    epsEstimate  epsActual  epsDifference  surprisePercent
+        Columns:    epsEstimate  epsActual  epsDifference  surprisePercent  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
-        data = self._analysis.earnings_history
+        data = self._analysis.get_earnings_history(methodology)
         return data.to_dict() if as_dict else data
 
-    def get_eps_trend(self, as_dict=False):
+    def get_eps_trend(self, as_dict=False, methodology=None):
         """
         Index:      0q  +1q  0y  +1y
-        Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo
+        Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo  currency  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
 
-        data = self._analysis.eps_trend
+        data = self._analysis.get_eps_trend(methodology)
         return data.to_dict() if as_dict else data
 
-    def get_eps_revisions(self, as_dict=False):
+    def get_eps_revisions(self, as_dict=False, methodology=None):
         """
         Index:      0q  +1q  0y  +1y
-        Columns:    upLast7days  upLast30days  downLast7days  downLast30days
+        Columns:    upLast7days  upLast30days  downLast7days  downLast30days  currency  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
 
-        data = self._analysis.eps_revisions
+        data = self._analysis.get_eps_revisions(methodology)
         return data.to_dict() if as_dict else data
 
     def get_growth_estimates(self, as_dict=False):
