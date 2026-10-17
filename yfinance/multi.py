@@ -103,7 +103,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             to the most common exchange timezone among the requested tickers
             (before 1.4.0, this case always returned UTC instead; see CHANGELOG).
         rounding: bool
-            Optional. Round values to 2 decimal places?
+            Optional. Round prices to the precision suggested by Yahoo?
+            Dividends, stock splits and capital gains are not rounded.
         timeout: None or float
             If not None stops waiting for a response after given number of
             seconds. (Can also be a fraction of a second e.g. 0.01)

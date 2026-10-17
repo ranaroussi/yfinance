@@ -512,6 +512,17 @@ class TestPriceHistory(unittest.TestCase):
 
         dat.history(start=start, end=end, interval=interval)
 
+    def test_rounding_keeps_events(self):
+        # rounding=True rounds prices, not split ratios or dividends
+        dat = yf.Ticker("GE", session=self.session)
+        df = dat.history(start="2021-07-28", end="2021-08-04", rounding=True)
+        self.assertEqual(df.loc[df['Stock Splits'] != 0, 'Stock Splits'].tolist(), [0.125])
+
+        dat = yf.Ticker("T", session=self.session)
+        df = dat.history(start="2024-01-05", end="2024-01-12", rounding=True)
+        self.assertEqual(df.loc[df['Dividends'] != 0, 'Dividends'].tolist(), [0.278])
+        self.assertTrue((df['Close'] == df['Close'].round(2)).all())
+
     def test_transient_error_detection(self):
         """Test that _is_transient_error correctly identifies transient vs permanent errors"""
         from yfinance.data import _is_transient_error
