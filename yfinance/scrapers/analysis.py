@@ -22,6 +22,14 @@ def _validate_eps_methodology(methodology):
     return methodology
 
 
+def _eps_methodology_label(methodology, module_data):
+    # Requested methodology, else the one Yahoo says it returned
+    if methodology is not None:
+        return methodology
+    default = module_data.get('defaultMethodology')
+    return {'gaap': 'gaap', 'nongaap': 'normalized'}.get(default, default)
+
+
 class Analysis:
 
     def __init__(self, data: YfData, symbol: str):
@@ -41,12 +49,12 @@ class Analysis:
         self._eps_revisions = {}
         self._growth_estimates = None
 
-    def _get_periodic_df(self, key, currency_key=None, methodology=None) -> pd.DataFrame:
+    def _get_periodic_df(self, key, currency_key=None, methodology=None, add_methodology=False) -> pd.DataFrame:
         earnings_trend = self._fetch_earnings_trend(methodology)
 
         data = []
         currency = None
-        for item in earnings_trend[:4]:
+        for item in earnings_trend.get('trend', [])[:4]:
             row = {'period': item['period']}
             for k, v in item[key].items():
                 if not isinstance(v, dict) or len(v) == 0:
@@ -58,8 +66,13 @@ class Analysis:
         if len(data) == 0:
             return pd.DataFrame()
         df = pd.DataFrame(data).set_index('period')
+        has_data = len(df.columns) > 0
         if currency is not None:
             df['currency'] = currency
+        if add_methodology and has_data:
+            label = _eps_methodology_label(methodology, earnings_trend)
+            if label is not None:
+                df['methodology'] = label
         return df
 
     @property
@@ -69,7 +82,7 @@ class Analysis:
     def get_earnings_estimate(self, methodology=None) -> pd.DataFrame:
         methodology = _validate_eps_methodology(methodology)
         if methodology not in self._earnings_estimate:
-            self._earnings_estimate[methodology] = self._get_periodic_df('earningsEstimate', currency_key='earningsCurrency', methodology=methodology)
+            self._earnings_estimate[methodology] = self._get_periodic_df('earningsEstimate', currency_key='earningsCurrency', methodology=methodology, add_methodology=True)
         return self._earnings_estimate[methodology]
 
     @property
@@ -86,7 +99,7 @@ class Analysis:
     def get_eps_trend(self, methodology=None) -> pd.DataFrame:
         methodology = _validate_eps_methodology(methodology)
         if methodology not in self._eps_trend:
-            self._eps_trend[methodology] = self._get_periodic_df('epsTrend', currency_key='epsTrendCurrency', methodology=methodology)
+            self._eps_trend[methodology] = self._get_periodic_df('epsTrend', currency_key='epsTrendCurrency', methodology=methodology, add_methodology=True)
         return self._eps_trend[methodology]
 
     @property
@@ -96,7 +109,7 @@ class Analysis:
     def get_eps_revisions(self, methodology=None) -> pd.DataFrame:
         methodology = _validate_eps_methodology(methodology)
         if methodology not in self._eps_revisions:
-            self._eps_revisions[methodology] = self._get_periodic_df('epsRevisions', currency_key='epsRevisionsCurrency', methodology=methodology)
+            self._eps_revisions[methodology] = self._get_periodic_df('epsRevisions', currency_key='epsRevisionsCurrency', methodology=methodology, add_methodology=True)
         return self._eps_revisions[methodology]
 
     @property
@@ -137,8 +150,8 @@ class Analysis:
     def _fetch_earnings_history(self, methodology) -> pd.DataFrame:
         module = 'earningsHistory' + _EPS_METHODOLOGY_MODULE_SUFFIX[methodology]
         try:
-            data = self._fetch([module])
-            data = data['quoteSummary']['result'][0][module]['history']
+            module_data = self._fetch([module])['quoteSummary']['result'][0][module]
+            data = module_data['history']
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
@@ -162,6 +175,9 @@ class Analysis:
             df['quarter'] = pd.to_datetime(df['quarter'], format='%Y-%m-%d')
             df.set_index('quarter', inplace=True)
 
+        label = _eps_methodology_label(methodology, module_data)
+        if label is not None:
+            df['methodology'] = label
         return df
 
     @property
@@ -181,7 +197,7 @@ class Analysis:
             return self._growth_estimates
 
         data = []
-        for item in earnings_trend:
+        for item in earnings_trend.get('trend', []):
             period = item['period']
             row = {'period': period, 'stockTrend': item.get('growth', {}).get('raw', None)}
             data.append(row)
@@ -220,15 +236,16 @@ class Analysis:
             return None
         return result
 
-    def _fetch_earnings_trend(self, methodology=None) -> list:
+    def _fetch_earnings_trend(self, methodology=None) -> dict:
+        # Returns whole module: 'trend' list + 'defaultMethodology'
         if methodology in self._earnings_trend:
             return self._earnings_trend[methodology]
         module = 'earningsTrend' + _EPS_METHODOLOGY_MODULE_SUFFIX[methodology]
         try:
             data = self._fetch([module])
-            self._earnings_trend[methodology] = data['quoteSummary']['result'][0][module]['trend']
+            self._earnings_trend[methodology] = data['quoteSummary']['result'][0][module]
         except (TypeError, KeyError):
             if not YfConfig.debug.hide_exceptions:
                 raise
-            self._earnings_trend[methodology] = []
+            self._earnings_trend[methodology] = {}
         return self._earnings_trend[methodology]
