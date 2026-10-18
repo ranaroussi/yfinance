@@ -315,11 +315,21 @@ class TestAdjustRatio(unittest.TestCase):
         df = auto_adjust(self._make_df(factors))
         np.testing.assert_allclose(df["Close"].to_numpy(), self.closes * np.array(factors), rtol=1e-12)
 
-    def test_auto_adjust_dividend_missing_from_adjclose(self):
-        # e.g. GBp tickers: Yahoo adjclose ignores the dividend, factor recomputed anyway
-        df = auto_adjust(self._make_df([1.0] * 6))
-        np.testing.assert_allclose(df["Close"].to_numpy()[:3], self.closes[:3] * self.step, rtol=1e-15)
-        np.testing.assert_allclose(df["Close"].to_numpy()[3:], self.closes[3:], rtol=1e-15)
+    def test_auto_adjust_keeps_adjclose_when_disagreeing(self):
+        # Only denoise: real disagreements with Yahoo's adjclose must be left untouched
+        noise = [3e-7, -2e-7, 1e-7, -4e-7, 2e-7, 0.0]
+
+        # Dividend missing from df, but present in Yahoo's adjclose
+        df_in = self._make_df([self.step] * 3 + [1.0] * 3, noise)
+        df_in["Dividends"] = 0.0
+        np.testing.assert_allclose(auto_adjust(df_in)["Close"].to_numpy(), df_in["Adj Close"].to_numpy(), rtol=1e-15)
+
+        # Yahoo's adjclose ignoring a dividend (e.g. GBp tickers)
+        df_in = self._make_df([1.0] * 6, noise)
+        df_out = auto_adjust(df_in)
+        np.testing.assert_allclose(df_out["Close"].to_numpy()[:3], df_in["Adj Close"].to_numpy()[:3], rtol=1e-15)
+        # Rows after the dividend still agree with Yahoo, so are denoised
+        np.testing.assert_allclose(df_out["Close"].to_numpy()[3:], self.closes[3:], rtol=1e-15)
 
     def test_auto_adjust_fallbacks_to_adjclose(self):
         factors = [self.step] * 3 + [1.0] * 3

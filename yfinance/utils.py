@@ -510,15 +510,16 @@ _ADJ_RATIO_NOISE_TOL = 2e-6
 
 def _adjustment_ratio(df):
     """
-    Price-adjustment factor per row, recomputed from distributions.
+    'Adj Close' / 'Close' per row, with Yahoo's float32 noise removed.
 
-    Yahoo's 'adjclose' is float32 and varies by a few ULPs between requests,
-    so instead: factor = product over later ex-dates of
-    (1 - distribution / previous close). Anchored on Yahoo's factor after the
-    last distribution in df, which is exactly 1.0 when df reaches the latest
-    distribution (e.g. end=None).
+    Yahoo's 'adjclose' is float32 and varies by a few ULPs between requests.
+    Recompute the factor as product over later ex-dates of
+    (1 - distribution / previous close), anchored on Yahoo's factor after the
+    last distribution in df (exactly 1.0 when df reaches the latest one).
 
-    Falls back to Yahoo's per-row 'Adj Close' / 'Close' if data unusable.
+    Only denoises: wherever the recomputed factor differs from Yahoo's by more
+    than float32 noise (e.g. dividend missing from df, or Yahoo's adjclose
+    ignoring a dividend), Yahoo's factor is kept unchanged.
     """
     ratio = (df["Adj Close"] / df["Close"]).to_numpy(dtype=float)
     if "Dividends" not in df.columns or not df.index.is_monotonic_increasing:
@@ -547,7 +548,10 @@ def _adjustment_ratio(df):
         return ratio
     # factor[i] = anchor * product of steps[j] for j > i
     later_steps = _np.append(_np.cumprod(steps[::-1])[::-1][1:], 1.0)
-    return anchor * later_steps
+    recomputed = anchor * later_steps
+    with _np.errstate(invalid='ignore', divide='ignore'):
+        f_noise = _np.abs(recomputed / ratio - 1.0) < _ADJ_RATIO_NOISE_TOL
+    return _np.where(f_noise, recomputed, ratio)
 
 
 def auto_adjust(data):
