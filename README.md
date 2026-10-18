@@ -46,7 +46,7 @@
 - `EquityQuery` and `Screener`: build query to screen market
 
 > [!NOTE]
-> `Ticker.history()` and `yf.download()` adjust prices for splits and dividends by default (`auto_adjust=True`). See [Advanced ▸ Price adjustment](https://ranaroussi.github.io/yfinance/advanced/price_adjustment.html) for details.
+> [Prices are default adjusted for dividends (`auto_adjust=True`)](https://ranaroussi.github.io/yfinance/advanced/price_adjustment.html).
 
 ## Installation
 
