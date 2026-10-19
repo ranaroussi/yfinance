@@ -205,6 +205,12 @@ class TestPriceHistory(unittest.TestCase):
         yf.utils.safe_merge_dfs(df, divs, interval)
         # No exception = test pass
 
+        # Same with a future split: must not overwrite merged dividends
+        splits = _pd.DataFrame(data={"Stock Splits":[2.0]}, index=[future_div_dt])
+        df2 = yf.utils.safe_merge_dfs(df.assign(Dividends=0.5), splits, interval)
+        self.assertTrue((df2['Dividends'] == 0.5).all())
+        self.assertTrue((df2['Stock Splits'] == 0.0).all())
+
     def test_pricesEventsMerge_hourly(self):
         # '1h' must merge events exactly like '60m'. An event stamped before
         # the open belongs to that day's first bar, not the previous day's
