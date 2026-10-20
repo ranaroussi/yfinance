@@ -815,7 +815,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             # Discard out-of-range dividends in intraday data, assume user not interested
             df_sub = df_sub[~f_outOfRange]
             if df_sub.empty:
-                df_main['Dividends'] = 0.0
+                df_main[data_col] = 0.0
                 return df_main
 
             # df_sub changed so recalc indices:
