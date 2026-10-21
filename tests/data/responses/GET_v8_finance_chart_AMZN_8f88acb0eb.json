@@ -1,0 +1,94 @@
+[
+ {
+  "request": {
+   "method": "GET",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/AMZN",
+   "params": {
+    "interval": "1d",
+    "range": "1d"
+   }
+  },
+  "recorded_at": 1790540128,
+  "response": {
+   "status_code": 200,
+   "content_type": "application/json;charset=utf-8",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/AMZN?interval=1d&range=1d",
+   "json": {
+    "chart": {
+     "result": [
+      {
+       "meta": {
+        "currency": "USD",
+        "symbol": "AMZN",
+        "exchangeName": "NMS",
+        "fullExchangeName": "NasdaqGS",
+        "instrumentType": "EQUITY",
+        "firstTradeDate": 863703000,
+        "regularMarketTime": 1790366401,
+        "hasPrePostMarketData": true,
+        "gmtoffset": -14400,
+        "timezone": "EDT",
+        "exchangeTimezoneName": "America/New_York",
+        "regularMarketPrice": 249.67,
+        "regularMarketChangePercent": 0.116,
+        "fulldayPrice": 249.98,
+        "fulldayChange": 0.29,
+        "fulldayChangePercent": 0.116,
+        "fiftyTwoWeekHigh": 287.2,
+        "fiftyTwoWeekLow": 196.0,
+        "regularMarketDayHigh": 250.878,
+        "regularMarketDayLow": 247.18,
+        "regularMarketVolume": 34263902,
+        "longName": "Amazon.com, Inc.",
+        "shortName": "Amazon.com, Inc.",
+        "chartPreviousClose": 249.38,
+        "priceHint": 2,
+        "currentTradingPeriod": {
+         "pre": {
+          "timezone": "EDT",
+          "end": 1790343000,
+          "start": 1790323200,
+          "gmtoffset": -14400
+         },
+         "regular": {
+          "timezone": "EDT",
+          "end": 1790366400,
+          "start": 1790343000,
+          "gmtoffset": -14400
+         },
+         "post": {
+          "timezone": "EDT",
+          "end": 1790380800,
+          "start": 1790366400,
+          "gmtoffset": -14400
+         }
+        },
+        "dataGranularity": "1d",
+        "range": "1d",
+        "validRanges": ["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]
+       },
+       "timestamp": [1790343000],
+       "indicators": {
+        "quote": [
+         {
+          "volume": [34216300],
+          "open": [248.55999755859375],
+          "low": [247.17999267578125],
+          "close": [249.6699981689453],
+          "high": [250.8800048828125]
+         }
+        ],
+        "adjclose": [
+         {
+          "adjclose": [249.6699981689453]
+         }
+        ]
+       }
+      }
+     ],
+     "error": null
+    }
+   }
+  }
+ }
+]

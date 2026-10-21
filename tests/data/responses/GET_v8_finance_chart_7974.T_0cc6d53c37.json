@@ -1,0 +1,94 @@
+[
+ {
+  "request": {
+   "method": "GET",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/7974.T",
+   "params": {
+    "interval": "1d",
+    "range": "1d"
+   }
+  },
+  "recorded_at": 1790540128,
+  "response": {
+   "status_code": 200,
+   "content_type": "application/json;charset=utf-8",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/7974.T?interval=1d&range=1d",
+   "json": {
+    "chart": {
+     "result": [
+      {
+       "meta": {
+        "currency": "JPY",
+        "symbol": "7974.T",
+        "exchangeName": "JPX",
+        "fullExchangeName": "Tokyo",
+        "instrumentType": "EQUITY",
+        "firstTradeDate": 978566400,
+        "regularMarketTime": 1790317800,
+        "hasPrePostMarketData": false,
+        "gmtoffset": 32400,
+        "timezone": "JST",
+        "exchangeTimezoneName": "Asia/Tokyo",
+        "regularMarketPrice": 8100.0,
+        "regularMarketChangePercent": -1.171,
+        "fulldayPrice": 8100.0,
+        "fulldayChange": -96.0,
+        "fulldayChangePercent": -1.171,
+        "fiftyTwoWeekHigh": 14630.0,
+        "fiftyTwoWeekLow": 6544.0,
+        "regularMarketDayHigh": 8275.0,
+        "regularMarketDayLow": 8092.0,
+        "regularMarketVolume": 6295000,
+        "longName": "Nintendo Co., Ltd.",
+        "shortName": "NINTENDO CO LTD",
+        "chartPreviousClose": 8196.0,
+        "priceHint": 2,
+        "currentTradingPeriod": {
+         "pre": {
+          "timezone": "JST",
+          "end": 1790553600,
+          "start": 1790553600,
+          "gmtoffset": 32400
+         },
+         "regular": {
+          "timezone": "JST",
+          "end": 1790577000,
+          "start": 1790553600,
+          "gmtoffset": 32400
+         },
+         "post": {
+          "timezone": "JST",
+          "end": 1790577000,
+          "start": 1790577000,
+          "gmtoffset": 32400
+         }
+        },
+        "dataGranularity": "1d",
+        "range": "1d",
+        "validRanges": ["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]
+       },
+       "timestamp": [1790294400],
+       "indicators": {
+        "quote": [
+         {
+          "close": [8100.0],
+          "low": [8092.0],
+          "volume": [6295000],
+          "high": [8275.0],
+          "open": [8140.0]
+         }
+        ],
+        "adjclose": [
+         {
+          "adjclose": [8100.0]
+         }
+        ]
+       }
+      }
+     ],
+     "error": null
+    }
+   }
+  }
+ }
+]
