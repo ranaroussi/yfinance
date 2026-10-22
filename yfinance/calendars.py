@@ -282,9 +282,9 @@ class Calendars:
             df[nan_cols] = df[nan_cols].astype("float64").replace(0.0, np.nan)
 
         # Format the dataframe
-        df.set_index(predef_cal["df_index"], inplace=True)
+        df = df.set_index(predef_cal["df_index"])
         for rename_from, rename_to in predef_cal["renames"].items():
-            df.rename(columns={rename_from: rename_to}, inplace=True)
+            df = df.rename(columns={rename_from: rename_to})
 
         for datetime_col in predef_cal["datetime_cols"]:
             df[datetime_col] = pd.to_datetime(df[datetime_col])
