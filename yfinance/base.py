@@ -739,7 +739,7 @@ class TickerBase:
             df = df.drop(["Symbol", "Company"], axis=1)
 
             # Backwards compatibility
-            df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)
+            df = df.rename(columns={'Surprise (%)': 'Surprise(%)'})
 
             df = df.dropna(subset="Earnings Date")
 
@@ -825,9 +825,9 @@ class TickerBase:
         df[columns_to_update] = df[columns_to_update].astype('float64').replace(0.0, np.nan)
 
         # Format the dataframe
-        df.drop(['Event Start Date', 'Timezone short name'], axis=1, inplace=True)
-        df.set_index('Earnings Date', inplace=True)
-        df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)  # Compatibility
+        df = df.drop(['Event Start Date', 'Timezone short name'], axis=1)
+        df = df.set_index('Earnings Date')
+        df = df.rename(columns={'Surprise (%)': 'Surprise(%)'})  # Compatibility
 
         self._earnings_dates[limit] = df
         return df
