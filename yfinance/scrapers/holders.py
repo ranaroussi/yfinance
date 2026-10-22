@@ -116,7 +116,7 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)  # "pctHeld": "% Out"
+            df = df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"})  # "pctHeld": "% Out"
         self._institutional = df
 
     def _parse_fund_ownership(self, data):
@@ -128,7 +128,7 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"}, inplace=True)
+            df = df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "position": "Shares", "value": "Value"})
         self._mutualfund = df
 
     def _parse_major_direct_holders(self, data):
@@ -140,7 +140,7 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["reportDate"] = pd.to_datetime(df["reportDate"], unit="s")
-            df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "positionDirect": "Shares", "valueDirect": "Value"}, inplace=True)
+            df = df.rename(columns={"reportDate": "Date Reported", "organization": "Holder", "positionDirect": "Shares", "valueDirect": "Value"})
         self._major_direct_holders = df
 
     def _parse_major_holders_breakdown(self, data):
@@ -149,7 +149,7 @@ class Holders:
         df = pd.DataFrame.from_dict(data, orient="index")
         if not df.empty:
             df.columns.name = "Breakdown"
-            df.rename(columns={df.columns[0]: 'Value'}, inplace=True)
+            df = df.rename(columns={df.columns[0]: 'Value'})
         self._major = df
 
     def _parse_insider_transactions(self, data):
@@ -161,7 +161,7 @@ class Holders:
         df = pd.DataFrame(holders)
         if not df.empty:
             df["startDate"] = pd.to_datetime(df["startDate"], unit="s")
-            df.rename(columns={
+            df = df.rename(columns={
                 "startDate": "Start Date",
                 "filerName": "Insider",
                 "filerRelation": "Position",
@@ -171,7 +171,7 @@ class Holders:
                 "shares": "Shares",
                 "value": "Value",
                 "ownership": "Ownership"  # ownership flag, direct or institutional
-            }, inplace=True)
+            })
         self._insider_transactions = df
 
     def _parse_insider_holders(self, data):
@@ -187,7 +187,7 @@ class Holders:
             if "latestTransDate" in df:
                 df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
 
-            df.rename(columns={
+            df = df.rename(columns={
                 "name": "Name",
                 "relation": "Position",
                 "url": "URL",
@@ -197,7 +197,7 @@ class Holders:
                 "positionDirect": "Shares Owned Directly",
                 "positionIndirectDate": "Position Indirect Date",
                 "positionIndirect": "Shares Owned Indirectly"
-            }, inplace=True)
+            })
 
             df["Name"] = df["Name"].astype(str)
             df["Position"] = df["Position"].astype(str)
