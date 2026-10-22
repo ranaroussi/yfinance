@@ -85,7 +85,7 @@ class Tickers:
 
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
-            data.sort_index(level=0, axis=1, inplace=True)
+            data = data.sort_index(level=0, axis=1)
 
         return data
 
