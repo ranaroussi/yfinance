@@ -511,14 +511,14 @@ def auto_adjust(data):
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
 
-    df.drop(
+    df = df.drop(
         ["Open", "High", "Low", "Close"],
-        axis=1, inplace=True)
+        axis=1)
 
-    df.rename(columns={
+    df = df.rename(columns={
         "Adj Open": "Open", "Adj High": "High",
         "Adj Low": "Low", "Adj Close": "Close"
-    }, inplace=True)
+    })
 
     return df[[c for c in col_order if c in df.columns]]
 
@@ -533,14 +533,14 @@ def back_adjust(data):
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
 
-    df.drop(
+    df = df.drop(
         ["Open", "High", "Low", "Adj Close"],
-        axis=1, inplace=True)
+        axis=1)
 
-    df.rename(columns={
+    df = df.rename(columns={
         "Adj Open": "Open", "Adj High": "High",
         "Adj Low": "Low"
-    }, inplace=True)
+    })
 
     return df[[c for c in col_order if c in df.columns]]
 
@@ -565,7 +565,7 @@ def parse_quotes(data):
                             "Adj Close": adjclose,
                             "Volume": volumes})
     quotes.index = _pd.to_datetime(timestamps, unit="s")
-    quotes.sort_index(inplace=True)
+    quotes = quotes.sort_index()
     for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
         if not is_float_dtype(quotes[c].dtype):
             # Only seen when Adj Close contains Infinity.
@@ -582,9 +582,9 @@ def parse_actions(data):
         if "dividends" in data["events"] and len(data["events"]['dividends']) > 0:
             dividends = _pd.DataFrame(
                 data=list(data["events"]["dividends"].values()))
-            dividends.set_index("date", inplace=True)
+            dividends = dividends.set_index("date")
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
-            dividends.sort_index(inplace=True)
+            dividends = dividends.sort_index()
             if 'currency' in dividends.columns and (dividends['currency'] == '').all():
                 # Currency column useless, drop it.
                 dividends = dividends.drop('currency', axis=1)
@@ -593,17 +593,17 @@ def parse_actions(data):
         if "capitalGains" in data["events"] and len(data["events"]['capitalGains']) > 0:
             capital_gains = _pd.DataFrame(
                 data=list(data["events"]["capitalGains"].values()))
-            capital_gains.set_index("date", inplace=True)
+            capital_gains = capital_gains.set_index("date")
             capital_gains.index = _pd.to_datetime(capital_gains.index, unit="s")
-            capital_gains.sort_index(inplace=True)
+            capital_gains = capital_gains.sort_index()
             capital_gains.columns = ["Capital Gains"]
 
         if "splits" in data["events"] and len(data["events"]['splits']) > 0:
             splits = _pd.DataFrame(
                 data=list(data["events"]["splits"].values()))
-            splits.set_index("date", inplace=True)
+            splits = splits.set_index("date")
             splits.index = _pd.to_datetime(splits.index, unit="s")
-            splits.sort_index(inplace=True)
+            splits = splits.sort_index()
             splits["Stock Splits"] = splits["numerator"] / splits["denominator"]
             splits = splits[["Stock Splits"]]
 
