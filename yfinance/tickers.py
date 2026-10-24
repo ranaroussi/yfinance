@@ -80,9 +80,6 @@ class Tickers:
                               timeout=timeout,
                               **kwargs)
 
-        for symbol in self.symbols:
-            self.tickers.get(symbol, {})._history = data[symbol]
-
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
             data.sort_index(level=0, axis=1, inplace=True)

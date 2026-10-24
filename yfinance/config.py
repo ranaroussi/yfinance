@@ -30,6 +30,7 @@ class ConfigMgr:
         n = self.__getattr__('network')
         n.proxy = None
         n.retries = 0
+        n.cache_ttl = 60     # seconds to reuse cached GET responses; 0 = no caching, None = never expire
         d = self.__getattr__('debug')
         d.hide_exceptions = True
         d.logging = False
