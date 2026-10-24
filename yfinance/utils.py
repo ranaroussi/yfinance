@@ -662,7 +662,9 @@ def _dts_in_same_interval(dt1, dt2, interval):
     if interval == '1d':
         last_rows_same_interval = dt1.date() == dt2.date()
     elif interval == "1wk":
-        last_rows_same_interval = (dt2 - dt1).days < 7
+        # A holiday can move the first bar to Tuesday or later. A rolling
+        # seven-day window would then include Monday from the next week.
+        last_rows_same_interval = dt1 <= dt2 and dt1.isocalendar()[:2] == dt2.isocalendar()[:2]
     elif interval == "1mo":
         last_rows_same_interval = dt1.month == dt2.month and dt1.year == dt2.year
     elif interval == "3mo":
