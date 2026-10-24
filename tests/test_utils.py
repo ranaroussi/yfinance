@@ -90,6 +90,11 @@ class TestDateIntervalCheck(unittest.TestCase):
         dt1 = pd.Timestamp("2024-10-14")  # Monday week 42
         dt2 = pd.Timestamp("2024-10-21")  # Monday week 43
         self.assertFalse(_dts_in_same_interval(dt1, dt2, "1wk"))
+
+    def test_holiday_delayed_week_start_does_not_include_next_monday(self):
+        dt1 = pd.Timestamp("2024-01-02")  # Tuesday after New Year's Day
+        dt2 = pd.Timestamp("2024-01-08")  # Monday in the next ISO week
+        self.assertFalse(_dts_in_same_interval(dt1, dt2, "1wk"))
     
     def test_week_year_boundary(self):
         # Week 52 of 2024 spans into 2025
