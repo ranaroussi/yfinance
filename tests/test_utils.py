@@ -13,6 +13,7 @@ from unittest import TestSuite
 
 import warnings
 
+import numpy as np
 import pandas as pd
 
 import unittest
@@ -23,6 +24,8 @@ from yfinance.utils import (
     _parse_user_dt,
     _interval_to_timedelta,
     fix_Yahoo_returning_live_separate,
+    auto_adjust,
+    back_adjust,
 )
 
 
@@ -281,6 +284,76 @@ class TestFixYahooReturningLiveSeparate(unittest.TestCase):
                     self.assertAlmostEqual(row["High"], f*1.01)
                     self.assertAlmostEqual(row["Low"], f*0.99)
                     self.assertAlmostEqual(row["Close"], f*1.0)
+
+
+class TestAdjustRatio(unittest.TestCase):
+    # 1.0 dividend with ex-date on row 3: rows 0-2 scaled by 1 - 1/102
+    closes = np.array([100.0, 101.0, 102.0, 100.0, 99.0, 98.0])
+    dividends = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    step = 1.0 - 1.0 / 102.0
+
+    def _make_df(self, adj_factors, noise=None):
+        # Yahoo 'adjclose' = Close * factor, plus float32-level noise
+        noise = np.zeros(len(self.closes)) if noise is None else np.asarray(noise)
+        idx = pd.date_range("2020-01-01", periods=len(self.closes), freq="D", tz="UTC")
+        return pd.DataFrame({
+            "Open": self.closes - 0.5, "High": self.closes + 1.0,
+            "Low": self.closes - 1.0, "Close": self.closes,
+            "Adj Close": self.closes * np.asarray(adj_factors) * (1 + noise),
+            "Volume": 1000, "Dividends": self.dividends, "Stock Splits": 0.0}, index=idx)
+
+    def test_auto_adjust_removes_adjclose_noise(self):
+        factors = [self.step] * 3 + [1.0] * 3
+        expected = self.closes * np.array(factors)
+        outputs = []
+        for noise in ([3e-7, -2e-7, 1e-7, -4e-7, 2e-7, 0.0], [-1e-7, 4e-7, -3e-7, 1e-7, 0.0, -2e-7]):
+            df = auto_adjust(self._make_df(factors, noise))
+            np.testing.assert_allclose(df["Close"].to_numpy(), expected, rtol=1e-15)
+            np.testing.assert_allclose(df["Open"].to_numpy(), (self.closes - 0.5) * np.array(factors), rtol=1e-15)
+            outputs.append(df["Close"].to_numpy())
+        # Different noise in, identical prices out
+        self.assertTrue(np.array_equal(outputs[0], outputs[1]))
+
+    def test_auto_adjust_anchor_before_later_dividend(self):
+        # Range ends before a later dividend: anchor comes from Yahoo's factor
+        factors = [0.97 * self.step] * 3 + [0.97] * 3
+        df = auto_adjust(self._make_df(factors))
+        np.testing.assert_allclose(df["Close"].to_numpy(), self.closes * np.array(factors), rtol=1e-12)
+
+    def test_auto_adjust_keeps_adjclose_when_disagreeing(self):
+        # Only denoise: real disagreements with Yahoo's adjclose must be left untouched
+        noise = [3e-7, -2e-7, 1e-7, -4e-7, 2e-7, 0.0]
+
+        # Dividend missing from df, but present in Yahoo's adjclose
+        df_in = self._make_df([self.step] * 3 + [1.0] * 3, noise)
+        df_in["Dividends"] = 0.0
+        np.testing.assert_allclose(auto_adjust(df_in)["Close"].to_numpy(), df_in["Adj Close"].to_numpy(), rtol=1e-15)
+
+        # Yahoo's adjclose ignoring a dividend (e.g. GBp tickers)
+        df_in = self._make_df([1.0] * 6, noise)
+        df_out = auto_adjust(df_in)
+        np.testing.assert_allclose(df_out["Close"].to_numpy()[:3], df_in["Adj Close"].to_numpy()[:3], rtol=1e-15)
+        # Rows after the dividend still agree with Yahoo, so are denoised
+        np.testing.assert_allclose(df_out["Close"].to_numpy()[3:], self.closes[3:], rtol=1e-15)
+
+    def test_auto_adjust_fallbacks_to_adjclose(self):
+        factors = [self.step] * 3 + [1.0] * 3
+        noise = [3e-7, -2e-7, 1e-7, -4e-7, 2e-7, 0.0]
+
+        # No dividends column
+        df_in = self._make_df(factors, noise).drop(columns="Dividends")
+        np.testing.assert_array_equal(auto_adjust(df_in)["Close"].to_numpy(), df_in["Adj Close"].to_numpy())
+
+        # Unusable dividend: not smaller than previous close
+        df_in = self._make_df(factors, noise)
+        df_in.loc[df_in.index[3], "Dividends"] = 500.0
+        np.testing.assert_allclose(auto_adjust(df_in)["Close"].to_numpy(), df_in["Adj Close"].to_numpy(), rtol=1e-15)
+
+    def test_back_adjust_uses_same_factor(self):
+        factors = [self.step] * 3 + [1.0] * 3
+        df = back_adjust(self._make_df(factors, [3e-7, -2e-7, 1e-7, -4e-7, 2e-7, 0.0]))
+        np.testing.assert_array_equal(df["Close"].to_numpy(), self.closes)
+        np.testing.assert_allclose(df["Open"].to_numpy(), (self.closes - 0.5) * np.array(factors), rtol=1e-15)
 
 
 if __name__ == "__main__":

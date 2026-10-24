@@ -503,13 +503,65 @@ def is_valid_period_format(period):
     return bool(re.match(valid_pattern, period))
 
 
+# Yahoo computes 'adjclose' in float32: same day can differ by a few ULPs
+# between requests (~5e-7 relative). Real dividend steps are far larger.
+_ADJ_RATIO_NOISE_TOL = 2e-6
+
+
+def _adjustment_ratio(df):
+    """
+    'Adj Close' / 'Close' per row, with Yahoo's float32 noise removed.
+
+    Yahoo's 'adjclose' is float32 and varies by a few ULPs between requests.
+    Recompute the factor as product over later ex-dates of
+    (1 - distribution / previous close), anchored on Yahoo's factor after the
+    last distribution in df (exactly 1.0 when df reaches the latest one).
+
+    Only denoises: wherever the recomputed factor differs from Yahoo's by more
+    than float32 noise (e.g. dividend missing from df, or Yahoo's adjclose
+    ignoring a dividend), Yahoo's factor is kept unchanged.
+    """
+    ratio = (df["Adj Close"] / df["Close"]).to_numpy(dtype=float)
+    if "Dividends" not in df.columns or not df.index.is_monotonic_increasing:
+        return ratio
+
+    dist = df["Dividends"].fillna(0).to_numpy(dtype=float)
+    if "Capital Gains" in df.columns:
+        dist = dist + df["Capital Gains"].fillna(0).to_numpy(dtype=float)
+    # Previous valid close, in case of NaN rows (keepna=True)
+    prev_close = df["Close"].ffill().shift(1).to_numpy(dtype=float)
+
+    f_dist = dist != 0
+    last_dist_idx = _np.flatnonzero(f_dist)[-1] if f_dist.any() else 0
+    tail = ratio[last_dist_idx:]
+    if _np.isnan(tail).all():
+        return ratio
+    anchor = _np.nanmedian(tail)
+    if abs(anchor - 1.0) < _ADJ_RATIO_NOISE_TOL:
+        anchor = 1.0
+
+    # Each ex-date scales all earlier rows
+    steps = _np.ones(len(df))
+    steps[f_dist] = 1.0 - dist[f_dist] / prev_close[f_dist]
+    steps[0] = 1.0  # no earlier row to adjust
+    if _np.isnan(steps).any() or (steps <= 0).any() or (steps > 1).any():
+        return ratio
+    # factor[i] = anchor * product of steps[j] for j > i
+    later_steps = _np.append(_np.cumprod(steps[::-1])[::-1][1:], 1.0)
+    recomputed = anchor * later_steps
+    with _np.errstate(invalid='ignore', divide='ignore'):
+        f_noise = _np.abs(recomputed / ratio - 1.0) < _ADJ_RATIO_NOISE_TOL
+    return _np.where(f_noise, recomputed, ratio)
+
+
 def auto_adjust(data):
     col_order = data.columns
     df = data.copy()
-    ratio = (df["Adj Close"] / df["Close"]).to_numpy()
+    ratio = _adjustment_ratio(df)
     df["Adj Open"] = df["Open"] * ratio
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
+    df["Adj Close"] = (df["Close"] * ratio).where(~_np.isnan(ratio), df["Adj Close"])
 
     df.drop(
         ["Open", "High", "Low", "Close"],
@@ -528,7 +580,7 @@ def back_adjust(data):
 
     col_order = data.columns
     df = data.copy()
-    ratio = df["Adj Close"] / df["Close"]
+    ratio = _adjustment_ratio(df)
     df["Adj Open"] = df["Open"] * ratio
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
