@@ -25,6 +25,7 @@ import logging
 import threading
 import time as _time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Union
 
 import multitasking as _multitasking
@@ -36,6 +37,11 @@ from . import Ticker, utils
 from .data import YfData
 from .config import YfConfig
 from .const import period_default
+from .exceptions import YFRateLimitError
+
+# Attributes like info cost several requests per ticker, so _attr_impl()
+# defaults to fewer threads than download() to stay under Yahoo's rate limit.
+_ATTR_MAX_THREADS = 4
 
 
 class _DownloadCtx:
@@ -48,6 +54,19 @@ class _DownloadCtx:
         self.errors = {}
         self.tracebacks = {}
         self.isins = {}
+        self.progress_bar = None
+        self.lock = threading.Lock()
+
+
+class _AttrCtx:
+    """Per-call scratch state for _attr_impl(). Same role as _DownloadCtx."""
+    __slots__ = ('results', 'errors', 'tracebacks', 'rate_limited', 'progress_bar', 'lock')
+
+    def __init__(self):
+        self.results = {}
+        self.errors = {}
+        self.tracebacks = {}
+        self.rate_limited = False
         self.progress_bar = None
         self.lock = threading.Lock()
 
@@ -189,23 +208,7 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
     if progress:
         ctx.progress_bar.completed()
 
-    if ctx.errors:
-        logger.error('\n%.f Failed download%s:' % (
-            len(ctx.errors), 's' if len(ctx.errors) > 1 else ''))
-
-        errors = {}
-        for ticker, err in ctx.errors.items():
-            err = err.replace(f'${ticker}: ', '')
-            errors.setdefault(err, []).append(ticker)
-        for err, syms in errors.items():
-            logger.error(f'{syms}: ' + err)
-
-        tbs = {}
-        for ticker, tb in ctx.tracebacks.items():
-            tb = tb.replace(f'${ticker}: ', '')
-            tbs.setdefault(tb, []).append(ticker)
-        for tb, syms in tbs.items():
-            logger.debug(f'{syms}: ' + tb)
+    _log_errors(logger, ctx, 'download', 'downloads')
 
     if ignore_tz:
         for tkr, df in ctx.dfs.items():
@@ -228,6 +231,102 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
         data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
 
     return data
+
+
+def _attr_impl(ctx, tickers, attr_name, threads=True, progress=False):
+    """Fetch one Ticker attribute (e.g. 'info', 'calendar') for many tickers.
+
+    `tickers` maps symbol -> Ticker, so each fetched value stays cached on its
+    Ticker object. Returns a dict symbol -> value, with None for failures.
+    Merging the values into one object is left to the caller, because only
+    that part depends on the attribute.
+    """
+    logger = utils.get_yf_logger()
+
+    if not isinstance(getattr(Ticker, attr_name, None), property):
+        raise ValueError(f"'{attr_name}' is not a Ticker attribute")
+
+    if logger.isEnabledFor(logging.DEBUG):
+        if threads:
+            # multi-threaded log messages would interleave; serialize.
+            logger.debug('Disabling multithreading because DEBUG logging enabled')
+            threads = False
+        if progress:
+            progress = False
+
+    if progress:
+        ctx.progress_bar = utils.ProgressBar(len(tickers), 'completed')
+
+    if threads is True:
+        threads = min([len(tickers), _ATTR_MAX_THREADS])
+    if threads and threads > 1:
+        # A pool per call, because multitasking creates its pool once at
+        # import, so set_max_threads() would not cap this call's threads.
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            futures = [executor.submit(_attr_one, ctx, sym, tkr, attr_name)
+                       for sym, tkr in tickers.items()]
+            for _ in as_completed(futures):
+                if progress:
+                    ctx.progress_bar.animate()
+    else:
+        for sym, tkr in tickers.items():
+            _attr_one(ctx, sym, tkr, attr_name)
+            if progress:
+                ctx.progress_bar.animate()
+
+    if progress:
+        ctx.progress_bar.completed()
+
+    _log_errors(logger, ctx, f'{attr_name} fetch', f'{attr_name} fetches')
+
+    return {sym: ctx.results[sym] for sym in tickers}
+
+
+def _merge_info(results):
+    # Keep the type of Ticker.info: a failed fetch becomes {} not None
+    return {sym: info or {} for sym, info in results.items()}
+
+
+def _merge_calendars(results):
+    # One row per ticker, so e.g. earnings dates can be compared across tickers.
+    # A failed or empty calendar becomes a row of NaN.
+    rows = [cal or {} for cal in results.values()]
+    return _pd.DataFrame(rows, index=_pd.Index(list(results), name='Ticker'))
+
+
+# Only the merge differs between attributes. Any attribute not listed here
+# is returned as a dict symbol -> value.
+_ATTR_MERGERS = {
+    'info': _merge_info,
+    'calendar': _merge_calendars,
+}
+
+
+def _merge_attr(attr_name, results):
+    merge = _ATTR_MERGERS.get(attr_name)
+    return results if merge is None else merge(results)
+
+
+def _log_errors(logger, ctx, singular, plural):
+    if not ctx.errors:
+        return
+
+    logger.error('\n%.f Failed %s:' % (
+        len(ctx.errors), plural if len(ctx.errors) > 1 else singular))
+
+    errors = {}
+    for ticker, err in ctx.errors.items():
+        err = err.replace(f'${ticker}: ', '')
+        errors.setdefault(err, []).append(ticker)
+    for err, syms in errors.items():
+        logger.error(f'{syms}: ' + err)
+
+    tbs = {}
+    for ticker, tb in ctx.tracebacks.items():
+        tb = tb.replace(f'${ticker}: ', '')
+        tbs.setdefault(tb, []).append(ticker)
+    for tb, syms in tbs.items():
+        logger.debug(f'{syms}: ' + tb)
 
 def reindex_dfs(dfs, ignore_tz):
     if ignore_tz:
@@ -305,3 +404,28 @@ def _download_one(ctx, ticker, start=None, end=None,
     YfConfig.network.hide_exceptions = backup
 
     return data
+
+
+def _attr_one(ctx, sym, tkr, attr_name):
+    if ctx.rate_limited:
+        # Once Yahoo rate-limits, more requests only extend the block.
+        # Values already fetched stay cached on each Ticker, so a later
+        # call only fetches the skipped ones.
+        with ctx.lock:
+            ctx.results[sym] = None
+            ctx.errors[sym] = 'Skipped because Yahoo rate-limited an earlier request'
+        return None
+
+    try:
+        value = getattr(tkr, attr_name)
+        with ctx.lock:
+            ctx.results[sym] = value
+    except Exception as e:
+        with ctx.lock:
+            if isinstance(e, YFRateLimitError):
+                ctx.rate_limited = True
+            ctx.results[sym] = None
+            ctx.errors[sym] = repr(e)
+            ctx.tracebacks[sym] = traceback.format_exc()
+
+    return ctx.results[sym]
