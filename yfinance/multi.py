@@ -23,7 +23,6 @@ from __future__ import print_function
 
 import logging
 import threading
-import time as _time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Union
@@ -181,20 +180,23 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
 
     if threads:
         if threads is True:
-            threads = min([len(tickers), _multitasking.cpu_count() * 2])
-        _multitasking.set_max_threads(threads)
-        for i, ticker in enumerate(tickers):
-            _download_one_threaded(ctx, ticker, period=period, interval=interval,
-                                   start=start, end=end, prepost=prepost,
-                                   actions=actions, auto_adjust=auto_adjust,
-                                   back_adjust=back_adjust, repair=repair, keepna=keepna,
-                                   progress=(progress and i > 0),
-                                   rounding=rounding, timeout=timeout)
-        while True:
-            with ctx.lock:
-                if len(ctx.dfs) >= len(tickers):
-                    break
-            _time.sleep(0.01)
+            # multitasking's pool never honoured set_max_threads(), so the
+            # effective default has always been one thread per CPU core.
+            threads = min([len(tickers), _multitasking.cpu_count()])
+        # A pool per call, because multitasking creates its pool once at
+        # import, so set_max_threads() would not cap this call's threads.
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            futures = [
+                executor.submit(_download_one_threaded, ctx, ticker, period=period, interval=interval,
+                                start=start, end=end, prepost=prepost,
+                                actions=actions, auto_adjust=auto_adjust,
+                                back_adjust=back_adjust, repair=repair, keepna=keepna,
+                                progress=(progress and i > 0),
+                                rounding=rounding, timeout=timeout)
+                for i, ticker in enumerate(tickers)
+            ]
+            for future in futures:
+                future.result()
     else:
         for i, ticker in enumerate(tickers):
             _download_one(ctx, ticker, period=period, interval=interval,
@@ -356,7 +358,6 @@ def reindex_dfs(dfs, ignore_tz):
 
     return dfs
 
-@_multitasking.task
 def _download_one_threaded(ctx, ticker, start=None, end=None,
                            auto_adjust=False, back_adjust=False, repair=False,
                            actions=False, progress=True, period=None,

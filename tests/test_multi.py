@@ -61,6 +61,32 @@ class TestDownloadThreadSafety(unittest.TestCase):
         self.assertEqual(aapl_tickers, ['AAPL'])
         self.assertEqual(msft_tickers, ['MSFT'])
 
+    def test_threads_int_caps_concurrency(self):
+        """download(threads=N) must run at most N fetches at once."""
+        idx = pd.DatetimeIndex(['2024-01-02'], tz='America/New_York')
+        lock = threading.Lock()
+        state = {'active': 0, 'peak': 0}
+
+        def mock_download_one(ctx, ticker, *args, **kwargs):
+            with lock:
+                state['active'] += 1
+                state['peak'] = max(state['peak'], state['active'])
+            time.sleep(0.05)
+            with lock:
+                state['active'] -= 1
+            df = pd.DataFrame({'Close': [1.0]}, index=idx)
+            with ctx.lock:
+                ctx.dfs[ticker.upper()] = df
+            return df
+
+        tickers = [f'T{i}' for i in range(8)]
+        with patch('yfinance.multi._download_one', side_effect=mock_download_one), \
+             patch('yfinance.multi.YfData'):
+            df = yf.download(tickers, threads=2, progress=False)
+
+        self.assertLessEqual(state['peak'], 2)
+        self.assertEqual(set(df.columns.get_level_values('Ticker')), set(tickers))
+
 
 class _FakeTickerAttr:
     """Stands in for a Ticker property without network. Caches per Ticker like
