@@ -1,6 +1,7 @@
 import threading
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import pandas as pd
@@ -57,6 +58,75 @@ class TestDownloadThreadSafety(unittest.TestCase):
 
         self.assertEqual(aapl_tickers, ['AAPL'])
         self.assertEqual(msft_tickers, ['MSFT'])
+
+
+class TestInfoThreadSafety(unittest.TestCase):
+
+    def test_multi_info_best_effort_partial_failure(self):
+        class FakeTicker:
+            def __init__(self, symbol, session=None):
+                self.symbol = symbol.upper()
+
+            @property
+            def info(self):
+                if self.symbol == "BAD":
+                    raise RuntimeError("ticker failed")
+                return {"symbol": self.symbol}
+
+        with patch('yfinance.multi.Ticker', new=FakeTicker), \
+             patch('yfinance.multi.YfData'):
+            results = yf.multi.info(["AAPL", "BAD", "MSFT"], threads=False, progress=False)
+
+        self.assertEqual(set(results.keys()), {"AAPL", "BAD", "MSFT"})
+        self.assertEqual(results["AAPL"]["symbol"], "AAPL")
+        self.assertEqual(results["MSFT"]["symbol"], "MSFT")
+        self.assertEqual(results["BAD"], {})
+
+    def test_concurrent_multi_info_calls_keep_results_separate(self):
+        class FakeTicker:
+            def __init__(self, symbol, session=None):
+                self.symbol = symbol.upper()
+
+            @property
+            def info(self):
+                time.sleep(0.02)
+                return {"symbol": self.symbol}
+
+        def fetch(tickers):
+            return yf.multi.info(tickers, threads=False, progress=False)
+
+        with patch('yfinance.multi.Ticker', new=FakeTicker), \
+             patch('yfinance.multi.YfData'):
+            with ThreadPoolExecutor(max_workers=2) as ex:
+                f_a = ex.submit(fetch, ["AAPL", "MSFT"])
+                f_b = ex.submit(fetch, ["NVDA", "META"])
+                res_a = f_a.result()
+                res_b = f_b.result()
+
+        self.assertEqual(set(res_a.keys()), {"AAPL", "MSFT"})
+        self.assertEqual(set(res_b.keys()), {"NVDA", "META"})
+
+    def test_multi_info_threads_do_not_serialize_fetches(self):
+        class SlowTicker:
+            def __init__(self, symbol, session=None):
+                self.symbol = symbol.upper()
+
+            @property
+            def info(self):
+                time.sleep(0.15)
+                return {"symbol": self.symbol}
+
+        symbols = ["AAPL", "MSFT", "NVDA", "META"]
+
+        with patch('yfinance.multi.Ticker', new=SlowTicker), \
+             patch('yfinance.multi.YfData'):
+            t0 = time.perf_counter()
+            results = yf.multi.info(symbols, threads=True, progress=False)
+            dt = time.perf_counter() - t0
+
+        self.assertEqual(set(results.keys()), set(symbols))
+        # Serial execution would be ~0.60s; allow generous margin for CI jitter.
+        self.assertLess(dt, 0.50, f"Expected threaded info fetches, took {dt:.3f}s")
 
 
 if __name__ == '__main__':
