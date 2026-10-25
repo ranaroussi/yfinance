@@ -504,11 +504,44 @@ class TestTickerEarningsDatesParsing(unittest.TestCase):
 
 class TestTickerNews(unittest.TestCase):
     @staticmethod
-    def _fake_post(url, body=None, **kwargs):
-        query_ref = url.split("queryRef=")[1].split("&")[0]
-        count = body["serviceConfig"]["snippetCount"]
-        stream = [{"id": f"{query_ref}-{i}"} for i in range(count)]
-        return MagicMock(text="", json=lambda: {"data": {"tickerStream": {"stream": stream}}})
+    def _story(uuid, typename="Story"):
+        return {
+            "__typename": typename,
+            "id": uuid,
+            "title": f"title {uuid}",
+            "previewUrl": None,
+            "isPremiumNews": False,
+            "contentAttributes": {
+                "description": None,
+                "summary": f"summary {uuid}",
+                "publishTime": "2026-10-25T20:05:00Z",
+                "displayTime": "2026-10-25T20:05:00Z",
+                "isHosted": True,
+                "canonicalUrl": f"https://example.com/{uuid}",
+                "clickthroughUrl": f"https://finance.yahoo.com/news/{uuid}.html",
+                "provider": {"displayName": "Provider", "url": "https://example.com/"},
+                "thumbnail": {
+                    "url": f"https://media.example.com/{uuid}.jpg", "width": 1400, "height": 933,
+                    "resized": [{"url": f"https://s.yimg.com/{uuid}.jpg", "width": 170, "height": 128,
+                                 "transformLabel": "170x128"}],
+                },
+            },
+            "finance": {"stockTickers": [{"symbol": "MSFT"}]},
+        }
+
+    @classmethod
+    def _response(cls, assets, end_cursor=None, has_next=False):
+        stream = {"edges": [{"node": {"asset": asset}} for asset in assets],
+                  "pageInfo": {"hasNextPage": has_next, "endCursor": end_cursor}}
+        payload = {"data": {"lightyearList": {"main": stream}}}
+        return MagicMock(text=json.dumps(payload), json=lambda: payload)
+
+    @classmethod
+    def _fake_post(cls, url, body=None, **kwargs):
+        variables = body["variables"]
+        list_name = variables["listInput"]["slug"].rsplit("-", 1)[1]
+        count = variables["mlRecsFirst"]
+        return cls._response([cls._story(f"{list_name}-{i}") for i in range(count)])
 
     def test_news_cached_per_count_and_tab(self):
         with patch("yfinance.data.YfData.post", side_effect=self._fake_post):
@@ -517,8 +550,8 @@ class TestTickerNews(unittest.TestCase):
             press = ticker.get_news(count=5, tab="press releases")
             news_again = ticker.get_news(count=2, tab="news")
 
-        self.assertEqual([a["id"] for a in news], ["latestNews-0", "latestNews-1"])
-        self.assertEqual([a["id"] for a in press], [f"pressRelease-{i}" for i in range(5)])
+        self.assertEqual([a["id"] for a in news], ["news-0", "news-1"])
+        self.assertEqual([a["id"] for a in press], [f"pressrelease-{i}" for i in range(5)])
         self.assertIs(news_again, news, "data not cached")
 
     def test_news_invalid_tab_raises_after_cached_call(self):
@@ -527,6 +560,63 @@ class TestTickerNews(unittest.TestCase):
             ticker.get_news()
             with self.assertRaises(ValueError):
                 ticker.get_news(tab="bogus")
+
+    def test_news_request(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post) as post:
+            yf.Ticker("MSFT").get_news(count=3, tab="all")
+
+        url = post.call_args.args[0]
+        body = post.call_args.kwargs["body"]
+        self.assertEqual(url, "https://nexus-finance-prod.media.yahoo.com/")
+        self.assertEqual(post.call_args.kwargs["headers"], {"x-yahoo-cg-client-name": "finance"})
+        self.assertEqual(body["variables"]["listInput"]["slug"], "list=finance-US-en-US-ticker-all")
+        self.assertEqual(body["variables"]["listInput"]["queryVariables"], {"tickerSymbol": ["MSFT"]})
+        self.assertEqual(body["variables"]["mlRecsFirst"], 3)
+
+    def test_news_item_shape(self):
+        with patch("yfinance.data.YfData.post", return_value=self._response([self._story("abc")])):
+            article = yf.Ticker("MSFT").get_news(count=1)[0]
+
+        self.assertEqual(article["id"], "abc")
+        content = article["content"]
+        self.assertEqual(content["id"], "abc")
+        self.assertEqual(content["contentType"], "STORY")
+        self.assertEqual(content["title"], "title abc")
+        self.assertEqual(content["summary"], "summary abc")
+        self.assertEqual(content["pubDate"], "2026-10-25T20:05:00Z")
+        self.assertEqual(content["provider"]["displayName"], "Provider")
+        self.assertEqual(content["canonicalUrl"]["url"], "https://example.com/abc")
+        self.assertEqual(content["clickThroughUrl"]["url"], "https://finance.yahoo.com/news/abc.html")
+        self.assertEqual(content["thumbnail"]["originalUrl"], "https://media.example.com/abc.jpg")
+        self.assertEqual([r["tag"] for r in content["thumbnail"]["resolutions"]], ["original", "170x128"])
+        self.assertFalse(content["finance"]["premiumFinance"]["isPremiumNews"])
+        self.assertEqual(content["finance"]["stockTickers"], [{"symbol": "MSFT"}])
+
+    def test_news_skips_asset_errors(self):
+        assets = [self._story("a"), {"__typename": "AssetError"}, None, self._story("b", typename="Video")]
+        with patch("yfinance.data.YfData.post", return_value=self._response(assets)):
+            news = yf.Ticker("MSFT").get_news(count=4)
+
+        self.assertEqual([a["id"] for a in news], ["a", "b"])
+        self.assertEqual(news[1]["content"]["contentType"], "VIDEO")
+
+    def test_news_follows_pagination(self):
+        pages = [self._response([self._story("a"), self._story("b")], end_cursor="c1", has_next=True),
+                 self._response([self._story("c")], end_cursor="c2", has_next=False)]
+        with patch("yfinance.data.YfData.post", side_effect=pages) as post:
+            news = yf.Ticker("MSFT").get_news(count=5)
+
+        self.assertEqual([a["id"] for a in news], ["a", "b", "c"])
+        self.assertEqual(post.call_count, 2)
+        second = post.call_args_list[1].kwargs["body"]["variables"]
+        self.assertEqual(second["after"], "c1")
+        self.assertEqual(second["mlRecsFirst"], 3)
+
+    def test_news_graphql_error_returns_empty(self):
+        payload = {"data": {"lightyearList": None}, "errors": [{"message": "Error"}]}
+        response = MagicMock(text=json.dumps(payload), json=lambda: payload)
+        with patch("yfinance.data.YfData.post", return_value=response):
+            self.assertEqual(yf.Ticker("MSFT").get_news(), [])
 
 class TestTickerHolders(unittest.TestCase):
     session = None
