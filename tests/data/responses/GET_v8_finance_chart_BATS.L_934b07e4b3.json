@@ -1,0 +1,94 @@
+[
+ {
+  "request": {
+   "method": "GET",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/BATS.L",
+   "params": {
+    "interval": "1d",
+    "range": "1d"
+   }
+  },
+  "recorded_at": 1790540129,
+  "response": {
+   "status_code": 200,
+   "content_type": "application/json;charset=utf-8",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/BATS.L?interval=1d&range=1d",
+   "json": {
+    "chart": {
+     "result": [
+      {
+       "meta": {
+        "currency": "GBp",
+        "symbol": "BATS.L",
+        "exchangeName": "LSE",
+        "fullExchangeName": "LSE",
+        "instrumentType": "EQUITY",
+        "firstTradeDate": 789120000,
+        "regularMarketTime": 1790350644,
+        "hasPrePostMarketData": false,
+        "gmtoffset": 3600,
+        "timezone": "BST",
+        "exchangeTimezoneName": "Europe/London",
+        "regularMarketPrice": 4180.0,
+        "regularMarketChangePercent": -1.485,
+        "fulldayPrice": 4180.0,
+        "fulldayChange": -63.0,
+        "fulldayChangePercent": -1.485,
+        "fiftyTwoWeekHigh": 5368.0,
+        "fiftyTwoWeekLow": 3677.0,
+        "regularMarketDayHigh": 4237.0,
+        "regularMarketDayLow": 4158.0,
+        "regularMarketVolume": 2134577,
+        "longName": "British American Tobacco p.l.c.",
+        "shortName": "BRITISH AMERICAN TOBACCO PLC OR",
+        "chartPreviousClose": 4243.0,
+        "priceHint": 2,
+        "currentTradingPeriod": {
+         "pre": {
+          "timezone": "BST",
+          "start": 1790316900,
+          "end": 1790319600,
+          "gmtoffset": 3600
+         },
+         "regular": {
+          "timezone": "BST",
+          "start": 1790319600,
+          "end": 1790350200,
+          "gmtoffset": 3600
+         },
+         "post": {
+          "timezone": "BST",
+          "start": 1790350200,
+          "end": 1790352900,
+          "gmtoffset": 3600
+         }
+        },
+        "dataGranularity": "1d",
+        "range": "1d",
+        "validRanges": ["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]
+       },
+       "timestamp": [1790319600],
+       "indicators": {
+        "quote": [
+         {
+          "low": [4158.0],
+          "high": [4237.0],
+          "close": [4180.0],
+          "volume": [3136231],
+          "open": [4228.0]
+         }
+        ],
+        "adjclose": [
+         {
+          "adjclose": [4180.0]
+         }
+        ]
+       }
+      }
+     ],
+     "error": null
+    }
+   }
+  }
+ }
+]

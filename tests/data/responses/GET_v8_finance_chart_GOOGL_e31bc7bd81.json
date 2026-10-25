@@ -1,0 +1,94 @@
+[
+ {
+  "request": {
+   "method": "GET",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/GOOGL",
+   "params": {
+    "interval": "1d",
+    "range": "1d"
+   }
+  },
+  "recorded_at": 1790540142,
+  "response": {
+   "status_code": 200,
+   "content_type": "application/json;charset=utf-8",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/GOOGL?interval=1d&range=1d",
+   "json": {
+    "chart": {
+     "result": [
+      {
+       "meta": {
+        "currency": "USD",
+        "symbol": "GOOGL",
+        "exchangeName": "NMS",
+        "fullExchangeName": "NasdaqGS",
+        "instrumentType": "EQUITY",
+        "firstTradeDate": 1092922200,
+        "regularMarketTime": 1790366401,
+        "hasPrePostMarketData": true,
+        "gmtoffset": -14400,
+        "timezone": "EDT",
+        "exchangeTimezoneName": "America/New_York",
+        "regularMarketPrice": 343.92,
+        "regularMarketChangePercent": 0.456,
+        "fulldayPrice": 344.0,
+        "fulldayChange": 1.56,
+        "fulldayChangePercent": 0.456,
+        "fiftyTwoWeekHigh": 408.61,
+        "fiftyTwoWeekLow": 235.84,
+        "regularMarketDayHigh": 347.03,
+        "regularMarketDayLow": 341.11,
+        "regularMarketVolume": 21880846,
+        "longName": "Alphabet Inc.",
+        "shortName": "Alphabet Inc.",
+        "chartPreviousClose": 342.36,
+        "priceHint": 2,
+        "currentTradingPeriod": {
+         "pre": {
+          "timezone": "EDT",
+          "start": 1790323200,
+          "end": 1790343000,
+          "gmtoffset": -14400
+         },
+         "regular": {
+          "timezone": "EDT",
+          "start": 1790343000,
+          "end": 1790366400,
+          "gmtoffset": -14400
+         },
+         "post": {
+          "timezone": "EDT",
+          "start": 1790366400,
+          "end": 1790380800,
+          "gmtoffset": -14400
+         }
+        },
+        "dataGranularity": "1d",
+        "range": "1d",
+        "validRanges": ["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]
+       },
+       "timestamp": [1790343000],
+       "indicators": {
+        "quote": [
+         {
+          "volume": [21854700],
+          "high": [347.0299987792969],
+          "close": [343.9200134277344],
+          "low": [341.1099853515625],
+          "open": [342.3500061035156]
+         }
+        ],
+        "adjclose": [
+         {
+          "adjclose": [343.9200134277344]
+         }
+        ]
+       }
+      }
+     ],
+     "error": null
+    }
+   }
+  }
+ }
+]
