@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest.mock import patch, MagicMock
 from yfinance.const import EQUITY_SCREENER_FIELDS
@@ -34,6 +35,12 @@ class TestScreener(unittest.TestCase):
 
         response = screen(self.predefined)
         self.assertEqual(response, {'key': 'value'})
+
+    @patch('yfinance.data.YfData.post')
+    def test_predefined_with_offset_sends_count_as_size(self, mock_post):
+        screen(self.predefined, offset=50, count=100)
+        body = json.loads(mock_post.call_args.kwargs['data'])
+        self.assertEqual(body['size'], 100)
 
     def test_no_screener_field_is_two_fields_concatenated(self):
         # A missing comma between two adjacent string literals silently
