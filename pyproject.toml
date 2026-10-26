@@ -33,7 +33,8 @@ classifiers = [
 ]
 dependencies = [
     "beautifulsoup4>=4.11.1",
-    "curl_cffi>=0.15",
+    # curl_cffi 0.17: security updates
+    "curl_cffi>=0.17",
     "lxml>=4.9.0",
     "multitasking>=0.0.7",
     "numpy>=1.16.5",
