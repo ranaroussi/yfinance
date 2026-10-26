@@ -282,6 +282,17 @@ class TestFixYahooReturningLiveSeparate(unittest.TestCase):
                     self.assertAlmostEqual(row["Low"], f*0.99)
                     self.assertAlmostEqual(row["Close"], f*1.0)
 
+    def test_merge_keeps_capital_gains(self):
+        tz = "America/New_York"
+        idx = pd.DatetimeIndex([pd.Timestamp("2024-06-03", tz=tz),
+                                pd.Timestamp("2024-06-05 10:15", tz=tz)])
+        df = pd.DataFrame({
+            "Open": [1.0, 1.0], "High": [1.0, 1.0], "Low": [1.0, 1.0], "Close": [1.0, 1.0],
+            "Volume": [100, 50], "Dividends": [0.0, 0.0], "Stock Splits": [0.0, 0.0],
+            "Capital Gains": [0.0, 0.5]}, index=idx)
+        df, _ = fix_Yahoo_returning_live_separate(df, "1wk", tz, prepost=False)
+        self.assertEqual(df["Capital Gains"].iloc[0], 0.5)
+
 
 if __name__ == "__main__":
     unittest.main()
