@@ -173,7 +173,7 @@ class Analysis:
         df = pd.DataFrame(rows)
         if 'quarter' in df.columns:
             df['quarter'] = pd.to_datetime(df['quarter'], format='%Y-%m-%d')
-            df.set_index('quarter', inplace=True)
+            df = df.set_index('quarter')
 
         label = _eps_methodology_label(methodology, module_data)
         if label is not None:

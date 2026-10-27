@@ -221,11 +221,11 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
     except Exception:
         data = _pd.concat(ctx.dfs.values(), axis=1, sort=True,
                           keys=ctx.dfs.keys(), names=['Ticker', 'Price'])
-    data.rename(columns=ctx.isins, inplace=True)
+    data = data.rename(columns=ctx.isins)
 
     if group_by == 'column' and isinstance(data.columns, _pd.MultiIndex):
         data.columns = data.columns.swaplevel(0, 1)
-        data.sort_index(level=0, axis=1, inplace=True)
+        data = data.sort_index(level=0, axis=1)
 
     if not multi_level_index and len(tickers) == 1:
         data = data.droplevel(0 if group_by == 'ticker' else 1, axis=1).rename_axis(None, axis=1)
