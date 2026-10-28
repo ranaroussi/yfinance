@@ -613,7 +613,15 @@ class TickerBase:
         return self._isin
 
     def get_news(self, count=10, tab="news") -> list:
-        """Allowed options for tab: "news", "all", "press releases"""
+        """
+        Get the latest news for the ticker, newest first.
+
+        News follows ``yf.config.locale`` (e.g. "en-US", "fr-FR", "zh-Hant-HK").
+
+        :param count: maximum number of articles to return
+        :param tab: "news", "all" or "press releases"
+        :return: list of articles, each ``{"id": ..., "content": {...}}``
+        """
         logger = utils.get_yf_logger()
 
         tab_lists = {
@@ -626,15 +634,17 @@ class TickerBase:
         if not list_name:
             raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_lists.keys())}")
 
-        # Cache per request: a different count or tab is a different result
-        cache_key = (count, list_name)
+        lang, region = YfConfig.locale.lang, YfConfig.locale.region
+
+        # Cache per request: a different count, tab or locale is a different result
+        cache_key = (count, list_name, lang, region)
         if self._news.get(cache_key):
             return self._news[cache_key]
 
         # Same GraphQL request the quote news page makes since Yahoo retired /xhr/ncp
-        slug = f"list=finance-US-en-US-ticker-{list_name}"
+        slug = f"list=finance-{region}-{lang}-ticker-{list_name}"
         variables = {
-            "clientContext": {"device": "desktop", "lang": "en-US", "region": "US", "site": "finance"},
+            "clientContext": {"device": "desktop", "lang": lang, "region": region, "site": "finance"},
             "gqlContext": [{"listAlias": slug}],
             "imageResize": [{"operations": ["resizefill_w170_h128"], "transformLabel": "170x128"}],
             "listInput": {
@@ -681,8 +691,12 @@ class TickerBase:
                 logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
                 data = {}
 
-            if data.get("errors"):
-                logger.error(f"{self.ticker}: Yahoo returned errors for news: {data['errors']}")
+            errors = data.get("errors") or []
+            if errors and all((e.get("extensions") or {}).get("code") == "NOT_FOUND" for e in errors):
+                # Yahoo has no news list for this locale
+                logger.debug(f"{self.ticker}: no news available for locale '{lang}' / '{region}'")
+            elif errors:
+                logger.error(f"{self.ticker}: Yahoo returned errors for news: {errors}")
             stream = ((data.get("data") or {}).get("lightyearList") or {}).get("main") or {}
             edges = stream.get("edges") or []
             for edge in edges:
