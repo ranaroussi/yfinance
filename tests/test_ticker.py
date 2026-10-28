@@ -20,7 +20,7 @@ from yfinance.data import YfData
 
 import json
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, PropertyMock
 from typing import Union, Any, get_args, get_origin
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
@@ -527,6 +527,14 @@ class TestTickerNews(unittest.TestCase):
             ticker.get_news()
             with self.assertRaises(ValueError):
                 ticker.get_news(tab="bogus")
+
+    def test_news_fallback_to_search_when_ncp_empty(self):
+        fake_search_news = [{"uuid": "123", "title": "Test Title"}]
+        with patch("yfinance.data.YfData.post", return_value=MagicMock(status_code=404, text='{"message":"Not Found"}', json=lambda: {"message": "Not Found"})):
+            with patch("yfinance.search.Search.news", new_callable=PropertyMock, return_value=fake_search_news):
+                ticker = yf.Ticker("AAPL")
+                news = ticker.get_news(count=5)
+                self.assertEqual(news, fake_search_news)
 
 class TestTickerHolders(unittest.TestCase):
     session = None

@@ -653,7 +653,17 @@ class TickerBase:
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
 
-        self._news[cache_key] = [article for article in news if not article.get('ad', [])]
+        articles = [article for article in news if not article.get('ad', [])]
+        if not articles:
+            from .search import Search
+            search = Search(
+                query=self.ticker,
+                news_count=count,
+                session=self.session,
+            )
+            articles = search.news
+
+        self._news[cache_key] = articles
         return self._news[cache_key]
 
     def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
