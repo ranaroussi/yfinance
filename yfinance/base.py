@@ -85,7 +85,7 @@ class TickerBase:
         self._tz = None
 
         self._isin = None
-        self._news = []
+        self._news = {}
         self._shares = None
 
         self._earnings_dates = {}
@@ -321,12 +321,18 @@ class TickerBase:
         data = self._analysis.analyst_price_targets
         return data
 
-    def get_earnings_estimate(self, as_dict=False):
+    def get_earnings_estimate(self, as_dict=False, methodology=None):
         """
         Index:      0q  +1q  0y  +1y
-        Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth
+        Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth  currency  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
-        data = self._analysis.earnings_estimate
+        data = self._analysis.get_earnings_estimate(methodology)
         return data.to_dict() if as_dict else data
 
     def get_revenue_estimate(self, as_dict=False):
@@ -337,30 +343,48 @@ class TickerBase:
         data = self._analysis.revenue_estimate
         return data.to_dict() if as_dict else data
 
-    def get_earnings_history(self, as_dict=False):
+    def get_earnings_history(self, as_dict=False, methodology=None):
         """
         Index:      pd.DatetimeIndex
-        Columns:    epsEstimate  epsActual  epsDifference  surprisePercent
+        Columns:    epsEstimate  epsActual  epsDifference  surprisePercent  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
-        data = self._analysis.earnings_history
+        data = self._analysis.get_earnings_history(methodology)
         return data.to_dict() if as_dict else data
 
-    def get_eps_trend(self, as_dict=False):
+    def get_eps_trend(self, as_dict=False, methodology=None):
         """
         Index:      0q  +1q  0y  +1y
-        Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo
+        Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo  currency  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
 
-        data = self._analysis.eps_trend
+        data = self._analysis.get_eps_trend(methodology)
         return data.to_dict() if as_dict else data
 
-    def get_eps_revisions(self, as_dict=False):
+    def get_eps_revisions(self, as_dict=False, methodology=None):
         """
         Index:      0q  +1q  0y  +1y
-        Columns:    upLast7days  upLast30days  downLast7days  downLast30days
+        Columns:    upLast7days  upLast30days  downLast7days  downLast30days  currency  methodology
+
+        :Parameters:
+            methodology : str
+                EPS methodology: 'gaap' or 'normalized' (non-GAAP).
+                Default None = Yahoo's default for the ticker,
+                reported in column 'methodology'.
         """
 
-        data = self._analysis.eps_revisions
+        data = self._analysis.get_eps_revisions(methodology)
         return data.to_dict() if as_dict else data
 
     def get_growth_estimates(self, as_dict=False):
@@ -590,9 +614,6 @@ class TickerBase:
 
     def get_news(self, count=10, tab="news") -> list:
         """Allowed options for tab: "news", "all", "press releases"""
-        if self._news:
-            return self._news
-
         logger = utils.get_yf_logger()
 
 
@@ -605,6 +626,11 @@ class TickerBase:
         query_ref = tab_queryrefs.get(tab.lower())
         if not query_ref:
             raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
+
+        # Cache per request: a different count or tab is a different result
+        cache_key = (count, query_ref)
+        if self._news.get(cache_key):
+            return self._news[cache_key]
 
         url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
         payload = {
@@ -627,18 +653,18 @@ class TickerBase:
 
         news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
 
-        self._news = [article for article in news if not article.get('ad', [])]
-        return self._news
+        self._news[cache_key] = [article for article in news if not article.get('ad', [])]
+        return self._news[cache_key]
 
     def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
         if limit > 100:
             raise ValueError("Yahoo caps limit at 100")
 
-        if self._earnings_dates and limit in self._earnings_dates:
-            return self._earnings_dates[limit]
+        if (limit, offset) in self._earnings_dates:
+            return self._earnings_dates[(limit, offset)]
 
         df = self._get_earnings_dates_using_scrape(limit, offset)
-        self._earnings_dates[limit] = df
+        self._earnings_dates[(limit, offset)] = df
         return df
 
     @utils.log_indent_decorator
@@ -713,7 +739,7 @@ class TickerBase:
             df = df.drop(["Symbol", "Company"], axis=1)
 
             # Backwards compatibility
-            df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)
+            df = df.rename(columns={'Surprise (%)': 'Surprise(%)'})
 
             df = df.dropna(subset="Earnings Date")
 
@@ -726,7 +752,7 @@ class TickerBase:
             dts = dt_parts[0]
             tzs = dt_parts[1]
             df['Earnings Date'] = pd.to_datetime(dts, format='%B %d, %Y at %I %p')
-            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)])
+            df['Earnings Date'] = pd.Series([dt.tz_localize(tz) for dt, tz in zip(df['Earnings Date'], tzs)], index=df.index)
             df = df.set_index("Earnings Date")
 
         else:
@@ -799,9 +825,9 @@ class TickerBase:
         df[columns_to_update] = df[columns_to_update].astype('float64').replace(0.0, np.nan)
 
         # Format the dataframe
-        df.drop(['Event Start Date', 'Timezone short name'], axis=1, inplace=True)
-        df.set_index('Earnings Date', inplace=True)
-        df.rename(columns={'Surprise (%)': 'Surprise(%)'}, inplace=True)  # Compatibility
+        df = df.drop(['Event Start Date', 'Timezone short name'], axis=1)
+        df = df.set_index('Earnings Date')
+        df = df.rename(columns={'Surprise (%)': 'Surprise(%)'})  # Compatibility
 
         self._earnings_dates[limit] = df
         return df

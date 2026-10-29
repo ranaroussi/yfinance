@@ -484,6 +484,50 @@ class TestTickerEarnings(unittest.TestCase):
     #     self.assertIs(data, data_cached, "data not cached")
 
 
+class TestTickerEarningsDatesParsing(unittest.TestCase):
+    @staticmethod
+    def _earnings_page(dates):
+        rows = "".join(f"<tr><td>IBM</td><td>IBM Corp</td><td>{d}</td><td>1.0</td><td>1.1</td><td>10.0</td></tr>" for d in dates)
+        return ("<html><body><table><thead><tr><th>Symbol</th><th>Company</th><th>Earnings Date</th>"
+                "<th>EPS Estimate</th><th>Reported EPS</th><th>Surprise (%)</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table></body></html>")
+
+    def test_earnings_dates_aligned_after_dropping_missing_date(self):
+        # A row with no date ('-') is dropped. The parsed dates of the
+        # remaining rows must stay on their own rows, not shift up one.
+        html = self._earnings_page(["October 20, 2025 at 4 PM EDT", "-",
+                                    "April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])
+        with patch("yfinance.data.YfData.cache_get", return_value=MagicMock(text=html)):
+            df = yf.Ticker("IBM").get_earnings_dates()
+        self.assertFalse(df.index.isna().any())
+        self.assertEqual([str(d.date()) for d in df.index], ["2025-10-20", "2025-04-24", "2025-01-29"])
+
+class TestTickerNews(unittest.TestCase):
+    @staticmethod
+    def _fake_post(url, body=None, **kwargs):
+        query_ref = url.split("queryRef=")[1].split("&")[0]
+        count = body["serviceConfig"]["snippetCount"]
+        stream = [{"id": f"{query_ref}-{i}"} for i in range(count)]
+        return MagicMock(text="", json=lambda: {"data": {"tickerStream": {"stream": stream}}})
+
+    def test_news_cached_per_count_and_tab(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post):
+            ticker = yf.Ticker("MSFT")
+            news = ticker.get_news(count=2, tab="news")
+            press = ticker.get_news(count=5, tab="press releases")
+            news_again = ticker.get_news(count=2, tab="news")
+
+        self.assertEqual([a["id"] for a in news], ["latestNews-0", "latestNews-1"])
+        self.assertEqual([a["id"] for a in press], [f"pressRelease-{i}" for i in range(5)])
+        self.assertIs(news_again, news, "data not cached")
+
+    def test_news_invalid_tab_raises_after_cached_call(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post):
+            ticker = yf.Ticker("MSFT")
+            ticker.get_news()
+            with self.assertRaises(ValueError):
+                ticker.get_news(tab="bogus")
+
 class TestTickerHolders(unittest.TestCase):
     session = None
 
@@ -1060,6 +1104,31 @@ class TestTickerMiscFinancials(unittest.TestCase):
     #     self.assertFalse(data.empty, "data is empty")
 
 
+class TestTickerEarningsDatesOffset(unittest.TestCase):
+    @staticmethod
+    def _earnings_page(dates):
+        rows = "".join(f"<tr><td>IBM</td><td>IBM Corp</td><td>{d}</td><td>1.0</td><td>1.1</td><td>10.0</td></tr>" for d in dates)
+        return ("<html><body><table><thead><tr><th>Symbol</th><th>Company</th><th>Earnings Date</th>"
+                "<th>EPS Estimate</th><th>Reported EPS</th><th>Surprise (%)</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table></body></html>")
+
+    def test_earnings_dates_cache_respects_offset(self):
+        pages = {"0": self._earnings_page(["October 20, 2025 at 4 PM EDT", "July 23, 2025 at 4 PM EDT"]),
+                 "2": self._earnings_page(["April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])}
+
+        def fake_cache_get(url, *args, **kwargs):
+            offset = parse_qs(urlparse(url).query)["offset"][0]
+            return MagicMock(text=pages[offset])
+
+        dat = yf.Ticker("IBM")
+        with patch("yfinance.data.YfData.cache_get", side_effect=fake_cache_get):
+            first = dat.get_earnings_dates(limit=12, offset=0)
+            older = dat.get_earnings_dates(limit=12, offset=2)
+            first_again = dat.get_earnings_dates(limit=12, offset=0)
+        self.assertEqual([str(d.date()) for d in first.index], ["2025-10-20", "2025-07-23"])
+        self.assertEqual([str(d.date()) for d in older.index], ["2025-04-24", "2025-01-29"])
+        self.assertIs(first, first_again, "data not cached")
+
 class TestTickerAnalysts(unittest.TestCase):
     session = None
 
@@ -1174,6 +1243,59 @@ class TestTickerAnalysts(unittest.TestCase):
                 self.assertTrue(data.empty, "data is not empty")
             except Exception as e:
                 self.fail(f"Exception raised for attribute '{attribute}': {e}")
+
+    def test_eps_methodology(self):
+        getters = [
+            self.ticker.get_earnings_estimate,
+            self.ticker.get_earnings_history,
+            self.ticker.get_eps_trend,
+            self.ticker.get_eps_revisions,
+        ]
+        for getter in getters:
+            for methodology in ('gaap', 'normalized'):
+                data = getter(methodology=methodology)
+                self.assertIsInstance(data, pd.DataFrame, f"{getter.__name__}({methodology}): data has wrong type")
+                self.assertFalse(data.empty, f"{getter.__name__}({methodology}): data is empty")
+                self.assertTrue((data['methodology'] == methodology).all(), f"{getter.__name__}({methodology}): wrong 'methodology' column")
+
+                data_cached = getter(methodology=methodology.upper())
+                self.assertIs(data, data_cached, f"{getter.__name__}({methodology}): data not cached")
+
+            with self.assertRaises(ValueError):
+                getter(methodology='ifrs')
+
+    def test_eps_methodology_modules(self):
+        # Each methodology must query its own quoteSummary module, and be cached separately
+        ticker = yf.Ticker("GOOGL", session=self.session)
+        requested = []
+
+        def fake_fetch(modules):
+            module = modules[0]
+            requested.append(module)
+            # Yahoo labels every variant with the ticker's default methodology
+            if module.startswith('earningsTrend'):
+                eps = {'raw': {'earningsTrend': 1.0, 'earningsTrendGaap': 2.0, 'earningsTrendNonGaap': 3.0}[module]}
+                body = {'trend': [{'period': '0q', 'earningsEstimate': {'avg': eps}}], 'defaultMethodology': 'nongaap'}
+            else:
+                body = {'history': [{'quarter': {'fmt': '2026-06-30'}, 'epsActual': {'raw': 1.0}}], 'defaultMethodology': 'nongaap'}
+            return {'quoteSummary': {'result': [{module: body}]}}
+
+        with patch.object(ticker._analysis, '_fetch', side_effect=fake_fetch):
+            df_default = ticker.get_earnings_estimate()
+            df_gaap = ticker.get_earnings_estimate(methodology='gaap')
+            df_normalized = ticker.get_earnings_estimate(methodology='normalized')
+            ticker.get_earnings_estimate(methodology='normalized')
+            df_history = ticker.get_earnings_history()
+
+        self.assertEqual(requested, ['earningsTrend', 'earningsTrendGaap', 'earningsTrendNonGaap', 'earningsHistory'])
+        self.assertEqual(df_default['avg'].iloc[0], 1.0)
+        self.assertEqual(df_gaap['avg'].iloc[0], 2.0)
+        self.assertEqual(df_normalized['avg'].iloc[0], 3.0)
+        # Requested methodology wins, else Yahoo's default ('nongaap' reported as 'normalized')
+        self.assertEqual(df_default['methodology'].iloc[0], 'normalized')
+        self.assertEqual(df_gaap['methodology'].iloc[0], 'gaap')
+        self.assertEqual(df_normalized['methodology'].iloc[0], 'normalized')
+        self.assertEqual(df_history['methodology'].iloc[0], 'normalized')
 
 
 

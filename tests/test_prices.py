@@ -32,6 +32,41 @@ class TestPriceHistory(unittest.TestCase):
                 f = df.index.time == _dt.time(0)
                 self.assertTrue(f.all())
 
+    def test_regular_interval_freq(self):
+        # Regular-interval data should expose a meaningful frequency so that
+        # downstream libraries (e.g. sktime) can rely on it (issue #1083).
+        tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
+        expected_freq = {
+            "1m": _pd.offsets.Minute(1),
+            "5m": _pd.offsets.Minute(5),
+            "15m": _pd.offsets.Minute(15),
+            "30m": _pd.offsets.Minute(30),
+            "60m": _pd.offsets.Minute(60),
+            "1h": _pd.offsets.Hour(1),
+            "1d": _pd.offsets.BDay(),
+            "1wk": _pd.offsets.Week(weekday=0),
+            "1mo": _pd.offsets.MonthBegin(),
+            "3mo": _pd.offsets.QuarterBegin(),
+        }
+        for interval, freq in expected_freq.items():
+            with self.subTest(interval=interval):
+                for tkr in tkrs:
+                    dat = yf.Ticker(tkr, session=self.session)
+                    df = dat.history(period="1y", interval=interval)
+                    if df.empty:
+                        continue
+                    if interval == "3mo":
+                        freq = _pd.offsets.QuarterBegin(startingMonth=df.index[0].month)
+                    self.assertIsNotNone(
+                        df.index.freq,
+                        f"{interval} freq missing for {tkr}",
+                    )
+                    self.assertEqual(
+                        df.index.freq,
+                        freq,
+                        f"{interval} freq wrong for {tkr}: {df.index.freq}",
+                    )
+
     def test_download_multi_large_interval(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         intervals = ["1d", "1wk", "1mo"]
@@ -169,6 +204,28 @@ class TestPriceHistory(unittest.TestCase):
 
         yf.utils.safe_merge_dfs(df, divs, interval)
         # No exception = test pass
+
+        # Same with a future split: must not overwrite merged dividends
+        splits = _pd.DataFrame(data={"Stock Splits":[2.0]}, index=[future_div_dt])
+        df2 = yf.utils.safe_merge_dfs(df.assign(Dividends=0.5), splits, interval)
+        self.assertTrue((df2['Dividends'] == 0.5).all())
+        self.assertTrue((df2['Stock Splits'] == 0.0).all())
+
+    def test_pricesEventsMerge_hourly(self):
+        # '1h' must merge events exactly like '60m'. An event stamped before
+        # the open belongs to that day's first bar, not the previous day's
+        # last bar, and must not be dropped if before the first bar.
+        tz = "America/New_York"
+        df_index = [_pd.Timestamp(_dt.datetime(2024, 1, d, h, 30)).tz_localize(tz) for d in (2, 3) for h in range(9, 16)]
+        df = _pd.DataFrame(data={"Close": 1.0}, index=_pd.DatetimeIndex(df_index))
+
+        for div_dt, expected_dt in [(_dt.datetime(2024, 1, 3), _dt.datetime(2024, 1, 3, 9, 30)),
+                                    (_dt.datetime(2024, 1, 2), _dt.datetime(2024, 1, 2, 9, 30))]:
+            divs = _pd.DataFrame(data={"Dividends": [0.5]}, index=[_pd.Timestamp(div_dt).tz_localize(tz)])
+            expected = [_pd.Timestamp(expected_dt).tz_localize(tz)]
+            for interval in ["60m", "1h"]:
+                df_merged = yf.utils.safe_merge_dfs(df.copy(), divs.copy(), interval)
+                self.assertEqual(df_merged.index[df_merged["Dividends"].notna()].tolist(), expected, interval)
 
     def test_intraDayWithEvents(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
@@ -460,6 +517,17 @@ class TestPriceHistory(unittest.TestCase):
         interval = "3mo"
 
         dat.history(start=start, end=end, interval=interval)
+
+    def test_rounding_keeps_events(self):
+        # rounding=True rounds prices, not split ratios or dividends
+        dat = yf.Ticker("GE", session=self.session)
+        df = dat.history(start="2021-07-28", end="2021-08-04", rounding=True)
+        self.assertEqual(df.loc[df['Stock Splits'] != 0, 'Stock Splits'].tolist(), [0.125])
+
+        dat = yf.Ticker("T", session=self.session)
+        df = dat.history(start="2024-01-05", end="2024-01-12", rounding=True)
+        self.assertEqual(df.loc[df['Dividends'] != 0, 'Dividends'].tolist(), [0.278])
+        self.assertTrue((df['Close'] == df['Close'].round(2)).all())
 
     def test_transient_error_detection(self):
         """Test that _is_transient_error correctly identifies transient vs permanent errors"""

@@ -572,8 +572,8 @@ class Quote:
                     if len(data) == 0:
                         raise YFDataException(f"No upgrade/downgrade history found for {self._symbol}")
                     df = pd.DataFrame(data)
-                    df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'}, inplace=True)
-                    df.set_index('GradeDate', inplace=True)
+                    df = df.rename(columns={"epochGradeDate": "GradeDate", 'firm': 'Firm', 'toGrade': 'ToGrade', 'fromGrade': 'FromGrade', 'action': 'Action'})
+                    df = df.set_index('GradeDate')
                     df.index = pd.to_datetime(df.index, unit='s')
                     self._upgrades_downgrades = df
                 except (KeyError, IndexError):
