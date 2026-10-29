@@ -22,12 +22,12 @@
 from __future__ import print_function
 
 import logging
+import os
 import threading
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Union
 
-import multitasking as _multitasking
 import pandas as _pd
 import numpy as _np
 from ._http import new_session
@@ -180,11 +180,11 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
 
     if threads:
         if threads is True:
-            # multitasking's pool never honoured set_max_threads(), so the
-            # effective default has always been one thread per CPU core.
-            threads = min([len(tickers), _multitasking.cpu_count()])
-        # A pool per call, because multitasking creates its pool once at
-        # import, so set_max_threads() would not cap this call's threads.
+            # One thread per CPU core. os.cpu_count() returns None when it
+            # cannot tell, so fall back to one thread.
+            threads = min([len(tickers), os.cpu_count() or 1])
+        # A pool per call, so this call's threads are capped and not shared
+        # with concurrent calls.
         with ThreadPoolExecutor(max_workers=threads) as executor:
             futures = [
                 executor.submit(_download_one_threaded, ctx, ticker, period=period, interval=interval,
@@ -262,8 +262,8 @@ def _attr_impl(ctx, tickers, attr_name, threads=True, progress=False):
     if threads is True:
         threads = min([len(tickers), _ATTR_MAX_THREADS])
     if threads and threads > 1:
-        # A pool per call, because multitasking creates its pool once at
-        # import, so set_max_threads() would not cap this call's threads.
+        # A pool per call, so this call's threads are capped and not shared
+        # with concurrent calls.
         with ThreadPoolExecutor(max_workers=threads) as executor:
             futures = [executor.submit(_attr_one, ctx, sym, tkr, attr_name)
                        for sym, tkr in tickers.items()]
