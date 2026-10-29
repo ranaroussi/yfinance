@@ -30,11 +30,9 @@ from typing import Union
 import multitasking as _multitasking
 import pandas as _pd
 import numpy as _np
-from ._http import new_session
 
 from . import Ticker, utils
 from .data import YfData
-from .config import YfConfig
 from .const import period_default
 from .exceptions import YFRateLimitError
 
@@ -147,9 +145,8 @@ def _download_impl(ctx, tickers, start=None, end=None, actions=False, threads=Tr
                    prepost=False, rounding=False, timeout=10, session=None,
                    multi_level_index=True):
     logger = utils.get_yf_logger()
-    session = session or new_session()
-
-    YfData(session=session)
+    if session is not None:
+        YfData(session=session)
 
     if logger.isEnabledFor(logging.DEBUG):
         if threads:
@@ -378,31 +375,36 @@ def _download_one(ctx, ticker, start=None, end=None,
     data = None
     sym = ticker.upper()
 
-    backup = YfConfig.network.hide_exceptions
-    YfConfig.network.hide_exceptions = False
+    ph = None
     try:
         tkr = Ticker(ticker)
-        data = tkr.history(
+        ph = tkr._lazy_load_price_history()
+        # Raise per call so failures are collected into ctx.errors (and logged
+        # once, grouped, by download()) instead of being logged per ticker.
+        # Never toggle the global hide_exceptions config here: other threads
+        # read it concurrently.
+        data = ph._history(
             period=period, interval=interval,
             start=start, end=end, prepost=prepost,
             actions=actions, auto_adjust=auto_adjust,
             back_adjust=back_adjust, repair=repair,
-            rounding=rounding, keepna=keepna, timeout=timeout
+            rounding=rounding, keepna=keepna, timeout=timeout,
+            raise_errors=True
         )
         with ctx.lock:
             ctx.dfs[sym] = data
-            # PriceHistory records soft errors (e.g. delisted, missing tz)
-            # without raising; surface them so download() can log them.
-            ph = tkr._price_history
-            if ph is not None and ph._last_error is not None:
+            if ph._last_error is not None:
                 ctx.errors[sym] = ph._last_error
     except Exception as e:
         with ctx.lock:
             ctx.dfs[sym] = utils.empty_df()
-            ctx.errors[sym] = repr(e)
+            # Prefer the clean message PriceHistory recorded (e.g. "possibly
+            # delisted; no timezone found") over the exception repr.
+            if ph is not None and ph._last_error is not None:
+                ctx.errors[sym] = ph._last_error
+            else:
+                ctx.errors[sym] = repr(e)
             ctx.tracebacks[sym] = traceback.format_exc()
-
-    YfConfig.network.hide_exceptions = backup
 
     return data
 
