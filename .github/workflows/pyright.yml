@@ -21,7 +21,7 @@ jobs:
         persist-credentials: false
 
     # Verify: curl -s "https://api.github.com/repos/astral-sh/setup-uv/commits?sha=v10.2.0&until=$(date -u -d '7 days ago' '+%Y-%m-%dT%H:%M:%SZ')&per_page=1" | jq -r '.[0].sha'
-    - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+    - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
       with:
         version: "latest"
         enable-cache: true
