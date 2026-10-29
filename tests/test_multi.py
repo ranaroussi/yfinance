@@ -87,6 +87,19 @@ class TestDownloadThreadSafety(unittest.TestCase):
         self.assertLessEqual(state['peak'], 2)
         self.assertEqual(set(df.columns.get_level_values('Ticker')), set(tickers))
 
+    def test_download_leaves_config_unchanged(self):
+        """download() must not write to the global yf.config."""
+        idx = pd.DatetimeIndex(['2024-01-02'], tz='America/New_York')
+        before = repr(yf.config)
+
+        with patch('yfinance.multi.Ticker') as mock_ticker, \
+             patch('yfinance.multi.YfData'):
+            mock_ticker.return_value.history.return_value = pd.DataFrame({'Close': [1.0]}, index=idx)
+            mock_ticker.return_value._price_history = None
+            yf.download(['AAPL', 'MSFT'], threads=2, progress=False)
+
+        self.assertEqual(repr(yf.config), before)
+
 
 class _FakeTickerAttr:
     """Stands in for a Ticker property without network. Caches per Ticker like
