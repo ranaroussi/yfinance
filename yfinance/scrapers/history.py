@@ -1332,6 +1332,8 @@ class PriceHistory:
                 # - step 2: USD -> FX
                 fx2_tkr = f'{fx}=X'
 
+            # The FX ticker takes this ticker's timezone. Only the last close of a
+            # 1-month fetch is used, so a day-boundary difference does not change the rate.
             fx_dat = PriceHistory(self._data, fx_tkr, self.tz, self.session)
             fx_rate = fx_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
             if reverse:

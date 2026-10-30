@@ -835,10 +835,11 @@ class TestDividendsConvertFx(unittest.TestCase):
 
         idx = _pd.DatetimeIndex([_pd.Timestamp("2025-01-10", tz="Europe/London")])
         ph = yf.scrapers.history.PriceHistory(None, "TEST", "Europe/London", session=session)
-        divs = _pd.DataFrame({"Dividends": [1.0], "currency": ["USD"]}, index=idx)
+        # USD converts in one step; ZAR goes through USD in two.
+        divs = _pd.DataFrame({"Dividends": [1.0, 1.0], "currency": ["USD", "ZAR"]}, index=idx.repeat(2))
         with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
             ph._dividends_convert_fx(divs, "GBP", repair=True)
-        self.assertEqual(created, [("GBP=X", "Europe/London", session)])
+        self.assertEqual(created, [(t, "Europe/London", session) for t in ("GBP=X", "ZAR=X", "GBP=X")])
 
 
 class TestPriceRepairLevelShift(unittest.TestCase):
