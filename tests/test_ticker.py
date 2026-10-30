@@ -635,11 +635,13 @@ class TestTickerNews(unittest.TestCase):
             self._response([{"__typename": "AssetError"}], end_cursor=f"c{i}", has_next=True)
             for i in range(1, 100)
         )
-        with patch("yfinance.data.YfData.post", side_effect=infinite_pages) as post:
+        with patch("yfinance.data.YfData.post", side_effect=infinite_pages) as post, \
+                self.assertLogs("yfinance", level="DEBUG") as cm:
             news = yf.Ticker("MSFT").get_news(count=5)
 
         self.assertEqual(news, [])
         self.assertEqual(post.call_count, 5, "capped at max_pages (5 for count=5)")
+        self.assertTrue(any("reached maximum pages cap" in msg for msg in cm.output))
 
     def test_news_empty_result_is_cached(self):
         payload = {"data": {"lightyearList": None},

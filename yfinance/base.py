@@ -713,6 +713,9 @@ class TickerBase:
             if not edges or not page_info.get("hasNextPage") or not after or after == prev_after:
                 break
 
+        if len(news) < count and pages_fetched >= max_pages:
+            logger.debug(f"{self.ticker}: reached maximum pages cap ({max_pages}) with {len(news)} of {count} articles")
+
         self._news[cache_key] = news[:count]
         return self._news[cache_key]
 
