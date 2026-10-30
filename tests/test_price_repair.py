@@ -823,6 +823,23 @@ class TestDividendsConvertFx(unittest.TestCase):
                 self.assertAlmostEqual(divs["Dividends"].iloc[0], expected_div)
                 self.assertEqual(divs["currency"].iloc[0], price_ccy)
 
+    def test_dividends_convert_fx_passes_tz_and_session(self):
+        # The FX PriceHistory needs a real timezone: with repair=True its
+        # history() can call itself with start/end, which parses dates in self.tz.
+        session = object()
+        created = []
+
+        def fake_history(ph, *args, **kwargs):
+            created.append((ph.ticker, ph.tz, ph.session))
+            return _pd.DataFrame({"Close": [0.5]})
+
+        idx = _pd.DatetimeIndex([_pd.Timestamp("2025-01-10", tz="Europe/London")])
+        ph = yf.scrapers.history.PriceHistory(None, "TEST", "Europe/London", session=session)
+        divs = _pd.DataFrame({"Dividends": [1.0], "currency": ["USD"]}, index=idx)
+        with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
+            ph._dividends_convert_fx(divs, "GBP", repair=True)
+        self.assertEqual(created, [("GBP=X", "Europe/London", session)])
+
 
 class TestPriceRepairLevelShift(unittest.TestCase):
     # Offline: the 1h data used for calibration is read from CSV, not fetched.
