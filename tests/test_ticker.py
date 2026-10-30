@@ -615,13 +615,18 @@ class TestTickerNews(unittest.TestCase):
         self.assertEqual(second["mlRecsFirst"], 3)
 
     def test_news_pagination_stops_on_stalled_cursor(self):
-        pages = [self._response([self._story("a")], end_cursor="c1", has_next=True),
-                 self._response([], end_cursor="c1", has_next=True)]
+        # Second page has edges but repeats endCursor with hasNextPage=True;
+        # the loop must break on the stalled cursor instead of requesting page 3.
+        pages = [
+            self._response([self._story("a")], end_cursor="c1", has_next=True),
+            self._response([{"__typename": "AssetError"}], end_cursor="c1", has_next=True),
+            self._response([self._story("b")], end_cursor="c2", has_next=False),
+        ]
         with patch("yfinance.data.YfData.post", side_effect=pages) as post:
             news = yf.Ticker("MSFT").get_news(count=5)
 
         self.assertEqual([a["id"] for a in news], ["a"])
-        self.assertEqual(post.call_count, 2)
+        self.assertEqual(post.call_count, 2, "must break when endCursor does not advance")
 
     def test_news_empty_result_is_cached(self):
         payload = {"data": {"lightyearList": None},
