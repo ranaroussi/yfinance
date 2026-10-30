@@ -722,12 +722,6 @@ class TickerBase:
                 logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
                 data = {}
 
-            errors = data.get("errors") or []
-            if errors and all((e.get("extensions") or {}).get("code") == "NOT_FOUND" for e in errors):
-                # Yahoo has no news list for this locale
-                logger.debug(f"{self.ticker}: no news available for locale '{lang}' / '{region}'")
-            elif errors:
-                logger.error(f"{self.ticker}: Yahoo returned errors for news: {errors}")
             stream = ((data.get("data") or {}).get("lightyearList") or {}).get("main") or {}
             edges = stream.get("edges") or []
             for edge in edges:
