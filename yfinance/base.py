@@ -31,7 +31,7 @@ from ._http import requests, new_session
 
 
 from . import utils, cache
-from .const import _MIC_TO_YAHOO_SUFFIX, _SENTINEL_
+from .const import _MIC_TO_YAHOO_SUFFIX, _NEWS_GRAPHQL_QUERY_, _NEWS_GRAPHQL_URL_, _SENTINEL_
 from .data import YfData
 from .config import YfConfig
 from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
@@ -43,7 +43,7 @@ from .scrapers.quote import Quote, FastInfo
 from .scrapers.history import PriceHistory
 from .scrapers.funds import FundsData
 
-from .const import _BASE_URL_, _ROOT_URL_, _QUERY1_URL_
+from .const import _BASE_URL_, _QUERY1_URL_
 
 from io import StringIO
 from bs4 import BeautifulSoup
@@ -613,48 +613,167 @@ class TickerBase:
         return self._isin
 
     def get_news(self, count=10, tab="news") -> list:
-        """Allowed options for tab: "news", "all", "press releases"""
+        """
+        Get the latest news for the ticker, newest first.
+
+        News follows ``yf.config.locale`` (e.g. "en-US", "fr-FR", "zh-Hant-HK").
+
+        :param count: maximum number of articles to return
+        :param tab: "news", "all" or "press releases"
+        :return: list of articles, each ``{"id": ..., "content": {...}}``
+        """
         logger = utils.get_yf_logger()
 
-
-        tab_queryrefs = {
-            "all": "newsAll",
-            "news": "latestNews",
-            "press releases": "pressRelease",
+        tab_lists = {
+            "all": "all",
+            "news": "news",
+            "press releases": "pressrelease",
         }
 
-        query_ref = tab_queryrefs.get(tab.lower())
-        if not query_ref:
-            raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_queryrefs.keys())}")
+        list_name = tab_lists.get(tab.lower())
+        if not list_name:
+            raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_lists.keys())}")
 
-        # Cache per request: a different count or tab is a different result
-        cache_key = (count, query_ref)
-        if self._news.get(cache_key):
+        lang, region = YfConfig.locale.lang, YfConfig.locale.region
+
+        # Cache per request: a different count, tab or locale is a different result
+        cache_key = (count, list_name, lang, region)
+        if cache_key in self._news:
             return self._news[cache_key]
 
-        url = f"{_ROOT_URL_}/xhr/ncp?queryRef={query_ref}&serviceKey=ncp_fin"
-        payload = {
-            "serviceConfig": {
-                "snippetCount": count,
-                "s": [self.ticker]
-            }
+        # Same GraphQL request the quote news page makes since Yahoo retired /xhr/ncp
+        slug = f"list=finance-{region}-{lang}-ticker-{list_name}"
+        variables = {
+            "clientContext": {"device": "desktop", "lang": lang, "region": region, "site": "finance"},
+            "gqlContext": [{"listAlias": slug}],
+            "imageResize": [{"operations": ["resizefill_w170_h128"], "transformLabel": "170x128"}],
+            "listInput": {
+                "disableDedupe": False,
+                "enableBlockedContent": False,
+                "enableQueryTimeLicenseCheck": True,
+                "filterClientContext": False,
+                "getFullList": True,
+                "queryVariables": {"tickerSymbol": [self.ticker]},
+                "slug": slug,
+            },
+            "mlRecsInput": {
+                "count": 200,
+                "instance": "FINANCE",
+                # aboutnessWeight 0 ranks purely by recency, so items come back newest first
+                # (the news page uses 0.05, which mixes in relevance)
+                "rankInput": {"financeQuoteNewsV2": {
+                    "aboutnessWeight": 0,
+                    "boostDurationHours": 16,
+                    "halfLifeHours": 24,
+                    "recencyWeight": 1,
+                    "tickerSymbol": [self.ticker],
+                }},
+            },
         }
+        headers = {"x-yahoo-cg-client-name": "finance"}
 
-        data = self._data.post(url, body=payload)
-        if data is None or "Will be right back" in data.text:
-            raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
-        try:
-            data = data.json()
-        except _json.JSONDecodeError:
-            if not YfConfig.debug.hide_exceptions:
-                raise
-            logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
-            data = {}
+        news = []
+        after = None
+        max_pages = max(5, (count + 9) // 10 * 2)
+        pages_fetched = 0
+        while len(news) < count and pages_fetched < max_pages:
+            pages_fetched += 1
+            body = {
+                "operationName": "FinanceTickerListNews",
+                "query": _NEWS_GRAPHQL_QUERY_,
+                "variables": {**variables, "mlRecsFirst": count - len(news), "after": after},
+            }
+            data = self._data.post(_NEWS_GRAPHQL_URL_, body=body, headers=headers)
+            if data is None or "Will be right back" in data.text:
+                raise YFDataException("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***")
+            try:
+                data = data.json()
+            except _json.JSONDecodeError:
+                if not YfConfig.debug.hide_exceptions:
+                    raise
+                logger.error(f"{self.ticker}: Failed to retrieve the news and received faulty response instead.")
+                data = {}
 
-        news = data.get("data", {}).get("tickerStream", {}).get("stream", [])
+            errors = data.get("errors") or []
+            if errors and all((e.get("extensions") or {}).get("code") == "NOT_FOUND" for e in errors):
+                # Yahoo has no news list for this locale
+                logger.debug(f"{self.ticker}: no news available for locale '{lang}' / '{region}'")
+            elif errors:
+                logger.error(f"{self.ticker}: Yahoo returned errors for news: {errors}")
+            stream = ((data.get("data") or {}).get("lightyearList") or {}).get("main") or {}
+            edges = stream.get("edges") or []
+            for edge in edges:
+                article = self._parse_news_asset((edge.get("node") or {}).get("asset"))
+                if article is not None:
+                    news.append(article)
 
-        self._news[cache_key] = [article for article in news if not article.get('ad', [])]
+            page_info = stream.get("pageInfo") or {}
+            prev_after = after
+            after = page_info.get("endCursor")
+            if not edges or not page_info.get("hasNextPage") or not after or after == prev_after:
+                break
+
+        if len(news) < count and pages_fetched >= max_pages:
+            logger.debug(f"{self.ticker}: reached maximum pages cap ({max_pages}) with {len(news)} of {count} articles")
+
+        self._news[cache_key] = news[:count]
         return self._news[cache_key]
+
+    @staticmethod
+    def _parse_news_asset(asset) -> Optional[dict]:
+        """Convert a GraphQL news asset into the article dict get_news() has always returned."""
+        content_types = {"Story": "STORY", "Video": "VIDEO", "Outlink": "OUTLINK"}
+        if not asset or asset.get("__typename") not in content_types:
+            # e.g. "AssetError" for items Yahoo cannot serve
+            return None
+
+        attrs = asset.get("contentAttributes") or {}
+        thumbnail = attrs.get("thumbnail")
+        if thumbnail and thumbnail.get("url"):
+            resolutions = [{"url": thumbnail["url"], "width": thumbnail.get("width"),
+                            "height": thumbnail.get("height"), "tag": "original"}]
+            resolutions += [{"url": r.get("url"), "width": r.get("width"), "height": r.get("height"),
+                             "tag": r.get("transformLabel")} for r in thumbnail.get("resized") or []]
+            thumbnail = {
+                "originalUrl": thumbnail["url"],
+                "originalWidth": thumbnail.get("width"),
+                "originalHeight": thumbnail.get("height"),
+                "resolutions": resolutions,
+            }
+        else:
+            thumbnail = None
+
+        def _url(url):
+            return {"url": url} if url else None
+
+        if asset["__typename"] == "Outlink":
+            canonical_url = click_through_url = asset.get("url")
+            provider = asset.get("provider")
+        else:
+            canonical_url = attrs.get("canonicalUrl")
+            click_through_url = attrs.get("clickthroughUrl")
+            provider = attrs.get("provider")
+
+        content = {
+            "id": asset.get("id"),
+            "contentType": content_types[asset["__typename"]],
+            "title": asset.get("title"),
+            "description": asset.get("description") or attrs.get("description"),
+            "summary": attrs.get("summary"),
+            "pubDate": attrs.get("publishTime") or asset.get("displayTime"),
+            "displayTime": attrs.get("displayTime") or asset.get("displayTime"),
+            "isHosted": attrs.get("isHosted"),
+            "previewUrl": asset.get("previewUrl"),
+            "thumbnail": thumbnail,
+            "provider": provider,
+            "canonicalUrl": _url(canonical_url),
+            "clickThroughUrl": _url(click_through_url),
+            "finance": {
+                "premiumFinance": {"isPremiumNews": bool(asset.get("isPremiumNews"))},
+                "stockTickers": (asset.get("finance") or {}).get("stockTickers") or [],
+            },
+        }
+        return {"id": content["id"], "content": content}
 
     def get_earnings_dates(self, limit = 12, offset = 0) -> Optional[pd.DataFrame]:
         if limit > 100:
