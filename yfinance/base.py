@@ -669,7 +669,7 @@ class TickerBase:
 
         # Cache per request: a different count, tab or locale is a different result
         cache_key = (count, list_name, lang, region)
-        if self._news.get(cache_key):
+        if cache_key in self._news:
             return self._news[cache_key]
 
         # Same GraphQL request the quote news page makes since Yahoo retired /xhr/ncp
@@ -730,8 +730,9 @@ class TickerBase:
                     news.append(article)
 
             page_info = stream.get("pageInfo") or {}
-            after = page_info.get("endCursor")
-            if not edges or not page_info.get("hasNextPage") or not after:
+            prev_after, after = after, page_info.get("endCursor")
+            # A repeated cursor would request the same page forever
+            if not edges or not page_info.get("hasNextPage") or not after or after == prev_after:
                 break
 
         self._news[cache_key] = news[:count]
