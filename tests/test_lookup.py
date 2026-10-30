@@ -1,4 +1,6 @@
+import json
 import unittest
+from unittest import mock
 
 import pandas as pd
 
@@ -96,6 +98,67 @@ class TestLookupErrorHandling(unittest.TestCase):
         with self.assertRaises(YFDataException) as cm:
             lookup.get_all(count=5)
         self.assertIn(query, str(cm.exception))
+
+
+class TestLookupCache(unittest.TestCase):
+    """Lookup cache tests using mocked responses, without network requests."""
+
+    def setUp(self):
+        self.lookup = yf.Lookup("AAPL")
+        self.lookup._data = mock.Mock()
+
+        self.bad_response = mock.Mock(text="<html>Temporary error</html>")
+        self.bad_response.json.side_effect = json.JSONDecodeError(
+            "Expecting value", self.bad_response.text, 0)
+
+        self.good_response = mock.Mock(text="{}")
+        self.good_response.json.return_value = {
+            "finance": {
+                "error": None,
+                "result": [{"documents": [{"symbol": "AAPL", "shortName": "Apple Inc."}]}],
+            }
+        }
+
+        hide_exceptions = mock.patch.dict(yf.config.debug.data, {"hide_exceptions": True})
+        hide_exceptions.start()
+        self.addCleanup(hide_exceptions.stop)
+
+    def test_lookup_recovers_after_invalid_json(self):
+        self.lookup._data.get.side_effect = [self.bad_response, self.good_response]
+
+        self.assertTrue(self.lookup.get_stock(count=5).empty)
+        result = self.lookup.get_stock(count=5)
+        self.assertEqual(result.index.tolist(), ["AAPL"])
+        self.assertEqual(result.loc["AAPL", "shortName"], "Apple Inc.")
+
+        # Once a valid response arrives, subsequent calls should use the cache.
+        pd.testing.assert_frame_equal(self.lookup.get_stock(count=5), result)
+        self.assertEqual(self.lookup._data.get.call_count, 2)
+
+    def test_repeated_invalid_json_is_not_cached(self):
+        self.lookup._data.get.return_value = self.bad_response
+
+        self.assertTrue(self.lookup.get_stock(count=5).empty)
+        self.assertTrue(self.lookup.get_stock(count=5).empty)
+        self.assertEqual(self.lookup._data.get.call_count, 2)
+
+    def test_valid_empty_results_are_cached(self):
+        self.good_response.json.return_value["finance"]["result"][0]["documents"] = []
+        self.lookup._data.get.return_value = self.good_response
+
+        self.assertTrue(self.lookup.get_stock(count=5).empty)
+        self.assertTrue(self.lookup.get_stock(count=5).empty)
+        self.assertEqual(self.lookup._data.get.call_count, 1)
+
+    def test_invalid_json_still_raises_when_exceptions_are_visible(self):
+        self.lookup._data.get.side_effect = [self.bad_response, self.good_response]
+
+        with mock.patch.dict(yf.config.debug.data, {"hide_exceptions": False}):
+            with self.assertRaises(json.JSONDecodeError):
+                self.lookup.get_stock(count=5)
+
+        self.assertEqual(self.lookup.get_stock(count=5).index.tolist(), ["AAPL"])
+        self.assertEqual(self.lookup._data.get.call_count, 2)
 
 
 if __name__ == "__main__":
