@@ -612,16 +612,15 @@ class TickerBase:
         self._isin = data.split(search_str)[1].split('"')[0].split('|')[0]
         return self._isin
 
-    def get_news(self, count=10, tab="news", locale=None) -> list:
+    def get_news(self, count=10, tab="news") -> list:
         """
         Get the latest news for the ticker, newest first.
 
+        News follows ``yf.config.locale``. Yahoo only has news for some locales;
+        for others an empty list is returned.
+
         :param count: maximum number of articles to return
         :param tab: "news", "all" or "press releases"
-        :param locale: Yahoo locale as a language tag, e.g. "en-US", "fr-FR", "zh-Hant-HK".
-            Default ``None`` uses ``yf.config.locale``. The region is the last part of the tag.
-            Yahoo only has news for some locales; for others an empty list is returned,
-            so pass ``locale="en-US"`` to get US English news instead.
         :return: list of articles, each ``{"id": ..., "content": {...}}``
         """
         logger = utils.get_yf_logger()
@@ -636,12 +635,7 @@ class TickerBase:
         if not list_name:
             raise ValueError(f"Invalid tab name '{tab}'. Choose from: {', '.join(tab_lists.keys())}")
 
-        if locale is None:
-            lang, region = YfConfig.locale.lang, YfConfig.locale.region
-        elif "-" in locale:
-            lang, region = locale, locale.rsplit("-", 1)[1]
-        else:
-            raise ValueError(f"Invalid locale '{locale}'. Expected a language tag with region, e.g. 'en-US'")
+        lang, region = YfConfig.locale.lang, YfConfig.locale.region
 
         # Cache per request: a different count, tab or locale is a different result
         cache_key = (count, list_name, lang, region)

@@ -636,31 +636,14 @@ class TestTickerNews(unittest.TestCase):
         self.assertEqual(variables["clientContext"]["lang"], "zh-Hant-HK")
         self.assertEqual(variables["clientContext"]["region"], "HK")
 
-    def test_news_locale_argument_overrides_config(self):
-        self._set_config_locale("ja-JP", "JP")
-        with patch("yfinance.data.YfData.post", side_effect=self._fake_post) as post:
-            ticker = yf.Ticker("MSFT")
-            ticker.get_news(count=1)
-            ticker.get_news(count=1, locale="en-US")
-
-        self.assertEqual(post.call_count, 2, "locale must be part of the cache key")
-        variables = post.call_args.kwargs["body"]["variables"]
-        self.assertEqual(variables["listInput"]["slug"], "list=finance-US-en-US-ticker-news")
-        self.assertEqual(variables["clientContext"]["lang"], "en-US")
-        self.assertEqual(variables["clientContext"]["region"], "US")
-        self.assertEqual((yf.config.locale.lang, yf.config.locale.region), ("ja-JP", "JP"))
-
-    def test_news_invalid_locale_raises(self):
-        with self.assertRaises(ValueError):
-            yf.Ticker("MSFT").get_news(locale="US")
-
     def test_news_unsupported_locale_returns_empty(self):
+        self._set_config_locale("ja-JP", "JP")
         payload = {"data": {"lightyearList": None},
                    "errors": [{"message": "Error", "extensions": {"code": "NOT_FOUND"}}]}
         response = MagicMock(text=json.dumps(payload), json=lambda: payload)
         with patch("yfinance.data.YfData.post", return_value=response) as post, \
                 self.assertNoLogs("yfinance", level="ERROR"):
-            self.assertEqual(yf.Ticker("MSFT").get_news(locale="ja-JP"), [])
+            self.assertEqual(yf.Ticker("MSFT").get_news(), [])
         self.assertEqual(post.call_count, 1, "no fallback to another locale")
 
 class TestTickerHolders(unittest.TestCase):

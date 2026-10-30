@@ -81,13 +81,9 @@ locale; ``Ticker("AAPL")`` keeps returning ``"Apple Inc."`` under
 
 News (``Ticker.news``, ``Ticker.get_news()``) also follows the locale, for
 every ticker: under ``fr-FR``, ``Ticker("AAPL").news`` returns French
-articles. Pass ``locale`` to override it for one call:
-
-.. code-block:: python
-
-   yf.Ticker("AAPL").get_news(locale="zh-Hant-HK")
+articles.
 
 Yahoo only has news for some locales (e.g. ``en-US``, ``en-GB``, ``en-CA``,
 ``en-AU``, ``en-IN``, ``en-SG``, ``de-DE``, ``fr-FR``, ``es-ES``, ``it-IT``,
 ``zh-Hant-HK``, ``zh-Hant-TW``). For others, such as ``ja-JP``, news is an
-empty list; use ``get_news(locale="en-US")`` to get US English news instead.
+empty list.
