@@ -614,6 +614,26 @@ class TestTickerNews(unittest.TestCase):
         self.assertEqual(second["after"], "c1")
         self.assertEqual(second["mlRecsFirst"], 3)
 
+    def test_news_pagination_stops_on_stalled_cursor(self):
+        pages = [self._response([self._story("a")], end_cursor="c1", has_next=True),
+                 self._response([], end_cursor="c1", has_next=True)]
+        with patch("yfinance.data.YfData.post", side_effect=pages) as post:
+            news = yf.Ticker("MSFT").get_news(count=5)
+
+        self.assertEqual([a["id"] for a in news], ["a"])
+        self.assertEqual(post.call_count, 2)
+
+    def test_news_empty_result_is_cached(self):
+        payload = {"data": {"lightyearList": None},
+                   "errors": [{"message": "Error", "extensions": {"code": "NOT_FOUND"}}]}
+        response = MagicMock(text=json.dumps(payload), json=lambda: payload)
+        self._set_config_locale("ja-JP", "JP")
+        with patch("yfinance.data.YfData.post", return_value=response) as post:
+            ticker = yf.Ticker("MSFT")
+            self.assertEqual(ticker.get_news(), [])
+            self.assertEqual(ticker.get_news(), [])
+        self.assertEqual(post.call_count, 1, "empty result should be cached on subsequent calls")
+
     def test_news_graphql_error_returns_empty(self):
         payload = {"data": {"lightyearList": None}, "errors": [{"message": "Error"}]}
         response = MagicMock(text=json.dumps(payload), json=lambda: payload)
