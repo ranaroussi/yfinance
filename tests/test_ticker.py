@@ -628,6 +628,19 @@ class TestTickerNews(unittest.TestCase):
         self.assertEqual([a["id"] for a in news], ["a"])
         self.assertEqual(post.call_count, 2, "must break when endCursor does not advance")
 
+    def test_news_pagination_stops_on_max_pages(self):
+        # Even if Yahoo returns new cursors with hasNextPage=True on every page of AssetErrors,
+        # the loop must terminate at max_pages rather than running indefinitely.
+        infinite_pages = (
+            self._response([{"__typename": "AssetError"}], end_cursor=f"c{i}", has_next=True)
+            for i in range(1, 100)
+        )
+        with patch("yfinance.data.YfData.post", side_effect=infinite_pages) as post:
+            news = yf.Ticker("MSFT").get_news(count=5)
+
+        self.assertEqual(news, [])
+        self.assertEqual(post.call_count, 5, "capped at max_pages (5 for count=5)")
+
     def test_news_empty_result_is_cached(self):
         payload = {"data": {"lightyearList": None},
                    "errors": [{"message": "Error", "extensions": {"code": "NOT_FOUND"}}]}

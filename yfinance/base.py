@@ -674,7 +674,10 @@ class TickerBase:
 
         news = []
         after = None
-        while len(news) < count:
+        max_pages = max(5, (count + 9) // 10 * 2)
+        pages_fetched = 0
+        while len(news) < count and pages_fetched < max_pages:
+            pages_fetched += 1
             body = {
                 "operationName": "FinanceTickerListNews",
                 "query": _NEWS_GRAPHQL_QUERY_,
