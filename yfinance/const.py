@@ -1,32 +1,6 @@
 _QUERY1_URL_ = 'https://query1.finance.yahoo.com'
 _BASE_URL_ = 'https://query2.finance.yahoo.com'
 _ROOT_URL_ = 'https://finance.yahoo.com'
-_NEWS_GRAPHQL_URL_ = 'https://nexus-finance-prod.media.yahoo.com/'
-
-# GraphQL query behind the news list on finance.yahoo.com/quote/<symbol>/news/.
-# Assets only resolve when a field takes $clientContext (previewUrl, clickthroughUrl),
-# otherwise Yahoo returns an "AssetError" for every item.
-_NEWS_GRAPHQL_QUERY_ = '''
-query FinanceTickerListNews($listInput: LightyearListInput!, $clientContext: ClientContext!, $mlRecsInput: MLRecsInput!, $gqlContext: [GqlContext] = [], $imageResize: [ImageResizeInput!]! = [], $mlRecsFirst: Int, $after: String) {
-  lightyearList: financeTickerList(list_input: $listInput, cc: $clientContext) {
-    main: mlRecsStream(mlRecsInput: $mlRecsInput, first: $mlRecsFirst, after: $after) {
-      edges { node { asset(gqlContext: $gqlContext) {
-        __typename
-        ... on Story { id: uuid title previewUrl(cc: $clientContext) isPremiumNews contentAttributes { ...Attrs } finance { ...Tickers } }
-        ... on Video { id: uuid title previewUrl(cc: $clientContext) contentAttributes { ...Attrs } finance { ...Tickers } }
-        ... on Outlink { id: uuid title: headline description displayTime url provider { displayName url } contentAttributes { thumbnail { ...Image } } }
-      } } }
-      pageInfo { hasNextPage endCursor }
-    }
-  }
-}
-fragment Image on Image { url height width resized(resizeInput: $imageResize) { url height width transformLabel } }
-fragment Attrs on ContentAttributes {
-  description summary publishTime displayTime isHosted canonicalUrl clickthroughUrl(cc: $clientContext)
-  provider { displayName url } thumbnail { ...Image }
-}
-fragment Tickers on Finance { stockTickers { symbol } }
-'''
 
 _SENTINEL_ = object()
 

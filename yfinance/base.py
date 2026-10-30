@@ -31,7 +31,7 @@ from ._http import requests, new_session
 
 
 from . import utils, cache
-from .const import _MIC_TO_YAHOO_SUFFIX, _NEWS_GRAPHQL_QUERY_, _NEWS_GRAPHQL_URL_, _SENTINEL_
+from .const import _MIC_TO_YAHOO_SUFFIX, _SENTINEL_
 from .data import YfData
 from .config import YfConfig
 from .exceptions import YFDataException, YFEarningsDateMissing, YFRateLimitError
@@ -48,6 +48,33 @@ from .const import _BASE_URL_, _QUERY1_URL_
 from io import StringIO
 from bs4 import BeautifulSoup
 
+
+_NEWS_GRAPHQL_URL_ = 'https://nexus-finance-prod.media.yahoo.com/'
+
+# GraphQL query behind the news list on finance.yahoo.com/quote/<symbol>/news/.
+# Assets only resolve when a field takes $clientContext (previewUrl, clickthroughUrl),
+# otherwise Yahoo returns an "AssetError" for every item.
+_NEWS_GRAPHQL_QUERY_ = '''
+query FinanceTickerListNews($listInput: LightyearListInput!, $clientContext: ClientContext!, $mlRecsInput: MLRecsInput!, $gqlContext: [GqlContext] = [], $imageResize: [ImageResizeInput!]! = [], $mlRecsFirst: Int, $after: String) {
+  lightyearList: financeTickerList(list_input: $listInput, cc: $clientContext) {
+    main: mlRecsStream(mlRecsInput: $mlRecsInput, first: $mlRecsFirst, after: $after) {
+      edges { node { asset(gqlContext: $gqlContext) {
+        __typename
+        ... on Story { id: uuid title previewUrl(cc: $clientContext) isPremiumNews contentAttributes { ...Attrs } finance { ...Tickers } }
+        ... on Video { id: uuid title previewUrl(cc: $clientContext) contentAttributes { ...Attrs } finance { ...Tickers } }
+        ... on Outlink { id: uuid title: headline description displayTime url provider { displayName url } contentAttributes { thumbnail { ...Image } } }
+      } } }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+}
+fragment Image on Image { url height width resized(resizeInput: $imageResize) { url height width transformLabel } }
+fragment Attrs on ContentAttributes {
+  description summary publishTime displayTime isHosted canonicalUrl clickthroughUrl(cc: $clientContext)
+  provider { displayName url } thumbnail { ...Image }
+}
+fragment Tickers on Finance { stockTickers { symbol } }
+'''
 
 _tz_info_fetch_ctr = 0
 
@@ -619,9 +646,12 @@ class TickerBase:
         News follows ``yf.config.locale``. Yahoo only has news for some locales;
         for others an empty list is returned.
 
-        :param count: maximum number of articles to return
-        :param tab: "news", "all" or "press releases"
-        :return: list of articles, each ``{"id": ..., "content": {...}}``
+        Args:
+            count (int): Maximum number of articles to return
+            tab (str): "news", "all" or "press releases"
+
+        Returns:
+            list of articles, each ``{"id": ..., "content": {...}}``
         """
         logger = utils.get_yf_logger()
 
