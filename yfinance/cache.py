@@ -4,7 +4,8 @@ import os as _os
 import platformdirs as _ad
 import atexit as _atexit
 import datetime as _dt
-import pickle as _pkl
+import json as _json
+from http.cookiejar import Cookie as _Cookie
 
 from .utils import get_yf_logger
 
@@ -322,6 +323,41 @@ class _CookieSchema(_peewee.Model):
         without_rowid = True
 
 
+
+_COOKIE_ATTRS = ("version", "name", "value", "port", "port_specified", "domain",
+                 "domain_specified", "domain_initial_dot", "path", "path_specified",
+                 "secure", "expires", "discard", "comment", "comment_url", "rfc2109")
+
+
+def _cookies_to_json(cookies):
+    """Serialise {domain: {path: {name: http.cookiejar.Cookie}}} to JSON bytes.
+
+    JSON is used instead of pickle so that reading the cache can never execute code."""
+    out = {}
+    for domain, paths in cookies.items():
+        for path, names in paths.items():
+            for name, c in names.items():
+                d = {a: getattr(c, a) for a in _COOKIE_ATTRS}
+                d["rest"] = dict(getattr(c, "_rest", {}) or {})
+                out.setdefault(domain, {}).setdefault(path, {})[name] = d
+    return _json.dumps(out).encode("utf-8")
+
+
+def _cookies_from_json(data):
+    """Inverse of _cookies_to_json. Raises ValueError on anything unexpected."""
+    raw = _json.loads(bytes(data).decode("utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("cookie cache: unexpected format")
+    out = {}
+    for domain, paths in raw.items():
+        for path, names in paths.items():
+            for name, d in names.items():
+                kwargs = {a: d[a] for a in _COOKIE_ATTRS}
+                kwargs["rest"] = d.get("rest", {})
+                out.setdefault(domain, {}).setdefault(path, {})[name] = _Cookie(**kwargs)
+    return out
+
+
 class _CookieCache:
     def __init__(self):
         self.initialised = -1
@@ -375,9 +411,13 @@ class _CookieCache:
 
         try:
             data =  _CookieSchema.get(_CookieSchema.strategy == strategy)
-            cookie = _pkl.loads(data.cookie_bytes)
+            cookie = _cookies_from_json(data.cookie_bytes)
             return {'cookie':cookie, 'age':_dt.datetime.now()-data.fetch_date}
         except _CookieSchema.DoesNotExist:
+            return None
+        except (ValueError, KeyError, TypeError, AttributeError, UnicodeDecodeError):
+            # Unreadable entry, e.g. written by an older version that used pickle.
+            # Never unpickle it; treat it as a cache miss so a fresh cookie is fetched.
             return None
 
     def store(self, strategy, cookie):
@@ -399,8 +439,8 @@ class _CookieCache:
             if cookie is None:
                 return
             with db.atomic():
-                cookie_pkl = _pkl.dumps(cookie, _pkl.HIGHEST_PROTOCOL)
-                _CookieSchema.insert(strategy=strategy, cookie_bytes=cookie_pkl).execute()
+                cookie_json = _cookies_to_json(cookie)
+                _CookieSchema.insert(strategy=strategy, cookie_bytes=cookie_json).execute()
         except _peewee.IntegrityError:
             raise
             # # Integrity error means the strategy already exists. Try updating the strategy.
