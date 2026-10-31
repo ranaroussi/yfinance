@@ -1332,13 +1332,15 @@ class PriceHistory:
                 # - step 2: USD -> FX
                 fx2_tkr = f'{fx}=X'
 
-            fx_dat = PriceHistory(self._data, fx_tkr, self.session)
+            # The FX ticker takes this ticker's timezone. Only the last close of a
+            # 1-month fetch is used, so a day-boundary difference does not change the rate.
+            fx_dat = PriceHistory(self._data, fx_tkr, self.tz, self.session)
             fx_rate = fx_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
             if reverse:
                 fx_rate = 1/fx_rate
             dividends.loc[dividends['currency']==c, 'Dividends'] *= fx_rate
             if fx2_tkr is not None:
-                fx2_dat = PriceHistory(self._data, fx2_tkr, self.session)
+                fx2_dat = PriceHistory(self._data, fx2_tkr, self.tz, self.session)
                 fx2_rate = fx2_dat.history(period='1mo', repair=repair)['Close'].iloc[-1]
                 dividends.loc[dividends['currency']==c, 'Dividends'] *= fx2_rate
 
