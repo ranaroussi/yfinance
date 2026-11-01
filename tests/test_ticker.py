@@ -484,6 +484,189 @@ class TestTickerEarnings(unittest.TestCase):
     #     self.assertIs(data, data_cached, "data not cached")
 
 
+class TestTickerEarningsDatesParsing(unittest.TestCase):
+    @staticmethod
+    def _earnings_page(dates):
+        rows = "".join(f"<tr><td>IBM</td><td>IBM Corp</td><td>{d}</td><td>1.0</td><td>1.1</td><td>10.0</td></tr>" for d in dates)
+        return ("<html><body><table><thead><tr><th>Symbol</th><th>Company</th><th>Earnings Date</th>"
+                "<th>EPS Estimate</th><th>Reported EPS</th><th>Surprise (%)</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table></body></html>")
+
+    def test_earnings_dates_aligned_after_dropping_missing_date(self):
+        # A row with no date ('-') is dropped. The parsed dates of the
+        # remaining rows must stay on their own rows, not shift up one.
+        html = self._earnings_page(["October 20, 2025 at 4 PM EDT", "-",
+                                    "April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])
+        with patch("yfinance.data.YfData.cache_get", return_value=MagicMock(text=html)):
+            df = yf.Ticker("IBM").get_earnings_dates()
+        self.assertFalse(df.index.isna().any())
+        self.assertEqual([str(d.date()) for d in df.index], ["2025-10-20", "2025-04-24", "2025-01-29"])
+
+class TestTickerNews(unittest.TestCase):
+    @staticmethod
+    def _story(uuid, typename="Story"):
+        return {
+            "__typename": typename,
+            "id": uuid,
+            "title": f"title {uuid}",
+            "previewUrl": None,
+            "isPremiumNews": False,
+            "contentAttributes": {
+                "description": None,
+                "summary": f"summary {uuid}",
+                "publishTime": "2026-10-25T20:05:00Z",
+                "displayTime": "2026-10-25T20:05:00Z",
+                "isHosted": True,
+                "canonicalUrl": f"https://example.com/{uuid}",
+                "clickthroughUrl": f"https://finance.yahoo.com/news/{uuid}.html",
+                "provider": {"displayName": "Provider", "url": "https://example.com/"},
+                "thumbnail": {
+                    "url": f"https://media.example.com/{uuid}.jpg", "width": 1400, "height": 933,
+                    "resized": [{"url": f"https://s.yimg.com/{uuid}.jpg", "width": 170, "height": 128,
+                                 "transformLabel": "170x128"}],
+                },
+            },
+            "finance": {"stockTickers": [{"symbol": "MSFT"}]},
+        }
+
+    @classmethod
+    def _response(cls, assets, end_cursor=None, has_next=False):
+        stream = {"edges": [{"node": {"asset": asset}} for asset in assets],
+                  "pageInfo": {"hasNextPage": has_next, "endCursor": end_cursor}}
+        payload = {"data": {"lightyearList": {"main": stream}}}
+        return MagicMock(text=json.dumps(payload), json=lambda: payload)
+
+    @classmethod
+    def _fake_post(cls, url, body=None, **kwargs):
+        variables = body["variables"]
+        list_name = variables["listInput"]["slug"].rsplit("-", 1)[1]
+        count = variables["mlRecsFirst"]
+        return cls._response([cls._story(f"{list_name}-{i}") for i in range(count)])
+
+    def test_news_cached_per_count_and_tab(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post):
+            ticker = yf.Ticker("MSFT")
+            news = ticker.get_news(count=2, tab="news")
+            press = ticker.get_news(count=5, tab="press releases")
+            news_again = ticker.get_news(count=2, tab="news")
+
+        self.assertEqual([a["id"] for a in news], ["news-0", "news-1"])
+        self.assertEqual([a["id"] for a in press], [f"pressrelease-{i}" for i in range(5)])
+        self.assertIs(news_again, news, "data not cached")
+
+    def test_news_invalid_tab_raises_after_cached_call(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post):
+            ticker = yf.Ticker("MSFT")
+            ticker.get_news()
+            with self.assertRaises(ValueError):
+                ticker.get_news(tab="bogus")
+
+    def test_news_request(self):
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post) as post:
+            yf.Ticker("MSFT").get_news(count=3, tab="all")
+
+        url = post.call_args.args[0]
+        body = post.call_args.kwargs["body"]
+        self.assertEqual(url, "https://nexus-finance-prod.media.yahoo.com/")
+        self.assertEqual(post.call_args.kwargs["headers"], {"x-yahoo-cg-client-name": "finance"})
+        self.assertEqual(body["variables"]["listInput"]["slug"], "list=finance-US-en-US-ticker-all")
+        self.assertEqual(body["variables"]["listInput"]["queryVariables"], {"tickerSymbol": ["MSFT"]})
+        self.assertEqual(body["variables"]["mlRecsFirst"], 3)
+        rank = body["variables"]["mlRecsInput"]["rankInput"]["financeQuoteNewsV2"]
+        self.assertEqual(rank["aboutnessWeight"], 0, "news should be ranked newest first")
+
+    def test_news_item_shape(self):
+        with patch("yfinance.data.YfData.post", return_value=self._response([self._story("abc")])):
+            article = yf.Ticker("MSFT").get_news(count=1)[0]
+
+        self.assertEqual(article["id"], "abc")
+        content = article["content"]
+        self.assertEqual(content["id"], "abc")
+        self.assertEqual(content["contentType"], "STORY")
+        self.assertEqual(content["title"], "title abc")
+        self.assertEqual(content["summary"], "summary abc")
+        self.assertEqual(content["pubDate"], "2026-10-25T20:05:00Z")
+        self.assertEqual(content["provider"]["displayName"], "Provider")
+        self.assertEqual(content["canonicalUrl"]["url"], "https://example.com/abc")
+        self.assertEqual(content["clickThroughUrl"]["url"], "https://finance.yahoo.com/news/abc.html")
+        self.assertEqual(content["thumbnail"]["originalUrl"], "https://media.example.com/abc.jpg")
+        self.assertEqual([r["tag"] for r in content["thumbnail"]["resolutions"]], ["original", "170x128"])
+        self.assertFalse(content["finance"]["premiumFinance"]["isPremiumNews"])
+        self.assertEqual(content["finance"]["stockTickers"], [{"symbol": "MSFT"}])
+
+    def test_news_skips_asset_errors(self):
+        assets = [self._story("a"), {"__typename": "AssetError"}, None, self._story("b", typename="Video")]
+        with patch("yfinance.data.YfData.post", return_value=self._response(assets)):
+            news = yf.Ticker("MSFT").get_news(count=4)
+
+        self.assertEqual([a["id"] for a in news], ["a", "b"])
+        self.assertEqual(news[1]["content"]["contentType"], "VIDEO")
+
+    def test_news_follows_pagination(self):
+        pages = [self._response([self._story("a"), self._story("b")], end_cursor="c1", has_next=True),
+                 self._response([self._story("c")], end_cursor="c2", has_next=False)]
+        with patch("yfinance.data.YfData.post", side_effect=pages) as post:
+            news = yf.Ticker("MSFT").get_news(count=5)
+
+        self.assertEqual([a["id"] for a in news], ["a", "b", "c"])
+        self.assertEqual(post.call_count, 2)
+        second = post.call_args_list[1].kwargs["body"]["variables"]
+        self.assertEqual(second["after"], "c1")
+        self.assertEqual(second["mlRecsFirst"], 3)
+
+    def test_news_pagination_stops_on_stalled_cursor(self):
+        # The second page adds nothing and repeats the cursor while claiming more pages
+        pages = [self._response([self._story("a")], end_cursor="c1", has_next=True),
+                 self._response([{"__typename": "AssetError"}], end_cursor="c1", has_next=True),
+                 self._response([self._story("b")], end_cursor="c2", has_next=False)]
+        with patch("yfinance.data.YfData.post", side_effect=pages) as post:
+            news = yf.Ticker("MSFT").get_news(count=5)
+
+        self.assertEqual([a["id"] for a in news], ["a"])
+        self.assertEqual(post.call_count, 2, "must stop when endCursor does not advance")
+
+    def test_news_empty_result_is_cached(self):
+        payload = {"data": {"lightyearList": None},
+                   "errors": [{"message": "Error", "extensions": {"code": "NOT_FOUND"}}]}
+        response = MagicMock(text=json.dumps(payload), json=lambda: payload)
+        with patch("yfinance.data.YfData.post", return_value=response) as post:
+            ticker = yf.Ticker("MSFT")
+            self.assertEqual(ticker.get_news(), [])
+            self.assertEqual(ticker.get_news(), [])
+        self.assertEqual(post.call_count, 1, "empty result not cached")
+
+    def test_news_graphql_error_returns_empty(self):
+        payload = {"data": {"lightyearList": None}, "errors": [{"message": "Error"}]}
+        response = MagicMock(text=json.dumps(payload), json=lambda: payload)
+        with patch("yfinance.data.YfData.post", return_value=response):
+            self.assertEqual(yf.Ticker("MSFT").get_news(), [])
+
+    def _set_config_locale(self, lang, region):
+        old = (yf.config.locale.lang, yf.config.locale.region)
+        yf.config.locale.lang, yf.config.locale.region = lang, region
+        self.addCleanup(setattr, yf.config.locale, "lang", old[0])
+        self.addCleanup(setattr, yf.config.locale, "region", old[1])
+
+    def test_news_follows_config_locale(self):
+        self._set_config_locale("zh-Hant-HK", "HK")
+        with patch("yfinance.data.YfData.post", side_effect=self._fake_post) as post:
+            yf.Ticker("MSFT").get_news(count=1)
+
+        variables = post.call_args.kwargs["body"]["variables"]
+        self.assertEqual(variables["listInput"]["slug"], "list=finance-HK-zh-Hant-HK-ticker-news")
+        self.assertEqual(variables["clientContext"]["lang"], "zh-Hant-HK")
+        self.assertEqual(variables["clientContext"]["region"], "HK")
+
+    def test_news_unsupported_locale_returns_empty(self):
+        self._set_config_locale("ja-JP", "JP")
+        payload = {"data": {"lightyearList": None},
+                   "errors": [{"message": "Error", "extensions": {"code": "NOT_FOUND"}}]}
+        response = MagicMock(text=json.dumps(payload), json=lambda: payload)
+        with patch("yfinance.data.YfData.post", return_value=response) as post, \
+                self.assertNoLogs("yfinance", level="ERROR"):
+            self.assertEqual(yf.Ticker("MSFT").get_news(), [])
+        self.assertEqual(post.call_count, 1, "no fallback to another locale")
+
 class TestTickerHolders(unittest.TestCase):
     session = None
 
@@ -1060,6 +1243,31 @@ class TestTickerMiscFinancials(unittest.TestCase):
     #     self.assertFalse(data.empty, "data is empty")
 
 
+class TestTickerEarningsDatesOffset(unittest.TestCase):
+    @staticmethod
+    def _earnings_page(dates):
+        rows = "".join(f"<tr><td>IBM</td><td>IBM Corp</td><td>{d}</td><td>1.0</td><td>1.1</td><td>10.0</td></tr>" for d in dates)
+        return ("<html><body><table><thead><tr><th>Symbol</th><th>Company</th><th>Earnings Date</th>"
+                "<th>EPS Estimate</th><th>Reported EPS</th><th>Surprise (%)</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table></body></html>")
+
+    def test_earnings_dates_cache_respects_offset(self):
+        pages = {"0": self._earnings_page(["October 20, 2025 at 4 PM EDT", "July 23, 2025 at 4 PM EDT"]),
+                 "2": self._earnings_page(["April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])}
+
+        def fake_cache_get(url, *args, **kwargs):
+            offset = parse_qs(urlparse(url).query)["offset"][0]
+            return MagicMock(text=pages[offset])
+
+        dat = yf.Ticker("IBM")
+        with patch("yfinance.data.YfData.cache_get", side_effect=fake_cache_get):
+            first = dat.get_earnings_dates(limit=12, offset=0)
+            older = dat.get_earnings_dates(limit=12, offset=2)
+            first_again = dat.get_earnings_dates(limit=12, offset=0)
+        self.assertEqual([str(d.date()) for d in first.index], ["2025-10-20", "2025-07-23"])
+        self.assertEqual([str(d.date()) for d in older.index], ["2025-04-24", "2025-01-29"])
+        self.assertIs(first, first_again, "data not cached")
+
 class TestTickerAnalysts(unittest.TestCase):
     session = None
 
@@ -1174,6 +1382,59 @@ class TestTickerAnalysts(unittest.TestCase):
                 self.assertTrue(data.empty, "data is not empty")
             except Exception as e:
                 self.fail(f"Exception raised for attribute '{attribute}': {e}")
+
+    def test_eps_methodology(self):
+        getters = [
+            self.ticker.get_earnings_estimate,
+            self.ticker.get_earnings_history,
+            self.ticker.get_eps_trend,
+            self.ticker.get_eps_revisions,
+        ]
+        for getter in getters:
+            for methodology in ('gaap', 'normalized'):
+                data = getter(methodology=methodology)
+                self.assertIsInstance(data, pd.DataFrame, f"{getter.__name__}({methodology}): data has wrong type")
+                self.assertFalse(data.empty, f"{getter.__name__}({methodology}): data is empty")
+                self.assertTrue((data['methodology'] == methodology).all(), f"{getter.__name__}({methodology}): wrong 'methodology' column")
+
+                data_cached = getter(methodology=methodology.upper())
+                self.assertIs(data, data_cached, f"{getter.__name__}({methodology}): data not cached")
+
+            with self.assertRaises(ValueError):
+                getter(methodology='ifrs')
+
+    def test_eps_methodology_modules(self):
+        # Each methodology must query its own quoteSummary module, and be cached separately
+        ticker = yf.Ticker("GOOGL", session=self.session)
+        requested = []
+
+        def fake_fetch(modules):
+            module = modules[0]
+            requested.append(module)
+            # Yahoo labels every variant with the ticker's default methodology
+            if module.startswith('earningsTrend'):
+                eps = {'raw': {'earningsTrend': 1.0, 'earningsTrendGaap': 2.0, 'earningsTrendNonGaap': 3.0}[module]}
+                body = {'trend': [{'period': '0q', 'earningsEstimate': {'avg': eps}}], 'defaultMethodology': 'nongaap'}
+            else:
+                body = {'history': [{'quarter': {'fmt': '2026-06-30'}, 'epsActual': {'raw': 1.0}}], 'defaultMethodology': 'nongaap'}
+            return {'quoteSummary': {'result': [{module: body}]}}
+
+        with patch.object(ticker._analysis, '_fetch', side_effect=fake_fetch):
+            df_default = ticker.get_earnings_estimate()
+            df_gaap = ticker.get_earnings_estimate(methodology='gaap')
+            df_normalized = ticker.get_earnings_estimate(methodology='normalized')
+            ticker.get_earnings_estimate(methodology='normalized')
+            df_history = ticker.get_earnings_history()
+
+        self.assertEqual(requested, ['earningsTrend', 'earningsTrendGaap', 'earningsTrendNonGaap', 'earningsHistory'])
+        self.assertEqual(df_default['avg'].iloc[0], 1.0)
+        self.assertEqual(df_gaap['avg'].iloc[0], 2.0)
+        self.assertEqual(df_normalized['avg'].iloc[0], 3.0)
+        # Requested methodology wins, else Yahoo's default ('nongaap' reported as 'normalized')
+        self.assertEqual(df_default['methodology'].iloc[0], 'normalized')
+        self.assertEqual(df_gaap['methodology'].iloc[0], 'gaap')
+        self.assertEqual(df_normalized['methodology'].iloc[0], 'normalized')
+        self.assertEqual(df_history['methodology'].iloc[0], 'normalized')
 
 
 
