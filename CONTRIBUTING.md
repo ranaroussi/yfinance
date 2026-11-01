@@ -4,6 +4,17 @@ yfinance relies on the community to investigate bugs and contribute code.
 
 This is a quick short guide, full guide at https://ranaroussi.github.io/yfinance/development/index.html
 
+## Maintainer resources
+
+Reusable prompts for development and maintenance tasks are in [maintainer/prompts/](maintainer/prompts/).
+
+The read-only [action release verifier](maintainer/verify_github_actions.sh) prints
+eligible versions and full SHAs for manual workflow updates. For example:
+
+```bash
+bash maintainer/verify_github_actions.sh actions/setup-python actions/checkout
+```
+
 ## Branches
 
 YFinance uses a two-layer branch model:
