@@ -1,6 +1,7 @@
 """Tests for yfinance.data internal helpers."""
 import unittest
 from functools import lru_cache
+from unittest.mock import MagicMock, patch
 
 from yfinance._http import new_session
 from yfinance.data import SingletonMeta, YfData, _normalize_proxy, lru_cache_freezeargs
@@ -141,6 +142,35 @@ class TestCookieStrategyLoginPreservation(unittest.TestCase):
         self.data._set_cookie_strategy('basic')
         self.assertEqual(self.data._session.cookies.get("T"), "T-opt")
         self.assertEqual(self.data._session.cookies.get("Y"), "Y-opt")
+
+
+class TestPostHeaders(unittest.TestCase):
+    """post() forwards extra request headers, merged with the JSON header for raw data."""
+
+    def setUp(self):
+        SingletonMeta._instances.pop(YfData, None)
+        self.data = YfData()
+        self.session_post = MagicMock(return_value=MagicMock(status_code=200))
+        self.data._session.post = self.session_post
+        patcher = patch.object(YfData, "_get_cookie_and_crumb", return_value=(None, "basic"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def tearDown(self):
+        SingletonMeta._instances.pop(YfData, None)
+
+    def test_no_headers_by_default(self):
+        self.data.post("https://example.com/", body={"a": 1})
+        self.assertNotIn("headers", self.session_post.call_args.kwargs)
+
+    def test_headers_forwarded(self):
+        self.data.post("https://example.com/", body={"a": 1}, headers={"x-test": "1"})
+        self.assertEqual(self.session_post.call_args.kwargs["headers"], {"x-test": "1"})
+
+    def test_headers_merged_with_data_header(self):
+        self.data.post("https://example.com/", data="{}", headers={"x-test": "1"})
+        self.assertEqual(self.session_post.call_args.kwargs["headers"],
+                         {"Content-Type": "application/json", "x-test": "1"})
 
 
 class TestSetSessionCacheDetection(unittest.TestCase):
