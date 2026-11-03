@@ -554,8 +554,8 @@ document.write(`
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.analyst_price_targets.html#yfinance.Ticker.analyst_price_targets" title="yfinance.Ticker.analyst_price_targets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">analyst_price_targets</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_estimate.html#yfinance.Ticker.get_earnings_estimate" title="yfinance.Ticker.get_earnings_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_estimate</span></code></a>([as_dict])</p></td>
-<td><p>Index:      0q  +1q  0y  +1y Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_estimate.html#yfinance.Ticker.get_earnings_estimate" title="yfinance.Ticker.get_earnings_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_estimate</span></code></a>([as_dict, methodology])</p></td>
+<td><p>Index:      0q  +1q  0y  +1y Columns:    numberOfAnalysts  avg  low  high  yearAgoEps  growth  currency  methodology</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.earnings_estimate.html#yfinance.Ticker.earnings_estimate" title="yfinance.Ticker.earnings_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">earnings_estimate</span></code></a></p></td>
 <td><p></p></td>
@@ -566,20 +566,20 @@ document.write(`
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.revenue_estimate.html#yfinance.Ticker.revenue_estimate" title="yfinance.Ticker.revenue_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">revenue_estimate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_history.html#yfinance.Ticker.get_earnings_history" title="yfinance.Ticker.get_earnings_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_history</span></code></a>([as_dict])</p></td>
-<td><p>Index:      pd.DatetimeIndex Columns:    epsEstimate  epsActual  epsDifference  surprisePercent</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_earnings_history.html#yfinance.Ticker.get_earnings_history" title="yfinance.Ticker.get_earnings_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_earnings_history</span></code></a>([as_dict, methodology])</p></td>
+<td><p>Index:      pd.DatetimeIndex Columns:    epsEstimate  epsActual  epsDifference  surprisePercent  methodology</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.earnings_history.html#yfinance.Ticker.earnings_history" title="yfinance.Ticker.earnings_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">earnings_history</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_trend.html#yfinance.Ticker.get_eps_trend" title="yfinance.Ticker.get_eps_trend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_trend</span></code></a>([as_dict])</p></td>
-<td><p>Index:      0q  +1q  0y  +1y Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_trend.html#yfinance.Ticker.get_eps_trend" title="yfinance.Ticker.get_eps_trend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_trend</span></code></a>([as_dict, methodology])</p></td>
+<td><p>Index:      0q  +1q  0y  +1y Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo  currency  methodology</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.eps_trend.html#yfinance.Ticker.eps_trend" title="yfinance.Ticker.eps_trend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eps_trend</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_revisions.html#yfinance.Ticker.get_eps_revisions" title="yfinance.Ticker.get_eps_revisions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_revisions</span></code></a>([as_dict])</p></td>
-<td><p>Index:      0q  +1q  0y  +1y Columns:    upLast7days  upLast30days  downLast7days  downLast30days</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/yfinance.Ticker.get_eps_revisions.html#yfinance.Ticker.get_eps_revisions" title="yfinance.Ticker.get_eps_revisions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_eps_revisions</span></code></a>([as_dict, methodology])</p></td>
+<td><p>Index:      0q  +1q  0y  +1y Columns:    upLast7days  upLast30days  downLast7days  downLast30days  currency  methodology</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/yfinance.Ticker.eps_revisions.html#yfinance.Ticker.eps_revisions" title="yfinance.Ticker.eps_revisions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eps_revisions</span></code></a></p></td>
 <td><p></p></td>

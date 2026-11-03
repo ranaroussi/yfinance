@@ -526,7 +526,20 @@ document.write(`
 <dl class="py method">
 <dt class="sig sig-object py" id="yfinance.Ticker.get_news">
 <span class="sig-prename descclassname"><span class="pre">Ticker.</span></span><span class="sig-name descname"><span class="pre">get_news</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tab</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'news'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#yfinance.Ticker.get_news" title="Link to this definition">#</a></dt>
-<dd><p>Allowed options for tab: “news”, “all”, “press releases</p>
+<dd><p>Get the latest news for the ticker, newest first.</p>
+<p>News follows <code class="docutils literal notranslate"><span class="pre">yf.config.locale</span></code>. Yahoo only has news for some locales;
+for others an empty list is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>count</strong> (<em>int</em>) – Maximum number of articles to return</p></li>
+<li><p><strong>tab</strong> (<em>str</em>) – “news”, “all” or “press releases”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of articles, each <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;content&quot;:</span> <span class="pre">{...}}</span></code></p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

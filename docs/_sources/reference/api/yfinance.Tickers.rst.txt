@@ -6,9 +6,17 @@ Tickers
 .. currentmodule:: yfinance
 
 .. autoclass:: Tickers
-   :exclude-members: 
+   :exclude-members: calendar, info
 
    
+   
+   .. rubric:: Attributes
+   
+   
+   .. autoattribute:: calendar
+      :noindex:
+   .. autoattribute:: info
+      :noindex:
    
    
 
@@ -20,6 +28,10 @@ Tickers
    .. automethod:: __init__
       :noindex:
    .. automethod:: download
+      :noindex:
+   .. automethod:: get_calendar
+      :noindex:
+   .. automethod:: get_info
       :noindex:
    .. automethod:: history
       :noindex:

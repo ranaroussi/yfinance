@@ -575,6 +575,13 @@ document.write(`
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'AAPL'</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">"1mo"</span><span class="p">)</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'GOOG'</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
 
+<span class="c1"># fetch an attribute for all tickers at once, in parallel</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">info</span>      <span class="c1"># dict: symbol -&gt; info dict</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">calendar</span>  <span class="c1"># DataFrame: one row per ticker</span>
+
+<span class="c1"># fewer threads are gentler on Yahoo's rate limit</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">threads</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
 <span class="c1"># websocket</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">live</span><span class="p">()</span>
 </pre></div>
@@ -626,6 +633,13 @@ document.write(`
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'MSFT'</span><span class="p">]</span><span class="o">.</span><span class="n">info</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'AAPL'</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">"1mo"</span><span class="p">)</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">tickers</span><span class="p">[</span><span class="s1">'GOOG'</span><span class="p">]</span><span class="o">.</span><span class="n">actions</span>
+
+<span class="c1"># fetch an attribute for all tickers at once, in parallel</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">info</span>      <span class="c1"># dict: symbol -&gt; info dict</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">calendar</span>  <span class="c1"># DataFrame: one row per ticker</span>
+
+<span class="c1"># fewer threads are gentler on Yahoo's rate limit</span>
+<span class="n">tickers</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">threads</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># websocket</span>
 <span class="n">tickers</span><span class="o">.</span><span class="n">live</span><span class="p">()</span>

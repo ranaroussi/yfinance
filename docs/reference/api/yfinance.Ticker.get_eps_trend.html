@@ -525,9 +525,19 @@ document.write(`
 <h1>yfinance.Ticker.get_eps_trend<a class="headerlink" href="#yfinance-ticker-get-eps-trend" title="Link to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="yfinance.Ticker.get_eps_trend">
-<span class="sig-prename descclassname"><span class="pre">Ticker.</span></span><span class="sig-name descname"><span class="pre">get_eps_trend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Ticker.get_eps_trend" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Ticker.</span></span><span class="sig-name descname"><span class="pre">get_eps_trend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">as_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methodology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yfinance.Ticker.get_eps_trend" title="Link to this definition">#</a></dt>
 <dd><p>Index:      0q  +1q  0y  +1y
-Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo</p>
+Columns:    current  7daysAgo  30daysAgo  60daysAgo  90daysAgo  currency  methodology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>methodology<span class="classifier">str</span></dt><dd><p>EPS methodology: ‘gaap’ or ‘normalized’ (non-GAAP).
+Default None = Yahoo’s default for the ticker,
+reported in column ‘methodology’.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

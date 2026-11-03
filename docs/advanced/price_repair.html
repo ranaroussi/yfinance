@@ -429,6 +429,26 @@ Requires date range include 1 day after stock split for calibration - sometimes 
 <div class="clearer docutils container">
 </div>
 </section>
+<section id="unexplained-split-like-adjustment">
+<h3>Unexplained split-like adjustment<a class="headerlink" href="#unexplained-split-like-adjustment" title="Link to this heading">#</a></h3>
+<p>Sometimes Yahoo multiplies all prices before a date by a split-like ratio, and divides Volume by it, but no split happened near that date.
+The ratio need not match any split, and can’t be measured from <code class="docutils literal notranslate"><span class="pre">1d</span></code> data because the real price change across that date is unknown.
+So it is measured against <code class="docutils literal notranslate"><span class="pre">1h</span></code> data, which does not have the error, then repaired like a bad stock split.
+So only repaired within the last 2 years. A genuine crash is also in <code class="docutils literal notranslate"><span class="pre">1h</span></code> data, so is not repaired.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># SOXS ORIGINAL:
+                                Close    Volume
+2026-05-21 00:00:00-04:00  1243.500000   1714514
+2026-05-22 00:00:00-04:00  1159.500000   1883589
+2026-05-26 00:00:00-04:00    62.900002  40368300
+
+# SOXS REPAIRED:
+                                Close    Volume
+2026-05-21 00:00:00-04:00    82.900000  25717710
+2026-05-22 00:00:00-04:00    77.300000  28253835
+2026-05-26 00:00:00-04:00    62.900002  40368300
+</pre></div>
+</div>
+</section>
 <section id="missing-data">
 <h3>Missing data<a class="headerlink" href="#missing-data" title="Link to this heading">#</a></h3>
 <p>If price data is clearly missing or corrupt, then reconstructed using smaller interval e.g. <code class="docutils literal notranslate"><span class="pre">1h</span></code> to fix <code class="docutils literal notranslate"><span class="pre">1d</span></code> data.</p>
@@ -700,6 +720,7 @@ Date
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Price repair</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-dividend-adjustment">Missing dividend adjustment</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-split-adjustment">Missing split adjustment</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#unexplained-split-like-adjustment">Unexplained split-like adjustment</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-data">Missing data</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#x-errors">100x errors</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#price-reconstruction-algorithm-notes">Price reconstruction - algorithm notes</a></li>
