@@ -1,6 +1,38 @@
 Change Log
 ===========
 
+1.8.0
+-----
+Feature
+- Price repair: fix split-like level shift that has no matching split, using 1h data #2990 @Shawn-Kim96
+- Analysis: add 'methodology' arg to select GAAP or Normalized EPS #2999 @louis75aubin-prog
+- Tickers: add info and calendar, fetched in parallel #3015 @louis75aubin-prog
+- Let ticker lookups recover after a bad response #3029 @idpfaff
+Fixes
+- fix: set freq on daily/weekly/monthly/quarterly price history #2962 @LeonxLJX
+- Treat "1h" as intraday in safe_merge_dfs #2980 @WatchTree-19
+- Rescale the live row by the detected unit factor for KWF #2979 @WatchTree-19
+- Use the dividend currency's FX ticker when converting to USD #2981 @WatchTree-19
+- Cache earnings dates by limit and offset #2983 @WatchTree-19
+- Support 60m in price reconstruction like 1h #2984 @WatchTree-19
+- fix: keep calendar caches consistent after failed requests #2988 @monody0007
+- Anchor 1wk/1mo/3mo index freq on Yahoo's bar labels #2985 @WatchTree-19
+- Keep earnings dates on their rows after dropping undated rows #2982 @WatchTree-19
+- Shift a start/end date forward when midnight falls in a DST gap #3001 @spicysharkco
+- Round only price columns when rounding=True #3000 @wavebyrd
+- Cache get_news results per count and tab #3003 @wavebyrd
+- Fix dividends/splits/capital_gains returning None instead of empty Series on price fetch failure #2977 @heykav
+- Keep merged dividends when intraday splits are out of range #3005 @wavebyrd
+- fix: keep weekly live bars inside their calendar week #3013 @jackiectl2
+- Send count as size when screen() switches predefined query to the offset API #3006 @wavebyrd
+- fix: replace deprecated inplace=True with assignment to eliminate Pandas4Warning (#3009) #3020 @dwaddle
+- Honour download(threads=N) concurrency cap #3019 @louis75aubin-prog
+- Fix get_news() returning empty list: use Yahoo's news GraphQL API (#3004) #3018 @ mehdyhaghy
+- Pass tz and session to FX PriceHistory in dividend conversion #3028 @ryanduguid
+Maintenance
+- perf: optimize option_chain namedtuple creation and add type hints #2965 @dwaddle
+- Drop the multitasking dependency #3026 @louis75aubin-prog
+
 1.7.0
 -----
 Features / improvements:
