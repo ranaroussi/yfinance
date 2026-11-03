@@ -463,7 +463,7 @@ def _parse_user_dt(dt, exchange_tz=_tz.utc):
         if isinstance(dt, _datetime.datetime):
             if dt.tzinfo is None:
                 # Assume user is referring to exchange's timezone
-                dt = _pd.Timestamp(dt).tz_localize(exchange_tz)
+                dt = _pd.Timestamp(dt).tz_localize(exchange_tz, nonexistent='shift_forward')
             else:
                 dt = _pd.Timestamp(dt).tz_convert(exchange_tz)
         else: # if we reached here, then it hasn't been any known type
@@ -511,14 +511,14 @@ def auto_adjust(data):
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
 
-    df.drop(
+    df = df.drop(
         ["Open", "High", "Low", "Close"],
-        axis=1, inplace=True)
+        axis=1)
 
-    df.rename(columns={
+    df = df.rename(columns={
         "Adj Open": "Open", "Adj High": "High",
         "Adj Low": "Low", "Adj Close": "Close"
-    }, inplace=True)
+    })
 
     return df[[c for c in col_order if c in df.columns]]
 
@@ -533,14 +533,14 @@ def back_adjust(data):
     df["Adj High"] = df["High"] * ratio
     df["Adj Low"] = df["Low"] * ratio
 
-    df.drop(
+    df = df.drop(
         ["Open", "High", "Low", "Adj Close"],
-        axis=1, inplace=True)
+        axis=1)
 
-    df.rename(columns={
+    df = df.rename(columns={
         "Adj Open": "Open", "Adj High": "High",
         "Adj Low": "Low"
-    }, inplace=True)
+    })
 
     return df[[c for c in col_order if c in df.columns]]
 
@@ -565,7 +565,7 @@ def parse_quotes(data):
                             "Adj Close": adjclose,
                             "Volume": volumes})
     quotes.index = _pd.to_datetime(timestamps, unit="s")
-    quotes.sort_index(inplace=True)
+    quotes = quotes.sort_index()
     for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
         if not is_float_dtype(quotes[c].dtype):
             # Only seen when Adj Close contains Infinity.
@@ -582,9 +582,9 @@ def parse_actions(data):
         if "dividends" in data["events"] and len(data["events"]['dividends']) > 0:
             dividends = _pd.DataFrame(
                 data=list(data["events"]["dividends"].values()))
-            dividends.set_index("date", inplace=True)
+            dividends = dividends.set_index("date")
             dividends.index = _pd.to_datetime(dividends.index, unit="s")
-            dividends.sort_index(inplace=True)
+            dividends = dividends.sort_index()
             if 'currency' in dividends.columns and (dividends['currency'] == '').all():
                 # Currency column useless, drop it.
                 dividends = dividends.drop('currency', axis=1)
@@ -593,17 +593,17 @@ def parse_actions(data):
         if "capitalGains" in data["events"] and len(data["events"]['capitalGains']) > 0:
             capital_gains = _pd.DataFrame(
                 data=list(data["events"]["capitalGains"].values()))
-            capital_gains.set_index("date", inplace=True)
+            capital_gains = capital_gains.set_index("date")
             capital_gains.index = _pd.to_datetime(capital_gains.index, unit="s")
-            capital_gains.sort_index(inplace=True)
+            capital_gains = capital_gains.sort_index()
             capital_gains.columns = ["Capital Gains"]
 
         if "splits" in data["events"] and len(data["events"]['splits']) > 0:
             splits = _pd.DataFrame(
                 data=list(data["events"]["splits"].values()))
-            splits.set_index("date", inplace=True)
+            splits = splits.set_index("date")
             splits.index = _pd.to_datetime(splits.index, unit="s")
-            splits.sort_index(inplace=True)
+            splits = splits.sort_index()
             splits["Stock Splits"] = splits["numerator"] / splits["denominator"]
             splits = splits[["Stock Splits"]]
 
@@ -662,7 +662,9 @@ def _dts_in_same_interval(dt1, dt2, interval):
     if interval == '1d':
         last_rows_same_interval = dt1.date() == dt2.date()
     elif interval == "1wk":
-        last_rows_same_interval = (dt2 - dt1).days < 7
+        # A holiday can move the first bar to Tuesday or later. A rolling
+        # seven-day window would then include Monday from the next week.
+        last_rows_same_interval = dt1 <= dt2 and dt1.isocalendar()[:2] == dt2.isocalendar()[:2]
     elif interval == "1mo":
         last_rows_same_interval = dt1.month == dt2.month and dt1.year == dt2.year
     elif interval == "3mo":
@@ -738,13 +740,13 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
                     if abs(ss/currency_divide-1) > 0.25:
                         ratio = quotes.loc[idx1, const._PRICE_COLNAMES_] / quotes.loc[idx2, const._PRICE_COLNAMES_]
                         if ((ratio/currency_divide-1).abs() < 0.05).all():
-                            # newer prices are 100x
+                            # newer prices are 100x (1000x for KWF)
                             for c in const._PRICE_COLNAMES_:
-                                quotes.loc[idx2, c] *= 100
+                                quotes.loc[idx2, c] *= currency_divide
                         elif((ratio*currency_divide-1).abs() < 0.05).all():
-                            # newer prices are 0.01x
+                            # newer prices are 0.01x (0.001x for KWF)
                             for c in const._PRICE_COLNAMES_:
-                                quotes.loc[idx2, c] *= 0.01
+                                quotes.loc[idx2, c] /= currency_divide
 
                 if _np.isnan(quotes.loc[idx2, "Open"]):
                     quotes.loc[idx2, "Open"] = quotes["Open"].iloc[-1]
@@ -780,7 +782,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
     data_col = data_cols[0]
 
     df_main = df_main.sort_index()
-    intraday = interval.endswith('m') or interval.endswith('s')
+    intraday = interval.endswith(('m', 'h', 's'))
 
     td = _interval_to_timedelta(interval)
     if intraday:
@@ -815,7 +817,7 @@ def safe_merge_dfs(df_main, df_sub, interval):
             # Discard out-of-range dividends in intraday data, assume user not interested
             df_sub = df_sub[~f_outOfRange]
             if df_sub.empty:
-                df_main['Dividends'] = 0.0
+                df_main[data_col] = 0.0
                 return df_main
 
             # df_sub changed so recalc indices:

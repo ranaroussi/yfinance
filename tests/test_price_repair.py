@@ -2,6 +2,7 @@ from tests.context import yfinance as yf
 from tests.context import session_gbl
 
 import unittest
+from unittest import mock
 
 import os
 import datetime as _dt
@@ -487,6 +488,7 @@ class TestPriceRepair(unittest.TestCase):
         bad_tkrs = ['4063.T', 'AV.L', 'CNE.L', 'MOB.ST', 'SPM.MI']
         bad_tkrs.append('LA.V')  # special case - stock split error is in year 2022! why not fixed?
         bad_tkrs.append('NRDY')  # random rows missing 1:15 split, challenging to fix
+        bad_tkrs.append('NFE')  # Volume genuinely spiked for few days after stock-split which confused repair
         for tkr in bad_tkrs:
             dat = yf.Ticker(tkr, session=self.session)
             tz_exchange = dat.fast_info["timezone"]
@@ -510,7 +512,7 @@ class TestPriceRepair(unittest.TestCase):
             correct_df = correct_df.sort_index()
             for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
                 try:
-                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-5).all())
+                    self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=5e-5, equal_nan=True).all())
                 except AssertionError:
                     diff = repaired_df[c] - correct_df[c]
                     f_diff = _np.abs(diff) > 5e-6
@@ -795,6 +797,127 @@ class TestPriceRepair(unittest.TestCase):
             print("- df_repair['Close']:")
             print(close_repair)
             raise
+
+
+class TestDividendsConvertFx(unittest.TestCase):
+    def test_dividends_convert_fx_to_usd(self):
+        # Yahoo FX ticker "XXX=X" = units of XXX per 1 USD.
+        # A EUR dividend on a USD-priced stock must use EUR=X, reversed.
+        rates = {"EUR=X": 0.8, "GBP=X": 0.5, "USD=X": 1.0}
+        requested = []
+
+        def fake_history(ph, *args, **kwargs):
+            requested.append(ph.ticker)
+            return _pd.DataFrame({"Close": [rates[ph.ticker]]})
+
+        idx = _pd.DatetimeIndex([_pd.Timestamp("2025-01-10", tz="America/New_York")])
+        ph = yf.scrapers.history.PriceHistory(None, "TEST", "America/New_York", session=object())
+        for div_ccy, price_ccy, expected_tkr, expected_div in [("EUR", "USD", "EUR=X", 1.25),
+                                                               ("USD", "GBP", "GBP=X", 0.5)]:
+            with self.subTest(div_ccy=div_ccy, price_ccy=price_ccy):
+                requested.clear()
+                divs = _pd.DataFrame({"Dividends": [1.0], "currency": [div_ccy]}, index=idx)
+                with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
+                    divs = ph._dividends_convert_fx(divs, price_ccy)
+                self.assertEqual(requested, [expected_tkr])
+                self.assertAlmostEqual(divs["Dividends"].iloc[0], expected_div)
+                self.assertEqual(divs["currency"].iloc[0], price_ccy)
+
+    def test_dividends_convert_fx_passes_tz_and_session(self):
+        # The FX PriceHistory needs a real timezone: with repair=True its
+        # history() can call itself with start/end, which parses dates in self.tz.
+        session = object()
+        created = []
+
+        def fake_history(ph, *args, **kwargs):
+            created.append((ph.ticker, ph.tz, ph.session))
+            return _pd.DataFrame({"Close": [0.5]})
+
+        idx = _pd.DatetimeIndex([_pd.Timestamp("2025-01-10", tz="Europe/London")])
+        ph = yf.scrapers.history.PriceHistory(None, "TEST", "Europe/London", session=session)
+        # USD converts in one step; ZAR goes through USD in two.
+        divs = _pd.DataFrame({"Dividends": [1.0, 1.0], "currency": ["USD", "ZAR"]}, index=idx.repeat(2))
+        with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
+            ph._dividends_convert_fx(divs, "GBP", repair=True)
+        self.assertEqual(created, [(t, "Europe/London", session) for t in ("GBP=X", "ZAR=X", "GBP=X")])
+
+
+class TestPriceRepairLevelShift(unittest.TestCase):
+    # Offline: the 1h data used for calibration is read from CSV, not fetched.
+    tz = "America/New_York"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dp = os.path.dirname(__file__)
+
+    def _load(self, tkr, suffix, index_col):
+        fp = os.path.join(self.dp, "data", tkr + '-' + suffix + ".csv")
+        df = _pd.read_csv(fp, index_col=index_col)
+        df.index = _pd.to_datetime(df.index, utc=True).tz_convert(self.tz)
+        return df
+
+    def _shift_to_recent(self, dfs):
+        # Repair only checks last 2 years, because older 1h data unavailable.
+        # So move test data to recent dates, keeping weekdays.
+        weeks = max(0, (_dt.date.today() - dfs[0].index[-1].date()).days // 7 - 1)
+        for df in dfs:
+            df.index = (df.index.tz_localize(None) + _pd.Timedelta(weeks=weeks)).tz_localize(self.tz)
+        return weeks
+
+    def _repair(self, tkr, df, df_1h):
+        requested = []
+
+        def fake_history(ph, *args, **kwargs):
+            requested.append(kwargs['interval'])
+            start = _pd.Timestamp(kwargs['start']).tz_localize(self.tz)
+            end = _pd.Timestamp(kwargs['end']).tz_localize(self.tz)
+            return df_1h[(df_1h.index >= start) & (df_1h.index < end)]
+
+        ph = yf.scrapers.history.PriceHistory(None, tkr, self.tz, session=object())
+        with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
+            repaired = ph._fix_unexplained_level_shifts(df.copy(), "1d", self.tz)
+        return repaired.sort_index(), requested
+
+    def test_repair_unexplained_level_shift(self):
+        # SOXS: Yahoo's 1d prices before 2026-05-26 are 15x too high and Volume
+        # 15x too low. No split near that date, and 15 is not a split ratio.
+        tkr = 'SOXS'
+        df_bad = self._load(tkr, "1d-bad-level-shift", "Date")
+        df_1h = self._load(tkr, "1h-bad-level-shift", "Datetime")
+        correct_df = self._load(tkr, "1d-bad-level-shift-fixed", "Date")
+        weeks = self._shift_to_recent([df_bad, df_1h, correct_df])
+        dt_shift = _pd.Timestamp("2026-05-26", tz=self.tz) + _pd.Timedelta(weeks=weeks)
+
+        repaired_df, requested = self._repair(tkr, df_bad, df_1h)
+
+        self.assertEqual(requested, ['1h'])
+        for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+            try:
+                self.assertTrue(_np.isclose(repaired_df[c], correct_df[c], rtol=1e-6).all())
+            except AssertionError:
+                print(f"tkr={tkr} COLUMN={c}")
+                print(repaired_df[c].to_frame('repaired').join(correct_df[c].to_frame('correct')))
+                raise
+        self.assertTrue(_np.isclose(repaired_df['Dividends'], df_bad['Dividends']).all())
+        f_before = (repaired_df.index < dt_shift)
+        self.assertTrue(repaired_df['Repaired?'][f_before].all())
+        self.assertFalse(repaired_df['Repaired?'][~f_before].any())
+
+    def test_repair_unexplained_level_shift_false_positive(self):
+        # KALA fell 92% on 2025-09-29 after failed trial, and Volume surged.
+        # Looks like a level-shift error, but 1h data shows the same drop.
+        tkr = 'KALA'
+        df_good = self._load(tkr, "1d-no-bad-level-shift", "Date")
+        df_1h = self._load(tkr, "1h-no-bad-level-shift", "Datetime")
+        self._shift_to_recent([df_good, df_1h])
+
+        repaired_df, requested = self._repair(tkr, df_good, df_1h)
+
+        self.assertEqual(requested, ['1h'])
+        for c in ["Open", "Low", "High", "Close", "Adj Close", "Volume"]:
+            self.assertTrue(_np.isclose(repaired_df[c], df_good[c], equal_nan=True).all())
+        if 'Repaired?' in repaired_df.columns:
+            self.assertFalse(repaired_df['Repaired?'].any())
 
 
 if __name__ == '__main__':

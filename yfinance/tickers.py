@@ -21,6 +21,8 @@
 
 from __future__ import print_function
 
+import pandas as _pd
+
 from . import Ticker, multi
 from .live import WebSocket
 from .data import YfData
@@ -85,9 +87,48 @@ class Tickers:
 
         if group_by == 'column':
             data.columns = data.columns.swaplevel(0, 1)
-            data.sort_index(level=0, axis=1, inplace=True)
+            data = data.sort_index(level=0, axis=1)
 
         return data
+
+    @property
+    def info(self) -> dict:
+        return self.get_info()
+
+    def get_info(self, threads=True, progress=False) -> dict:
+        """
+        Returns a dictionary symbol -> info dictionary.
+        A ticker that failed to fetch maps to an empty dictionary.
+
+        :Parameters:
+            threads: bool / int
+                How many tickers to fetch in parallel. Default is True (up to 4).
+                Requests stop once Yahoo rate-limits; calling again later
+                only fetches the tickers still missing.
+            progress: bool
+                Show progress bar. Default is False
+        """
+        return self._get_attr('info', threads, progress)
+
+    @property
+    def calendar(self) -> _pd.DataFrame:
+        """
+        Returns a DataFrame of events, earnings, and dividends, one row per ticker
+        """
+        return self.get_calendar()
+
+    def get_calendar(self, threads=True, progress=False) -> _pd.DataFrame:
+        """
+        Returns a DataFrame indexed by ticker. A ticker without calendar
+        or that failed to fetch is a row of NaN.
+        Parameters are the same as get_info().
+        """
+        return self._get_attr('calendar', threads, progress)
+
+    def _get_attr(self, attr_name, threads, progress):
+        results = multi._attr_impl(multi._AttrCtx(), self.tickers, attr_name,
+                                   threads=threads, progress=progress)
+        return multi._merge_attr(attr_name, results)
 
     def news(self):
         return {ticker: [item for item in Ticker(ticker).news] for ticker in self.symbols}

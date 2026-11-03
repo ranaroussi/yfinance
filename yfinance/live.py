@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import inspect
 import json
 from typing import List, Optional, Callable, Union
 
@@ -164,7 +165,7 @@ class AsyncWebSocket(BaseWebSocket):
 
                     if self._message_handler:
                         try:
-                            if asyncio.iscoroutinefunction(self._message_handler):
+                            if inspect.iscoroutinefunction(self._message_handler):
                                 await self._message_handler(decoded_message)
                             else:
                                 self._message_handler(decoded_message)

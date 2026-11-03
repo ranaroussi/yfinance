@@ -150,6 +150,9 @@ def screen(query: Union[str, EquityQuery, FundQuery, ETFQuery],
             sortField = post_query['sortField']
         if sortAsc is None:
             sortAsc = post_query['sortType'].lower() == 'asc'
+        # other API takes size, not count
+        if size is None:
+            size, count = count, None
         # and don't use defaults
         defaults = {}
 

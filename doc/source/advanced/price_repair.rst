@@ -45,6 +45,28 @@ Requires date range include 1 day after stock split for calibration - sometimes 
 
    ..
 
+Unexplained split-like adjustment
+---------------------------------
+
+Sometimes Yahoo multiplies all prices before a date by a split-like ratio, and divides Volume by it, but no split happened near that date.
+The ratio need not match any split, and can't be measured from ``1d`` data because the real price change across that date is unknown.
+So it is measured against ``1h`` data, which does not have the error, then repaired like a bad stock split.
+So only repaired within the last 2 years. A genuine crash is also in ``1h`` data, so is not repaired.
+
+.. code-block:: text
+
+   # SOXS ORIGINAL:
+                                   Close    Volume
+   2026-05-21 00:00:00-04:00  1243.500000   1714514
+   2026-05-22 00:00:00-04:00  1159.500000   1883589
+   2026-05-26 00:00:00-04:00    62.900002  40368300
+
+   # SOXS REPAIRED:
+                                   Close    Volume
+   2026-05-21 00:00:00-04:00    82.900000  25717710
+   2026-05-22 00:00:00-04:00    77.300000  28253835
+   2026-05-26 00:00:00-04:00    62.900002  40368300
+
 Missing data
 ------------
 

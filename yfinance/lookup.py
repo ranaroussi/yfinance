@@ -83,7 +83,7 @@ class Lookup:
             if not YfConfig.debug.hide_exceptions:
                 raise
             self._logger.error(f"{self.query}: 'lookup' fetch received faulty data")
-            data = {}
+            return {}
 
         # Error returned
         if data.get("finance", {}).get("error", {}):
