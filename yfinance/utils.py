@@ -766,6 +766,8 @@ def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange, prepost, re
                     quotes.loc[idx2, "Adj Close"] = quotes["Adj Close"].iloc[-1]
                 quotes.loc[idx2, "Volume"] += quotes["Volume"].iloc[-1]
                 quotes.loc[idx2, "Dividends"] += quotes["Dividends"].iloc[-1]
+                if "Capital Gains" in quotes.columns:
+                    quotes.loc[idx2, "Capital Gains"] += quotes["Capital Gains"].iloc[-1]
                 if ss != 1.0:
                     quotes.loc[idx2, "Stock Splits"] = ss
                 dropped_row = quotes.iloc[-1]
