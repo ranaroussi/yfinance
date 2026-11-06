@@ -667,6 +667,61 @@ class TestTickerNews(unittest.TestCase):
             self.assertEqual(yf.Ticker("MSFT").get_news(), [])
         self.assertEqual(post.call_count, 1, "no fallback to another locale")
 
+
+class TestTickerOptions(unittest.TestCase):
+    def test_option_chain_retries_when_expiration_initially_missing(self):
+        ticker = yf.Ticker("AAPL")
+        date_missing_initially = "2026-11-20"
+        ts_missing = 1795161600
+        date_other = "2026-11-13"
+        ts_other = 1794556800
+
+        calls = []
+
+        def fake_download_options(date=None):
+            calls.append(date)
+            if len(calls) == 1:
+                # First fetch: Yahoo API temporarily returns only date_other
+                ticker._expirations[date_other] = ts_other
+                return {"calls": [], "puts": [], "underlying": {}}
+            elif len(calls) == 2:
+                # Second fetch (retry): Yahoo API recovers and returns the missing date
+                ticker._expirations[date_missing_initially] = ts_missing
+                return {"calls": [], "puts": [], "underlying": {}}
+            else:
+                # Third fetch: download options for the specific expiration timestamp
+                return {
+                    "calls": [{"contractSymbol": "AAPL261120C00200000", "lastTradeDate": ts_missing, "strike": 200.0}],
+                    "puts": [],
+                    "underlying": {"regularMarketPrice": 220.0}
+                }
+
+        with patch.object(ticker, "_download_options", side_effect=fake_download_options):
+            chain = ticker.option_chain(date_missing_initially)
+            self.assertIsNotNone(chain.calls)
+            self.assertEqual(len(calls), 3)
+            self.assertIsNone(calls[0])
+            self.assertIsNone(calls[1])
+            self.assertEqual(calls[2], ts_missing)
+
+    def test_option_chain_raises_value_error_if_date_still_missing_after_retry(self):
+        ticker = yf.Ticker("AAPL")
+        calls = []
+
+        def fake_download_options(date=None):
+            calls.append(date)
+            ticker._expirations["2026-11-13"] = 1794556800
+            return {"calls": [], "puts": [], "underlying": {}}
+
+        with patch.object(ticker, "_download_options", side_effect=fake_download_options):
+            with self.assertRaises(ValueError) as ctx:
+                ticker.option_chain("2099-01-01")
+            self.assertIn("Expiration `2099-01-01` cannot be found", str(ctx.exception))
+            self.assertEqual(len(calls), 2)
+            self.assertIsNone(calls[0])
+            self.assertIsNone(calls[1])
+
+
 class TestTickerHolders(unittest.TestCase):
     session = None
 
