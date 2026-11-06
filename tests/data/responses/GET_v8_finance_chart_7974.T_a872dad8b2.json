@@ -1,0 +1,97 @@
+[
+ {
+  "request": {
+   "method": "GET",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/7974.T",
+   "params": {
+    "events": "div,splits,capitalGains",
+    "includePrePost": "False",
+    "interval": "1d",
+    "period1": "1787842800",
+    "period2": "1790521200"
+   }
+  },
+  "recorded_at": 1790540129,
+  "response": {
+   "status_code": 200,
+   "content_type": "application/json;charset=utf-8",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/7974.T?events=div%2Csplits%2CcapitalGains&includePrePost=false&interval=1d&period1=1787842800&period2=1790521200",
+   "json": {
+    "chart": {
+     "result": [
+      {
+       "meta": {
+        "currency": "JPY",
+        "symbol": "7974.T",
+        "exchangeName": "JPX",
+        "fullExchangeName": "Tokyo",
+        "instrumentType": "EQUITY",
+        "firstTradeDate": 978566400,
+        "regularMarketTime": 1790317800,
+        "hasPrePostMarketData": false,
+        "gmtoffset": 32400,
+        "timezone": "JST",
+        "exchangeTimezoneName": "Asia/Tokyo",
+        "regularMarketPrice": 8100.0,
+        "regularMarketChangePercent": -1.171,
+        "fulldayPrice": 8100.0,
+        "fulldayChange": -96.0,
+        "fulldayChangePercent": -1.171,
+        "fiftyTwoWeekHigh": 14630.0,
+        "fiftyTwoWeekLow": 6544.0,
+        "regularMarketDayHigh": 8275.0,
+        "regularMarketDayLow": 8092.0,
+        "regularMarketVolume": 6295000,
+        "longName": "Nintendo Co., Ltd.",
+        "shortName": "NINTENDO CO LTD",
+        "chartPreviousClose": 8728.0,
+        "priceHint": 2,
+        "currentTradingPeriod": {
+         "pre": {
+          "timezone": "JST",
+          "end": 1790553600,
+          "start": 1790553600,
+          "gmtoffset": 32400
+         },
+         "regular": {
+          "timezone": "JST",
+          "end": 1790577000,
+          "start": 1790553600,
+          "gmtoffset": 32400
+         },
+         "post": {
+          "timezone": "JST",
+          "end": 1790577000,
+          "start": 1790577000,
+          "gmtoffset": 32400
+         }
+        },
+        "dataGranularity": "1d",
+        "range": "",
+        "validRanges": ["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]
+       },
+       "timestamp": [1787875200,1788134400,1788220800,1788307200,1788393600,1788480000,1788739200,1788825600,1788912000,1788998400,1789084800,1789344000,1789430400,1789516800,1789603200,1789689600,1790208000,1790294400],
+       "indicators": {
+        "quote": [
+         {
+          "low": [8767.0,8877.0,9008.0,8796.0,8712.0,8803.0,8556.0,8749.0,8386.0,7903.0,7851.0,8134.0,8118.0,8080.0,8130.0,8251.0,8175.0,8092.0],
+          "close": [8993.0,9044.0,9103.0,8821.0,8855.0,8839.0,8750.0,8750.0,8401.0,7989.0,8093.0,8268.0,8118.0,8126.0,8475.0,8339.0,8196.0,8100.0],
+          "open": [8785.0,9000.0,9066.0,8960.0,8761.0,8847.0,8705.0,8767.0,8548.0,8000.0,7852.0,8193.0,8473.0,8104.0,8141.0,8350.0,8257.0,8140.0],
+          "volume": [12451600,8018900,6997500,9187500,6128100,5577200,6258900,6871800,9694900,15081200,9954600,9454300,7686000,4574300,7644500,6274100,6609600,6295000],
+          "high": [9095.0,9044.0,9180.0,8972.0,8927.0,8950.0,8831.0,8995.0,8660.0,8148.0,8131.0,8318.0,8473.0,8217.0,8503.0,8390.0,8330.0,8275.0]
+         }
+        ],
+        "adjclose": [
+         {
+          "adjclose": [8993.0,9044.0,9103.0,8821.0,8855.0,8839.0,8750.0,8750.0,8401.0,7989.0,8093.0,8268.0,8118.0,8126.0,8475.0,8339.0,8196.0,8100.0]
+         }
+        ]
+       }
+      }
+     ],
+     "error": null
+    }
+   }
+  }
+ }
+]
