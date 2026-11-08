@@ -213,7 +213,7 @@ class Calendars:
         self.calendars: Dict[str, pd.DataFrame] = {}
 
     def _parse_date_param(self, _date: Optional[Union[str, datetime, date, int]]) -> str:
-        if not _date:
+        if _date is None or _date == "":
             return ""
         else:
             return _parse_user_dt(_date).strftime(DATE_STR_FORMAT)
