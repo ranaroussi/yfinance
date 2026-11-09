@@ -27,6 +27,7 @@ from collections import namedtuple as _namedtuple
 import pandas as _pd
 
 from .base import TickerBase
+from .config import YfConfig
 from .const import _BASE_URL_
 from .scrapers.funds import FundsData
 
@@ -91,9 +92,15 @@ class Ticker(TickerBase):
             if not self._expirations:
                 self._download_options()
             if date not in self._expirations:
-                raise ValueError(
-                    f"Expiration `{date}` cannot be found. "
-                    f"Available expirations are: [{', '.join(self._expirations)}]")
+                # Issue #469: Yahoo API occasionally desyncs. Use config retries if configured.
+                for _ in range(int(YfConfig.network.retries or 0)):
+                    self._download_options()
+                    if date in self._expirations:
+                        break
+                if date not in self._expirations:
+                    raise ValueError(
+                        f"Expiration `{date}` cannot be found. "
+                        f"Available expirations are: [{', '.join(self._expirations)}]")
             date = self._expirations[date]
             options = self._download_options(date)
 
