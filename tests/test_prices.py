@@ -483,6 +483,12 @@ class TestPriceHistory(unittest.TestCase):
         dfd = dat.history(start=start_d, end=end_d, interval='1d', prepost=False, keepna=True)
         self.assertTrue(_np.equal(dfd.index.date, _pd.to_datetime(last_dts.index).date).all())
 
+    def test_intraday_no_trading_periods(self):
+        # Yahoo returns no 'tradingPeriods' for mutual funds
+        dat = yf.Ticker("VFIAX", session=self.session)
+        df = dat.history(period="1mo", interval="1h")
+        self.assertFalse(df.empty)
+
     def test_prune_post_intraday_asx(self):
         # Setup
         tkr = "BHP.AX"
