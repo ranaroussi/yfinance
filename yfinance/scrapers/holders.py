@@ -180,10 +180,9 @@ class Holders:
             del owner["maxAge"]
         df = pd.DataFrame(holders)
         if not df.empty:
-            if "positionDirectDate" in df:
-                df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
-            if "latestTransDate" in df:
-                df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
+            for col in ["positionDirectDate", "positionIndirectDate", "latestTransDate"]:
+                if col in df:
+                    df[col] = pd.to_datetime(df[col], unit="s")
 
             df = df.rename(columns={
                 "name": "Name",

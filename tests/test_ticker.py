@@ -821,6 +821,15 @@ class TestTickerHolders(unittest.TestCase):
         data_cached = self.ticker.insider_roster_holders
         self.assertIs(data, data_cached, "data not cached")
 
+    def test_insider_roster_holders_indirect_date(self):
+        holders = self.ticker._holders
+        holders._parse_insider_holders({"holders": [{
+            "maxAge": 1, "name": "DOE JANE", "relation": "Director", "url": "",
+            "transactionDescription": "Purchase", "latestTransDate": 1745452800,
+            "positionIndirect": 4111, "positionIndirectDate": 1745452800}]})
+        data = holders._insider_roster
+        self.assertEqual(data["Position Indirect Date"].iloc[0], pd.Timestamp("2025-04-24"))
+
 
 class TestTickerMiscFinancials(unittest.TestCase):
     session = None
