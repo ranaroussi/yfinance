@@ -881,6 +881,9 @@ class TickerBase:
 
             df = df.dropna(subset="Earnings Date")
 
+            # Page size is 25, 50 or 100, so trim to requested limit
+            df = df.iloc[:limit]
+
             # Parse earnings date
             # - Pandas doesn't like EDT, EST
             df['Earnings Date'] = df['Earnings Date'].str.replace('EDT', 'America/New_York')
