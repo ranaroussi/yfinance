@@ -4,7 +4,9 @@ import os as _os
 import platformdirs as _ad
 import atexit as _atexit
 import datetime as _dt
+import io as _io
 import json as _json
+import pickle as _pkl
 from http.cookiejar import Cookie as _Cookie
 
 from .utils import get_yf_logger
@@ -358,6 +360,49 @@ def _cookies_from_json(data):
     return out
 
 
+class _CookieOnlyUnpickler(_pkl.Unpickler):
+    """Unpickler that can only rebuild http.cookiejar.Cookie objects.
+
+    Used solely to migrate cookie caches written by older yfinance versions
+    (pickle) to JSON. Any other global referenced by the pickle stream is
+    refused, so a tampered cache file cannot execute code."""
+
+    _ALLOWED = {
+        ("http.cookiejar", "Cookie"): _Cookie,
+        # emitted for http.cookiejar.Cookie by pickle protocols 0 and 1
+        ("copyreg", "_reconstructor"): __import__("copyreg")._reconstructor,
+        ("builtins", "object"): object,
+    }
+
+    def find_class(self, module, name):
+        # protocols < 3 store Python 2 module names
+        module = {"cookielib": "http.cookiejar", "copy_reg": "copyreg",
+                  "__builtin__": "builtins"}.get(module, module)
+        try:
+            return self._ALLOWED[(module, name)]
+        except KeyError:
+            raise _pkl.UnpicklingError(f"cookie cache: global '{module}.{name}' is forbidden")
+
+
+def _cookies_from_legacy_pickle(data):
+    """Load a cookie dict pickled by an older yfinance version, safely.
+
+    Returns {domain: {path: {name: Cookie}}} or raises ValueError."""
+    try:
+        raw = _CookieOnlyUnpickler(_io.BytesIO(bytes(data))).load()
+    except Exception as e:
+        raise ValueError(f"cookie cache: legacy pickle unreadable ({e})") from e
+    if not isinstance(raw, dict):
+        raise ValueError("cookie cache: unexpected format")
+    for paths in raw.values():
+        if not isinstance(paths, dict):
+            raise ValueError("cookie cache: unexpected format")
+        for names in paths.values():
+            if not isinstance(names, dict) or not all(isinstance(c, _Cookie) for c in names.values()):
+                raise ValueError("cookie cache: unexpected format")
+    return raw
+
+
 class _CookieCache:
     def __init__(self):
         self.initialised = -1
@@ -411,14 +456,30 @@ class _CookieCache:
 
         try:
             data =  _CookieSchema.get(_CookieSchema.strategy == strategy)
-            cookie = _cookies_from_json(data.cookie_bytes)
-            return {'cookie':cookie, 'age':_dt.datetime.now()-data.fetch_date}
         except _CookieSchema.DoesNotExist:
             return None
-        except (ValueError, KeyError, TypeError, AttributeError, UnicodeDecodeError):
-            # Unreadable entry, e.g. written by an older version that used pickle.
-            # Never unpickle it; treat it as a cache miss so a fresh cookie is fetched.
-            return None
+
+        _bad = (ValueError, KeyError, TypeError, AttributeError, UnicodeDecodeError)
+        try:
+            cookie = _cookies_from_json(data.cookie_bytes)
+        except _bad:
+            # Possibly written by an older yfinance that pickled the cookie.
+            # Migrate it with a restricted unpickler (only http.cookiejar.Cookie
+            # allowed) and rewrite it as JSON, preserving the cookie.
+            try:
+                cookie = _cookies_from_legacy_pickle(data.cookie_bytes)
+                _cookies_to_json(cookie)  # ensure it round-trips before rewriting
+            except _bad as e:
+                get_yf_logger().debug(f"Discarding unreadable cached cookie: {e}")
+                return None
+            try:
+                with self.get_db().atomic():
+                    _CookieSchema.update(cookie_bytes=_cookies_to_json(cookie)).where(
+                        _CookieSchema.strategy == strategy).execute()
+                get_yf_logger().debug("Migrated cached cookie from pickle to JSON")
+            except Exception as e:
+                get_yf_logger().debug(f"Failed to rewrite migrated cookie as JSON: {e}")
+        return {'cookie':cookie, 'age':_dt.datetime.now()-data.fetch_date}
 
     def store(self, strategy, cookie):
         if self.dummy:
