@@ -11,7 +11,8 @@ Config
   {
     "network": {
       "proxy": null,
-      "retries": 0
+      "retries": 0,
+      "cache_ttl": 60
     },
     "debug": {
       "hide_exceptions": true,
@@ -21,7 +22,8 @@ Config
   >>> yf.config.network
   {
     "proxy": null,
-    "retries": 0
+    "retries": 0,
+    "cache_ttl": 60
   }
 
 
@@ -39,6 +41,15 @@ Network
   .. code-block:: python
 
      yf.config.network.retries = 2
+
+* **cache_ttl** - Seconds that repeated identical requests reuse a cached
+  response (default 60). ``0`` disables the cache, ``None`` never expires
+  entries. Error responses are never cached.
+
+  .. code-block:: python
+
+     yf.config.network.cache_ttl = 10    # live service: keep data fresh
+     yf.config.network.cache_ttl = None  # backtest: fetch once per process
 
 Debug
 -----
