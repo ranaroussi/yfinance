@@ -4,6 +4,8 @@ import unittest
 import warnings
 from unittest.mock import Mock
 
+from websockets.asyncio.server import serve
+
 from yfinance.live import AsyncWebSocket, BaseWebSocket
 
 
@@ -78,3 +80,32 @@ class TestAsyncWebSocketListen(unittest.IsolatedAsyncioTestCase):
         await self._listen(handler)
         self.assertEqual(["BTC-USD"], [m["id"] for m in received])
 
+
+class TestAsyncWebSocketReconnect(unittest.IsolatedAsyncioTestCase):
+    async def test_listen_reconnects_and_resubscribes(self):
+        subscribes = []
+
+        async def server_handler(conn):
+            subscribes.append(json.loads(await conn.recv()))
+            if len(subscribes) == 1:
+                # Drop the first connection
+                await conn.close(1011)
+            else:
+                await conn.send(json.dumps({"message": TestAsyncWebSocketListen.message}))
+                await conn.wait_closed()
+
+        received = []
+        async with serve(server_handler, "127.0.0.1", 0) as server:
+            port = server.sockets[0].getsockname()[1]
+            ws = AsyncWebSocket(url=f"ws://127.0.0.1:{port}", verbose=False)
+            await ws.subscribe("BTC-USD")
+            task = asyncio.create_task(ws.listen(received.append))
+            for _ in range(100):
+                if received:
+                    break
+                await asyncio.sleep(0.1)
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+        self.assertEqual([{"subscribe": ["BTC-USD"]}] * 2, subscribes)
+        self.assertEqual(["BTC-USD"], [m["id"] for m in received])
