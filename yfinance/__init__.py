@@ -53,6 +53,8 @@ __all__ += ['EquityQuery', 'FundQuery', 'ETFQuery', 'screen', 'PREDEFINED_SCREEN
 _NOTSET=object()
 def set_config(proxy=_NOTSET, retries=_NOTSET):
     if proxy is not _NOTSET:
+        if callable(proxy):
+            proxy = proxy()
         warnings.warn("Set proxy via new config control: yf.config.network.proxy = proxy", DeprecationWarning)
         config.network.proxy = proxy
     if retries is not _NOTSET:

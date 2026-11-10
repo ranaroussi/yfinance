@@ -11,3 +11,4 @@ Advanced
    caching
    multi_level_columns
    price_repair
+   price_adjustment
