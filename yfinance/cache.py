@@ -20,20 +20,6 @@ class _TzCacheException(Exception):
     pass
 
 
-class _TzCacheDummy:
-    """Dummy cache to use if tz cache is disabled"""
-
-    def lookup(self, tkr):
-        return None
-
-    def store(self, tkr, tz):
-        pass
-
-    @property
-    def tz_db(self):
-        return None
-
-
 class _TzCacheManager:
     _tz_cache = None
 
@@ -213,20 +199,6 @@ def get_tz_cache():
 
 class _CookieCacheException(Exception):
     pass
-
-
-class _CookieCacheDummy:
-    """Dummy cache to use if Cookie cache is disabled"""
-
-    def lookup(self, tkr):
-        return None
-
-    def store(self, tkr, Cookie):
-        pass
-
-    @property
-    def Cookie_db(self):
-        return None
 
 
 class _CookieCacheManager:
@@ -423,20 +395,6 @@ def get_cookie_cache():
 
 class _ISINCacheException(Exception):
     pass
-
-
-class _ISINCacheDummy:
-    """Dummy cache to use if isin cache is disabled"""
-
-    def lookup(self, isin):
-        return None
-
-    def store(self, isin, tkr):
-        pass
-
-    @property
-    def tz_db(self):
-        return None
 
 
 class _ISINCacheManager:
