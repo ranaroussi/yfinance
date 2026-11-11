@@ -1,0 +1,97 @@
+[
+ {
+  "request": {
+   "method": "GET",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/BATS.L",
+   "params": {
+    "events": "div,splits,capitalGains",
+    "includePrePost": "False",
+    "interval": "1d",
+    "period1": "1787871600",
+    "period2": "1790550000"
+   }
+  },
+  "recorded_at": 1790540140,
+  "response": {
+   "status_code": 200,
+   "content_type": "application/json;charset=utf-8",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/BATS.L?events=div%2Csplits%2CcapitalGains&includePrePost=false&interval=1d&period1=1787871600&period2=1790550000",
+   "json": {
+    "chart": {
+     "result": [
+      {
+       "meta": {
+        "currency": "GBp",
+        "symbol": "BATS.L",
+        "exchangeName": "LSE",
+        "fullExchangeName": "LSE",
+        "instrumentType": "EQUITY",
+        "firstTradeDate": 789120000,
+        "regularMarketTime": 1790350644,
+        "hasPrePostMarketData": false,
+        "gmtoffset": 3600,
+        "timezone": "BST",
+        "exchangeTimezoneName": "Europe/London",
+        "regularMarketPrice": 4180.0,
+        "regularMarketChangePercent": -1.485,
+        "fulldayPrice": 4180.0,
+        "fulldayChange": -63.0,
+        "fulldayChangePercent": -1.485,
+        "fiftyTwoWeekHigh": 5368.0,
+        "fiftyTwoWeekLow": 3677.0,
+        "regularMarketDayHigh": 4237.0,
+        "regularMarketDayLow": 4158.0,
+        "regularMarketVolume": 2134577,
+        "longName": "British American Tobacco p.l.c.",
+        "shortName": "BRITISH AMERICAN TOBACCO PLC OR",
+        "chartPreviousClose": 4152.0,
+        "priceHint": 2,
+        "currentTradingPeriod": {
+         "pre": {
+          "timezone": "BST",
+          "start": 1790316900,
+          "end": 1790319600,
+          "gmtoffset": 3600
+         },
+         "regular": {
+          "timezone": "BST",
+          "start": 1790319600,
+          "end": 1790350200,
+          "gmtoffset": 3600
+         },
+         "post": {
+          "timezone": "BST",
+          "start": 1790350200,
+          "end": 1790352900,
+          "gmtoffset": 3600
+         }
+        },
+        "dataGranularity": "1d",
+        "range": "",
+        "validRanges": ["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]
+       },
+       "timestamp": [1787900400,1788246000,1788332400,1788418800,1788505200,1788764400,1788850800,1788937200,1789023600,1789110000,1789369200,1789455600,1789542000,1789628400,1789714800,1789974000,1790060400,1790146800,1790233200,1790319600],
+       "indicators": {
+        "quote": [
+         {
+          "volume": [3595219,2947421,3899949,4082797,2215590,4058472,2446484,6652843,3138166,3438066,7681548,2461271,2698211,2379866,12728290,1977322,3912406,2101138,3773712,3136231],
+          "open": [4141.0,4088.0,4176.0,4126.0,4111.0,4083.0,4102.0,4067.0,4011.0,4092.0,4116.0,4229.0,4198.0,4212.0,4195.0,4166.0,4171.0,4178.0,4220.0,4228.0],
+          "low": [4126.0,4085.0,4085.0,4041.0,4076.0,4060.0,4066.0,4011.0,4002.0,4079.0,4111.0,4160.0,4182.0,4176.0,4168.0,4149.0,4158.0,4156.0,4218.0,4158.0],
+          "close": [4129.0,4174.0,4126.0,4154.0,4125.0,4099.0,4079.0,4030.0,4092.0,4100.0,4250.0,4223.0,4191.0,4184.0,4196.0,4166.0,4165.0,4198.0,4243.0,4180.0],
+          "high": [4222.4150390625,4184.0,4224.0,4182.0,4127.0,4143.0,4142.0,4117.0,4096.0,4181.0,4262.0,4244.0,4237.0,4256.0,4223.0,4221.0,4234.0,4221.0,4298.0,4237.0]
+         }
+        ],
+        "adjclose": [
+         {
+          "adjclose": [4129.0,4174.0,4126.0,4154.0,4125.0,4099.0,4079.0,4030.0,4092.0,4100.0,4250.0,4223.0,4191.0,4184.0,4196.0,4166.0,4165.0,4198.0,4243.0,4180.0]
+         }
+        ]
+       }
+      }
+     ],
+     "error": null
+    }
+   }
+  }
+ }
+]

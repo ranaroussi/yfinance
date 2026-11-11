@@ -25,6 +25,10 @@ if os.path.isdir(testing_cache_dirpath):
         import shutil
         shutil.rmtree(testing_cache_dirpath)
 
+# Offline testing with stored responses: YF_TEST_MODE=record|replay, see tests/replay.py
+from tests import replay  # noqa: E402
+replay.install()
+
 # Since switching to curl_cffi, the requests_ratelimiter|cache won't work.
 session_gbl = None
 
