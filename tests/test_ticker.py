@@ -502,6 +502,15 @@ class TestTickerEarningsDatesParsing(unittest.TestCase):
         self.assertFalse(df.index.isna().any())
         self.assertEqual([str(d.date()) for d in df.index], ["2025-10-20", "2025-04-24", "2025-01-29"])
 
+    def test_earnings_dates_respects_limit(self):
+        # Yahoo's page only comes in sizes 25/50/100, so a smaller
+        # limit must still cap the number of rows returned.
+        html = self._earnings_page(["October 20, 2025 at 4 PM EDT", "July 23, 2025 at 4 PM EDT",
+                                    "April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])
+        with patch("yfinance.data.YfData.cache_get", return_value=MagicMock(text=html)):
+            df = yf.Ticker("IBM").get_earnings_dates(limit=2)
+        self.assertEqual([str(d.date()) for d in df.index], ["2025-10-20", "2025-07-23"])
+
 class TestTickerNews(unittest.TestCase):
     @staticmethod
     def _story(uuid, typename="Story"):
