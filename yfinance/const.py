@@ -330,7 +330,8 @@ _MIC_TO_YAHOO_SUFFIX = {
     'XCBT': 'CBT', 'XCME': 'CME', 'IFUS': 'NYB', 'CECS': 'CMX', 'XNYM': 'NYM', 'XNYS': '', 'XNAS': '',  # United States
     'XBUE': 'BA',  # Argentina
     'XVIE': 'VI',  # Austria
-    'XASX': 'AX', 'XAUS': 'XA',  # Australia
+    'XASX': 'AX', 'CHIA': 'XA',  # Australia
+    'XAUS': 'XA',  # Legacy yfinance alias
     'XBRU': 'BR',  # Belgium
     'BVMF': 'SA',  # Brazil
     'CNSX': 'CN', 'NEOE': 'NE', 'XTSE': 'TO', 'XTSX': 'V',  # Canada
