@@ -117,10 +117,20 @@ class Market:
         if self._status is None:
             return
         try:
+            # Yahoo returns ISO timestamps with a 'Z' suffix, which
+            # datetime.fromisoformat only accepts on Python 3.11+; on older
+            # versions this whole update throws and open/close stay strings.
+            open_dt = dt.datetime.fromisoformat(self._status["open"].replace("Z", "+00:00"))
+            close_dt = dt.datetime.fromisoformat(self._status["close"].replace("Z", "+00:00"))
+            # gmtoffset is seconds ("-18000" = UTC-5), not hours or milliseconds.
+            tz = dt.timezone(
+                dt.timedelta(seconds=int(self._status["timezone"]["gmtoffset"])),
+                self._status["timezone"]["short"]
+            )
             self._status.update({
-                "open": dt.datetime.fromisoformat(self._status["open"]),
-                "close": dt.datetime.fromisoformat(self._status["close"]),
-                "tz": dt.timezone(dt.timedelta(hours=int(self._status["timezone"]["gmtoffset"]))/1000, self._status["timezone"]["short"])
+                "open": open_dt,
+                "close": close_dt,
+                "tz": tz
             })
         except Exception as e:
             if not YfConfig.debug.hide_exceptions:
