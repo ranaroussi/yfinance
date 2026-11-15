@@ -2158,3 +2158,60 @@ def suite():
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestCalendarTimezoneIndependence(unittest.TestCase):
+    """calendarEvents dates must not depend on the server's local timezone.
+
+    Yahoo encodes dividendDate/exDividendDate as midnight-UTC epochs and
+    earningsDate as 21:00 UTC. Parsing them with naive fromtimestamp()
+    shifts the calendar date: one day early west of UTC (dividends), one
+    day late east of ~UTC+3 (earnings).
+    """
+
+    _PAYLOAD = {
+        "quoteSummary": {
+            "result": [{
+                "calendarEvents": {
+                    "dividendDate": 1796860800,    # 2026-12-10T00:00:00Z
+                    "exDividendDate": 1795046400,  # 2026-11-19T00:00:00Z
+                    "earnings": {
+                        "earningsDate": [1801083600],  # 2027-01-27T21:00:00Z
+                    },
+                }
+            }],
+            "error": None,
+        }
+    }
+
+    def _calendar_in_tz(self, tzname):
+        import os
+        import time
+        old_tz = os.environ.get("TZ")
+        os.environ["TZ"] = tzname
+        time.tzset()
+        try:
+            tkr = yf.Ticker("MSFT")
+            with patch("yfinance.scrapers.quote.Quote._fetch", return_value=self._PAYLOAD):
+                tkr._quote._fetch_calendar()
+                return dict(tkr._quote._calendar)
+        finally:
+            if old_tz is None:
+                del os.environ["TZ"]
+            else:
+                os.environ["TZ"] = old_tz
+            time.tzset()
+
+    def test_calendar_dates_do_not_depend_on_server_timezone(self):
+        import datetime
+        expected = {
+            "Dividend Date": datetime.date(2026, 12, 10),
+            "Ex-Dividend Date": datetime.date(2026, 11, 19),
+            "Earnings Date": [datetime.date(2027, 1, 27)],
+        }
+        for tzname in ("America/New_York", "UTC", "Asia/Tokyo"):
+            with self.subTest(tz=tzname):
+                cal = self._calendar_in_tz(tzname)
+                for key, want in expected.items():
+                    self.assertEqual(cal[key], want,
+                                     f"{key} wrong under TZ={tzname}: {cal[key]!r}")
