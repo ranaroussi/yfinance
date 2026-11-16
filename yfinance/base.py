@@ -837,12 +837,8 @@ class TickerBase:
         #####################################################
         # Define Constants
         #####################################################
-        if limit > 0 and limit <= 25:
-            size = 25
-        elif limit > 25 and limit <= 50:
-            size = 50
-        elif limit > 50 and limit <= 100:
-            size = 100
+        if limit > 0 and limit <= 100:
+            size = limit
         else:
             raise ValueError("Please use limit <= 100")
     

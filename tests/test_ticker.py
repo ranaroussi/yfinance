@@ -502,6 +502,15 @@ class TestTickerEarningsDatesParsing(unittest.TestCase):
         self.assertFalse(df.index.isna().any())
         self.assertEqual([str(d.date()) for d in df.index], ["2025-10-20", "2025-04-24", "2025-01-29"])
 
+    def test_earnings_dates_requests_limit_rows(self):
+        # The page is asked for exactly `limit` rows, not the next of 25/50/100.
+        html = self._earnings_page(["October 20, 2025 at 4 PM EDT", "July 23, 2025 at 4 PM EDT",
+                                    "April 24, 2025 at 4 PM EDT", "January 29, 2025 at 4 PM EST"])
+        with patch("yfinance.data.YfData.cache_get", return_value=MagicMock(text=html)) as cache_get:
+            df = yf.Ticker("IBM").get_earnings_dates(limit=4)
+        self.assertTrue(cache_get.call_args[0][0].endswith("&size=4"))
+        self.assertEqual(len(df), 4)
+
 class TestTickerNews(unittest.TestCase):
     @staticmethod
     def _story(uuid, typename="Story"):
