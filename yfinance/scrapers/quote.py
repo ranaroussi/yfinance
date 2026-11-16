@@ -10,6 +10,7 @@ from yfinance.config import YfConfig
 from yfinance.const import quote_summary_valid_modules, _BASE_URL_, _QUERY1_URL_
 from yfinance.data import YfData
 from yfinance.exceptions import YFDataException, YFException
+from yfinance.scrapers.history import _CURRENCY_CONVERSIONS
 
 info_retired_keys_price = {"currentPrice", "dayHigh", "dayLow", "open", "previousClose", "volume", "volume24Hr"}
 info_retired_keys_price.update({"regularMarket"+s for s in ["DayHigh", "DayLow", "Open", "PreviousClose", "Price", "Volume"]})
@@ -498,7 +499,8 @@ class FastInfo:
             if self._tkr._quote._retired_info is not None and k in self._tkr._quote._retired_info:
                 self._mcap = self._tkr._quote._retired_info[k]
         else:
-            self._mcap = float(shares * self.last_price)
+            # last_price is in pence/cents for some exchanges (GBp, ZAc, ILA)
+            self._mcap = float(shares * self.last_price * _CURRENCY_CONVERSIONS.get(self.currency, 1))
         return self._mcap
 
 
