@@ -45,6 +45,9 @@
 - `Sector` and `Industry`: sector and industry information
 - `EquityQuery` and `Screener`: build query to screen market
 
+> [!NOTE]
+> [Prices are default adjusted for dividends (`auto_adjust=True`)](https://ranaroussi.github.io/yfinance/advanced/price_adjustment.html).
+
 ## Installation
 
 Install `yfinance` from PYPI using `pip`:

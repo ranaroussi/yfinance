@@ -25,7 +25,7 @@ Here are some ways to run tests:
 
   .. code-block:: bash
 
-     pytest tests/test_prices_repair.py::TestPriceRepair::test_ticker_missing
+     pytest tests/test_ticker.py::TestTicker::test_ticker_missing
 
 - **General command**:
 

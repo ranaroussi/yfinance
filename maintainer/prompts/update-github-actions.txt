@@ -1,0 +1,20 @@
+Review external SHA-pinned actions and reusable workflows in .github/workflows/, including disabled workflow files. Do not commit or push.
+
+1. Inventory uses references locally. Build a unique OWNER/REPO list across all files (repository names are case-insensitive); exclude local paths and docker:// references. Preserve any action subpaths or reusable-workflow paths for the eventual edits.
+
+2. Conserve GitHub requests. Run the read-only verifier ONCE from the repository root, passing all unique repositories together:
+   bash maintainer/verify_github_actions.sh OWNER/REPO OWNER/OTHER_REPO
+   Capture stdout, stderr, and exit status; retain the results for this maintenance pass. Reuse each repository's result everywhere it occurs. Do not rerun per workflow, per occurrence, or merely to confirm the same SHA. The script makes one REST request per release page of up to 100 records (including an empty final page when needed), plus one git ls-remote operation per successfully selected repository. Do not spend requests on preliminary quota checks or live tests. Existing GH_TOKEN/GITHUB_TOKEN credentials may be used; never print them. On rate limiting, stop and report it rather than retrying. A failed batch may contain completed results: retain those, leave failed/unprocessed repositories unchanged, and do not rerun the whole batch.
+
+3. Use the script's selected versions and full SHAs. It discovers the highest stable numeric release published at least seven days ago, across all majors; do not constrain discovery to the current version or major. Never guess a SHA, substitute commit age for publication age, or use incomplete results. Review reported mutable-release warnings: age and SHA resolution alone do not prove safety.
+
+4. Review relevant official migration notes, advisories, and upstream changes, reusing evidence for repeated actions. Flag breaking changes or downgrades requiring user decisions. Update safe pins and exact version comments, preserving paths and unrelated content. Keep unresolved pins unchanged.
+
+5. Add/update each adjacent human-verification comment (run from the repository root):
+   # Verify: bash maintainer/verify_github_actions.sh OWNER/REPO
+   This replaces the old commits?sha=...&until=... query. Do not hardcode a version in the command. It is for future manual verification; do not execute it again for every edited occurrence.
+
+Validate locally using available tooling and the offline checks:
+   bash tests/test_verify_github_actions.sh
+   bash -n maintainer/verify_github_actions.sh
+Review the diff for correct pins/comments and unrelated changes. Report old/new versions and SHAs, publication dates, source links from the retained results, warnings, validation results, and unresolved repositories. Do not claim remote verification for repositories that failed or were not queried.
