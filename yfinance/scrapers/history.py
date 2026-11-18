@@ -439,7 +439,7 @@ class PriceHistory:
         quotes = utils.set_df_tz(quotes, interval, tz_exchange)
         quotes = utils.fix_Yahoo_dst_issue(quotes, interval)
         intraday = params["interval"][-1] in ("m", 'h')
-        if not prepost and intraday:
+        if not prepost and intraday and 'tradingPeriods' in self._history_metadata:
             tps = self._history_metadata['tradingPeriods']
             quotes = utils.fix_Yahoo_returning_prepost_unrequested(quotes, interval, tps)
         if quotes.empty:
