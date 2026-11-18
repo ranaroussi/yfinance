@@ -1,3 +1,4 @@
+import functools as _functools
 import peewee as _peewee
 from threading import Lock
 import os as _os
@@ -12,6 +13,23 @@ from http.cookiejar import Cookie as _Cookie
 from .utils import get_yf_logger
 
 _cache_init_lock = Lock()
+
+
+def _closes_connection(method):
+    """Run a cache method inside a peewee connection context.
+
+    peewee keeps one connection per thread and nothing closes it when the thread
+    ends, so every thread of a threaded download left its connection (and the
+    WAL file) open until a garbage collection, exhausting the open-file limit.
+    """
+    @_functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        db = None if self.dummy else self.get_db()
+        if db is None:
+            return method(self, *args, **kwargs)
+        with db.connection_context():
+            return method(self, *args, **kwargs)
+    return wrapper
 
 
 
@@ -134,7 +152,7 @@ class _TzCache:
             self.initialised = 0  # failure
             return
 
-        db.connect()
+        db.connect(reuse_if_open=True)
         tz_db_proxy.initialize(db)
         try:
             db.create_tables([_TZ_KV])
@@ -146,6 +164,7 @@ class _TzCache:
                 raise
         self.initialised = 1  # success
 
+    @_closes_connection
     def lookup(self, key):
         if self.dummy:
             return None
@@ -161,6 +180,7 @@ class _TzCache:
         except _TZ_KV.DoesNotExist:
             return None
 
+    @_closes_connection
     def store(self, key, value):
         if self.dummy:
             return
@@ -404,7 +424,7 @@ class _CookieCache:
             self.initialised = 0  # failure
             return
 
-        db.connect()
+        db.connect(reuse_if_open=True)
         Cookie_db_proxy.initialize(db)
         try:
             db.create_tables([_CookieSchema])
@@ -416,6 +436,7 @@ class _CookieCache:
                 raise
         self.initialised = 1  # success
 
+    @_closes_connection
     def lookup(self, strategy):
         if self.dummy:
             return None
@@ -453,6 +474,7 @@ class _CookieCache:
                 get_yf_logger().debug(f"Failed to rewrite migrated cookie as JSON: {e}")
         return {'cookie':cookie, 'age':_dt.datetime.now()-data.fetch_date}
 
+    @_closes_connection
     def store(self, strategy, cookie):
         if self.dummy:
             return
@@ -606,7 +628,7 @@ class _ISINCache:
             self.initialised = 0  # failure
             return
 
-        db.connect()
+        db.connect(reuse_if_open=True)
         isin_db_proxy.initialize(db)
         try:
             db.create_tables([_ISIN_KV])
@@ -618,6 +640,7 @@ class _ISINCache:
                 raise
         self.initialised = 1  # success
 
+    @_closes_connection
     def lookup(self, key):
         if self.dummy:
             return None
@@ -633,6 +656,7 @@ class _ISINCache:
         except _ISIN_KV.DoesNotExist:
             return None
 
+    @_closes_connection
     def store(self, key, value):
         if self.dummy:
             return

@@ -10,6 +10,8 @@ Specific test class:
 """
 from tests.context import yfinance as yf
 
+import gc
+import threading
 import unittest
 import tempfile
 import os
@@ -120,3 +122,57 @@ class TestCookieCache(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+@unittest.skipUnless(os.path.isdir("/proc/self/fd"), "counts open files through /proc")
+class TestCacheThreadConnections(unittest.TestCase):
+    """Each thread gets its own peewee connection: a cache call must close it, or
+    the threads of a threaded download leave one open file per cache behind."""
+
+    managers = [
+        (yf.cache._TzDBManager, yf.cache._TzCacheManager, "_tz_cache"),
+        (yf.cache._CookieDBManager, yf.cache._CookieCacheManager, "_Cookie_cache"),
+        (yf.cache._ISINDBManager, yf.cache._ISINCacheManager, "_isin_cache"),
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tempCacheDir = tempfile.TemporaryDirectory()
+        cls.original_dirs = [db.get_location() for db, _, _ in cls.managers]
+        for db, manager, attr in cls.managers:
+            db.close_db()
+            setattr(manager, attr, None)
+            db.set_location(cls.tempCacheDir.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        for (db, manager, attr), original in zip(cls.managers, cls.original_dirs):
+            db.close_db()
+            setattr(manager, attr, None)
+            db.set_location(original)
+        cls.tempCacheDir.cleanup()
+
+    @staticmethod
+    def _open_files():
+        return len(os.listdir("/proc/self/fd"))
+
+    @staticmethod
+    def _use_caches():
+        yf.cache.get_tz_cache().store("AMZN", "America/New_York")
+        yf.cache.get_tz_cache().lookup("AMZN")
+        yf.cache.get_cookie_cache().lookup("basic")
+        yf.cache.get_isin_cache().lookup("US0231351067")
+
+    def test_threads_leave_no_connection_open(self):
+        self._use_caches()
+        gc.disable()
+        try:
+            before = self._open_files()
+            for _ in range(50):
+                thread = threading.Thread(target=self._use_caches)
+                thread.start()
+                thread.join()
+            leaked = self._open_files() - before
+        finally:
+            gc.enable()
+        self.assertLess(leaked, 10)
