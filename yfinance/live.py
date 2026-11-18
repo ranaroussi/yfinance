@@ -158,6 +158,11 @@ class AsyncWebSocket(BaseWebSocket):
 
         while True:
             try:
+                if self._ws is None:
+                    # Connection was lost, open a new one and subscribe again
+                    await self._connect()
+                    await self._ws.send(json.dumps({"subscribe": list(self._subscriptions)}))
+
                 async for message in self._ws:
                     message_json = json.loads(message)
                     encoded_data = message_json.get("message", "")
@@ -192,12 +197,15 @@ class AsyncWebSocket(BaseWebSocket):
                 if self.verbose:
                     print("Error while listening to messages: %s", e)
 
-                # Attempt to reconnect if connection drops
-                self.logger.info("Attempting to reconnect...")
-                if self.verbose:
-                    print("Attempting to reconnect...")
-                await asyncio.sleep(3)  # backoff
-                await self._connect()
+            # Attempt to reconnect if connection drops, or if server closed
+            # it normally ('async for' then ends without an error)
+            self.logger.info("Attempting to reconnect...")
+            if self.verbose:
+                print("Attempting to reconnect...")
+            await asyncio.sleep(3)  # backoff
+            if self._ws is not None:
+                await self._ws.close()
+                self._ws = None
 
     async def close(self):
         """Close the WebSocket connection."""
