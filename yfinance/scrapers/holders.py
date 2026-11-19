@@ -182,6 +182,8 @@ class Holders:
         if not df.empty:
             if "positionDirectDate" in df:
                 df["positionDirectDate"] = pd.to_datetime(df["positionDirectDate"], unit="s")
+            if "positionIndirectDate" in df:
+                df["positionIndirectDate"] = pd.to_datetime(df["positionIndirectDate"], unit="s")
             if "latestTransDate" in df:
                 df["latestTransDate"] = pd.to_datetime(df["latestTransDate"], unit="s")
 
