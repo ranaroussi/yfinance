@@ -56,5 +56,40 @@ class TestScreener(unittest.TestCase):
                     f"likely two fields concatenated by a missing comma",
                 )
 
+
+
+class TestNumpyScreenerOperands(unittest.TestCase):
+    @patch('yfinance.data.YfData.post')
+    def test_numpy_comparisons_serialize_through_screen(self, mock_post):
+        import numpy as np
+
+        mock_post.return_value.json.return_value = {
+            'finance': {'result': [{'key': 'value'}]}
+        }
+        for scalar in [np.int32(3), np.int64(3), np.uint64(3), np.float32(3.5)]:
+            for operator in ['GT', 'LT', 'GTE', 'LTE', 'EQ', 'BTWN', 'IS-IN']:
+                with self.subTest(scalar=type(scalar).__name__, operator=operator):
+                    operands = ['eodprice', scalar]
+                    if operator == 'BTWN':
+                        operands.append(np.float32(10))
+                    leaf = EquityQuery(operator, operands)
+                    query = EquityQuery('AND', [leaf, EquityQuery('GT', ['eodvolume', 1])])
+                    self.assertEqual(screen(query), {'key': 'value'})
+                    body = json.loads(mock_post.call_args.kwargs['data'])
+                    serialized = body['query']['operands'][0]
+                    if operator == 'IS-IN':
+                        serialized = serialized['operands'][0]
+                    self.assertEqual(serialized['operands'][1], float(scalar))
+                    self.assertIs(leaf.operands[1], scalar)
+
+    def test_large_numpy_integer_keeps_exact_value(self):
+        import numpy as np
+
+        value = np.uint64(2**63 + 1)
+        query = EquityQuery('GT', ['intradaymarketcap', value])
+        payload = json.loads(json.dumps(query.to_dict()))
+        self.assertEqual(payload['operands'][1], 2**63 + 1)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -109,10 +109,16 @@ class QueryBase(ABC):
             # Expand to OR of EQ queries
             op = 'OR'
             ops = [type(self)('EQ', [self.operands[0], v]) for v in self.operands[1:]]
-        return {
-            "operator": op,
-            "operands": [o.to_dict() if isinstance(o, QueryBase) else o for o in ops]
-        }
+        serialized = []
+        for operand in ops:
+            if isinstance(operand, QueryBase):
+                operand = operand.to_dict()
+            elif isinstance(operand, numbers.Integral) and not isinstance(operand, bool):
+                operand = int(operand)
+            elif isinstance(operand, numbers.Real) and not isinstance(operand, bool):
+                operand = float(operand)
+            serialized.append(operand)
+        return {"operator": op, "operands": serialized}
 
     def __repr__(self, indent=0) -> str:
         indent_str = "  " * indent
