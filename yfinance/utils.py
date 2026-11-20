@@ -452,8 +452,11 @@ def snake_case_2_camelCase(s):
 
 
 def _parse_user_dt(dt, exchange_tz=_tz.utc):
-    if isinstance(dt, int):
-        dt = _pd.Timestamp(dt, unit="s", tz=exchange_tz)
+    if isinstance(dt, _np.datetime64):
+        # Read like a naive datetime below, i.e. in the exchange's timezone
+        dt = _pd.Timestamp(dt)
+    if isinstance(dt, (int, _np.integer)):
+        dt = _pd.Timestamp(int(dt), unit="s", tz=exchange_tz)
     else:
         # Convert str/date -> datetime, set tzinfo=exchange, get timestamp:
         if isinstance(dt, str):
