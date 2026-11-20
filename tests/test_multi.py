@@ -142,6 +142,10 @@ class _FakeTickerAttr:
 
 
 class TestTickersAttributes(unittest.TestCase):
+    def test_accepts_tuple_and_set(self):
+        # Like yf.download, accept any list, set or tuple of symbols
+        for symbols in [["aapl", "msft"], ("aapl", "msft"), {"aapl", "msft"}]:
+            self.assertEqual(sorted(yf.Tickers(symbols).symbols), ["AAPL", "MSFT"])
 
     def test_info_is_dict_per_ticker(self):
         fake = _FakeTickerAttr('info', {
