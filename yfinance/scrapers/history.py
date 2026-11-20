@@ -19,6 +19,76 @@ from yfinance.exceptions import YFDataException, YFInvalidPeriodError, YFPricesM
 
 _CURRENCY_CONVERSIONS = {'GBp': 0.01, 'ZAc': 0.01, 'ILA': 0.01}  # GBp = pence, ZAc = South African cents, ILA = Israeli agorot
 
+_INTERVAL_FREQ = {
+    "1m": pd.offsets.Minute(1),
+    "2m": pd.offsets.Minute(2),
+    "5m": pd.offsets.Minute(5),
+    "15m": pd.offsets.Minute(15),
+    "30m": pd.offsets.Minute(30),
+    "60m": pd.offsets.Minute(60),
+    "90m": pd.offsets.Minute(90),
+    "1h": pd.offsets.Hour(1),
+    "1d": pd.offsets.BDay(),
+    "1wk": pd.offsets.Week(weekday=0),
+    "1mo": pd.offsets.MonthBegin(),
+    "3mo": pd.offsets.QuarterBegin(),
+}
+
+
+def _can_conform_to_freq(index: pd.DatetimeIndex, interval: str, freq: pd.offsets.BaseOffset) -> bool:
+    """Fast O(1) endpoint check to reject indexes with gaps before pandas's full-range validation."""
+    n = len(index)
+    if n == 0:
+        return False
+    start = index[0]
+    if pd.isna(start):
+        return False
+    if n == 1:
+        return True
+    end = index[-1]
+    if pd.isna(end) or end <= start:
+        return False
+
+    if interval == "1d":
+        d0, d1 = start.date(), end.date()
+        return d0.weekday() < 5 and d1.weekday() < 5 and int(np.busday_count(d0, d1)) + 1 == n
+    if interval == "1wk":
+        d0, d1 = start.date(), end.date()
+        return d0.weekday() == 0 and d1.weekday() == 0 and (d1 - d0).days == (n - 1) * 7
+    if interval == "1mo":
+        d0, d1 = start.date(), end.date()
+        return d0.day == 1 and d1.day == 1 and (d1.year - d0.year) * 12 + (d1.month - d0.month) == n - 1
+    if interval == "3mo":
+        d0, d1 = start.date(), end.date()
+        return d0.day == 1 and d1.day == 1 and (d1.year - d0.year) * 12 + (d1.month - d0.month) == (n - 1) * 3
+    if isinstance(freq, pd.offsets.Tick):
+        try:
+            return (end - start) == (n - 1) * pd.Timedelta(freq)
+        except (ValueError, OverflowError):
+            return False
+    return True
+
+
+def _set_index_freq(df: pd.DataFrame, interval_user: str) -> None:
+    if interval_user not in _INTERVAL_FREQ or df.empty or not isinstance(df.index, pd.DatetimeIndex):
+        return
+    freq = _INTERVAL_FREQ[interval_user]
+    if interval_user == "3mo":
+        # Yahoo anchors quarters on the first row's month
+        start = df.index[0]
+        if pd.isna(start):
+            return
+        freq = pd.offsets.QuarterBegin(startingMonth=start.month)
+    if not _can_conform_to_freq(df.index, interval_user, freq):
+        return
+    try:
+        df.index.freq = freq
+    except ValueError:
+        # Index contains gaps (e.g. long trading halts, delisting,
+        # holiday-shortened weeks) so a regular frequency cannot be set.
+        pass
+
+
 _PriceShiftDetection = namedtuple(
     '_PriceShiftDetection', ['up', 'down', 'workings'])
 
@@ -657,34 +727,7 @@ class PriceHistory:
 
         # Set freq on regular-interval data so downstream libraries (e.g.
         # sktime) can rely on a meaningful frequency instead of None.
-        # Intraday intervals map to fixed minute/hour offsets; market-hour
-        # grids (and holiday/weekend gaps) that are not perfectly regular
-        # are handled by the ValueError fallback below.
-        _INTERVAL_FREQ = {
-            "1m": pd.offsets.Minute(1),
-            "2m": pd.offsets.Minute(2),
-            "5m": pd.offsets.Minute(5),
-            "15m": pd.offsets.Minute(15),
-            "30m": pd.offsets.Minute(30),
-            "60m": pd.offsets.Minute(60),
-            "90m": pd.offsets.Minute(90),
-            "1h": pd.offsets.Hour(1),
-            "1d": pd.offsets.BDay(),
-            "1wk": pd.offsets.Week(weekday=0),
-            "1mo": pd.offsets.MonthBegin(),
-            "3mo": pd.offsets.QuarterBegin(),
-        }
-        if interval_user in _INTERVAL_FREQ and not df.empty:
-            freq = _INTERVAL_FREQ[interval_user]
-            if interval_user == "3mo":
-                # Yahoo anchors quarters on the first row's month
-                freq = pd.offsets.QuarterBegin(startingMonth=df.index[0].month)
-            try:
-                df.index.freq = freq
-            except ValueError:
-                # Index contains gaps (e.g. long trading halts, delisting,
-                # holiday-shortened weeks) so a regular frequency cannot be set.
-                pass
+        _set_index_freq(df, interval_user)
 
         # Don't care that Pandas hid this. If they do it to improve performance, we do it.
         df = df._consolidate()
