@@ -13,6 +13,7 @@ from unittest import TestSuite
 
 import warnings
 
+import numpy as np
 import pandas as pd
 
 import unittest
@@ -224,6 +225,8 @@ class TestDateIntervalCheck(unittest.TestCase):
         self.assertEqual(_parse_user_dt(dtstr, exchange_tz), expected)
         self.assertEqual(_parse_user_dt(datetime(year=2024, month=1, day=4).date(), exchange_tz), expected)
         self.assertEqual(_parse_user_dt(datetime(year=2024, month=1, day=4), exchange_tz), expected)
+        self.assertEqual(_parse_user_dt(np.int64(epoch), exchange_tz), expected)
+        self.assertEqual(_parse_user_dt(np.datetime64(dtstr), exchange_tz), expected)
         with self.assertRaises(ValueError):
             self.assertEqual(_parse_user_dt(float(epoch), exchange_tz), expected)
 
