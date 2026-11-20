@@ -227,6 +227,17 @@ class TestPriceHistory(unittest.TestCase):
                 df_merged = yf.utils.safe_merge_dfs(df.copy(), divs.copy(), interval)
                 self.assertEqual(df_merged.index[df_merged["Dividends"].notna()].tolist(), expected, interval)
 
+    def test_intraday_30m_keepna_no_empty_bins(self):
+        # 30m bars are resampled from 15m bars. Resampling must not add a row
+        # for every 30 minutes without a 15m bar, e.g. all weekend.
+        dat = yf.Ticker("MSFT", session=self.session)
+        for prepost in [False, True]:
+            df30 = dat.history(period="5d", interval="30m", prepost=prepost, keepna=True)
+            df15 = dat.history(period="5d", interval="15m", prepost=prepost, keepna=True)
+            self.assertFalse(df30.empty)
+            self.assertTrue((df30.index.dayofweek < 5).all(), f"prepost={prepost}")
+            self.assertTrue(set(df30.index).issubset(set(df15.index.floor("30min"))), f"prepost={prepost}")
+
     def test_intraDayWithEvents(self):
         tkrs = ["BHP.AX", "IMP.JO", "BP.L", "PNL.L", "INTC"]
         test_run = False
