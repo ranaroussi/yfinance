@@ -430,6 +430,9 @@ class PriceHistory:
                 'Adj Close': quotes2['Adj Close'].last(),
                 'Volume': quotes2['Volume'].sum()
             })
+            # Drop 30m bins with no 15m bar, e.g. nights and weekends,
+            # else they appear as all-NaN rows when keepna=True
+            quotes = quotes[quotes2.size() > 0]
 
         if not self._history_metadata_formatted:
             self._history_metadata = utils.format_history_metadata(self._history_metadata)#, tradingPeriodsOnly=True)
