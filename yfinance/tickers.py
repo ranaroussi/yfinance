@@ -35,8 +35,8 @@ class Tickers:
         return f"yfinance.Tickers object <{','.join(self.symbols)}>"
 
     def __init__(self, tickers, session=None):
-        tickers = tickers if isinstance(
-            tickers, list) else tickers.replace(',', ' ').split()
+        tickers = list(tickers) if isinstance(
+            tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
         self.symbols = [ticker.upper() for ticker in tickers]
         self.tickers = {ticker: Ticker(ticker, session=session) for ticker in self.symbols}
 
