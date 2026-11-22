@@ -53,9 +53,9 @@ __all__ += ['EquityQuery', 'FundQuery', 'ETFQuery', 'screen', 'PREDEFINED_SCREEN
 _NOTSET=object()
 def set_config(proxy=_NOTSET, retries=_NOTSET):
     if proxy is not _NOTSET:
-        warnings.warn("Set proxy via new config control: yf.config.network.proxy = proxy", DeprecationWarning)
+        warnings.warn("Set proxy via new config control: yf.config.network.proxy = proxy", DeprecationWarning, stacklevel=2)
         config.network.proxy = proxy
     if retries is not _NOTSET:
-        warnings.warn("Set retries via new config control: yf.config.network.retries = retries", DeprecationWarning)
+        warnings.warn("Set retries via new config control: yf.config.network.retries = retries", DeprecationWarning, stacklevel=2)
         config.network.retries = retries
 __all__ += ['config', 'set_config']

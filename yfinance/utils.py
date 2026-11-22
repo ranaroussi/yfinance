@@ -193,7 +193,7 @@ def get_yf_logger():
 
 
 def enable_debug_mode():
-    warnings.warn("enable_debug_mode() is replaced by: yf.config.debug.logging = True (or False to disable)", DeprecationWarning)
+    warnings.warn("enable_debug_mode() is replaced by: yf.config.debug.logging = True (or False to disable)", DeprecationWarning, stacklevel=2)
     _enable_debug_mode()
 
 def _enable_debug_mode():
