@@ -9,7 +9,9 @@ Specific test class:
 
 """
 from datetime import datetime
+from types import SimpleNamespace
 from unittest import TestSuite
+from unittest.mock import patch
 
 import warnings
 
@@ -18,12 +20,15 @@ import pandas as pd
 
 import unittest
 
+import yfinance as yf
+from yfinance.scrapers.history import PriceHistory
 from yfinance.utils import (
     is_valid_period_format,
     _dts_in_same_interval,
     _parse_user_dt,
     _interval_to_timedelta,
     fix_Yahoo_returning_live_separate,
+    require_repair_dependencies,
 )
 
 
@@ -295,6 +300,54 @@ class TestFixYahooReturningLiveSeparate(unittest.TestCase):
             "Capital Gains": [0.0, 0.5]}, index=idx)
         df, _ = fix_Yahoo_returning_live_separate(df, "1wk", tz, prepost=False)
         self.assertEqual(df["Capital Gains"].iloc[0], 0.5)
+
+
+def _find_spec_without(*missing):
+    # Stand-in for importlib.util.find_spec that reports only `missing` as
+    # not installed, so these tests don't depend on what is installed.
+    return lambda name, *args, **kwargs: None if name in missing else SimpleNamespace(name=name)
+
+
+class TestRepairDependencies(unittest.TestCase):
+    def test_no_error_when_installed(self):
+        with patch("importlib.util.find_spec", _find_spec_without()):
+            require_repair_dependencies()
+
+    def test_error_names_packages_and_install_command(self):
+        with patch("importlib.util.find_spec", _find_spec_without("scipy", "sklearn")):
+            with self.assertRaises(ImportError) as cm:
+                require_repair_dependencies()
+        msg = str(cm.exception)
+        self.assertIn("scipy and scikit-learn", msg)
+        self.assertIn("pip install 'yfinance[repair]'", msg)
+
+    def test_error_names_only_the_missing_package(self):
+        with patch("importlib.util.find_spec", _find_spec_without("sklearn")):
+            with self.assertRaises(ImportError) as cm:
+                require_repair_dependencies()
+        msg = str(cm.exception)
+        self.assertIn("scikit-learn", msg)
+        self.assertNotIn("scipy", msg)
+
+    def test_history_raises_before_fetching(self):
+        # data=None: any attempt to fetch would raise AttributeError instead
+        hist = PriceHistory(None, "MSFT", "America/New_York", session=object())
+        with patch("importlib.util.find_spec", _find_spec_without("scipy", "sklearn")):
+            with self.assertRaises(ImportError):
+                hist.history(period="5d", repair=True)
+
+    def test_download_raises_instead_of_returning_empty(self):
+        with patch("importlib.util.find_spec", _find_spec_without("scipy", "sklearn")), \
+                patch("yfinance.multi._download_impl") as mock_impl:
+            with self.assertRaises(ImportError):
+                yf.download("MSFT", period="5d", repair=True, progress=False)
+        mock_impl.assert_not_called()
+
+    def test_no_check_without_repair(self):
+        with patch("importlib.util.find_spec", _find_spec_without("scipy", "sklearn")), \
+                patch("yfinance.multi._download_impl", return_value="sentinel") as mock_impl:
+            self.assertEqual(yf.download("MSFT", period="5d", progress=False), "sentinel")
+        mock_impl.assert_called_once()
 
 
 if __name__ == "__main__":

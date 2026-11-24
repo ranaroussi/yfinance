@@ -105,6 +105,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Adjust all OHLC automatically? Default is True
         repair: bool
             Detect currency unit 100x mixups and attempt repair
+            Requires extra packages: pip install 'yfinance[repair]'
             Default is False
         keepna: bool
             Keep NaN rows returned by Yahoo?
@@ -131,6 +132,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
     """
+    if repair:
+        # Raise once here, else every ticker fails in its thread and
+        # download() returns an empty table.
+        utils.require_repair_dependencies()
+
     return _download_impl(
         _DownloadCtx(),
         tickers, start=start, end=end, actions=actions, threads=threads,

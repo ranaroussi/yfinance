@@ -53,6 +53,12 @@ Install `yfinance` from PYPI using `pip`:
 $ pip install yfinance
 ```
 
+To use price repair (`repair=True`), install the extra packages it needs:
+
+``` {.sourceCode .bash}
+$ pip install "yfinance[repair]"
+```
+
 To install without `curl_cffi` for requests fallback, see [Advanced ▸ Installation](https://ranaroussi.github.io/yfinance/advanced/install.html).
 
 ### [yfinance relies on the community to investigate bugs and contribute code. Here's how you can help.](https://github.com/ranaroussi/yfinance/blob/main/CONTRIBUTING.md)

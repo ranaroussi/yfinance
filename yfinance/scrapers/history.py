@@ -140,6 +140,7 @@ class PriceHistory:
               | Back-adjusted data to mimic true historical prices
             repair : bool
               | Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
+              | Requires extra packages: pip install 'yfinance[repair]'
               | Default: False
               | Full details at: :doc:`../advanced/price_repair`.
             keepna : bool
@@ -169,6 +170,10 @@ class PriceHistory:
                 period = '1mo'
         else:
             period_user = period
+
+        if repair:
+            utils.require_repair_dependencies()
+
         if repair and interval in ["5d", "1wk", "1mo", "3mo"]:
             # Yahoo's way of adjusting mutiday intervals is fundamentally broken.
             # Have to fetch 1d, adjust, then resample.

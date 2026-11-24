@@ -1,6 +1,12 @@
 Installation
 ============
 
+Price repair (``repair=True``) needs ``scipy`` and ``scikit-learn``. They are not installed by default, so install the ``repair`` extra:
+
+.. code-block:: bash
+
+    pip install "yfinance[repair]"
+
 To install without ``curl_cffi`` for requests fallback:
 
 .. code-block:: bash

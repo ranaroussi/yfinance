@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import datetime as _datetime
+import importlib.util
 import logging
 import re
 import re as _re
@@ -628,6 +629,18 @@ def set_df_tz(df, interval, tz):
         df.index = df.index.tz_localize("UTC")
     df.index = df.index.tz_convert(tz)
     return df
+
+
+def require_repair_dependencies():
+    # Price repair needs packages that only install with the 'repair' extra.
+    # Check up front, so the user is told what to install instead of
+    # hitting a bare ModuleNotFoundError part-way through a repair.
+    missing = [pkg for module, pkg in (("scipy", "scipy"), ("sklearn", "scikit-learn"))
+               if importlib.util.find_spec(module) is None]
+    if missing:
+        raise ImportError(
+            f"Price repair (repair=True) requires {' and '.join(missing)}. "
+            "Install with: pip install 'yfinance[repair]'")
 
 
 def fix_Yahoo_returning_prepost_unrequested(quotes, interval, tradingPeriods):
