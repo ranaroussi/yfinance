@@ -155,10 +155,23 @@ class PriceHistory:
             raise_errors : bool
                 If True, then raise errors as Exceptions instead of logging.
         """
-        logger = utils.get_yf_logger()
-
         if raise_errors:
             warnings.warn("'raise_errors' deprecated, do: yf.config.debug.hide_exceptions = False", DeprecationWarning, stacklevel=5)
+
+        return self._history(period=period, interval=interval, start=start, end=end,
+                             prepost=prepost, actions=actions, auto_adjust=auto_adjust,
+                             back_adjust=back_adjust, repair=repair, keepna=keepna,
+                             rounding=rounding, timeout=timeout, raise_errors=raise_errors)
+
+    def _history(self, period=period_default, interval="1d",
+                 start=None, end=None, prepost=False, actions=True,
+                 auto_adjust=True, back_adjust=False, repair=False, keepna=False,
+                 rounding=False, timeout=10,
+                 raise_errors=False) -> pd.DataFrame:
+        # history() without the raise_errors deprecation warning, so download()
+        # can request exceptions per call instead of flipping the global
+        # hide_exceptions config (which races between threads).
+        logger = utils.get_yf_logger()
 
         interval_user = interval
         if period == period_default:
