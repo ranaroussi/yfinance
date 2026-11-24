@@ -920,5 +920,98 @@ class TestPriceRepairLevelShift(unittest.TestCase):
             self.assertFalse(repaired_df['Repaired?'].any())
 
 
+class TestPriceRepairZeroesPrepost(unittest.TestCase):
+    # Offline: the 1h data used for reconstruction is built here, not fetched.
+    tz = "America/New_York"
+
+    def _days(self):
+        # Repair only checks last 2 years, so use last week
+        monday = _pd.Timestamp(_dt.date.today()).tz_localize(self.tz).normalize()
+        monday -= _pd.Timedelta(days=monday.weekday() + 7)
+        return [monday + _pd.Timedelta(days=i) for i in range(5)]
+
+    def _bar(self, o, hi, lo, c, v):
+        return {"Open": o, "High": hi, "Low": lo, "Close": c, "Adj Close": c, "Volume": v,
+                "Dividends": 0.0, "Stock Splits": 0.0}
+
+    def _repair(self, df_1d, bars_1h, has_prepost, dt_bad):
+        # bars_1h: list of (datetime, bar, is_regular_hours)
+        df_1h = _pd.DataFrame([b for _, b, _ in bars_1h], index=_pd.DatetimeIndex([dt for dt, _, _ in bars_1h]))
+        df_1h["Repaired?"] = False
+        f_regular = _np.array([r for _, _, r in bars_1h])
+        requested = []
+
+        def fake_history(ph, *args, **kwargs):
+            requested.append((kwargs['interval'], kwargs['prepost']))
+            start = _pd.Timestamp(kwargs['start']).tz_localize(self.tz)
+            end = _pd.Timestamp(kwargs['end']).tz_localize(self.tz)
+            f = (df_1h.index >= start) & (df_1h.index < end)
+            if not kwargs['prepost']:
+                f = f & f_regular
+            return df_1h[f]
+
+        df_bad = df_1d.copy()
+        df_bad.loc[dt_bad, ["Open", "High", "Low", "Close", "Adj Close"]] = _np.nan
+        ph = yf.scrapers.history.PriceHistory(None, "TEST", self.tz, session=object())
+        ph._history_metadata = {"hasPrePostMarketData": has_prepost}
+        with mock.patch.object(yf.scrapers.history.PriceHistory, "history", fake_history):
+            repaired = ph._fix_zeroes(df_bad, "1d", self.tz, prepost=False)
+        return repaired, requested
+
+    def test_repair_zeroes_daily_ignores_prepost(self):
+        # Ticker has pre/post-market trading. Yahoo's daily prices only cover
+        # regular hours, so reconstruction must not use pre/post prices.
+        days = self._days()
+        df_1d = _pd.DataFrame([self._bar(100 + i, 103 + i, 99 + i, 102 + i, 7000) for i in range(5)], index=days)
+        bars_1h = []
+        for i, d in enumerate(days):
+            o, hi, lo, c = 100 + i, 103 + i, 99 + i, 102 + i
+            for hr in range(4, 9):  # pre-market
+                bars_1h.append((d + _pd.Timedelta(hours=hr), self._bar(o - 8, o - 5, o - 9, o - 6, 0), False))
+            bars_1h.append((d + _pd.Timedelta(hours=9, minutes=30), self._bar(o, hi, o - 0.5, o + 1, 1000), True))
+            for hr in range(10, 15):
+                bars_1h.append((d + _pd.Timedelta(hours=hr, minutes=30), self._bar(o + 1, o + 2, lo, o + 1, 1000), True))
+            bars_1h.append((d + _pd.Timedelta(hours=15, minutes=30), self._bar(o + 1, c + 0.5, o + 0.5, c, 1000), True))
+            for hr in range(16, 20):  # post-market
+                bars_1h.append((d + _pd.Timedelta(hours=hr), self._bar(c + 6, c + 9, c + 5, c + 8, 0), False))
+
+        repaired_df, requested = self._repair(df_1d, bars_1h, True, days[2])
+
+        self.assertEqual(requested, [('1h', False)])
+        for c in ["Open", "High", "Low", "Close", "Adj Close", "Volume"]:
+            try:
+                self.assertTrue(_np.isclose(repaired_df[c], df_1d[c], rtol=1e-9).all())
+            except AssertionError:
+                print(f"COLUMN={c}")
+                print(repaired_df[c].to_frame('repaired').join(df_1d[c].to_frame('correct')))
+                raise
+        self.assertTrue(repaired_df.loc[days[2], "Repaired?"])
+
+    def test_repair_zeroes_daily_keeps_early_close(self):
+        # Ticker has no pre/post-market trading. On an early close, Yahoo puts
+        # end of session in a bar after the close, so reconstruction needs it.
+        days = self._days()
+        df_1d = _pd.DataFrame([self._bar(100 + i, 103 + i, 99 + i, 102 + i, 4000) for i in range(5)], index=days)
+        bars_1h = []
+        for i, d in enumerate(days):
+            o, hi, lo, c = 100 + i, 103 + i, 99 + i, 102 + i
+            bars_1h.append((d + _pd.Timedelta(hours=9, minutes=30), self._bar(o, o + 1, o - 0.5, o + 1, 1000), True))
+            bars_1h.append((d + _pd.Timedelta(hours=10, minutes=30), self._bar(o + 1, o + 2, lo, o + 1, 1000), True))
+            bars_1h.append((d + _pd.Timedelta(hours=11, minutes=30), self._bar(o + 1, o + 2, o + 0.5, o + 1.5, 1000), True))
+            bars_1h.append((d + _pd.Timedelta(hours=13), self._bar(o + 1.5, hi, o + 1, c, 1000), False))
+
+        repaired_df, requested = self._repair(df_1d, bars_1h, False, days[2])
+
+        self.assertEqual(requested, [('1h', True)])
+        for c in ["Open", "High", "Low", "Close", "Adj Close", "Volume"]:
+            try:
+                self.assertTrue(_np.isclose(repaired_df[c], df_1d[c], rtol=1e-9).all())
+            except AssertionError:
+                print(f"COLUMN={c}")
+                print(repaired_df[c].to_frame('repaired').join(df_1d[c].to_frame('correct')))
+                raise
+        self.assertTrue(repaired_df.loc[days[2], "Repaired?"])
+
+
 if __name__ == '__main__':
     unittest.main()

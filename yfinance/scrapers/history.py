@@ -876,6 +876,10 @@ class PriceHistory:
         if interval[1:] in ['d', 'wk', 'mo']:
             # Interday data always includes pre & post
             prepost = True
+            if interval == '1d' and (self._history_metadata or {}).get('hasPrePostMarketData'):
+                # Except when ticker has pre/post-market trading (e.g. USA).
+                # Yahoo's daily prices only cover regular hours.
+                prepost = False
             intraday = False
         else:
             intraday = True
