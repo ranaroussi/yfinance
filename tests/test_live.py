@@ -91,6 +91,8 @@ class TestAsyncWebSocketReconnect(unittest.IsolatedAsyncioTestCase):
                 # Drop the first connection
                 await conn.close(1011)
             else:
+                # Wait for the heartbeat to resume on the new connection
+                subscribes.append(json.loads(await conn.recv()))
                 await conn.send(json.dumps({"message": TestAsyncWebSocketListen.message}))
                 await conn.wait_closed()
 
@@ -98,6 +100,7 @@ class TestAsyncWebSocketReconnect(unittest.IsolatedAsyncioTestCase):
         async with serve(server_handler, "127.0.0.1", 0) as server:
             port = server.sockets[0].getsockname()[1]
             ws = AsyncWebSocket(url=f"ws://127.0.0.1:{port}", verbose=False)
+            ws._subscription_interval = 0.1
             await ws.subscribe("BTC-USD")
             task = asyncio.create_task(ws.listen(received.append))
             for _ in range(100):
@@ -107,5 +110,5 @@ class TestAsyncWebSocketReconnect(unittest.IsolatedAsyncioTestCase):
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
 
-        self.assertEqual([{"subscribe": ["BTC-USD"]}] * 2, subscribes)
+        self.assertEqual([{"subscribe": ["BTC-USD"]}] * 3, subscribes)
         self.assertEqual(["BTC-USD"], [m["id"] for m in received])
