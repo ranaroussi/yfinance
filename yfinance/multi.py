@@ -105,7 +105,6 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
             Adjust all OHLC automatically? Default is True
         repair: bool
             Detect currency unit 100x mixups and attempt repair
-            Requires extra packages: pip install 'yfinance[repair]'
             Default is False
         keepna: bool
             Keep NaN rows returned by Yahoo?

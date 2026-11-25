@@ -140,7 +140,6 @@ class PriceHistory:
               | Back-adjusted data to mimic true historical prices
             repair : bool
               | Fixes price errors in Yahoo data: 100x, missing, bad dividend adjust.
-              | Requires extra packages: pip install 'yfinance[repair]'
               | Default: False
               | Full details at: :doc:`../advanced/price_repair`.
             keepna : bool
