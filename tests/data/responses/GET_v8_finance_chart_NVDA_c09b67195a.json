@@ -1,0 +1,94 @@
+[
+ {
+  "request": {
+   "method": "GET",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/NVDA",
+   "params": {
+    "interval": "1d",
+    "range": "1d"
+   }
+  },
+  "recorded_at": 1790540130,
+  "response": {
+   "status_code": 200,
+   "content_type": "application/json;charset=utf-8",
+   "url": "https://query2.finance.yahoo.com/v8/finance/chart/NVDA?interval=1d&range=1d",
+   "json": {
+    "chart": {
+     "result": [
+      {
+       "meta": {
+        "currency": "USD",
+        "symbol": "NVDA",
+        "exchangeName": "NMS",
+        "fullExchangeName": "NasdaqGS",
+        "instrumentType": "EQUITY",
+        "firstTradeDate": 917015400,
+        "regularMarketTime": 1790366400,
+        "hasPrePostMarketData": true,
+        "gmtoffset": -14400,
+        "timezone": "EDT",
+        "exchangeTimezoneName": "America/New_York",
+        "regularMarketPrice": 225.07,
+        "regularMarketChangePercent": 0.218,
+        "fulldayPrice": 225.0,
+        "fulldayChange": 0.49,
+        "fulldayChangePercent": 0.218,
+        "fiftyTwoWeekHigh": 236.54,
+        "fiftyTwoWeekLow": 164.27,
+        "regularMarketDayHigh": 226.94,
+        "regularMarketDayLow": 223.133,
+        "regularMarketVolume": 89947712,
+        "longName": "NVIDIA Corporation",
+        "shortName": "NVIDIA Corporation",
+        "chartPreviousClose": 224.58,
+        "priceHint": 2,
+        "currentTradingPeriod": {
+         "pre": {
+          "timezone": "EDT",
+          "end": 1790343000,
+          "start": 1790323200,
+          "gmtoffset": -14400
+         },
+         "regular": {
+          "timezone": "EDT",
+          "end": 1790366400,
+          "start": 1790343000,
+          "gmtoffset": -14400
+         },
+         "post": {
+          "timezone": "EDT",
+          "end": 1790380800,
+          "start": 1790366400,
+          "gmtoffset": -14400
+         }
+        },
+        "dataGranularity": "1d",
+        "range": "1d",
+        "validRanges": ["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]
+       },
+       "timestamp": [1790343000],
+       "indicators": {
+        "quote": [
+         {
+          "high": [226.94000244140625],
+          "low": [223.1300048828125],
+          "open": [225.1300048828125],
+          "close": [225.07000732421875],
+          "volume": [89808400]
+         }
+        ],
+        "adjclose": [
+         {
+          "adjclose": [225.07000732421875]
+         }
+        ]
+       }
+      }
+     ],
+     "error": null
+    }
+   }
+  }
+ }
+]
