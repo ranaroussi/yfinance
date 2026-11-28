@@ -4,6 +4,10 @@ yfinance relies on the community to investigate bugs and contribute code.
 
 This is a quick short guide, full guide at https://ranaroussi.github.io/yfinance/development/index.html
 
+## AI / LLM
+
+Using AI to write code is acceptable, but YOU must write the PR message, YOU must understand and explain what the AI did.
+
 ## Maintainer resources
 
 Reusable prompts for development and maintenance tasks are in [maintainer/prompts/](maintainer/prompts/).
