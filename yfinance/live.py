@@ -152,16 +152,16 @@ class AsyncWebSocket(BaseWebSocket):
         if self.verbose:
             print("Listening for messages...")
 
-        # Start heartbeat subscription task
-        if self._heartbeat_task is None:
-            self._heartbeat_task = asyncio.create_task(self._periodic_subscribe())
-
         while True:
             try:
                 if self._ws is None:
                     # Connection was lost, open a new one and subscribe again
                     await self._connect()
                     await self._ws.send(json.dumps({"subscribe": list(self._subscriptions)}))
+
+                # The heartbeat stops on a failed send, e.g. after the connection dropped
+                if self._heartbeat_task is None or self._heartbeat_task.done():
+                    self._heartbeat_task = asyncio.create_task(self._periodic_subscribe())
 
                 async for message in self._ws:
                     message_json = json.loads(message)
