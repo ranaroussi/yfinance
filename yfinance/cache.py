@@ -302,6 +302,9 @@ _COOKIE_ATTRS = ("version", "name", "value", "port", "port_specified", "domain",
                  "domain_specified", "domain_initial_dot", "path", "path_specified",
                  "secure", "expires", "discard", "comment", "comment_url", "rfc2109")
 
+# Appended to the strategy name to get the key of the row holding the JSON cookie.
+_COOKIE_JSON_SUFFIX = "-json"
+
 
 def _cookies_to_json(cookies):
     """Serialise {domain: {path: {name: http.cookiejar.Cookie}}} to JSON bytes.
@@ -426,31 +429,48 @@ class _CookieCache:
         if self.initialised == 0:  # failure
             return None
 
+        _bad = (ValueError, KeyError, TypeError, AttributeError, UnicodeDecodeError)
+        json_key = strategy + _COOKIE_JSON_SUFFIX
+
+        # The JSON cookie lives in its own row. The row named just `strategy`
+        # belongs to yfinance <= 1.8.0, which reads it with pickle.loads and
+        # breaks on anything else, so it is never rewritten here.
         try:
-            data =  _CookieSchema.get(_CookieSchema.strategy == strategy)
+            data = _CookieSchema.get(_CookieSchema.strategy == json_key)
+            try:
+                cookie = _cookies_from_json(data.cookie_bytes)
+                return {'cookie':cookie, 'age':_dt.datetime.now()-data.fetch_date}
+            except _bad as e:
+                get_yf_logger().debug(f"Discarding unreadable cached cookie: {e}")
+        except _CookieSchema.DoesNotExist:
+            pass
+
+        try:
+            data = _CookieSchema.get(_CookieSchema.strategy == strategy)
         except _CookieSchema.DoesNotExist:
             return None
 
-        _bad = (ValueError, KeyError, TypeError, AttributeError, UnicodeDecodeError)
         try:
-            cookie = _cookies_from_json(data.cookie_bytes)
+            # Written by an older yfinance that pickled the cookie. Read it with
+            # a restricted unpickler (only http.cookiejar.Cookie allowed).
+            cookie = _cookies_from_legacy_pickle(data.cookie_bytes)
         except _bad:
-            # Possibly written by an older yfinance that pickled the cookie.
-            # Migrate it with a restricted unpickler (only http.cookiejar.Cookie
-            # allowed) and rewrite it as JSON, preserving the cookie.
             try:
-                cookie = _cookies_from_legacy_pickle(data.cookie_bytes)
-                _cookies_to_json(cookie)  # ensure it round-trips before rewriting
+                cookie = _cookies_from_json(data.cookie_bytes)
             except _bad as e:
                 get_yf_logger().debug(f"Discarding unreadable cached cookie: {e}")
                 return None
+            # JSON in the legacy row: written by a dev build that stored JSON
+            # under this key. Old versions cannot read it, so move it to the
+            # JSON row; they then see a cache miss and fetch their own cookie.
             try:
                 with self.get_db().atomic():
-                    _CookieSchema.update(cookie_bytes=_cookies_to_json(cookie)).where(
-                        _CookieSchema.strategy == strategy).execute()
-                get_yf_logger().debug("Migrated cached cookie from pickle to JSON")
+                    _CookieSchema.delete().where(_CookieSchema.strategy == strategy).execute()
+                    _CookieSchema.replace(strategy=json_key, fetch_date=data.fetch_date,
+                                          cookie_bytes=_cookies_to_json(cookie)).execute()
+                get_yf_logger().debug("Moved JSON cookie out of the legacy cache row")
             except Exception as e:
-                get_yf_logger().debug(f"Failed to rewrite migrated cookie as JSON: {e}")
+                get_yf_logger().debug(f"Failed to move JSON cookie out of the legacy cache row: {e}")
         return {'cookie':cookie, 'age':_dt.datetime.now()-data.fetch_date}
 
     def store(self, strategy, cookie):
@@ -466,14 +486,17 @@ class _CookieCache:
         db = self.get_db()
         if db is None:
             return
+        # Only the JSON row is written; see lookup() for why the row named
+        # just `strategy` is left alone.
+        json_key = strategy + _COOKIE_JSON_SUFFIX
         try:
-            q = _CookieSchema.delete().where(_CookieSchema.strategy == strategy)
+            q = _CookieSchema.delete().where(_CookieSchema.strategy == json_key)
             q.execute()
             if cookie is None:
                 return
             with db.atomic():
                 cookie_json = _cookies_to_json(cookie)
-                _CookieSchema.insert(strategy=strategy, cookie_bytes=cookie_json).execute()
+                _CookieSchema.insert(strategy=json_key, cookie_bytes=cookie_json).execute()
         except _peewee.IntegrityError:
             raise
             # # Integrity error means the strategy already exists. Try updating the strategy.
