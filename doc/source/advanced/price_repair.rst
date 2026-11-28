@@ -6,6 +6,12 @@ The new argument ``repair=True`` in ``history()`` and ``download()`` will attemp
 
 The returned table will have a new column ``Repaired?`` that specifies if row was repaired.
 
+Price repair needs ``scipy`` and ``scikit-learn``, which are not installed by default. Install them with:
+
+.. code-block:: bash
+
+    pip install "yfinance[repair]"
+
 This can also repair currency mixups, so check ``Ticker.history_metadata['currency']`` after for true currency. Not ``Ticker.info``.
 
 Price repair

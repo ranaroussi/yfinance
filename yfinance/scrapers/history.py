@@ -240,6 +240,10 @@ class PriceHistory:
                 period = '1mo'
         else:
             period_user = period
+
+        if repair:
+            utils.require_repair_dependencies()
+
         if repair and interval in ["5d", "1wk", "1mo", "3mo"]:
             # Yahoo's way of adjusting mutiday intervals is fundamentally broken.
             # Have to fetch 1d, adjust, then resample.

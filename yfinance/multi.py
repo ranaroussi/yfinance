@@ -131,6 +131,11 @@ def download(tickers, start=None, end=None, actions=False, threads=True,
         multi_level_index: bool
             Optional. Always return a MultiIndex DataFrame? Default is True
     """
+    if repair:
+        # Raise once here, else every ticker fails in its thread and
+        # download() returns an empty table.
+        utils.require_repair_dependencies()
+
     return _download_impl(
         _DownloadCtx(),
         tickers, start=start, end=end, actions=actions, threads=threads,
