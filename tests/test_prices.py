@@ -1,7 +1,9 @@
 from tests.context import yfinance as yf
 from tests.context import session_gbl
+from yfinance.scrapers.history import PriceHistory
 
 import unittest
+from unittest import mock
 import socket
 
 import datetime as _dt
@@ -603,6 +605,34 @@ class TestPriceHistory(unittest.TestCase):
         self.assertNotIn("no price data found", msg)
         self.assertIn("data not available", msg)
         self.assertIn("(30m resampled from 15m)", msg)
+
+
+class TestPriceHistoryOffline(unittest.TestCase):
+    def test_intraday_no_trading_periods(self):
+        # Yahoo omits 'tradingPeriods' for some tickers, e.g. mutual funds.
+        # The pre/post filter must then be skipped, not raise KeyError.
+        ts = _pd.date_range("2026-11-16 14:30", periods=7, freq="1h", tz="UTC")
+        n = len(ts)
+        chart = {"chart": {"result": [{
+            "meta": {"currency": "USD", "symbol": "VFIAX",
+                     "instrumentType": "MUTUALFUND",
+                     "exchangeTimezoneName": "America/New_York",
+                     "gmtoffset": -18000, "dataGranularity": "1h",
+                     "range": "5d", "validRanges": ["1d", "5d", "1mo", "max"]},
+            "timestamp": [int(t.timestamp()) for t in ts],
+            "indicators": {"quote": [{"open": [500.0] * n, "high": [501.0] * n,
+                                       "low": [499.0] * n, "close": [500.5] * n,
+                                       "volume": [0] * n}]},
+        }], "error": None}}
+        response = mock.MagicMock(text="")
+        response.json.return_value = chart
+        data = mock.MagicMock()
+        data.get.return_value = response
+        data.cache_get.return_value = response
+
+        ph = PriceHistory(data, "VFIAX", "America/New_York")
+        df = ph.history(period="5d", interval="1h", prepost=False, raise_errors=True)
+        self.assertEqual(len(df), n)
 
 
 if __name__ == '__main__':
