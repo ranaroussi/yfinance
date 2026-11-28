@@ -91,17 +91,94 @@ class TestCookieCache(unittest.TestCase):
         self.assertEqual((c.value, c.expires, c.get_nonstandard_attr('SameSite')),
                          ('abc', 4102444800, 'None'))
 
-    def test_migrates_legacy_pickle(self):
+    @staticmethod
+    def _raw(strategy):
+        row = yf.cache._CookieSchema.get_or_none(yf.cache._CookieSchema.strategy == strategy)
+        return None if row is None else bytes(row.cookie_bytes)
+
+    def test_reads_legacy_pickle_without_rewriting(self):
         import pickle
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             strategy = f'test-legacy-{proto}'
-            cache = self._write_raw(strategy, pickle.dumps(self._make_cookies(), proto))
+            blob = pickle.dumps(self._make_cookies(), proto)
+            cache = self._write_raw(strategy, blob)
             res = cache.lookup(strategy)
             self.assertIsNotNone(res, f"protocol {proto}")
             self.assertEqual(res['cookie']['.yahoo.com']['/']['A3'].value, 'abc')
-            # entry was rewritten as JSON
-            row = yf.cache._CookieSchema.get(yf.cache._CookieSchema.strategy == strategy)
-            self.assertIsInstance(yf.cache._json.loads(bytes(row.cookie_bytes)), dict)
+            # yfinance <= 1.8.0 reads this row with pickle.loads: it must stay as it was
+            self.assertEqual(self._raw(strategy), blob)
+
+    def test_store_keeps_legacy_row_readable_by_old_versions(self):
+        # What yfinance <= 1.8.0 does on the same cache: pickle.loads of the row
+        import pickle
+        strategy = 'test-shared'
+        cache = self._write_raw(strategy, pickle.dumps(self._make_cookies()))
+        new = self._make_cookies()
+        new['.yahoo.com']['/']['A3'].value = 'new'
+        cache.store(strategy, new)
+        self.assertEqual(cache.lookup(strategy)['cookie']['.yahoo.com']['/']['A3'].value, 'new')
+        old = pickle.loads(self._raw(strategy))
+        self.assertEqual(old['.yahoo.com']['/']['A3'].value, 'abc')
+
+    def test_moves_json_out_of_legacy_row(self):
+        # Dev builds briefly stored JSON under the legacy key, which old versions cannot read
+        strategy = 'test-dev-json'
+        cache = self._write_raw(strategy, yf.cache._cookies_to_json(self._make_cookies()))
+        res = cache.lookup(strategy)
+        self.assertEqual(res['cookie']['.yahoo.com']['/']['A3'].value, 'abc')
+        self.assertIsNone(self._raw(strategy))
+        self.assertIsNotNone(self._raw(strategy + yf.cache._COOKIE_JSON_SUFFIX))
+        self.assertEqual(cache.lookup(strategy)['cookie']['.yahoo.com']['/']['A3'].value, 'abc')
+
+    def test_moved_json_keeps_its_age(self):
+        import datetime
+        strategy = 'test-dev-json-age'
+        cache = self._write_raw(strategy, yf.cache._cookies_to_json(self._make_cookies()))
+        old = datetime.datetime.now() - datetime.timedelta(days=3)
+        yf.cache._CookieSchema.update(fetch_date=old).where(
+            yf.cache._CookieSchema.strategy == strategy).execute()
+        self.assertGreater(cache.lookup(strategy)['age'], datetime.timedelta(days=2))
+        # second lookup reads the moved row
+        self.assertGreater(cache.lookup(strategy)['age'], datetime.timedelta(days=2))
+
+    def test_store_does_not_create_legacy_row(self):
+        strategy = 'test-no-legacy'
+        cache = yf.cache.get_cookie_cache()
+        cache.store(strategy, self._make_cookies())
+        self.assertIsNone(self._raw(strategy))
+        self.assertIsNotNone(self._raw(strategy + yf.cache._COOKIE_JSON_SUFFIX))
+
+    def test_unreadable_json_row_falls_back_to_legacy_row(self):
+        import pickle
+        strategy = 'test-bad-json'
+        self._write_raw(strategy + yf.cache._COOKIE_JSON_SUFFIX, b'\x00not a cookie')
+        cache = self._write_raw(strategy, pickle.dumps(self._make_cookies()))
+        self.assertEqual(cache.lookup(strategy)['cookie']['.yahoo.com']['/']['A3'].value, 'abc')
+
+    def test_data_layer_leaves_legacy_cookie_for_old_versions(self):
+        # The path a request takes: YfData loads the cookie an old version cached,
+        # saves its own, and the old version's row is still a pickle afterwards.
+        import pickle
+        import time
+        from yfinance.data import SingletonMeta, YfData
+        cookies = self._make_cookies()
+        cookies['.yahoo.com']['/']['A3'].expires = int(time.time()) + 86400
+        blob = pickle.dumps(cookies)
+        self._write_raw('curlCffi', blob)
+        yf.cache._CookieSchema.delete().where(
+            yf.cache._CookieSchema.strategy == 'curlCffi' + yf.cache._COOKIE_JSON_SUFFIX).execute()
+        SingletonMeta._instances.pop(YfData, None)
+        try:
+            data = YfData()
+            data._cookie = None
+            self.assertTrue(data._load_cookie_curlCffi())
+            self.assertEqual(data._cookie.value, 'abc')
+            self.assertTrue(data._save_cookie_curlCffi())
+        finally:
+            SingletonMeta._instances.pop(YfData, None)
+        self.assertEqual(self._raw('curlCffi'), blob)
+        self.assertEqual(pickle.loads(self._raw('curlCffi'))['.yahoo.com']['/']['A3'].value, 'abc')
+        self.assertIsNotNone(self._raw('curlCffi' + yf.cache._COOKIE_JSON_SUFFIX))
 
     def test_rejects_pickle_with_other_globals(self):
         import pickle
