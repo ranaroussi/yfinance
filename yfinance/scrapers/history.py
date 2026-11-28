@@ -920,6 +920,10 @@ class PriceHistory:
         if interval[1:] in ['d', 'wk', 'mo']:
             # Interday data always includes pre & post
             prepost = True
+            if interval == '1d' and (self._history_metadata or {}).get('hasPrePostMarketData'):
+                # Except when ticker has pre/post-market trading (e.g. USA).
+                # Yahoo's daily prices only cover regular hours.
+                prepost = False
             intraday = False
         else:
             intraday = True
@@ -1088,6 +1092,7 @@ class PriceHistory:
             df_fine = self.history(start=fetch_start, end=fetch_end, interval=sub_interval, auto_adjust=False, actions=True, prepost=prepost, repair=True)
             if hasattr(logger, 'level'):
                 logger.setLevel(log_level)
+            tps = (self._history_metadata or {}).get('tradingPeriods')
             if df_fine is None or df_fine.empty:
                 msg = f"Cannot reconstruct block starting {start_dt if intraday else start_d}, too old, Yahoo will reject request for finer-grain data"
                 logger.info(msg, extra=log_extras)
@@ -1131,6 +1136,23 @@ class PriceHistory:
                 df_fine["diff"] = df_fine["intervalID"].diff()
                 new_index = np.append([df_fine.index[0]], df_fine.index[df_fine["intervalID"].diff() > 0])
                 df_new.index = new_index
+            if interval == '1d' and not prepost and isinstance(tps, pd.DataFrame) and 'end' in tps.columns:
+                # Only fetched regular hours. But on an early close, Yahoo puts the
+                # end of session in an interval at the close, so fetch that for Close.
+                # Don't use its High/Low, they can be post-market prices.
+                end_mins = tps['end'].dt.hour * 60 + tps['end'].dt.minute
+                for end in tps['end'][end_mins < end_mins.max()]:
+                    dt = end.normalize()
+                    if dt not in df_new.index or dt not in df_block.index or df_block.loc[dt, 'Close'] != tag:
+                        continue
+                    df_end = self.history(start=end.date(), end=end.date() + td_1d, interval=sub_interval, auto_adjust=False, actions=True, prepost=True, repair=True)
+                    if df_end is None or end not in df_end.index or np.isnan(df_end.loc[end, 'Close']):
+                        continue
+                    close = df_end.loc[end, 'Close']
+                    df_new.loc[dt, 'Adj Close'] *= close / df_new.loc[dt, 'Close']
+                    df_new.loc[dt, 'Close'] = close
+                    df_new.loc[dt, 'High'] = max(df_new.loc[dt, 'High'], close)
+                    df_new.loc[dt, 'Low'] = min(df_new.loc[dt, 'Low'], close)
             logger.debug('df_new:' + '\n' + str(df_new))
 
             # Calibrate!
